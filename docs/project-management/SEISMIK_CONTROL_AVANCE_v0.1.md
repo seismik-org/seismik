@@ -47,18 +47,18 @@ Semáforo del Sprint:
 
 | ID | Actividad | Responsable | Estado | Fecha objetivo | Dependencias | Entregable | Evidencia | Aceptación |
 |---|---|---|---|---|---|---|---|---|
-| S0-01 | Documento maestro y Scrum | Codex | ER | 2026-08-23 | Ninguna | Tres Word y fuentes | `docs/project-management/` | Product Owner |
+| S0-01 | Documento maestro y Scrum | Codex | CO | 2026-08-23 | Ninguna | Tres Word y fuentes | `docs/project-management/` | Creación completada; revisión PO pendiente en S0-02 |
 | S0-02 | Aprobar alcance MVP | Product Owner | NI | Próxima revisión | S0-01 | Decisión registrada | Tabla de decisiones | Product Owner |
-| S0-03 | Auditoría de secretos | Codex | EC | 2026-08-23 | Ninguna | Exclusiones seguras | `.gitignore`, `git status` | Codex |
-| S0-04 | Primera línea base Git | Codex | NI | 2026-08-23 | S0-03 | Commit inicial | Hash de commit | Codex |
-| S0-05 | Backlog y riesgos | Codex | ER | 2026-08-23 | S0-01 | Control de avance | Este documento | Product Owner |
+| S0-03 | Auditoría de secretos | Codex | CO | 2026-08-23 | Ninguna | Exclusiones seguras | `.gitignore`; scan sin hallazgos | Codex |
+| S0-04 | Primera línea base Git | Codex | CO | 2026-08-23 | S0-03 | Commit inicial | `d8382c10dfa219551da3d696943be478c55d8b7b` | Codex |
+| S0-05 | Backlog y riesgos | Codex | CO | 2026-08-23 | S0-01 | Control de avance | Este documento | Creación completada; PO revisa en S0-02 |
 | S0-06 | Aprobar presupuesto beta | Product Owner | NI | Antes de Sprint 3 | S0-02 | Tope mensual | Registro de decisiones | Product Owner |
 
 ## 4. Registro maestro de entregables
 
 | Código | Entregable | Sprint | Responsable | Estado | Criterio de aceptación | Ubicación de evidencia |
 |---|---|---:|---|---|---|---|
-| ENT-001 | Baseline Alfa 0.1 | 0 | Codex | EC | Commit limpio, sin secretos | Git |
+| ENT-001 | Baseline Alfa 0.1 | 0 | Codex | CO | Commit limpio, sin secretos | `d8382c10dfa219551da3d696943be478c55d8b7b` |
 | ENT-002 | Gobierno y documentos v0.1 | 0 | Codex + PO | ER | PO revisa alcance y roles | `docs/project-management/` |
 | ENT-003 | Detector reproducible | 1 | Codex | NI | Replay y reconexión demostrados | `tests/`, informe Sprint |
 | ENT-004 | Detector shadow calibrado | 2 | Codex + asesor | NI | Métricas y revisión científica | Informe de calibración |
@@ -169,4 +169,3 @@ Semáforo del Sprint:
 | Ejecución de simulacro con testers | Product Owner | Sprint 5 | Pendiente |
 | Carga AAB a Play cerrado | Product Owner | Sprint 7 | Pendiente |
 | Decisión Go/No-Go | Product Owner | Cierre Sprint 7 | Pendiente |
-
