@@ -1,0 +1,16 @@
+numpy>=1.26,<3
+scipy>=1.12,<2
+obspy>=1.4.2,<1.6
+requests>=2.32,<3
+pytest>=8.2,<9
+fastapi>=0.141,<0.142
+uvicorn[standard]>=0.52,<0.53
+pydantic>=2.13,<3
+pydantic-settings>=2.15,<3
+redis>=8.1,<9
+aioapns>=4,<5
+firebase-admin>=7.5,<8
+h3>=4.5,<5
+httpx>=0.28,<0.29
+pytest-asyncio>=1.2,<2
+fakeredis>=2.37,<3

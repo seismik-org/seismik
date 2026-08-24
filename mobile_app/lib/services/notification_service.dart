@@ -1,0 +1,208 @@
+import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+
+import '../core/constants.dart';
+import '../data/models/seismic_event.dart';
+
+const AndroidNotificationChannel _criticalChannel = AndroidNotificationChannel(
+  SeismikConstants.criticalChannelId,
+  'Alertas sísmicas críticas',
+  description: 'Alertas inmediatas de detección sísmica Seismik.',
+  importance: Importance.max,
+  playSound: true,
+  sound: RawResourceAndroidNotificationSound('alarm'),
+  audioAttributesUsage: AudioAttributesUsage.alarm,
+  enableVibration: true,
+  showBadge: true,
+);
+
+const AndroidNotificationChannel _updatesChannel = AndroidNotificationChannel(
+  SeismikConstants.updatesChannelId,
+  'Reportes sísmicos oficiales',
+  description: 'Actualizaciones verificadas de servicios geológicos.',
+  importance: Importance.defaultImportance,
+);
+
+final FlutterLocalNotificationsPlugin _backgroundNotifications =
+    FlutterLocalNotificationsPlugin();
+
+@pragma('vm:entry-point')
+Future<void> seismikFirebaseBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp();
+  await _initializeLocalPlugin(_backgroundNotifications);
+  if (_isCritical(message.data)) {
+    await _showCriticalNotification(_backgroundNotifications, message.data);
+  }
+}
+
+class NotificationEnvelope {
+  const NotificationEnvelope({required this.event, required this.critical});
+  final SeismicEvent event;
+  final bool critical;
+}
+
+class NotificationService {
+  final FlutterLocalNotificationsPlugin _local =
+      FlutterLocalNotificationsPlugin();
+  final StreamController<NotificationEnvelope> _events =
+      StreamController<NotificationEnvelope>.broadcast();
+  final List<StreamSubscription<RemoteMessage>> _subscriptions =
+      <StreamSubscription<RemoteMessage>>[];
+
+  Stream<NotificationEnvelope> get events => _events.stream;
+
+  Future<void> initialize() async {
+    FirebaseMessaging.onBackgroundMessage(seismikFirebaseBackgroundHandler);
+    await _initializeLocalPlugin(
+      _local,
+      onResponse: (NotificationResponse response) {
+        final String? payload = response.payload;
+        if (payload == null) return;
+        final Object? decoded = jsonDecode(payload);
+        if (decoded is Map<String, dynamic>) _emit(decoded);
+      },
+    );
+    await _requestPermissions();
+    _subscriptions.add(
+      FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
+        if (_isCritical(message.data)) {
+          await _showCriticalNotification(_local, message.data);
+        }
+        _emit(Map<String, dynamic>.from(message.data));
+      }),
+    );
+    _subscriptions.add(
+      FirebaseMessaging.onMessageOpenedApp.listen(
+        (RemoteMessage message) =>
+            _emit(Map<String, dynamic>.from(message.data)),
+      ),
+    );
+    final RemoteMessage? initial = await FirebaseMessaging.instance
+        .getInitialMessage();
+    if (initial != null) _emit(Map<String, dynamic>.from(initial.data));
+  }
+
+  Future<void> _requestPermissions() async {
+    await FirebaseMessaging.instance.requestPermission(
+      alert: true,
+      badge: true,
+      sound: true,
+      criticalAlert: true,
+      provisional: false,
+    );
+    if (Platform.isAndroid) {
+      final AndroidFlutterLocalNotificationsPlugin? android = _local
+          .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin
+          >();
+      await android?.requestNotificationsPermission();
+      await android?.requestFullScreenIntentPermission();
+    } else if (Platform.isIOS) {
+      await _local
+          .resolvePlatformSpecificImplementation<
+            IOSFlutterLocalNotificationsPlugin
+          >()
+          ?.requestPermissions(
+            alert: true,
+            badge: true,
+            sound: true,
+            critical: true,
+          );
+    }
+  }
+
+  void _emit(Map<String, dynamic> data) {
+    final String type = (data['type'] ?? '').toString();
+    final bool critical = _isCriticalStringMap(data);
+    if (type.isEmpty) return;
+    _events.add(
+      NotificationEnvelope(
+        event: SeismicEvent.fromMap(data),
+        critical: critical,
+      ),
+    );
+  }
+
+  Future<void> dispose() async {
+    await Future.wait(
+      _subscriptions.map((subscription) => subscription.cancel()),
+    );
+    await _events.close();
+  }
+}
+
+Future<void> _initializeLocalPlugin(
+  FlutterLocalNotificationsPlugin plugin, {
+  DidReceiveNotificationResponseCallback? onResponse,
+}) async {
+  const InitializationSettings settings = InitializationSettings(
+    android: AndroidInitializationSettings('ic_stat_seismik'),
+    iOS: DarwinInitializationSettings(
+      requestAlertPermission: false,
+      requestBadgePermission: false,
+      requestSoundPermission: false,
+      requestCriticalPermission: false,
+    ),
+  );
+  await plugin.initialize(
+    settings: settings,
+    onDidReceiveNotificationResponse: onResponse,
+  );
+  final AndroidFlutterLocalNotificationsPlugin? android = plugin
+      .resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin
+      >();
+  await android?.createNotificationChannel(_criticalChannel);
+  await android?.createNotificationChannel(_updatesChannel);
+}
+
+Future<void> _showCriticalNotification(
+  FlutterLocalNotificationsPlugin plugin,
+  Map<String, dynamic> data,
+) async {
+  await plugin.show(
+    id:
+        data['event_id']?.hashCode ??
+        DateTime.now().millisecondsSinceEpoch.remainder(1 << 31),
+    title: '¡SISMO DETECTADO!',
+    body: 'Busca protección: agáchate, cúbrete y sujétate.',
+    notificationDetails: const NotificationDetails(
+      android: AndroidNotificationDetails(
+        SeismikConstants.criticalChannelId,
+        'Alertas sísmicas críticas',
+        channelDescription: 'Alertas inmediatas de detección sísmica Seismik.',
+        importance: Importance.max,
+        priority: Priority.max,
+        category: AndroidNotificationCategory.alarm,
+        fullScreenIntent: true,
+        ongoing: true,
+        autoCancel: false,
+        visibility: NotificationVisibility.public,
+        sound: RawResourceAndroidNotificationSound('alarm'),
+        audioAttributesUsage: AudioAttributesUsage.alarm,
+      ),
+      iOS: DarwinNotificationDetails(
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: true,
+        sound: 'alarm.aiff',
+        interruptionLevel: InterruptionLevel.critical,
+        criticalSoundVolume: 1.0,
+      ),
+    ),
+    payload: jsonEncode(data),
+  );
+}
+
+bool _isCritical(Map<String, dynamic> data) => _isCriticalStringMap(data);
+
+bool _isCriticalStringMap(Map<String, dynamic> data) =>
+    data['channel_id']?.toString() == SeismikConstants.criticalChannelId ||
+    data['critical']?.toString() == 'true' ||
+    data['type']?.toString() == 'earthquake_candidate' ||
+    data['type']?.toString() == 'crowdsourced_earthquake_candidate';

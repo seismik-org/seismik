@@ -1,0 +1,77 @@
+services:
+  redis:
+    image: redis:8.2-alpine
+    command: ["redis-server", "--appendonly", "yes", "--appendfsync", "everysec"]
+    restart: unless-stopped
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 1s
+      retries: 20
+    networks: [seismik-internal]
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    restart: unless-stopped
+    environment: &seismik-environment
+      SEISMIK_ENVIRONMENT: ${SEISMIK_ENVIRONMENT:-development}
+      SEISMIK_REDIS_URL: redis://redis:6379/0
+      SEISMIK_WEBHOOK_HMAC_SECRET: ${SEISMIK_WEBHOOK_HMAC_SECRET:-local-webhook-secret-change-me}
+      SEISMIK_DEVICE_API_KEY: ${SEISMIK_DEVICE_API_KEY:-local-device-key-change-me}
+      SEISMIK_CROWD_MASTER_SECRET: ${SEISMIK_CROWD_MASTER_SECRET:-local-crowd-secret-change-me}
+      SEISMIK_PUSH_ENABLED: ${SEISMIK_PUSH_ENABLED:-false}
+      SEISMIK_INTEGRITY_VERIFICATION_ENABLED: ${SEISMIK_INTEGRITY_VERIFICATION_ENABLED:-false}
+      SEISMIK_APNS_KEY_PATH: ${SEISMIK_APNS_KEY_PATH:-}
+      SEISMIK_APNS_KEY_ID: ${SEISMIK_APNS_KEY_ID:-}
+      SEISMIK_APNS_TEAM_ID: ${SEISMIK_APNS_TEAM_ID:-}
+      SEISMIK_APNS_TOPIC: ${SEISMIK_APNS_TOPIC:-}
+      SEISMIK_APNS_USE_SANDBOX: ${SEISMIK_APNS_USE_SANDBOX:-false}
+      SEISMIK_FIREBASE_CREDENTIALS_PATH: ${SEISMIK_FIREBASE_CREDENTIALS_PATH:-}
+    ports:
+      - "8000:8000"
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/ready', timeout=1)"]
+      interval: 5s
+      timeout: 2s
+      retries: 20
+    networks: [seismik-internal]
+
+  dispatcher:
+    build:
+      context: .
+      dockerfile: Dockerfile.dispatcher
+    restart: unless-stopped
+    environment: *seismik-environment
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks: [seismik-internal]
+
+  detector:
+    profiles: ["detector"]
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      WEBHOOK_BASE_URL: http://api:8000
+      WEBHOOK_HMAC_SECRET: ${SEISMIK_WEBHOOK_HMAC_SECRET:-local-webhook-secret-change-me}
+      LOG_LEVEL: INFO
+    depends_on:
+      api:
+        condition: service_healthy
+    networks: [seismik-internal]
+
+volumes:
+  redis-data:
+
+networks:
+  seismik-internal:
+    driver: bridge

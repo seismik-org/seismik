@@ -1,0 +1,44 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "seismik"
+version = "0.3.0"
+description = "Seismik EEW detection, durable ingestion, push dispatch and mobile crowdsourcing"
+license = "Apache-2.0"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+  "numpy>=1.26,<3",
+  "scipy>=1.12,<2",
+  "obspy>=1.4.2,<1.6",
+  "requests>=2.32,<3",
+  "fastapi>=0.141,<0.142",
+  "uvicorn[standard]>=0.52,<0.53",
+  "pydantic>=2.13,<3",
+  "pydantic-settings>=2.15,<3",
+  "redis>=8.1,<9",
+  "aioapns>=4,<5",
+  "firebase-admin>=7.5,<8",
+  "h3>=4.5,<5",
+]
+
+[project.scripts]
+seismik-detector = "eew.main:main"
+seismik-api = "api.app:main"
+seismik-dispatcher = "dispatcher.consumer:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "-q"
+asyncio_mode = "auto"
+
+[[tool.mypy.overrides]]
+module = ["obspy", "obspy.*", "h3", "h3.*", "firebase_admin", "firebase_admin.*"]
+ignore_missing_imports = true
+disable_error_code = ["import-untyped"]

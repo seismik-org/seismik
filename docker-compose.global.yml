@@ -1,0 +1,37 @@
+x-seismik-common: &seismik-common
+  build: .
+  restart: unless-stopped
+  command: ["seismik-detector", "--config", "/app/config.global.json"]
+  volumes:
+    - ./config.global.json:/app/config.global.json:ro
+  environment: &seismik-environment
+    SEISMIK_SHARD_COUNT: "5"
+    SEISMIK_MAX_STATIONS: "500"
+    LOG_LEVEL: "INFO"
+
+services:
+  detector-0:
+    <<: *seismik-common
+    environment:
+      <<: *seismik-environment
+      SEISMIK_SHARD_INDEX: "0"
+  detector-1:
+    <<: *seismik-common
+    environment:
+      <<: *seismik-environment
+      SEISMIK_SHARD_INDEX: "1"
+  detector-2:
+    <<: *seismik-common
+    environment:
+      <<: *seismik-environment
+      SEISMIK_SHARD_INDEX: "2"
+  detector-3:
+    <<: *seismik-common
+    environment:
+      <<: *seismik-environment
+      SEISMIK_SHARD_INDEX: "3"
+  detector-4:
+    <<: *seismik-common
+    environment:
+      <<: *seismik-environment
+      SEISMIK_SHARD_INDEX: "4"

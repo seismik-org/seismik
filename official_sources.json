@@ -1,0 +1,83 @@
+{
+  "schema_version": 1,
+  "sources": [
+    {
+      "id": "usgs_global",
+      "agency": "United States Geological Survey (USGS)",
+      "jurisdiction": "Global fallback",
+      "countries": ["US"],
+      "adapter": "fdsn_geojson",
+      "endpoint": "https://earthquake.usgs.gov/fdsnws/event/1/query",
+      "official_site": "https://earthquake.usgs.gov/earthquakes/",
+      "priority": 10,
+      "global_fallback": true,
+      "attribution": "U.S. Geological Survey"
+    },
+    {
+      "id": "ingv_italy",
+      "agency": "Istituto Nazionale di Geofisica e Vulcanologia (INGV)",
+      "jurisdiction": "Italy",
+      "countries": ["IT", "SM", "VA"],
+      "adapter": "fdsn_geojson",
+      "endpoint": "https://webservices.ingv.it/fdsnws/event/1/query",
+      "official_site": "https://terremoti.ingv.it/",
+      "priority": 100,
+      "attribution": "INGV"
+    },
+    {
+      "id": "geonet_new_zealand",
+      "agency": "GeoNet / GNS Science",
+      "jurisdiction": "New Zealand",
+      "countries": ["NZ"],
+      "adapter": "geonet_geojson",
+      "endpoint": "https://api.geonet.org.nz/quake",
+      "official_site": "https://www.geonet.org.nz/earthquake",
+      "priority": 100,
+      "attribution": "GeoNet"
+    },
+    {
+      "id": "bmkg_indonesia",
+      "agency": "Badan Meteorologi, Klimatologi, dan Geofisika (BMKG)",
+      "jurisdiction": "Indonesia",
+      "countries": ["ID"],
+      "adapter": "bmkg_json",
+      "endpoint": "https://data.bmkg.go.id/DataMKG/TEWS/gempaterkini.json",
+      "official_site": "https://data.bmkg.go.id/gempabumi/",
+      "priority": 100,
+      "attribution": "Badan Meteorologi, Klimatologi, dan Geofisika (BMKG)"
+    },
+    {
+      "id": "jma_japan",
+      "agency": "Japan Meteorological Agency (JMA)",
+      "jurisdiction": "Japan",
+      "countries": ["JP"],
+      "adapter": "jma_atom",
+      "endpoint": "https://www.data.jma.go.jp/developer/xml/feed/eqvol.xml",
+      "official_site": "https://www.jma.go.jp/bosai/map.html#contents=earthquake_map",
+      "priority": 100,
+      "attribution": "Japan Meteorological Agency"
+    },
+    {
+      "id": "sgc_colombia",
+      "agency": "Servicio Geológico Colombiano (SGC)",
+      "jurisdiction": "Colombia",
+      "countries": ["CO"],
+      "adapter": "sgc_geojson",
+      "endpoint": "https://api.sgc.gov.co/biweekly/biweekly_earthquakes",
+      "official_site": "https://www.sgc.gov.co/sismos",
+      "priority": 100,
+      "attribution": "Servicio Geológico Colombiano"
+    },
+    {
+      "id": "igp_peru",
+      "agency": "Instituto Geofísico del Perú (IGP)",
+      "jurisdiction": "Peru",
+      "countries": ["PE"],
+      "adapter": "igp_arcgis",
+      "endpoint": "https://ide.igp.gob.pe/arcgis/rest/services/monitoreocensis/SismosReportados/MapServer/0/query",
+      "official_site": "https://ultimosismo.igp.gob.pe/",
+      "priority": 100,
+      "attribution": "Instituto Geofísico del Perú"
+    }
+  ]
+}

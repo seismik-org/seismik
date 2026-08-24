@@ -1,0 +1,82 @@
+{
+  "seedlink": {
+    "reconnect_initial_seconds": 2.0,
+    "reconnect_max_seconds": 60.0,
+    "providers": [
+      {
+        "id": "earthscope_colombia",
+        "country_code": "CO",
+        "server": "rtserve.earthscope.org:18000",
+        "enabled": true,
+        "required": true,
+        "stations": [
+          {"network": "CM", "station": "ARGC", "location": "00", "channel": "HHZ", "selector": "00HHZ", "latitude": 9.857669, "longitude": -74.245833},
+          {"network": "CM", "station": "HEL", "location": "00", "channel": "HHZ", "selector": "00HHZ", "latitude": 6.1909, "longitude": -75.529},
+          {"network": "CM", "station": "PRA", "location": "00", "channel": "HHZ", "selector": "00HHZ", "latitude": 3.713833, "longitude": -74.886167},
+          {"network": "CM", "station": "RUS", "location": "00", "channel": "HHZ", "selector": "00HHZ", "latitude": 5.8925, "longitude": -73.083167}
+        ]
+      },
+      {
+        "id": "geofon_chile",
+        "country_code": "CL",
+        "server": "geofon.gfz.de:18000",
+        "enabled": true,
+        "required": false,
+        "stations": [
+          {"network": "CX", "station": "PB01", "channel": "HHZ", "latitude": -21.04323, "longitude": -69.4874},
+          {"network": "CX", "station": "PB03", "channel": "HHZ", "latitude": -22.04847, "longitude": -69.7531},
+          {"network": "CX", "station": "PB07", "channel": "HHZ", "latitude": -21.72667, "longitude": -69.88618},
+          {"network": "CX", "station": "PB09", "channel": "HHZ", "latitude": -21.79638, "longitude": -69.24192}
+        ]
+      },
+      {
+        "id": "earthscope_ecuador",
+        "country_code": "EC",
+        "server": "rtserve.earthscope.org:18000",
+        "enabled": false,
+        "required": false,
+        "stations": [
+          {"network": "EC", "station": "CASC", "channel": "HHZ"},
+          {"network": "EC", "station": "CUIC", "channel": "HHZ"},
+          {"network": "EC", "station": "IMBA", "channel": "HHZ"},
+          {"network": "EC", "station": "TULM", "channel": "HHZ"}
+        ]
+      }
+    ]
+  },
+  "detection": {
+    "buffer_seconds": 60.0,
+    "sta_seconds": 0.5,
+    "lta_seconds": 10.0,
+    "trigger_on": 3.5,
+    "trigger_off": 1.0,
+    "station_cooldown_seconds": 20.0,
+    "filter_enabled": true,
+    "filter_low_hz": 1.0,
+    "filter_high_hz": 10.0,
+    "filter_corners": 4,
+    "max_interpolated_gap_seconds": 0.25
+  },
+  "coincidence": {
+    "minimum_stations": 3,
+    "window_seconds": 15.0,
+    "alert_cooldown_seconds": 60.0
+  },
+  "alert": {
+    "webhook_url": null,
+    "webhook_base_url": null,
+    "webhook_hmac_secret": null,
+    "webhook_timeout_seconds": 3.0,
+    "webhook_retries": 2
+  },
+  "official_reports": {
+    "enabled": true,
+    "sources_file": "official_sources.json",
+    "initial_delay_seconds": 20,
+    "poll_intervals_seconds": [30, 60, 120, 300, 600],
+    "request_timeout_seconds": 10,
+    "max_origin_time_delta_seconds": 600,
+    "max_distance_km": 1200,
+    "max_concurrent_candidates": 4
+  }
+}

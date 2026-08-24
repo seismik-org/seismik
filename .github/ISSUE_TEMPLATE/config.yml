@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Reporte de seguridad
+    url: https://github.com/OWNER/REPOSITORY/security/advisories/new
+    about: Configura OWNER/REPOSITORY al publicar y usa este canal para vulnerabilidades.

@@ -1,0 +1,5 @@
+-r requirements-backend.txt
+httpx>=0.28,<0.29
+pytest>=8.2,<9
+pytest-asyncio>=1.2,<2
+fakeredis>=2.37,<3
