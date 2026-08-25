@@ -21,6 +21,7 @@ class StationTrigger:
     sta_lta_ratio: float
     latitude: float | None = None
     longitude: float | None = None
+    packet_lag_seconds: float | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)

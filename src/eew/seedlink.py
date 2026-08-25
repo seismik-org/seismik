@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import json
 import logging
 import random
 import threading
 from collections.abc import Callable
+from datetime import datetime, timezone
 
 from obspy import Trace  # type: ignore[import-untyped]
 from obspy.clients.seedlink.easyseedlink import (  # type: ignore[import-untyped]
@@ -45,7 +47,7 @@ class SeedLinkProviderWorker:
             self._processor_key(station.network, station.station, station.channel, station.location):
                 StationProcessor(
                     station,
-                    detection_settings,
+                    detection_settings.for_stream(station.network, station.channel),
                     provider_id=provider.id,
                     country_code=station.country_code or "ZZ",
                     zone_id=station.zone_id or station.country_code or "ZZ",
@@ -177,6 +179,48 @@ class SeedLinkProviderWorker:
     def _on_terminate(self) -> None:
         LOGGER.warning("El servidor terminó SeedLink provider=%s", self.provider.id)
 
+    def health_snapshot(
+        self,
+        now: datetime | None = None,
+    ) -> dict[str, dict[str, object]]:
+        """Estado por stream para logs y metricas del modo sombra."""
+
+        result: dict[str, dict[str, object]] = {}
+        current = now or datetime.now(timezone.utc)
+        for key, processor in self.processors.items():
+            stats = processor.stats
+            lag = stats.last_packet_lag_seconds
+            age = None
+            if stats.last_received_at:
+                received = datetime.fromisoformat(stats.last_received_at.replace("Z", "+00:00"))
+                age = max(0.0, (current - received).total_seconds())
+            healthy = (
+                lag is not None
+                and lag <= self.coincidence.settings.max_station_lag_seconds
+                and age is not None
+                and age <= self.seedlink_settings.station_stale_after_seconds
+            )
+            reason = "ok"
+            if stats.last_received_at is None:
+                reason = "never_received"
+            elif age is not None and age > self.seedlink_settings.station_stale_after_seconds:
+                reason = "stale"
+            elif lag is not None and lag > self.coincidence.settings.max_station_lag_seconds:
+                reason = "high_packet_lag"
+            result[key] = {
+                "packets": stats.packets,
+                "accepted_samples": stats.accepted_samples,
+                "last_received_at": stats.last_received_at,
+                "last_packet_end": stats.last_packet_end,
+                "packet_lag_seconds": lag,
+                "last_received_age_seconds": round(age, 3) if age is not None else None,
+                "healthy": healthy,
+                "reason": reason,
+                "resets": stats.reset_count,
+                "non_finite_samples": stats.non_finite_samples,
+            }
+        return result
+
     @staticmethod
     def _processor_key(network: str, station: str, channel: str, location: str | None) -> str:
         return f"{network}.{station}.{location if location is not None else '*'}.{channel}"
@@ -220,7 +264,11 @@ class SeedLinkDetectionService:
         ]
         for thread in self._threads:
             thread.start()
-        self._stop.wait()
+        while not self._stop.wait(self.settings.seedlink.health_log_interval_seconds):
+            LOGGER.info(
+                "seedlink_health=%s",
+                json.dumps(self.health_snapshot(), separators=(",", ":")),
+            )
         for thread in self._threads:
             thread.join(timeout=5)
 
@@ -228,3 +276,6 @@ class SeedLinkDetectionService:
         self._stop.set()
         for worker in self.workers:
             worker.stop()
+
+    def health_snapshot(self) -> dict[str, dict[str, dict[str, object]]]:
+        return {worker.provider.id: worker.health_snapshot() for worker in self.workers}

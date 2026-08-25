@@ -4,6 +4,8 @@
     "reconnect_max_seconds": 60.0,
     "reconnect_jitter_fraction": 0.2,
     "network_timeout_seconds": 30.0,
+    "health_log_interval_seconds": 30.0,
+    "station_stale_after_seconds": 60.0,
     "providers": [
       {
         "id": "earthscope_colombia",
@@ -13,11 +15,20 @@
         "required": true,
         "stations": [
           {"network": "CM", "station": "ARGC", "location": "00", "channel": "HHZ", "selector": "HHZ", "latitude": 9.857669, "longitude": -74.245833},
+          {"network": "CM", "station": "CAP2", "location": "00", "channel": "HHZ", "selector": "HHZ", "latitude": 8.644522, "longitude": -77.360388},
           {"network": "CM", "station": "CRJC", "location": "00", "channel": "HHZ", "selector": "HHZ", "latitude": 11.020012, "longitude": -72.8816},
+          {"network": "CM", "station": "FLO2", "location": "00", "channel": "HHZ", "selector": "HHZ", "latitude": 1.582667, "longitude": -75.652667},
           {"network": "CM", "station": "HEL", "location": "00", "channel": "HHZ", "selector": "HHZ", "latitude": 6.1909, "longitude": -75.529},
           {"network": "CM", "station": "LCBC", "location": "00", "channel": "HHZ", "selector": "HHZ", "latitude": 8.857167, "longitude": -76.367667},
+          {"network": "CM", "station": "MAP", "location": "00", "channel": "HHZ", "selector": "HHZ", "latitude": 4.003667, "longitude": -81.606003},
+          {"network": "CM", "station": "OCA", "location": "00", "channel": "HHZ", "selector": "HHZ", "latitude": 8.23993, "longitude": -73.31938},
+          {"network": "CM", "station": "PRA", "location": "00", "channel": "HHZ", "selector": "HHZ", "latitude": 3.713833, "longitude": -74.886167},
+          {"network": "CM", "station": "PRV", "location": "00", "channel": "HHZ", "selector": "HHZ", "latitude": 13.376167, "longitude": -81.3635},
           {"network": "CM", "station": "RUS", "location": "00", "channel": "HHZ", "selector": "HHZ", "latitude": 5.8925, "longitude": -73.083167},
-          {"network": "CM", "station": "SMAR", "location": "00", "channel": "HHZ", "selector": "HHZ", "latitude": 11.163833, "longitude": -74.2245}
+          {"network": "CM", "station": "SJC", "location": "00", "channel": "HHZ", "selector": "HHZ", "latitude": 9.896667, "longitude": -75.1795},
+          {"network": "CM", "station": "SMAR", "location": "00", "channel": "HHZ", "selector": "HHZ", "latitude": 11.163833, "longitude": -74.2245},
+          {"network": "CM", "station": "TUM", "location": "00", "channel": "HHZ", "selector": "HHZ", "latitude": 1.823667, "longitude": -78.72667},
+          {"network": "CM", "station": "URI", "location": "00", "channel": "HHZ", "selector": "HHZ", "latitude": 11.702, "longitude": -71.993}
         ]
       },
       {
@@ -59,12 +70,25 @@
     "filter_low_hz": 1.0,
     "filter_high_hz": 10.0,
     "filter_corners": 4,
-    "max_interpolated_gap_seconds": 0.25
+    "max_interpolated_gap_seconds": 0.25,
+    "network_profiles": {
+      "CM.HHZ": {
+        "sta_seconds": 1.0,
+        "lta_seconds": 20.0,
+        "trigger_on": 6.0,
+        "trigger_off": 1.2,
+        "filter_low_hz": 1.0,
+        "filter_high_hz": 10.0
+      }
+    }
   },
   "coincidence": {
     "minimum_stations": 3,
-    "window_seconds": 15.0,
-    "alert_cooldown_seconds": 60.0
+    "window_seconds": 10.0,
+    "alert_cooldown_seconds": 60.0,
+    "max_station_lag_seconds": 15.0,
+    "minimum_located_stations": 3,
+    "minimum_network_aperture_km": 50.0
   },
   "alert": {
     "webhook_url": null,
@@ -79,8 +103,8 @@
     "initial_delay_seconds": 20,
     "poll_intervals_seconds": [30, 60, 120, 300, 600],
     "request_timeout_seconds": 10,
-    "max_origin_time_delta_seconds": 600,
-    "max_distance_km": 1200,
+    "max_origin_time_delta_seconds": 300,
+    "max_distance_km": 600,
     "max_concurrent_candidates": 4
   }
 }

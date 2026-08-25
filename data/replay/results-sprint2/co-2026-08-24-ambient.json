@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "clock": "waveform_timestamps",
+  "chunk_seconds": 5.0,
+  "inputs": [
+    {
+      "path": "C:\\Users\\chave\\Documents\\Codex\\2026-08-16\\act-a-como-un-arquitecto-de\\outputs\\seismik\\data\\replay\\fixtures\\co-2026-08-24-ambient.mseed",
+      "bytes": 389120,
+      "sha256": "5896158d5a8821d1d6fd93cc84052145b56f1a2a72881f7a20dc25c8015a4b29"
+    }
+  ],
+  "chunk_count": 662,
+  "triggers": [
+    {
+      "station_id": "CM.PRA",
+      "stream_id": "CM.PRA.00.HHZ",
+      "zone_id": "CO",
+      "trigger_time": "2026-08-24T12:01:46.138393Z",
+      "sta_lta_ratio": 8.9685
+    },
+    {
+      "station_id": "CM.PRA",
+      "stream_id": "CM.PRA.00.HHZ",
+      "zone_id": "CO",
+      "trigger_time": "2026-08-24T12:02:49.648393Z",
+      "sta_lta_ratio": 13.326
+    },
+    {
+      "station_id": "CM.PRA",
+      "stream_id": "CM.PRA.00.HHZ",
+      "zone_id": "CO",
+      "trigger_time": "2026-08-24T12:03:56.088393Z",
+      "sta_lta_ratio": 16.328
+    },
+    {
+      "station_id": "CM.PRA",
+      "stream_id": "CM.PRA.00.HHZ",
+      "zone_id": "CO",
+      "trigger_time": "2026-08-24T12:04:24.528393Z",
+      "sta_lta_ratio": 6.0441
+    }
+  ],
+  "candidates": []
+}

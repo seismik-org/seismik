@@ -1,0 +1,160 @@
+{
+  "schema_version": 1,
+  "clock": "waveform_timestamps",
+  "chunk_seconds": 5.0,
+  "inputs": [
+    {
+      "path": "C:\\Users\\chave\\Documents\\Codex\\2026-08-16\\act-a-como-un-arquitecto-de\\outputs\\seismik\\data\\replay\\fixtures\\co-2026-08-10-m7.4.mseed",
+      "bytes": 1245184,
+      "sha256": "a68606e0ea0b672100f5ee848d61b10a5c8fa1d492321d51cdb3a46f01f34b18"
+    }
+  ],
+  "chunk_count": 1154,
+  "triggers": [
+    {
+      "station_id": "CM.PRA",
+      "stream_id": "CM.PRA.00.HHZ",
+      "zone_id": "CO",
+      "trigger_time": "2026-08-10T12:33:29.178393Z",
+      "sta_lta_ratio": 6.4392
+    },
+    {
+      "station_id": "CM.LCBC",
+      "stream_id": "CM.LCBC.00.HHZ",
+      "zone_id": "CO",
+      "trigger_time": "2026-08-10T12:33:38.338393Z",
+      "sta_lta_ratio": 6.0004
+    },
+    {
+      "station_id": "CM.HEL",
+      "stream_id": "CM.HEL.00.HHZ",
+      "zone_id": "CO",
+      "trigger_time": "2026-08-10T12:34:55.198393Z",
+      "sta_lta_ratio": 20.0
+    },
+    {
+      "station_id": "CM.PRA",
+      "stream_id": "CM.PRA.00.HHZ",
+      "zone_id": "CO",
+      "trigger_time": "2026-08-10T12:35:00.368393Z",
+      "sta_lta_ratio": 19.9926
+    },
+    {
+      "station_id": "CM.HEL",
+      "stream_id": "CM.HEL.00.HHZ",
+      "zone_id": "CO",
+      "trigger_time": "2026-08-10T12:35:18.028393Z",
+      "sta_lta_ratio": 6.5589
+    },
+    {
+      "station_id": "CM.FLO2",
+      "stream_id": "CM.FLO2.00.HHZ",
+      "zone_id": "CO",
+      "trigger_time": "2026-08-10T12:35:20.060001Z",
+      "sta_lta_ratio": 19.999
+    },
+    {
+      "station_id": "CM.RUS",
+      "stream_id": "CM.RUS.00.HHZ",
+      "zone_id": "CO",
+      "trigger_time": "2026-08-10T12:35:20.918393Z",
+      "sta_lta_ratio": 19.9823
+    },
+    {
+      "station_id": "CM.LCBC",
+      "stream_id": "CM.LCBC.00.HHZ",
+      "zone_id": "CO",
+      "trigger_time": "2026-08-10T12:35:27.788393Z",
+      "sta_lta_ratio": 19.6519
+    },
+    {
+      "station_id": "CM.OCA",
+      "stream_id": "CM.OCA.00.HHZ",
+      "zone_id": "CO",
+      "trigger_time": "2026-08-10T12:35:34.448393Z",
+      "sta_lta_ratio": 19.9593
+    },
+    {
+      "station_id": "CM.SJC",
+      "stream_id": "CM.SJC.00.HHZ",
+      "zone_id": "CO",
+      "trigger_time": "2026-08-10T12:35:42.238393Z",
+      "sta_lta_ratio": 19.2952
+    },
+    {
+      "station_id": "CM.ARGC",
+      "stream_id": "CM.ARGC.00.HHZ",
+      "zone_id": "CO",
+      "trigger_time": "2026-08-10T12:35:48.058393Z",
+      "sta_lta_ratio": 17.3168
+    },
+    {
+      "station_id": "CM.FLO2",
+      "stream_id": "CM.FLO2.00.HHZ",
+      "zone_id": "CO",
+      "trigger_time": "2026-08-10T12:35:46.210001Z",
+      "sta_lta_ratio": 7.7678
+    },
+    {
+      "station_id": "CM.CRJC",
+      "stream_id": "CM.CRJC.00.HHZ",
+      "zone_id": "CO",
+      "trigger_time": "2026-08-10T12:36:02.998393Z",
+      "sta_lta_ratio": 11.4773
+    },
+    {
+      "station_id": "CM.SMAR",
+      "stream_id": "CM.SMAR.00.HHZ",
+      "zone_id": "CO",
+      "trigger_time": "2026-08-10T12:36:02.878393Z",
+      "sta_lta_ratio": 18.4897
+    },
+    {
+      "station_id": "CM.URI",
+      "stream_id": "CM.URI.00.HHZ",
+      "zone_id": "CO",
+      "trigger_time": "2026-08-10T12:36:20.568393Z",
+      "sta_lta_ratio": 19.7232
+    },
+    {
+      "station_id": "CM.OCA",
+      "stream_id": "CM.OCA.00.HHZ",
+      "zone_id": "CO",
+      "trigger_time": "2026-08-10T12:36:26.878393Z",
+      "sta_lta_ratio": 6.1619
+    },
+    {
+      "station_id": "CM.PRV",
+      "stream_id": "CM.PRV.00.HHZ",
+      "zone_id": "CO",
+      "trigger_time": "2026-08-10T12:36:46.778393Z",
+      "sta_lta_ratio": 18.0425
+    },
+    {
+      "station_id": "CM.URI",
+      "stream_id": "CM.URI.00.HHZ",
+      "zone_id": "CO",
+      "trigger_time": "2026-08-10T12:37:52.158393Z",
+      "sta_lta_ratio": 6.9089
+    },
+    {
+      "station_id": "CM.PRV",
+      "stream_id": "CM.PRV.00.HHZ",
+      "zone_id": "CO",
+      "trigger_time": "2026-08-10T12:39:22.708393Z",
+      "sta_lta_ratio": 6.2567
+    }
+  ],
+  "candidates": [
+    {
+      "replay_event_id": "2043e609e436625c25f3db58",
+      "zone_id": "CO",
+      "detected_at": "2026-08-10T12:35:20.918393Z",
+      "stations": [
+        "CM.FLO2",
+        "CM.HEL",
+        "CM.RUS"
+      ]
+    }
+  ]
+}

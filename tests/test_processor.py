@@ -1,3 +1,5 @@
+from datetime import datetime, timezone
+
 import numpy as np
 from obspy import Trace, UTCDateTime
 
@@ -96,3 +98,25 @@ def test_non_finite_samples_do_not_compress_timeline() -> None:
     assert stats.non_finite_samples == 5
     assert stats.reset_count == 1
     assert stats.last_reset_reason == "non_finite_run"
+
+
+def test_packet_lag_is_measured_for_station_health() -> None:
+    settings = DetectionSettings(filter_enabled=False)
+    processor = StationProcessor(StationSubscription("XX", "TEST", "HHZ"), settings)
+    start = UTCDateTime("2026-01-01T00:00:00Z")
+    trace = make_trace(np.zeros(100), start)
+    received = datetime(2026, 1, 1, 0, 0, 2, tzinfo=timezone.utc)
+    assert processor.process(trace, received_at=received) is None
+    assert processor.stats.last_packet_lag_seconds == 1.01
+
+
+def test_network_profile_overrides_only_selected_stream() -> None:
+    settings = DetectionSettings(
+        trigger_on=3.5,
+        network_profiles={"CM.HHZ": {"trigger_on": 5.0, "sta_seconds": 0.8}},
+    )
+    colombia = settings.for_stream("CM", "HHZ")
+    other = settings.for_stream("CX", "HHZ")
+    assert colombia.trigger_on == 5.0
+    assert colombia.sta_seconds == 0.8
+    assert other.trigger_on == 3.5

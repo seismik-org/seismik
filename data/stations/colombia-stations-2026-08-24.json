@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "observed_at": "2026-08-25T01:54:00.871Z",
+  "observed_at": "2026-08-25T02:27:11.319Z",
   "purpose": "Sprint 1 station/channel and acquisition-lag evidence",
   "network": "CM",
   "provider": "EarthScope",
@@ -15,17 +15,17 @@
     {
       "port": 18000,
       "reachable": true,
-      "latency_ms": 214.1
+      "latency_ms": 15274.3
     },
     {
       "port": 18500,
       "reachable": true,
-      "latency_ms": 123.4
+      "latency_ms": 107.9
     },
     {
       "port": 443,
       "reachable": true,
-      "latency_ms": 132.9
+      "latency_ms": 108.8
     }
   ],
   "stations": [
@@ -43,15 +43,35 @@
       "metadata_active": true,
       "archive_probe": {
         "http_status": 200,
-        "requested_start": "2026-08-25T01:47:00.871Z",
-        "requested_end": "2026-08-25T01:52:00.871Z",
+        "requested_start": "2026-08-25T02:20:11.319Z",
+        "requested_end": "2026-08-25T02:25:11.319Z",
         "bytes": 31744,
         "has_recent_data": true,
         "trace_count": 1,
-        "latest_sample_time": "2026-08-25T01:52:00.868Z",
-        "archive_freshness_seconds": 120.003,
-        "latest_vs_requested_end_seconds": 0.003,
-        "sha256": "51feb84f27727b6c381bf14a09ecae4b158f70b2a15ba6f33af65f4e65e4bc48"
+        "latest_sample_time": "2026-08-25T02:25:11.318Z",
+        "archive_freshness_seconds": 120.001,
+        "latest_vs_requested_end_seconds": 0.001,
+        "sha256": "5b53e3881aecdccc1b696ddd7c8d2e6240bd587d1de9103671d6d9979539a0ba"
+      }
+    },
+    {
+      "network": "CM",
+      "station": "CAP2",
+      "location": "00",
+      "channel": "HHZ",
+      "latitude": 8.644522,
+      "longitude": -77.360388,
+      "elevation_m": 221.0,
+      "sample_rate_hz": 100.0,
+      "epoch_start": "2011-07-14T00:00:00.0000",
+      "epoch_end": null,
+      "metadata_active": true,
+      "archive_probe": {
+        "http_status": 204,
+        "requested_start": "2026-08-25T02:20:11.319Z",
+        "requested_end": "2026-08-25T02:25:11.319Z",
+        "bytes": 0,
+        "has_recent_data": false
       }
     },
     {
@@ -68,15 +88,35 @@
       "metadata_active": true,
       "archive_probe": {
         "http_status": 200,
-        "requested_start": "2026-08-25T01:47:00.871Z",
-        "requested_end": "2026-08-25T01:52:00.871Z",
-        "bytes": 36352,
+        "requested_start": "2026-08-25T02:20:11.319Z",
+        "requested_end": "2026-08-25T02:25:11.319Z",
+        "bytes": 33792,
         "has_recent_data": true,
         "trace_count": 1,
-        "latest_sample_time": "2026-08-25T01:52:00.868Z",
-        "archive_freshness_seconds": 120.003,
-        "latest_vs_requested_end_seconds": 0.003,
-        "sha256": "c90469357007ed4eb43dc6c6651254a56ba40e8728584d3f51050d298c0bb97a"
+        "latest_sample_time": "2026-08-25T02:25:11.318Z",
+        "archive_freshness_seconds": 120.001,
+        "latest_vs_requested_end_seconds": 0.001,
+        "sha256": "910aef60d041c3df29dcf3ed124ed603d6274bced8098ee001e5840b276c7952"
+      }
+    },
+    {
+      "network": "CM",
+      "station": "FLO2",
+      "location": "00",
+      "channel": "HHZ",
+      "latitude": 1.582667,
+      "longitude": -75.652667,
+      "elevation_m": 365.0,
+      "sample_rate_hz": 100.0,
+      "epoch_start": "2016-08-04T16:37:00.0000",
+      "epoch_end": null,
+      "metadata_active": true,
+      "archive_probe": {
+        "http_status": 204,
+        "requested_start": "2026-08-25T02:20:11.319Z",
+        "requested_end": "2026-08-25T02:25:11.319Z",
+        "bytes": 0,
+        "has_recent_data": false
       }
     },
     {
@@ -93,15 +133,15 @@
       "metadata_active": true,
       "archive_probe": {
         "http_status": 200,
-        "requested_start": "2026-08-25T01:47:00.871Z",
-        "requested_end": "2026-08-25T01:52:00.871Z",
+        "requested_start": "2026-08-25T02:20:11.319Z",
+        "requested_end": "2026-08-25T02:25:11.319Z",
         "bytes": 29696,
         "has_recent_data": true,
         "trace_count": 1,
-        "latest_sample_time": "2026-08-25T01:52:00.868Z",
-        "archive_freshness_seconds": 120.003,
-        "latest_vs_requested_end_seconds": 0.003,
-        "sha256": "29bb3afd55cf02420805e79514965c6abd9c4a01afc3179914ceebb582d4c823"
+        "latest_sample_time": "2026-08-25T02:25:11.318Z",
+        "archive_freshness_seconds": 120.001,
+        "latest_vs_requested_end_seconds": 0.001,
+        "sha256": "a481869d65174355bcfa8d57187adb3297d4f0105efad114c6cf9a439d7f5cb1"
       }
     },
     {
@@ -118,15 +158,105 @@
       "metadata_active": true,
       "archive_probe": {
         "http_status": 200,
-        "requested_start": "2026-08-25T01:47:00.871Z",
-        "requested_end": "2026-08-25T01:52:00.871Z",
-        "bytes": 33280,
+        "requested_start": "2026-08-25T02:20:11.319Z",
+        "requested_end": "2026-08-25T02:25:11.319Z",
+        "bytes": 33792,
         "has_recent_data": true,
         "trace_count": 1,
-        "latest_sample_time": "2026-08-25T01:52:00.868Z",
-        "archive_freshness_seconds": 120.003,
-        "latest_vs_requested_end_seconds": 0.003,
-        "sha256": "3abe8370fd20c8101a50a2bcc915ab92ae54ae3f37fd09cb9a392de87c2fbc12"
+        "latest_sample_time": "2026-08-25T02:25:11.318Z",
+        "archive_freshness_seconds": 120.001,
+        "latest_vs_requested_end_seconds": 0.001,
+        "sha256": "18c20092a8b74e78ca8a7dded90f7a4246de9f2ffb46f8786d109f4c135f8f74"
+      }
+    },
+    {
+      "network": "CM",
+      "station": "MAP",
+      "location": "00",
+      "channel": "HHZ",
+      "latitude": 4.003667,
+      "longitude": -81.606003,
+      "elevation_m": 137.0,
+      "sample_rate_hz": 100.0,
+      "epoch_start": "2009-06-24T00:00:00.0000",
+      "epoch_end": null,
+      "metadata_active": true,
+      "archive_probe": {
+        "http_status": 204,
+        "requested_start": "2026-08-25T02:20:11.319Z",
+        "requested_end": "2026-08-25T02:25:11.319Z",
+        "bytes": 0,
+        "has_recent_data": false
+      }
+    },
+    {
+      "network": "CM",
+      "station": "OCA",
+      "location": "00",
+      "channel": "HHZ",
+      "latitude": 8.23993,
+      "longitude": -73.31938,
+      "elevation_m": 1233.0,
+      "sample_rate_hz": 100.0,
+      "epoch_start": "2022-12-08T00:00:00.0000",
+      "epoch_end": null,
+      "metadata_active": true,
+      "archive_probe": {
+        "http_status": 200,
+        "requested_start": "2026-08-25T02:20:11.319Z",
+        "requested_end": "2026-08-25T02:25:11.319Z",
+        "bytes": 35328,
+        "has_recent_data": true,
+        "trace_count": 1,
+        "latest_sample_time": "2026-08-25T02:25:11.318Z",
+        "archive_freshness_seconds": 120.001,
+        "latest_vs_requested_end_seconds": 0.001,
+        "sha256": "a7959aa1bbb89e729d0c697422e4619587cd290a67277c62946e4e4bbf2130c5"
+      }
+    },
+    {
+      "network": "CM",
+      "station": "PRA",
+      "location": "00",
+      "channel": "HHZ",
+      "latitude": 3.713833,
+      "longitude": -74.886167,
+      "elevation_m": 457.0,
+      "sample_rate_hz": 100.0,
+      "epoch_start": "2008-07-11T00:00:00.0000",
+      "epoch_end": null,
+      "metadata_active": true,
+      "archive_probe": {
+        "http_status": 204,
+        "requested_start": "2026-08-25T02:20:11.319Z",
+        "requested_end": "2026-08-25T02:25:11.319Z",
+        "bytes": 0,
+        "has_recent_data": false
+      }
+    },
+    {
+      "network": "CM",
+      "station": "PRV",
+      "location": "00",
+      "channel": "HHZ",
+      "latitude": 13.376167,
+      "longitude": -81.3635,
+      "elevation_m": 38.0,
+      "sample_rate_hz": 100.0,
+      "epoch_start": "2021-08-11T00:19:00.0000",
+      "epoch_end": null,
+      "metadata_active": true,
+      "archive_probe": {
+        "http_status": 200,
+        "requested_start": "2026-08-25T02:20:11.319Z",
+        "requested_end": "2026-08-25T02:25:11.319Z",
+        "bytes": 37888,
+        "has_recent_data": true,
+        "trace_count": 1,
+        "latest_sample_time": "2026-08-25T02:25:11.318Z",
+        "archive_freshness_seconds": 120.001,
+        "latest_vs_requested_end_seconds": 0.001,
+        "sha256": "aadfb6c7de1e9750c2fd0168b540b87547838e71722fe2c6a957b6126dd9a025"
       }
     },
     {
@@ -143,15 +273,35 @@
       "metadata_active": true,
       "archive_probe": {
         "http_status": 200,
-        "requested_start": "2026-08-25T01:47:00.871Z",
-        "requested_end": "2026-08-25T01:52:00.871Z",
-        "bytes": 31744,
+        "requested_start": "2026-08-25T02:20:11.319Z",
+        "requested_end": "2026-08-25T02:25:11.319Z",
+        "bytes": 31232,
         "has_recent_data": true,
         "trace_count": 1,
-        "latest_sample_time": "2026-08-25T01:52:00.868Z",
-        "archive_freshness_seconds": 120.003,
-        "latest_vs_requested_end_seconds": 0.003,
-        "sha256": "8739bbceb6520ac18f16c63d761203969816fc380eca932ed1cb6dcf95d457c6"
+        "latest_sample_time": "2026-08-25T02:25:11.318Z",
+        "archive_freshness_seconds": 120.001,
+        "latest_vs_requested_end_seconds": 0.001,
+        "sha256": "36ced35db4b8ef6da779bcac78b42947b21c8c1122dbaaee6705d42efc1a1130"
+      }
+    },
+    {
+      "network": "CM",
+      "station": "SJC",
+      "location": "00",
+      "channel": "HHZ",
+      "latitude": 9.896667,
+      "longitude": -75.1795,
+      "elevation_m": 596.0,
+      "sample_rate_hz": 100.0,
+      "epoch_start": "2013-03-20T21:30:00.0000",
+      "epoch_end": null,
+      "metadata_active": true,
+      "archive_probe": {
+        "http_status": 204,
+        "requested_start": "2026-08-25T02:20:11.319Z",
+        "requested_end": "2026-08-25T02:25:11.319Z",
+        "bytes": 0,
+        "has_recent_data": false
       }
     },
     {
@@ -168,15 +318,60 @@
       "metadata_active": true,
       "archive_probe": {
         "http_status": 200,
-        "requested_start": "2026-08-25T01:47:00.871Z",
-        "requested_end": "2026-08-25T01:52:00.871Z",
-        "bytes": 38912,
+        "requested_start": "2026-08-25T02:20:11.319Z",
+        "requested_end": "2026-08-25T02:25:11.319Z",
+        "bytes": 39424,
         "has_recent_data": true,
         "trace_count": 1,
-        "latest_sample_time": "2026-08-25T01:52:00.868Z",
-        "archive_freshness_seconds": 120.003,
-        "latest_vs_requested_end_seconds": 0.003,
-        "sha256": "3f7475fe4d631ae592602d2ad29ed1e125c5cd30b4f6ff8932da708742d8abbf"
+        "latest_sample_time": "2026-08-25T02:25:11.318Z",
+        "archive_freshness_seconds": 120.001,
+        "latest_vs_requested_end_seconds": 0.001,
+        "sha256": "f23765ad8251ffbc6debff538e402441da5fed9501351c9aa21d4043266fdf0c"
+      }
+    },
+    {
+      "network": "CM",
+      "station": "TUM",
+      "location": "00",
+      "channel": "HHZ",
+      "latitude": 1.823667,
+      "longitude": -78.72667,
+      "elevation_m": 50.0,
+      "sample_rate_hz": 100.0,
+      "epoch_start": "2017-09-19T17:00:00.0000",
+      "epoch_end": null,
+      "metadata_active": true,
+      "archive_probe": {
+        "http_status": 204,
+        "requested_start": "2026-08-25T02:20:11.319Z",
+        "requested_end": "2026-08-25T02:25:11.319Z",
+        "bytes": 0,
+        "has_recent_data": false
+      }
+    },
+    {
+      "network": "CM",
+      "station": "URI",
+      "location": "00",
+      "channel": "HHZ",
+      "latitude": 11.702,
+      "longitude": -71.993,
+      "elevation_m": 68.0,
+      "sample_rate_hz": 100.0,
+      "epoch_start": "2018-05-08T15:37:00.0000",
+      "epoch_end": null,
+      "metadata_active": true,
+      "archive_probe": {
+        "http_status": 200,
+        "requested_start": "2026-08-25T02:20:11.319Z",
+        "requested_end": "2026-08-25T02:25:11.319Z",
+        "bytes": 33280,
+        "has_recent_data": true,
+        "trace_count": 1,
+        "latest_sample_time": "2026-08-25T02:25:11.318Z",
+        "archive_freshness_seconds": 120.001,
+        "latest_vs_requested_end_seconds": 0.001,
+        "sha256": "36d8026f57a32c5d42b794aa767445d520895c1fbbc11e5e384154e0f565a39b"
       }
     }
   ],

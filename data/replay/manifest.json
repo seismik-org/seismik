@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-08-25T01:52:04.930Z",
+  "generated_at": "2026-08-25T02:27:10.719Z",
   "waveform_sources": [
     "https://service.earthscope.org/fdsnws/dataselect/1/query",
     "https://sismo.sgc.gov.co:8443/fdsnws/dataselect/1/query"
@@ -27,10 +27,20 @@
           "source": "https://service.earthscope.org/fdsnws/dataselect/1/query"
         },
         {
+          "station": "CAP2",
+          "status": 204
+        },
+        {
           "station": "CRJC",
           "status": 200,
           "traces": 1,
           "source": "https://service.earthscope.org/fdsnws/dataselect/1/query"
+        },
+        {
+          "station": "FLO2",
+          "status": 200,
+          "traces": 1,
+          "source": "https://sismo.sgc.gov.co:8443/fdsnws/dataselect/1/query"
         },
         {
           "station": "HEL",
@@ -45,7 +55,35 @@
           "source": "https://service.earthscope.org/fdsnws/dataselect/1/query"
         },
         {
+          "station": "MAP",
+          "status": 204
+        },
+        {
+          "station": "OCA",
+          "status": 200,
+          "traces": 1,
+          "source": "https://service.earthscope.org/fdsnws/dataselect/1/query"
+        },
+        {
+          "station": "PRA",
+          "status": 200,
+          "traces": 1,
+          "source": "https://sismo.sgc.gov.co:8443/fdsnws/dataselect/1/query"
+        },
+        {
+          "station": "PRV",
+          "status": 200,
+          "traces": 1,
+          "source": "https://service.earthscope.org/fdsnws/dataselect/1/query"
+        },
+        {
           "station": "RUS",
+          "status": 200,
+          "traces": 1,
+          "source": "https://service.earthscope.org/fdsnws/dataselect/1/query"
+        },
+        {
+          "station": "SJC",
           "status": 200,
           "traces": 1,
           "source": "https://service.earthscope.org/fdsnws/dataselect/1/query"
@@ -55,13 +93,23 @@
           "status": 200,
           "traces": 1,
           "source": "https://service.earthscope.org/fdsnws/dataselect/1/query"
+        },
+        {
+          "station": "TUM",
+          "status": 204
+        },
+        {
+          "station": "URI",
+          "status": 200,
+          "traces": 1,
+          "source": "https://service.earthscope.org/fdsnws/dataselect/1/query"
         }
       ],
       "waveforms": [
         {
           "path": "fixtures/co-2026-08-10-m7.4.mseed",
-          "bytes": 618496,
-          "sha256": "8247b06fb1a103f83a43869e3683ca9540668b7236f36611e10e840a28c27a5c"
+          "bytes": 1245184,
+          "sha256": "a68606e0ea0b672100f5ee848d61b10a5c8fa1d492321d51cdb3a46f01f34b18"
         }
       ]
     },
@@ -85,7 +133,17 @@
           "source": "https://sismo.sgc.gov.co:8443/fdsnws/dataselect/1/query"
         },
         {
+          "station": "CAP2",
+          "status": 204
+        },
+        {
           "station": "CRJC",
+          "status": 200,
+          "traces": 1,
+          "source": "https://sismo.sgc.gov.co:8443/fdsnws/dataselect/1/query"
+        },
+        {
+          "station": "FLO2",
           "status": 200,
           "traces": 1,
           "source": "https://sismo.sgc.gov.co:8443/fdsnws/dataselect/1/query"
@@ -103,7 +161,33 @@
           "source": "https://sismo.sgc.gov.co:8443/fdsnws/dataselect/1/query"
         },
         {
+          "station": "MAP",
+          "status": 204
+        },
+        {
+          "station": "OCA",
+          "status": 200,
+          "traces": 1,
+          "source": "https://sismo.sgc.gov.co:8443/fdsnws/dataselect/1/query"
+        },
+        {
+          "station": "PRA",
+          "status": 200,
+          "traces": 1,
+          "source": "https://sismo.sgc.gov.co:8443/fdsnws/dataselect/1/query"
+        },
+        {
+          "station": "PRV",
+          "status": 204
+        },
+        {
           "station": "RUS",
+          "status": 200,
+          "traces": 1,
+          "source": "https://sismo.sgc.gov.co:8443/fdsnws/dataselect/1/query"
+        },
+        {
+          "station": "SJC",
           "status": 200,
           "traces": 1,
           "source": "https://sismo.sgc.gov.co:8443/fdsnws/dataselect/1/query"
@@ -113,13 +197,25 @@
           "status": 200,
           "traces": 1,
           "source": "https://sismo.sgc.gov.co:8443/fdsnws/dataselect/1/query"
+        },
+        {
+          "station": "TUM",
+          "status": 200,
+          "traces": 1,
+          "source": "https://sismo.sgc.gov.co:8443/fdsnws/dataselect/1/query"
+        },
+        {
+          "station": "URI",
+          "status": 200,
+          "traces": 1,
+          "source": "https://sismo.sgc.gov.co:8443/fdsnws/dataselect/1/query"
         }
       ],
       "waveforms": [
         {
           "path": "fixtures/co-2023-08-17-m6.1.mseed",
-          "bytes": 487424,
-          "sha256": "224e48c4a61c4d000bb7ede4a20d4578bee340784dfe9ed77164eed22b641764"
+          "bytes": 974848,
+          "sha256": "307eb2e655680918d097274d96cae67087332198e24034f05cbaf16ada905f48"
         }
       ]
     },
@@ -143,7 +239,17 @@
           "source": "https://sismo.sgc.gov.co:8443/fdsnws/dataselect/1/query"
         },
         {
+          "station": "CAP2",
+          "status": 204
+        },
+        {
           "station": "CRJC",
+          "status": 200,
+          "traces": 1,
+          "source": "https://sismo.sgc.gov.co:8443/fdsnws/dataselect/1/query"
+        },
+        {
+          "station": "FLO2",
           "status": 200,
           "traces": 1,
           "source": "https://sismo.sgc.gov.co:8443/fdsnws/dataselect/1/query"
@@ -161,7 +267,33 @@
           "source": "https://sismo.sgc.gov.co:8443/fdsnws/dataselect/1/query"
         },
         {
+          "station": "MAP",
+          "status": 204
+        },
+        {
+          "station": "OCA",
+          "status": 200,
+          "traces": 1,
+          "source": "https://sismo.sgc.gov.co:8443/fdsnws/dataselect/1/query"
+        },
+        {
+          "station": "PRA",
+          "status": 200,
+          "traces": 1,
+          "source": "https://sismo.sgc.gov.co:8443/fdsnws/dataselect/1/query"
+        },
+        {
+          "station": "PRV",
+          "status": 204
+        },
+        {
           "station": "RUS",
+          "status": 200,
+          "traces": 1,
+          "source": "https://sismo.sgc.gov.co:8443/fdsnws/dataselect/1/query"
+        },
+        {
+          "station": "SJC",
           "status": 200,
           "traces": 1,
           "source": "https://sismo.sgc.gov.co:8443/fdsnws/dataselect/1/query"
@@ -171,13 +303,25 @@
           "status": 200,
           "traces": 1,
           "source": "https://sismo.sgc.gov.co:8443/fdsnws/dataselect/1/query"
+        },
+        {
+          "station": "TUM",
+          "status": 200,
+          "traces": 1,
+          "source": "https://sismo.sgc.gov.co:8443/fdsnws/dataselect/1/query"
+        },
+        {
+          "station": "URI",
+          "status": 200,
+          "traces": 1,
+          "source": "https://sismo.sgc.gov.co:8443/fdsnws/dataselect/1/query"
         }
       ],
       "waveforms": [
         {
           "path": "fixtures/co-2023-08-27-m5.7.mseed",
-          "bytes": 430080,
-          "sha256": "5117e1023c75c0783db6f85cd6ba83aafa26f33543b0ad13bfc1c438c284438d"
+          "bytes": 815104,
+          "sha256": "c51558fc92bc2e3632074f1ac89b99e30dfdcc9bd281ef4629f3dc39537cb641"
         }
       ]
     },
@@ -201,10 +345,20 @@
           "source": "https://service.earthscope.org/fdsnws/dataselect/1/query"
         },
         {
+          "station": "CAP2",
+          "status": 204
+        },
+        {
           "station": "CRJC",
           "status": 200,
           "traces": 1,
           "source": "https://service.earthscope.org/fdsnws/dataselect/1/query"
+        },
+        {
+          "station": "FLO2",
+          "status": 200,
+          "traces": 1,
+          "source": "https://sismo.sgc.gov.co:8443/fdsnws/dataselect/1/query"
         },
         {
           "station": "HEL",
@@ -219,13 +373,49 @@
           "source": "https://service.earthscope.org/fdsnws/dataselect/1/query"
         },
         {
+          "station": "MAP",
+          "status": 204
+        },
+        {
+          "station": "OCA",
+          "status": 200,
+          "traces": 1,
+          "source": "https://service.earthscope.org/fdsnws/dataselect/1/query"
+        },
+        {
+          "station": "PRA",
+          "status": 200,
+          "traces": 1,
+          "source": "https://sismo.sgc.gov.co:8443/fdsnws/dataselect/1/query"
+        },
+        {
+          "station": "PRV",
+          "status": 200,
+          "traces": 1,
+          "source": "https://service.earthscope.org/fdsnws/dataselect/1/query"
+        },
+        {
           "station": "RUS",
           "status": 200,
           "traces": 1,
           "source": "https://service.earthscope.org/fdsnws/dataselect/1/query"
         },
         {
+          "station": "SJC",
+          "status": 204
+        },
+        {
           "station": "SMAR",
+          "status": 200,
+          "traces": 1,
+          "source": "https://service.earthscope.org/fdsnws/dataselect/1/query"
+        },
+        {
+          "station": "TUM",
+          "status": 204
+        },
+        {
+          "station": "URI",
           "status": 200,
           "traces": 1,
           "source": "https://service.earthscope.org/fdsnws/dataselect/1/query"
@@ -234,8 +424,8 @@
       "waveforms": [
         {
           "path": "fixtures/co-2026-08-24-ambient.mseed",
-          "bytes": 221184,
-          "sha256": "f275c0d952f302ca2191d95957b996e99c323efedff2448ba9520855fa973163"
+          "bytes": 389120,
+          "sha256": "5896158d5a8821d1d6fd93cc84052145b56f1a2a72881f7a20dc25c8015a4b29"
         }
       ]
     }

@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "mode": "offline_replay_to_live_official_feed_validation",
+  "scientific_validation": false,
+  "source_id": "sgc_colombia",
+  "source_endpoint": "https://api.sgc.gov.co/biweekly/biweekly_earthquakes",
+  "association_limits": {
+    "origin_time_seconds": 300,
+    "station_centroid_km": 600
+  },
+  "cases": [
+    {
+      "case_id": "co-2023-08-17-m6.1",
+      "candidate_detected_at": "2023-08-17T17:05:44.978393Z",
+      "expected_origin_time": "2023-08-17T17:04:48.770Z",
+      "expected_magnitude": 6.1,
+      "queried_reports": 0,
+      "status": "not_in_rapid_feed",
+      "matched_report": null,
+      "note": "El feed quincenal rapido del SGC no es un catalogo historico permanente."
+    },
+    {
+      "case_id": "co-2023-08-27-m5.7",
+      "candidate_detected_at": "2023-08-27T21:46:01.338393Z",
+      "expected_origin_time": "2023-08-27T21:45:00.683Z",
+      "expected_magnitude": 5.7,
+      "queried_reports": 0,
+      "status": "not_in_rapid_feed",
+      "matched_report": null,
+      "note": "El feed quincenal rapido del SGC no es un catalogo historico permanente."
+    },
+    {
+      "case_id": "co-2026-08-10-m7.4",
+      "candidate_detected_at": "2026-08-10T12:35:20.918393Z",
+      "expected_origin_time": "2026-08-10T12:34:28.125Z",
+      "expected_magnitude": 7.4,
+      "queried_reports": 0,
+      "status": "not_in_rapid_feed",
+      "matched_report": null,
+      "note": "El feed quincenal rapido del SGC no es un catalogo historico permanente."
+    }
+  ]
+}

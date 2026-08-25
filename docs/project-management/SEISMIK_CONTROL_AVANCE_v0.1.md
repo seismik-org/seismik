@@ -1,8 +1,8 @@
 # SEISMIK — CONTROL DE AVANCE DEL MVP
 
-Versión: 0.1  
+Versión: 0.1.2
 Fecha de corte: 24 de agosto de 2026
-Estado general: Alfa 0.1 — Sprint 1 cerrado técnicamente; modo sombra obligatorio
+Estado general: Alfa 0.1 — Sprint 2 cerrado técnicamente; revisión científica pendiente
 Propietario del control: Codex  
 Aprobador: Product Owner
 
@@ -12,6 +12,7 @@ Aprobador: Product Owner
 |---|---|---|---|---|
 | 0.1 | 2026-08-23 | Codex | Registro inicial de control y trazabilidad | Activo |
 | 0.1.1 | 2026-08-24 | Codex | Evidencia y cierre técnico del Sprint 1 | Activo |
+| 0.1.2 | 2026-08-24 | Codex | Calibración sombra y cierre técnico del Sprint 2 | Activo |
 
 ## 1. Semáforo y estados
 
@@ -34,10 +35,10 @@ Semáforo del Sprint:
 
 | Indicador | Valor inicial | Meta MVP | Semáforo | Evidencia |
 |---|---:|---:|---|---|
-| Progreso de sprints | 1 de 8 cerrados técnicamente | 8 de 8 | Amarillo | Informe Sprint 1 |
+| Progreso de sprints | 2 de 8 cerrados técnicamente | 8 de 8 | Amarillo | Informes Sprint 1 y 2 |
 | Análisis Flutter | Sin problemas | Sin problemas | Verde | Ejecución 2026-08-23 |
 | Pruebas Flutter | 2 aprobadas | Suite ampliada | Amarillo | `mobile_app/test/` |
-| Pruebas backend actuales | 32 aprobadas; Ruff y mypy limpios | Suite completa aprobada | Verde | Entorno local 2026-08-24 |
+| Pruebas backend actuales | 41 aprobadas; Ruff y mypy limpios | Suite completa aprobada | Verde | Entorno local 2026-08-24 |
 | Backend desplegado | No | Sí, ambiente beta | Amarillo | Pendiente Sprint 6 |
 | URL móvil real | No, dominio de ejemplo | Sí | Amarillo | `mobile_app/lib/core/constants.dart` |
 | Operación en sombra | 0 días | 14 días | Amarillo | Pendiente Sprint 6 |
@@ -66,6 +67,17 @@ Semáforo del Sprint:
 | S1-05 | Casos históricos y ruido | Codex + asesor | ER | 4 fixtures con hashes | `data/replay/manifest.json`; revisión científica pendiente |
 | S1-06 | Suite backend | Codex | CO | 32 pruebas aprobadas | pytest/Ruff/mypy 2026-08-24 |
 
+## 3.2 Tablero de Sprint 2
+
+| ID | Actividad | Responsable | Estado | Entregable | Evidencia |
+|---|---|---|---|---|---|
+| S2-01 | Parametrizar DSP/STA-LTA | Codex | CO | Perfil `CM.HHZ` | `config.json`, `src/eew/config.py` |
+| S2-02 | Validar coincidencia y geometría | Codex | CO | Quorum, apertura y lag | `src/eew/coincidence.py`, tests |
+| S2-03 | Medir replay | Codex | CO técnico | Matrices de 36 + 18 perfiles | `data/calibration/` |
+| S2-04 | Correlación SGC | Codex + asesor | ER | Matcher y contrato SGC | `test_official.py`, `sgc-association.json` |
+| S2-05 | Salud y lag por estación | Codex | CO | Snapshot observable | `src/eew/seedlink.py`, tests |
+| S2-06 | Revisión sismológica | PO + asesor | BL | Acta independiente | Paquete listo; falta revisor |
+
 ## 4. Registro maestro de entregables
 
 | Código | Entregable | Sprint | Responsable | Estado | Criterio de aceptación | Ubicación de evidencia |
@@ -73,7 +85,7 @@ Semáforo del Sprint:
 | ENT-001 | Baseline Alfa 0.1 | 0 | Codex | CO | Commit limpio, sin secretos | `d8382c10dfa219551da3d696943be478c55d8b7b` |
 | ENT-002 | Gobierno y documentos v0.1 | 0 | Codex + PO | ER | PO revisa alcance y roles | `docs/project-management/` |
 | ENT-003 | Detector reproducible | 1 | Codex | CO | Replay y reconexión demostrados | `SPRINT_1_CIERRE_2026-08-24.md` |
-| ENT-004 | Detector shadow calibrado | 2 | Codex + asesor | NI | Métricas y revisión científica | Informe de calibración |
+| ENT-004 | Detector shadow calibrado | 2 | Codex + asesor | ER | Métricas listas; revisión científica pendiente | `SPRINT_2_CIERRE_TECNICO_2026-08-24.md` |
 | ENT-005 | Backend integrado | 3 | Codex | NI | E2E local aprobado | CI y logs de prueba |
 | ENT-006 | Android offline mínimo | 4 | Codex + PO | NI | Prueba en 2+ dispositivos | Evidencia de testing |
 | ENT-007 | Simulacro cerrado | 5 | Equipo | NI | Solo testers y marca TEST | Acta y trazas |
@@ -120,6 +132,8 @@ Semáforo del Sprint:
 | DEC-004 | 2026-08-23 | Mantener alertas públicas fuera del MVP | Falta validación científica y operativa | Equipo | Propuesta |
 | DEC-005 | 2026-08-23 | No activar GCP hasta que Sprint 3 esté listo | Preservar los 90 días de crédito | Product Owner pendiente | Propuesta |
 | DEC-006 | 2026-08-24 | Mantener No-Go público tras Sprint 1 | Replay ambiente produjo falsos candidatos | Codex | Aceptada técnicamente |
+| DEC-007 | 2026-08-24 | Adoptar quorum 3 y descartar quorum 2 | El quorum 2 duplicó eventos y falló ventanas de evaluación | Codex | Aceptada técnicamente |
+| DEC-008 | 2026-08-24 | Mantener No-Go tras Sprint 2 | Latencia media 56.552 s y corpus insuficiente | Codex | Aceptada técnicamente |
 
 ## 8. Registro de impedimentos
 
@@ -129,6 +143,7 @@ Semáforo del Sprint:
 | IMP-002 | 2026-08-23 | API móvil apunta a dominio de ejemplo | AAB actual no es publicable | Codex | Crear ambiente beta en Sprint 6 | Abierto |
 | IMP-003 | 2026-08-23 | Falta asesor sismológico formal | No se validan umbrales para uso público | Product Owner | Contactar universidad/experto | Abierto |
 | IMP-004 | 2026-08-23 | Falta grupo cerrado suficiente | Retrasa elegibilidad Play | Product Owner | Reclutar antes de Sprint 6 | Abierto |
+| IMP-005 | 2026-08-24 | Feed rápido SGC no conserva replays antiguos | Impide validar en vivo asociaciones históricas | Codex | Usar fixture contractual y catálogo archivado con atribución | Documentado |
 
 ## 9. Evidencia mínima por Sprint
 

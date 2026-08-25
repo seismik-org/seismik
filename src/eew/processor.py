@@ -5,13 +5,14 @@ import threading
 import time
 from collections.abc import Callable
 from dataclasses import dataclass, replace
+from datetime import datetime, timezone
 
 import numpy as np
 from obspy import Trace, UTCDateTime  # type: ignore[import-untyped]
 from obspy.signal.trigger import classic_sta_lta  # type: ignore[import-untyped]
 
 from eew.config import DetectionSettings, StationSubscription
-from eew.models import StationTrigger, utc_now_iso
+from eew.models import StationTrigger
 
 LOGGER = logging.getLogger(__name__)
 
@@ -27,6 +28,9 @@ class StationProcessingStats:
     overlap_samples: int = 0
     reset_count: int = 0
     last_reset_reason: str | None = None
+    last_received_at: str | None = None
+    last_packet_end: str | None = None
+    last_packet_lag_seconds: float | None = None
 
 
 class StationProcessor:
@@ -62,7 +66,11 @@ class StationProcessor:
         with self._lock:
             return replace(self._stats)
 
-    def process(self, trace: Trace) -> StationTrigger | None:
+    def process(
+        self,
+        trace: Trace,
+        received_at: datetime | None = None,
+    ) -> StationTrigger | None:
         if trace.stats.network != self.subscription.network:
             return None
         if trace.stats.station != self.subscription.station:
@@ -73,6 +81,17 @@ class StationProcessor:
             return None
 
         with self._lock:
+            received = received_at or datetime.now(timezone.utc)
+            if received.tzinfo is None:
+                received = received.replace(tzinfo=timezone.utc)
+            else:
+                received = received.astimezone(timezone.utc)
+            packet_end = trace.stats.endtime.datetime.replace(tzinfo=timezone.utc)
+            packet_lag = max(0.0, (received - packet_end).total_seconds())
+            received_iso = received.isoformat().replace("+00:00", "Z")
+            self._stats.last_received_at = received_iso
+            self._stats.last_packet_end = packet_end.isoformat().replace("+00:00", "Z")
+            self._stats.last_packet_lag_seconds = round(packet_lag, 3)
             new_samples = self._append_raw(trace)
             if new_samples <= 0 or self._sampling_rate is None or self._end_time is None:
                 return None
@@ -129,10 +148,11 @@ class StationProcessor:
                 station_id=self.subscription.station_id,
                 stream_id=trace.id,
                 trigger_time=trigger_time.strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
-                received_at=utc_now_iso(),
+                received_at=received_iso,
                 sta_lta_ratio=round(peak_ratio, 4),
                 latitude=self.subscription.latitude,
                 longitude=self.subscription.longitude,
+                packet_lag_seconds=round(packet_lag, 3),
             )
             LOGGER.warning(
                 "Disparo local station=%s stream=%s ratio=%.3f time=%s",

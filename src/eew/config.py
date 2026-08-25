@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any
 
@@ -32,6 +32,8 @@ class SeedLinkSettings:
     reconnect_max_seconds: float = 60.0
     reconnect_jitter_fraction: float = 0.2
     network_timeout_seconds: float = 30.0
+    health_log_interval_seconds: float = 30.0
+    station_stale_after_seconds: float = 60.0
 
 
 @dataclass(frozen=True)
@@ -58,6 +60,19 @@ class DetectionSettings:
     filter_high_hz: float = 10.0
     filter_corners: int = 4
     max_interpolated_gap_seconds: float = 0.25
+    # Overrides por "NETWORK.CHANNEL" (por ejemplo "CM.HHZ"). Cada valor
+    # conserva las mismas unidades del perfil base.
+    network_profiles: dict[str, dict[str, Any]] = field(default_factory=dict)
+
+    def for_stream(self, network: str, channel: str) -> "DetectionSettings":
+        overrides = self.network_profiles.get(f"{network}.{channel}")
+        if overrides is None:
+            overrides = self.network_profiles.get(f"{network}.*", {})
+        allowed = {name for name in self.__dataclass_fields__ if name != "network_profiles"}
+        unknown = set(overrides) - allowed
+        if unknown:
+            raise ValueError(f"Parametros DSP desconocidos para {network}.{channel}: {sorted(unknown)}")
+        return replace(self, network_profiles={}, **overrides)
 
 
 @dataclass(frozen=True)
@@ -65,6 +80,9 @@ class CoincidenceSettings:
     minimum_stations: int = 3
     window_seconds: float = 15.0
     alert_cooldown_seconds: float = 60.0
+    max_station_lag_seconds: float = 15.0
+    minimum_located_stations: int = 0
+    minimum_network_aperture_km: float = 0.0
 
 
 @dataclass(frozen=True)
@@ -184,6 +202,8 @@ class Settings:
             reconnect_max_seconds=seedlink_input.get("reconnect_max_seconds", 60.0),
             reconnect_jitter_fraction=seedlink_input.get("reconnect_jitter_fraction", 0.2),
             network_timeout_seconds=seedlink_input.get("network_timeout_seconds", 30.0),
+            health_log_interval_seconds=seedlink_input.get("health_log_interval_seconds", 30.0),
+            station_stale_after_seconds=seedlink_input.get("station_stale_after_seconds", 60.0),
         )
 
         alert_raw = raw.get("alert", {})
@@ -231,6 +251,11 @@ class Settings:
             raise ValueError("reconnect_jitter_fraction debe estar entre 0 y 1")
         if self.seedlink.network_timeout_seconds <= 0:
             raise ValueError("network_timeout_seconds debe ser positivo")
+        if (
+            self.seedlink.health_log_interval_seconds <= 0
+            or self.seedlink.station_stale_after_seconds <= 0
+        ):
+            raise ValueError("Los intervalos de salud SeedLink deben ser positivos")
         provider_ids = [provider.id for provider in self.seedlink.providers]
         if len(provider_ids) != len(set(provider_ids)):
             raise ValueError("Los id de proveedor deben ser únicos")
@@ -242,12 +267,14 @@ class Settings:
                     raise ValueError(
                         f"Estación {station.station_id} de {provider.id} sin country_code/zone_id"
                     )
-        if d.sta_seconds <= 0 or d.lta_seconds <= d.sta_seconds:
-            raise ValueError("Se requiere 0 < sta_seconds < lta_seconds")
-        if d.buffer_seconds < d.lta_seconds * 1.5:
-            raise ValueError("buffer_seconds debe ser al menos 1.5 * lta_seconds")
-        if not 0 < d.trigger_off < d.trigger_on:
-            raise ValueError("Se requiere 0 < trigger_off < trigger_on")
+        _validate_detection(d)
+        for provider in enabled_providers:
+            for station in provider.stations:
+                _validate_detection(d.for_stream(station.network, station.channel))
+        if c.minimum_located_stations < 0 or c.minimum_located_stations > c.minimum_stations:
+            raise ValueError("minimum_located_stations debe estar entre 0 y minimum_stations")
+        if c.max_station_lag_seconds <= 0 or c.minimum_network_aperture_km < 0:
+            raise ValueError("Los limites de salud/geometria deben ser validos")
         official = self.official_reports
         if official.enabled and not Path(official.sources_file).is_file():
             raise ValueError(f"No existe sources_file oficial: {official.sources_file}")
@@ -276,6 +303,15 @@ class Settings:
 def _csv_env(name: str, uppercase: bool) -> set[str]:
     values = {item.strip() for item in os.getenv(name, "").split(",") if item.strip()}
     return {item.upper() for item in values} if uppercase else values
+
+
+def _validate_detection(settings: DetectionSettings) -> None:
+    if settings.sta_seconds <= 0 or settings.lta_seconds <= settings.sta_seconds:
+        raise ValueError("Se requiere 0 < sta_seconds < lta_seconds")
+    if settings.buffer_seconds < settings.lta_seconds * 1.5:
+        raise ValueError("buffer_seconds debe ser al menos 1.5 * lta_seconds")
+    if not 0 < settings.trigger_off < settings.trigger_on:
+        raise ValueError("Se requiere 0 < trigger_off < trigger_on")
 
 
 def _belongs_to_shard(zone_id: str, shard_index: int, shard_count: int) -> bool:

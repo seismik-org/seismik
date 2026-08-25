@@ -11,6 +11,13 @@ de tres sismos históricos más una ventana ambiente. Los resultados muestran
 falsos candidatos en ruido con los parámetros actuales; por eso Seismik sigue en
 modo sombra y la calibración científica pertenece al Sprint 2.
 
+**Sprint 2 cerrado técnicamente (2026-08-24):** 15 estaciones CM configuradas,
+perfiles DSP por red, geometría y lag exigidos en la coincidencia, matriz de 36
+configuraciones y contrato de actualización SGC probado. La configuración sombra
+detectó los tres casos históricos y no produjo candidatos en cinco minutos de
+ruido ambiente, pero su latencia media fue 56,552 s. El corpus es pequeño y no
+incluye una validación sismológica independiente: sigue siendo **No-Go público**.
+
 ## Gobierno, Scrum y control de avance
 
 La fuente compartida y verificable de planificación se encuentra en
@@ -151,6 +158,16 @@ Evidencia y replay del Sprint 1:
 
 El verificador FDSN separa la antigüedad deliberada de la consulta de archivo
 de la latencia SeedLink. No debe usarse la primera como si fuera latencia EEW.
+
+Calibración sombra del Sprint 2:
+
+- `data/calibration/sprint2-grid-expanded.json`: 36 perfiles evaluados.
+- `data/calibration/sprint2-two-station-tradeoff.json`: evidencia de por qué no
+  se adoptó el quorum más rápido de dos estaciones.
+- `data/replay/results-sprint2/`: resultados canónicos con tres estaciones.
+- `data/calibration/sgc-association.json`: alcance real del feed rápido quincenal.
+- `docs/project-management/PAQUETE_REVISION_SISMOLOGICA_v0.1.md`: paquete que
+  debe revisar una universidad o profesional de sismología.
 
 ## Push a gran escala
 

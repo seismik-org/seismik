@@ -29,6 +29,7 @@ class StationTrigger(StrictModel):
     sta_lta_ratio: float = Field(gt=0)
     latitude: Latitude | None = None
     longitude: Longitude | None = None
+    packet_lag_seconds: float | None = Field(default=None, ge=0)
 
 
 class EarthquakeCandidate(StrictModel):

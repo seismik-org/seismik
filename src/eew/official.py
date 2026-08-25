@@ -471,7 +471,10 @@ def _candidate_query_window(
 ) -> tuple[datetime, datetime]:
     trigger_time = min(_parse_time(item.trigger_time) for item in candidate.stations)
     margin = timedelta(seconds=settings.max_origin_time_delta_seconds)
-    return trigger_time - margin, datetime.now(timezone.utc) + timedelta(minutes=1)
+    # Una consulta acotada evita descargar anos de catalogo cuando se reproduce
+    # un evento historico. Para candidatos en vivo cubre exactamente el mismo
+    # margen temporal que posteriormente acepta ``match_report``.
+    return trigger_time - margin, trigger_time + margin
 
 
 def _parse_time(value: Any) -> datetime:

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from typing import Any
 
 import numpy as np
@@ -101,3 +102,39 @@ def test_worker_recovers_after_simulated_connection_cut() -> None:
     assert all(client.conn.terminated for client in clients)
     assert clients[1].selected == [("CM", "ARGC", "00HHZ")]
     assert worker.consecutive_failures == 1
+
+
+def test_station_health_reports_fresh_and_stale_packets() -> None:
+    provider = SeedLinkProvider(
+        id="test-co",
+        server="seedlink.invalid:18000",
+        country_code="CO",
+        stations=(StationSubscription("CM", "ARGC", "HHZ", "00", "00HHZ", "CO", "CO"),),
+    )
+    worker = SeedLinkProviderWorker(
+        provider,
+        SeedLinkSettings(providers=(provider,), station_stale_after_seconds=10),
+        DetectionSettings(filter_enabled=False),
+        ZoneCoincidenceRouter(CoincidenceSettings(max_station_lag_seconds=5)),
+        AlertDispatcher(AlertSettings()),
+    )
+    processor = next(iter(worker.processors.values()))
+    trace = Trace(data=np.zeros(100, dtype=np.float64))
+    trace.stats.network = "CM"
+    trace.stats.station = "ARGC"
+    trace.stats.location = "00"
+    trace.stats.channel = "HHZ"
+    trace.stats.starttime = UTCDateTime("2026-01-01T00:00:00Z")
+    trace.stats.sampling_rate = 100.0
+    processor.process(trace, received_at=datetime(2026, 1, 1, 0, 0, 2, tzinfo=timezone.utc))
+
+    fresh = worker.health_snapshot(datetime(2026, 1, 1, 0, 0, 3, tzinfo=timezone.utc))
+    row = next(iter(fresh.values()))
+    assert row["healthy"] is True
+    assert row["reason"] == "ok"
+    assert row["packet_lag_seconds"] == 1.01
+
+    stale = worker.health_snapshot(datetime(2026, 1, 1, 0, 0, 20, tzinfo=timezone.utc))
+    row = next(iter(stale.values()))
+    assert row["healthy"] is False
+    assert row["reason"] == "stale"

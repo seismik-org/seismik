@@ -5,7 +5,12 @@ from datetime import datetime
 
 from eew.config import OfficialReportsSettings
 from eew.models import EarthquakeCandidate, OfficialReport, StationTrigger
-from eew.official import OfficialApiClient, OfficialSource, match_report
+from eew.official import (
+    OfficialApiClient,
+    OfficialSource,
+    _candidate_query_window,
+    match_report,
+)
 
 
 class FakeResponse:
@@ -104,6 +109,22 @@ def test_rejects_distant_or_temporally_unrelated_report() -> None:
     ) is None
 
 
+def test_association_boundaries_are_inclusive_and_query_is_bounded() -> None:
+    settings = OfficialReportsSettings(
+        enabled=False,
+        max_origin_time_delta_seconds=120,
+        max_distance_km=100,
+    )
+    at_limit = replace(report(), origin_time="2025-12-31T23:58:30Z")
+    beyond_limit = replace(report(), origin_time="2025-12-31T23:58:29.999Z")
+
+    assert match_report(candidate(), at_limit, settings) is not None
+    assert match_report(candidate(), beyond_limit, settings) is None
+    start, end = _candidate_query_window(candidate(), settings)
+    assert start.isoformat() == "2025-12-31T23:58:30+00:00"
+    assert end.isoformat() == "2026-01-01T00:02:30+00:00"
+
+
 def test_source_configuration_has_national_priority_and_global_fallback() -> None:
     national = OfficialSource(
         id="sgc",
@@ -165,3 +186,27 @@ def test_geonet_and_bmkg_contracts_are_normalized() -> None:
     )
     assert rows[0].depth_km == 10
     assert rows[0].tsunami is False
+
+
+def test_sgc_rapid_feed_contract_is_normalized() -> None:
+    sgc = OfficialSource(
+        id="sgc_colombia", agency="SGC", jurisdiction="Colombia", countries=("CO",),
+        adapter="sgc_geojson", endpoint="https://example.test",
+        official_site="https://www.sgc.gov.co/sismos", priority=100,
+    )
+    payload = {"features": [{
+        "id": "SGC2026pqqmro",
+        "geometry": {"coordinates": [-76.291741, 4.9909347, 31.2]},
+        "properties": {
+            "utcTime": "2026-08-10T12:34:27Z", "mag": 7.4, "magType": "Mw",
+            "depth": 31.2, "place": "San Jose del Palmar", "status": "reviewed",
+            "updated": "2026-08-10T13:00:00Z",
+        },
+    }]}
+    rows = OfficialApiClient(sgc, 1, FakeSession(payload)).fetch(
+        datetime(2026, 8, 10), datetime(2026, 8, 11)
+    )
+    assert rows[0].official_event_id == "SGC2026pqqmro"
+    assert rows[0].magnitude == 7.4
+    assert rows[0].depth_km == 31.2
+    assert rows[0].official_url.endswith("/SGC2026pqqmro/resumen")

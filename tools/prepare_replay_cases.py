@@ -16,7 +16,10 @@ DATASELECT_URLS = (
     "https://service.earthscope.org/fdsnws/dataselect/1/query",
     "https://sismo.sgc.gov.co:8443/fdsnws/dataselect/1/query",
 )
-STATIONS = ("ARGC", "CRJC", "HEL", "LCBC", "RUS", "SMAR")
+STATIONS = (
+    "ARGC", "CAP2", "CRJC", "FLO2", "HEL", "LCBC", "MAP", "OCA",
+    "PRA", "PRV", "RUS", "SJC", "SMAR", "TUM", "URI",
+)
 OUTPUT_DIR = Path("data/replay")
 CASES: tuple[dict[str, Any], ...] = (
     {

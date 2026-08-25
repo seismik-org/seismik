@@ -3,6 +3,7 @@
 ## Evidencia de sprints
 
 - [Cierre técnico Sprint 1 — 2026-08-24](SPRINT_1_CIERRE_2026-08-24.md)
+- [Cierre técnico Sprint 2 — 2026-08-24](SPRINT_2_CIERRE_TECNICO_2026-08-24.md)
 
 Este directorio es la fuente verificable compartida para el gobierno y seguimiento
 del proyecto. Los archivos Markdown permiten revisar cambios línea por línea en Git;
@@ -15,6 +16,7 @@ las copias `.docx` son los documentos formales para reuniones y aprobación.
 | Documento maestro | `SEISMIK_DOCUMENTO_MAESTRO_v0.1.md` | `SEISMIK_DOCUMENTO_MAESTRO_v0.1.docx` | 0.1 | Borrador para aprobación |
 | Plan Scrum del MVP | `SEISMIK_PLAN_SCRUM_MVP_v0.1.md` | `SEISMIK_PLAN_SCRUM_MVP_v0.1.docx` | 0.1 | Borrador para aprobación |
 | Control de avance | `SEISMIK_CONTROL_AVANCE_v0.1.md` | `SEISMIK_CONTROL_AVANCE_v0.1.docx` | 0.1 | Activo |
+| Paquete de revisión sismológica | `PAQUETE_REVISION_SISMOLOGICA_v0.1.md` | `PAQUETE_REVISION_SISMOLOGICA_v0.1.docx` | 0.1 | Pendiente de revisor |
 
 ## Convención de versiones
 

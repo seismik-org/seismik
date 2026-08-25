@@ -18,7 +18,10 @@ from obspy import read  # type: ignore[import-untyped]
 STATION_URL = "https://service.earthscope.org/fdsnws/station/1/query"
 DATASELECT_URL = "https://service.earthscope.org/fdsnws/dataselect/1/query"
 SEEDLINK_HOST = "rtserve.earthscope.org"
-STATIONS = ("ARGC", "CRJC", "HEL", "LCBC", "RUS", "SMAR")
+STATIONS = (
+    "ARGC", "CAP2", "CRJC", "FLO2", "HEL", "LCBC", "MAP", "OCA",
+    "PRA", "PRV", "RUS", "SJC", "SMAR", "TUM", "URI",
+)
 
 
 def _utc(value: str | None) -> datetime:

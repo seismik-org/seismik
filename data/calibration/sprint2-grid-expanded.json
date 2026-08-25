@@ -1,0 +1,2185 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-08-25T02:32:04.211699Z",
+  "mode": "shadow_engineering_calibration",
+  "not_scientifically_validated": true,
+  "ranking_policy": {
+    "missed_historical_weight": 10000,
+    "noise_false_candidate_weight": 1000,
+    "historical_out_of_window_weight": 100,
+    "duplicate_in_window_weight": 50,
+    "tie_breaker": "mean detection latency seconds"
+  },
+  "base_detection": {
+    "buffer_seconds": 60.0,
+    "sta_seconds": 0.5,
+    "lta_seconds": 10.0,
+    "trigger_on": 3.5,
+    "trigger_off": 1.0,
+    "station_cooldown_seconds": 20.0,
+    "filter_enabled": true,
+    "filter_low_hz": 1.0,
+    "filter_high_hz": 10.0,
+    "filter_corners": 4,
+    "max_interpolated_gap_seconds": 0.25,
+    "network_profiles": {
+      "CM.HHZ": {
+        "sta_seconds": 0.5,
+        "lta_seconds": 10.0,
+        "trigger_on": 3.5,
+        "trigger_off": 1.0,
+        "filter_low_hz": 1.0,
+        "filter_high_hz": 10.0
+      }
+    }
+  },
+  "evaluated_profiles": 36,
+  "recommended_for_shadow_review": {
+    "profile": {
+      "sta_seconds": 1.0,
+      "lta_seconds": 20.0,
+      "trigger_on": 6.0,
+      "trigger_off": 1.2,
+      "minimum_stations": 3,
+      "coincidence_window_seconds": 10.0
+    },
+    "cases": [
+      {
+        "case_id": "co-2026-08-10-m7.4",
+        "kind": "historical_earthquake",
+        "detected": true,
+        "detection_latency_seconds": 52.793,
+        "candidate_count": 1,
+        "false_candidate_count": 0,
+        "duplicate_candidate_count": 0
+      },
+      {
+        "case_id": "co-2023-08-17-m6.1",
+        "kind": "historical_earthquake",
+        "detected": true,
+        "detection_latency_seconds": 56.208,
+        "candidate_count": 1,
+        "false_candidate_count": 0,
+        "duplicate_candidate_count": 0
+      },
+      {
+        "case_id": "co-2023-08-27-m5.7",
+        "kind": "historical_earthquake",
+        "detected": true,
+        "detection_latency_seconds": 60.655,
+        "candidate_count": 1,
+        "false_candidate_count": 0,
+        "duplicate_candidate_count": 0
+      },
+      {
+        "case_id": "co-2026-08-24-ambient",
+        "kind": "ambient_noise",
+        "detected": false,
+        "detection_latency_seconds": null,
+        "candidate_count": 0,
+        "false_candidate_count": 0,
+        "duplicate_candidate_count": 0
+      }
+    ],
+    "summary": {
+      "historical_cases": 3,
+      "historical_detected": 3,
+      "missed_historical": 0,
+      "noise_false_candidates": 0,
+      "historical_out_of_window_candidates": 0,
+      "duplicate_in_window_candidates": 0,
+      "mean_detection_latency_seconds": 56.552,
+      "engineering_score": 56.552
+    }
+  },
+  "ranked_results": [
+    {
+      "profile": {
+        "sta_seconds": 1.0,
+        "lta_seconds": 20.0,
+        "trigger_on": 6.0,
+        "trigger_off": 1.2,
+        "minimum_stations": 3,
+        "coincidence_window_seconds": 10.0
+      },
+      "cases": [
+        {
+          "case_id": "co-2026-08-10-m7.4",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 52.793,
+          "candidate_count": 1,
+          "false_candidate_count": 0,
+          "duplicate_candidate_count": 0
+        },
+        {
+          "case_id": "co-2023-08-17-m6.1",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 56.208,
+          "candidate_count": 1,
+          "false_candidate_count": 0,
+          "duplicate_candidate_count": 0
+        },
+        {
+          "case_id": "co-2023-08-27-m5.7",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 60.655,
+          "candidate_count": 1,
+          "false_candidate_count": 0,
+          "duplicate_candidate_count": 0
+        },
+        {
+          "case_id": "co-2026-08-24-ambient",
+          "kind": "ambient_noise",
+          "detected": false,
+          "detection_latency_seconds": null,
+          "candidate_count": 0,
+          "false_candidate_count": 0,
+          "duplicate_candidate_count": 0
+        }
+      ],
+      "summary": {
+        "historical_cases": 3,
+        "historical_detected": 3,
+        "missed_historical": 0,
+        "noise_false_candidates": 0,
+        "historical_out_of_window_candidates": 0,
+        "duplicate_in_window_candidates": 0,
+        "mean_detection_latency_seconds": 56.552,
+        "engineering_score": 56.552
+      }
+    },
+    {
+      "profile": {
+        "sta_seconds": 0.8,
+        "lta_seconds": 15.0,
+        "trigger_on": 6.0,
+        "trigger_off": 1.2,
+        "minimum_stations": 4,
+        "coincidence_window_seconds": 15.0
+      },
+      "cases": [
+        {
+          "case_id": "co-2026-08-10-m7.4",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 59.253,
+          "candidate_count": 1,
+          "false_candidate_count": 0,
+          "duplicate_candidate_count": 0
+        },
+        {
+          "case_id": "co-2023-08-17-m6.1",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 58.868,
+          "candidate_count": 1,
+          "false_candidate_count": 0,
+          "duplicate_candidate_count": 0
+        },
+        {
+          "case_id": "co-2023-08-27-m5.7",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 62.035,
+          "candidate_count": 1,
+          "false_candidate_count": 0,
+          "duplicate_candidate_count": 0
+        },
+        {
+          "case_id": "co-2026-08-24-ambient",
+          "kind": "ambient_noise",
+          "detected": false,
+          "detection_latency_seconds": null,
+          "candidate_count": 0,
+          "false_candidate_count": 0,
+          "duplicate_candidate_count": 0
+        }
+      ],
+      "summary": {
+        "historical_cases": 3,
+        "historical_detected": 3,
+        "missed_historical": 0,
+        "noise_false_candidates": 0,
+        "historical_out_of_window_candidates": 0,
+        "duplicate_in_window_candidates": 0,
+        "mean_detection_latency_seconds": 60.052,
+        "engineering_score": 60.052
+      }
+    },
+    {
+      "profile": {
+        "sta_seconds": 1.0,
+        "lta_seconds": 20.0,
+        "trigger_on": 6.0,
+        "trigger_off": 1.2,
+        "minimum_stations": 4,
+        "coincidence_window_seconds": 15.0
+      },
+      "cases": [
+        {
+          "case_id": "co-2026-08-10-m7.4",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 59.663,
+          "candidate_count": 1,
+          "false_candidate_count": 0,
+          "duplicate_candidate_count": 0
+        },
+        {
+          "case_id": "co-2023-08-17-m6.1",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 58.968,
+          "candidate_count": 1,
+          "false_candidate_count": 0,
+          "duplicate_candidate_count": 0
+        },
+        {
+          "case_id": "co-2023-08-27-m5.7",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 63.915,
+          "candidate_count": 1,
+          "false_candidate_count": 0,
+          "duplicate_candidate_count": 0
+        },
+        {
+          "case_id": "co-2026-08-24-ambient",
+          "kind": "ambient_noise",
+          "detected": false,
+          "detection_latency_seconds": null,
+          "candidate_count": 0,
+          "false_candidate_count": 0,
+          "duplicate_candidate_count": 0
+        }
+      ],
+      "summary": {
+        "historical_cases": 3,
+        "historical_detected": 3,
+        "missed_historical": 0,
+        "noise_false_candidates": 0,
+        "historical_out_of_window_candidates": 0,
+        "duplicate_in_window_candidates": 0,
+        "mean_detection_latency_seconds": 60.849,
+        "engineering_score": 60.849
+      }
+    },
+    {
+      "profile": {
+        "sta_seconds": 0.5,
+        "lta_seconds": 10.0,
+        "trigger_on": 6.0,
+        "trigger_off": 1.2,
+        "minimum_stations": 4,
+        "coincidence_window_seconds": 10.0
+      },
+      "cases": [
+        {
+          "case_id": "co-2026-08-10-m7.4",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 59.193,
+          "candidate_count": 1,
+          "false_candidate_count": 0,
+          "duplicate_candidate_count": 0
+        },
+        {
+          "case_id": "co-2023-08-17-m6.1",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 88.818,
+          "candidate_count": 1,
+          "false_candidate_count": 0,
+          "duplicate_candidate_count": 0
+        },
+        {
+          "case_id": "co-2023-08-27-m5.7",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 62.035,
+          "candidate_count": 1,
+          "false_candidate_count": 0,
+          "duplicate_candidate_count": 0
+        },
+        {
+          "case_id": "co-2026-08-24-ambient",
+          "kind": "ambient_noise",
+          "detected": false,
+          "detection_latency_seconds": null,
+          "candidate_count": 0,
+          "false_candidate_count": 0,
+          "duplicate_candidate_count": 0
+        }
+      ],
+      "summary": {
+        "historical_cases": 3,
+        "historical_detected": 3,
+        "missed_historical": 0,
+        "noise_false_candidates": 0,
+        "historical_out_of_window_candidates": 0,
+        "duplicate_in_window_candidates": 0,
+        "mean_detection_latency_seconds": 70.015,
+        "engineering_score": 70.015
+      }
+    },
+    {
+      "profile": {
+        "sta_seconds": 0.8,
+        "lta_seconds": 15.0,
+        "trigger_on": 5.0,
+        "trigger_off": 1.2,
+        "minimum_stations": 4,
+        "coincidence_window_seconds": 10.0
+      },
+      "cases": [
+        {
+          "case_id": "co-2026-08-10-m7.4",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 59.253,
+          "candidate_count": 1,
+          "false_candidate_count": 0,
+          "duplicate_candidate_count": 0
+        },
+        {
+          "case_id": "co-2023-08-17-m6.1",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 89.098,
+          "candidate_count": 1,
+          "false_candidate_count": 0,
+          "duplicate_candidate_count": 0
+        },
+        {
+          "case_id": "co-2023-08-27-m5.7",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 62.035,
+          "candidate_count": 1,
+          "false_candidate_count": 0,
+          "duplicate_candidate_count": 0
+        },
+        {
+          "case_id": "co-2026-08-24-ambient",
+          "kind": "ambient_noise",
+          "detected": false,
+          "detection_latency_seconds": null,
+          "candidate_count": 0,
+          "false_candidate_count": 0,
+          "duplicate_candidate_count": 0
+        }
+      ],
+      "summary": {
+        "historical_cases": 3,
+        "historical_detected": 3,
+        "missed_historical": 0,
+        "noise_false_candidates": 0,
+        "historical_out_of_window_candidates": 0,
+        "duplicate_in_window_candidates": 0,
+        "mean_detection_latency_seconds": 70.129,
+        "engineering_score": 70.129
+      }
+    },
+    {
+      "profile": {
+        "sta_seconds": 0.8,
+        "lta_seconds": 15.0,
+        "trigger_on": 6.0,
+        "trigger_off": 1.2,
+        "minimum_stations": 4,
+        "coincidence_window_seconds": 10.0
+      },
+      "cases": [
+        {
+          "case_id": "co-2026-08-10-m7.4",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 59.253,
+          "candidate_count": 1,
+          "false_candidate_count": 0,
+          "duplicate_candidate_count": 0
+        },
+        {
+          "case_id": "co-2023-08-17-m6.1",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 89.098,
+          "candidate_count": 1,
+          "false_candidate_count": 0,
+          "duplicate_candidate_count": 0
+        },
+        {
+          "case_id": "co-2023-08-27-m5.7",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 62.035,
+          "candidate_count": 1,
+          "false_candidate_count": 0,
+          "duplicate_candidate_count": 0
+        },
+        {
+          "case_id": "co-2026-08-24-ambient",
+          "kind": "ambient_noise",
+          "detected": false,
+          "detection_latency_seconds": null,
+          "candidate_count": 0,
+          "false_candidate_count": 0,
+          "duplicate_candidate_count": 0
+        }
+      ],
+      "summary": {
+        "historical_cases": 3,
+        "historical_detected": 3,
+        "missed_historical": 0,
+        "noise_false_candidates": 0,
+        "historical_out_of_window_candidates": 0,
+        "duplicate_in_window_candidates": 0,
+        "mean_detection_latency_seconds": 70.129,
+        "engineering_score": 70.129
+      }
+    },
+    {
+      "profile": {
+        "sta_seconds": 0.5,
+        "lta_seconds": 10.0,
+        "trigger_on": 5.0,
+        "trigger_off": 1.2,
+        "minimum_stations": 4,
+        "coincidence_window_seconds": 10.0
+      },
+      "cases": [
+        {
+          "case_id": "co-2026-08-10-m7.4",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 59.193,
+          "candidate_count": 1,
+          "false_candidate_count": 0,
+          "duplicate_candidate_count": 0
+        },
+        {
+          "case_id": "co-2023-08-17-m6.1",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 89.948,
+          "candidate_count": 1,
+          "false_candidate_count": 0,
+          "duplicate_candidate_count": 0
+        },
+        {
+          "case_id": "co-2023-08-27-m5.7",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 62.035,
+          "candidate_count": 1,
+          "false_candidate_count": 0,
+          "duplicate_candidate_count": 0
+        },
+        {
+          "case_id": "co-2026-08-24-ambient",
+          "kind": "ambient_noise",
+          "detected": false,
+          "detection_latency_seconds": null,
+          "candidate_count": 0,
+          "false_candidate_count": 0,
+          "duplicate_candidate_count": 0
+        }
+      ],
+      "summary": {
+        "historical_cases": 3,
+        "historical_detected": 3,
+        "missed_historical": 0,
+        "noise_false_candidates": 0,
+        "historical_out_of_window_candidates": 0,
+        "duplicate_in_window_candidates": 0,
+        "mean_detection_latency_seconds": 70.392,
+        "engineering_score": 70.392
+      }
+    },
+    {
+      "profile": {
+        "sta_seconds": 1.0,
+        "lta_seconds": 20.0,
+        "trigger_on": 5.0,
+        "trigger_off": 1.2,
+        "minimum_stations": 4,
+        "coincidence_window_seconds": 10.0
+      },
+      "cases": [
+        {
+          "case_id": "co-2026-08-10-m7.4",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 59.663,
+          "candidate_count": 1,
+          "false_candidate_count": 0,
+          "duplicate_candidate_count": 0
+        },
+        {
+          "case_id": "co-2023-08-17-m6.1",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 89.108,
+          "candidate_count": 1,
+          "false_candidate_count": 0,
+          "duplicate_candidate_count": 0
+        },
+        {
+          "case_id": "co-2023-08-27-m5.7",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 62.545,
+          "candidate_count": 1,
+          "false_candidate_count": 0,
+          "duplicate_candidate_count": 0
+        },
+        {
+          "case_id": "co-2026-08-24-ambient",
+          "kind": "ambient_noise",
+          "detected": false,
+          "detection_latency_seconds": null,
+          "candidate_count": 0,
+          "false_candidate_count": 0,
+          "duplicate_candidate_count": 0
+        }
+      ],
+      "summary": {
+        "historical_cases": 3,
+        "historical_detected": 3,
+        "missed_historical": 0,
+        "noise_false_candidates": 0,
+        "historical_out_of_window_candidates": 0,
+        "duplicate_in_window_candidates": 0,
+        "mean_detection_latency_seconds": 70.439,
+        "engineering_score": 70.439
+      }
+    },
+    {
+      "profile": {
+        "sta_seconds": 1.0,
+        "lta_seconds": 20.0,
+        "trigger_on": 6.0,
+        "trigger_off": 1.2,
+        "minimum_stations": 4,
+        "coincidence_window_seconds": 10.0
+      },
+      "cases": [
+        {
+          "case_id": "co-2026-08-10-m7.4",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 59.663,
+          "candidate_count": 1,
+          "false_candidate_count": 0,
+          "duplicate_candidate_count": 0
+        },
+        {
+          "case_id": "co-2023-08-17-m6.1",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 89.108,
+          "candidate_count": 1,
+          "false_candidate_count": 0,
+          "duplicate_candidate_count": 0
+        },
+        {
+          "case_id": "co-2023-08-27-m5.7",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 63.915,
+          "candidate_count": 1,
+          "false_candidate_count": 0,
+          "duplicate_candidate_count": 0
+        },
+        {
+          "case_id": "co-2026-08-24-ambient",
+          "kind": "ambient_noise",
+          "detected": false,
+          "detection_latency_seconds": null,
+          "candidate_count": 0,
+          "false_candidate_count": 0,
+          "duplicate_candidate_count": 0
+        }
+      ],
+      "summary": {
+        "historical_cases": 3,
+        "historical_detected": 3,
+        "missed_historical": 0,
+        "noise_false_candidates": 0,
+        "historical_out_of_window_candidates": 0,
+        "duplicate_in_window_candidates": 0,
+        "mean_detection_latency_seconds": 70.895,
+        "engineering_score": 70.895
+      }
+    },
+    {
+      "profile": {
+        "sta_seconds": 0.5,
+        "lta_seconds": 10.0,
+        "trigger_on": 6.0,
+        "trigger_off": 1.2,
+        "minimum_stations": 4,
+        "coincidence_window_seconds": 15.0
+      },
+      "cases": [
+        {
+          "case_id": "co-2026-08-10-m7.4",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 59.193,
+          "candidate_count": 1,
+          "false_candidate_count": 0,
+          "duplicate_candidate_count": 0
+        },
+        {
+          "case_id": "co-2023-08-17-m6.1",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 58.678,
+          "candidate_count": 1,
+          "false_candidate_count": 0,
+          "duplicate_candidate_count": 0
+        },
+        {
+          "case_id": "co-2023-08-27-m5.7",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 13.635,
+          "candidate_count": 2,
+          "false_candidate_count": 0,
+          "duplicate_candidate_count": 1
+        },
+        {
+          "case_id": "co-2026-08-24-ambient",
+          "kind": "ambient_noise",
+          "detected": false,
+          "detection_latency_seconds": null,
+          "candidate_count": 0,
+          "false_candidate_count": 0,
+          "duplicate_candidate_count": 0
+        }
+      ],
+      "summary": {
+        "historical_cases": 3,
+        "historical_detected": 3,
+        "missed_historical": 0,
+        "noise_false_candidates": 0,
+        "historical_out_of_window_candidates": 0,
+        "duplicate_in_window_candidates": 1,
+        "mean_detection_latency_seconds": 43.835,
+        "engineering_score": 93.835
+      }
+    },
+    {
+      "profile": {
+        "sta_seconds": 0.8,
+        "lta_seconds": 15.0,
+        "trigger_on": 5.0,
+        "trigger_off": 1.2,
+        "minimum_stations": 3,
+        "coincidence_window_seconds": 10.0
+      },
+      "cases": [
+        {
+          "case_id": "co-2026-08-10-m7.4",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 52.783,
+          "candidate_count": 2,
+          "false_candidate_count": 0,
+          "duplicate_candidate_count": 1
+        },
+        {
+          "case_id": "co-2023-08-17-m6.1",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 56.328,
+          "candidate_count": 1,
+          "false_candidate_count": 0,
+          "duplicate_candidate_count": 0
+        },
+        {
+          "case_id": "co-2023-08-27-m5.7",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 14.305,
+          "candidate_count": 2,
+          "false_candidate_count": 0,
+          "duplicate_candidate_count": 1
+        },
+        {
+          "case_id": "co-2026-08-24-ambient",
+          "kind": "ambient_noise",
+          "detected": false,
+          "detection_latency_seconds": null,
+          "candidate_count": 0,
+          "false_candidate_count": 0,
+          "duplicate_candidate_count": 0
+        }
+      ],
+      "summary": {
+        "historical_cases": 3,
+        "historical_detected": 3,
+        "missed_historical": 0,
+        "noise_false_candidates": 0,
+        "historical_out_of_window_candidates": 0,
+        "duplicate_in_window_candidates": 2,
+        "mean_detection_latency_seconds": 41.139,
+        "engineering_score": 141.139
+      }
+    },
+    {
+      "profile": {
+        "sta_seconds": 0.8,
+        "lta_seconds": 15.0,
+        "trigger_on": 5.0,
+        "trigger_off": 1.2,
+        "minimum_stations": 3,
+        "coincidence_window_seconds": 15.0
+      },
+      "cases": [
+        {
+          "case_id": "co-2026-08-10-m7.4",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 52.783,
+          "candidate_count": 2,
+          "false_candidate_count": 0,
+          "duplicate_candidate_count": 1
+        },
+        {
+          "case_id": "co-2023-08-17-m6.1",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 56.328,
+          "candidate_count": 1,
+          "false_candidate_count": 0,
+          "duplicate_candidate_count": 0
+        },
+        {
+          "case_id": "co-2023-08-27-m5.7",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 14.305,
+          "candidate_count": 2,
+          "false_candidate_count": 0,
+          "duplicate_candidate_count": 1
+        },
+        {
+          "case_id": "co-2026-08-24-ambient",
+          "kind": "ambient_noise",
+          "detected": false,
+          "detection_latency_seconds": null,
+          "candidate_count": 0,
+          "false_candidate_count": 0,
+          "duplicate_candidate_count": 0
+        }
+      ],
+      "summary": {
+        "historical_cases": 3,
+        "historical_detected": 3,
+        "missed_historical": 0,
+        "noise_false_candidates": 0,
+        "historical_out_of_window_candidates": 0,
+        "duplicate_in_window_candidates": 2,
+        "mean_detection_latency_seconds": 41.139,
+        "engineering_score": 141.139
+      }
+    },
+    {
+      "profile": {
+        "sta_seconds": 1.0,
+        "lta_seconds": 20.0,
+        "trigger_on": 4.0,
+        "trigger_off": 1.2,
+        "minimum_stations": 4,
+        "coincidence_window_seconds": 10.0
+      },
+      "cases": [
+        {
+          "case_id": "co-2026-08-10-m7.4",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 59.663,
+          "candidate_count": 2,
+          "false_candidate_count": 0,
+          "duplicate_candidate_count": 1
+        },
+        {
+          "case_id": "co-2023-08-17-m6.1",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 89.108,
+          "candidate_count": 1,
+          "false_candidate_count": 0,
+          "duplicate_candidate_count": 0
+        },
+        {
+          "case_id": "co-2023-08-27-m5.7",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 14.505,
+          "candidate_count": 2,
+          "false_candidate_count": 0,
+          "duplicate_candidate_count": 1
+        },
+        {
+          "case_id": "co-2026-08-24-ambient",
+          "kind": "ambient_noise",
+          "detected": false,
+          "detection_latency_seconds": null,
+          "candidate_count": 0,
+          "false_candidate_count": 0,
+          "duplicate_candidate_count": 0
+        }
+      ],
+      "summary": {
+        "historical_cases": 3,
+        "historical_detected": 3,
+        "missed_historical": 0,
+        "noise_false_candidates": 0,
+        "historical_out_of_window_candidates": 0,
+        "duplicate_in_window_candidates": 2,
+        "mean_detection_latency_seconds": 54.425,
+        "engineering_score": 154.425
+      }
+    },
+    {
+      "profile": {
+        "sta_seconds": 1.0,
+        "lta_seconds": 20.0,
+        "trigger_on": 6.0,
+        "trigger_off": 1.2,
+        "minimum_stations": 3,
+        "coincidence_window_seconds": 15.0
+      },
+      "cases": [
+        {
+          "case_id": "co-2026-08-10-m7.4",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 52.793,
+          "candidate_count": 1,
+          "false_candidate_count": 0,
+          "duplicate_candidate_count": 0
+        },
+        {
+          "case_id": "co-2023-08-17-m6.1",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 56.208,
+          "candidate_count": 1,
+          "false_candidate_count": 0,
+          "duplicate_candidate_count": 0
+        },
+        {
+          "case_id": "co-2023-08-27-m5.7",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 55.935,
+          "candidate_count": 2,
+          "false_candidate_count": 1,
+          "duplicate_candidate_count": 0
+        },
+        {
+          "case_id": "co-2026-08-24-ambient",
+          "kind": "ambient_noise",
+          "detected": false,
+          "detection_latency_seconds": null,
+          "candidate_count": 0,
+          "false_candidate_count": 0,
+          "duplicate_candidate_count": 0
+        }
+      ],
+      "summary": {
+        "historical_cases": 3,
+        "historical_detected": 3,
+        "missed_historical": 0,
+        "noise_false_candidates": 0,
+        "historical_out_of_window_candidates": 1,
+        "duplicate_in_window_candidates": 0,
+        "mean_detection_latency_seconds": 54.979,
+        "engineering_score": 154.979
+      }
+    },
+    {
+      "profile": {
+        "sta_seconds": 0.8,
+        "lta_seconds": 15.0,
+        "trigger_on": 6.0,
+        "trigger_off": 1.2,
+        "minimum_stations": 3,
+        "coincidence_window_seconds": 10.0
+      },
+      "cases": [
+        {
+          "case_id": "co-2026-08-10-m7.4",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 52.783,
+          "candidate_count": 1,
+          "false_candidate_count": 0,
+          "duplicate_candidate_count": 0
+        },
+        {
+          "case_id": "co-2023-08-17-m6.1",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 56.328,
+          "candidate_count": 1,
+          "false_candidate_count": 0,
+          "duplicate_candidate_count": 0
+        },
+        {
+          "case_id": "co-2023-08-27-m5.7",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 62.035,
+          "candidate_count": 2,
+          "false_candidate_count": 1,
+          "duplicate_candidate_count": 0
+        },
+        {
+          "case_id": "co-2026-08-24-ambient",
+          "kind": "ambient_noise",
+          "detected": false,
+          "detection_latency_seconds": null,
+          "candidate_count": 0,
+          "false_candidate_count": 0,
+          "duplicate_candidate_count": 0
+        }
+      ],
+      "summary": {
+        "historical_cases": 3,
+        "historical_detected": 3,
+        "missed_historical": 0,
+        "noise_false_candidates": 0,
+        "historical_out_of_window_candidates": 1,
+        "duplicate_in_window_candidates": 0,
+        "mean_detection_latency_seconds": 57.049,
+        "engineering_score": 157.049
+      }
+    },
+    {
+      "profile": {
+        "sta_seconds": 0.8,
+        "lta_seconds": 15.0,
+        "trigger_on": 6.0,
+        "trigger_off": 1.2,
+        "minimum_stations": 3,
+        "coincidence_window_seconds": 15.0
+      },
+      "cases": [
+        {
+          "case_id": "co-2026-08-10-m7.4",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 52.783,
+          "candidate_count": 1,
+          "false_candidate_count": 0,
+          "duplicate_candidate_count": 0
+        },
+        {
+          "case_id": "co-2023-08-17-m6.1",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 56.328,
+          "candidate_count": 1,
+          "false_candidate_count": 0,
+          "duplicate_candidate_count": 0
+        },
+        {
+          "case_id": "co-2023-08-27-m5.7",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 62.035,
+          "candidate_count": 2,
+          "false_candidate_count": 1,
+          "duplicate_candidate_count": 0
+        },
+        {
+          "case_id": "co-2026-08-24-ambient",
+          "kind": "ambient_noise",
+          "detected": false,
+          "detection_latency_seconds": null,
+          "candidate_count": 0,
+          "false_candidate_count": 0,
+          "duplicate_candidate_count": 0
+        }
+      ],
+      "summary": {
+        "historical_cases": 3,
+        "historical_detected": 3,
+        "missed_historical": 0,
+        "noise_false_candidates": 0,
+        "historical_out_of_window_candidates": 1,
+        "duplicate_in_window_candidates": 0,
+        "mean_detection_latency_seconds": 57.049,
+        "engineering_score": 157.049
+      }
+    },
+    {
+      "profile": {
+        "sta_seconds": 0.5,
+        "lta_seconds": 10.0,
+        "trigger_on": 6.0,
+        "trigger_off": 1.2,
+        "minimum_stations": 3,
+        "coincidence_window_seconds": 10.0
+      },
+      "cases": [
+        {
+          "case_id": "co-2026-08-10-m7.4",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 52.633,
+          "candidate_count": 1,
+          "false_candidate_count": 0,
+          "duplicate_candidate_count": 0
+        },
+        {
+          "case_id": "co-2023-08-17-m6.1",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 55.718,
+          "candidate_count": 2,
+          "false_candidate_count": 1,
+          "duplicate_candidate_count": 0
+        },
+        {
+          "case_id": "co-2023-08-27-m5.7",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 7.185,
+          "candidate_count": 2,
+          "false_candidate_count": 0,
+          "duplicate_candidate_count": 1
+        },
+        {
+          "case_id": "co-2026-08-24-ambient",
+          "kind": "ambient_noise",
+          "detected": false,
+          "detection_latency_seconds": null,
+          "candidate_count": 0,
+          "false_candidate_count": 0,
+          "duplicate_candidate_count": 0
+        }
+      ],
+      "summary": {
+        "historical_cases": 3,
+        "historical_detected": 3,
+        "missed_historical": 0,
+        "noise_false_candidates": 0,
+        "historical_out_of_window_candidates": 1,
+        "duplicate_in_window_candidates": 1,
+        "mean_detection_latency_seconds": 38.512,
+        "engineering_score": 188.512
+      }
+    },
+    {
+      "profile": {
+        "sta_seconds": 0.5,
+        "lta_seconds": 10.0,
+        "trigger_on": 6.0,
+        "trigger_off": 1.2,
+        "minimum_stations": 3,
+        "coincidence_window_seconds": 15.0
+      },
+      "cases": [
+        {
+          "case_id": "co-2026-08-10-m7.4",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 52.633,
+          "candidate_count": 1,
+          "false_candidate_count": 0,
+          "duplicate_candidate_count": 0
+        },
+        {
+          "case_id": "co-2023-08-17-m6.1",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 55.718,
+          "candidate_count": 2,
+          "false_candidate_count": 1,
+          "duplicate_candidate_count": 0
+        },
+        {
+          "case_id": "co-2023-08-27-m5.7",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 7.185,
+          "candidate_count": 2,
+          "false_candidate_count": 0,
+          "duplicate_candidate_count": 1
+        },
+        {
+          "case_id": "co-2026-08-24-ambient",
+          "kind": "ambient_noise",
+          "detected": false,
+          "detection_latency_seconds": null,
+          "candidate_count": 0,
+          "false_candidate_count": 0,
+          "duplicate_candidate_count": 0
+        }
+      ],
+      "summary": {
+        "historical_cases": 3,
+        "historical_detected": 3,
+        "missed_historical": 0,
+        "noise_false_candidates": 0,
+        "historical_out_of_window_candidates": 1,
+        "duplicate_in_window_candidates": 1,
+        "mean_detection_latency_seconds": 38.512,
+        "engineering_score": 188.512
+      }
+    },
+    {
+      "profile": {
+        "sta_seconds": 1.0,
+        "lta_seconds": 20.0,
+        "trigger_on": 5.0,
+        "trigger_off": 1.2,
+        "minimum_stations": 3,
+        "coincidence_window_seconds": 15.0
+      },
+      "cases": [
+        {
+          "case_id": "co-2026-08-10-m7.4",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 32.243,
+          "candidate_count": 2,
+          "false_candidate_count": 0,
+          "duplicate_candidate_count": 1
+        },
+        {
+          "case_id": "co-2023-08-17-m6.1",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 56.208,
+          "candidate_count": 1,
+          "false_candidate_count": 0,
+          "duplicate_candidate_count": 0
+        },
+        {
+          "case_id": "co-2023-08-27-m5.7",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 55.935,
+          "candidate_count": 2,
+          "false_candidate_count": 1,
+          "duplicate_candidate_count": 0
+        },
+        {
+          "case_id": "co-2026-08-24-ambient",
+          "kind": "ambient_noise",
+          "detected": false,
+          "detection_latency_seconds": null,
+          "candidate_count": 0,
+          "false_candidate_count": 0,
+          "duplicate_candidate_count": 0
+        }
+      ],
+      "summary": {
+        "historical_cases": 3,
+        "historical_detected": 3,
+        "missed_historical": 0,
+        "noise_false_candidates": 0,
+        "historical_out_of_window_candidates": 1,
+        "duplicate_in_window_candidates": 1,
+        "mean_detection_latency_seconds": 48.129,
+        "engineering_score": 198.129
+      }
+    },
+    {
+      "profile": {
+        "sta_seconds": 1.0,
+        "lta_seconds": 20.0,
+        "trigger_on": 5.0,
+        "trigger_off": 1.2,
+        "minimum_stations": 3,
+        "coincidence_window_seconds": 10.0
+      },
+      "cases": [
+        {
+          "case_id": "co-2026-08-10-m7.4",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 52.793,
+          "candidate_count": 2,
+          "false_candidate_count": 0,
+          "duplicate_candidate_count": 1
+        },
+        {
+          "case_id": "co-2023-08-17-m6.1",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 56.208,
+          "candidate_count": 1,
+          "false_candidate_count": 0,
+          "duplicate_candidate_count": 0
+        },
+        {
+          "case_id": "co-2023-08-27-m5.7",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 62.545,
+          "candidate_count": 2,
+          "false_candidate_count": 1,
+          "duplicate_candidate_count": 0
+        },
+        {
+          "case_id": "co-2026-08-24-ambient",
+          "kind": "ambient_noise",
+          "detected": false,
+          "detection_latency_seconds": null,
+          "candidate_count": 0,
+          "false_candidate_count": 0,
+          "duplicate_candidate_count": 0
+        }
+      ],
+      "summary": {
+        "historical_cases": 3,
+        "historical_detected": 3,
+        "missed_historical": 0,
+        "noise_false_candidates": 0,
+        "historical_out_of_window_candidates": 1,
+        "duplicate_in_window_candidates": 1,
+        "mean_detection_latency_seconds": 57.182,
+        "engineering_score": 207.182
+      }
+    },
+    {
+      "profile": {
+        "sta_seconds": 0.5,
+        "lta_seconds": 10.0,
+        "trigger_on": 5.0,
+        "trigger_off": 1.2,
+        "minimum_stations": 4,
+        "coincidence_window_seconds": 15.0
+      },
+      "cases": [
+        {
+          "case_id": "co-2026-08-10-m7.4",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 59.193,
+          "candidate_count": 2,
+          "false_candidate_count": 0,
+          "duplicate_candidate_count": 1
+        },
+        {
+          "case_id": "co-2023-08-17-m6.1",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 58.678,
+          "candidate_count": 2,
+          "false_candidate_count": 1,
+          "duplicate_candidate_count": 0
+        },
+        {
+          "case_id": "co-2023-08-27-m5.7",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 13.635,
+          "candidate_count": 2,
+          "false_candidate_count": 0,
+          "duplicate_candidate_count": 1
+        },
+        {
+          "case_id": "co-2026-08-24-ambient",
+          "kind": "ambient_noise",
+          "detected": false,
+          "detection_latency_seconds": null,
+          "candidate_count": 0,
+          "false_candidate_count": 0,
+          "duplicate_candidate_count": 0
+        }
+      ],
+      "summary": {
+        "historical_cases": 3,
+        "historical_detected": 3,
+        "missed_historical": 0,
+        "noise_false_candidates": 0,
+        "historical_out_of_window_candidates": 1,
+        "duplicate_in_window_candidates": 2,
+        "mean_detection_latency_seconds": 43.835,
+        "engineering_score": 243.835
+      }
+    },
+    {
+      "profile": {
+        "sta_seconds": 0.8,
+        "lta_seconds": 15.0,
+        "trigger_on": 5.0,
+        "trigger_off": 1.2,
+        "minimum_stations": 4,
+        "coincidence_window_seconds": 15.0
+      },
+      "cases": [
+        {
+          "case_id": "co-2026-08-10-m7.4",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 59.253,
+          "candidate_count": 2,
+          "false_candidate_count": 1,
+          "duplicate_candidate_count": 0
+        },
+        {
+          "case_id": "co-2023-08-17-m6.1",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 58.868,
+          "candidate_count": 1,
+          "false_candidate_count": 0,
+          "duplicate_candidate_count": 0
+        },
+        {
+          "case_id": "co-2023-08-27-m5.7",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 25.975,
+          "candidate_count": 2,
+          "false_candidate_count": 1,
+          "duplicate_candidate_count": 0
+        },
+        {
+          "case_id": "co-2026-08-24-ambient",
+          "kind": "ambient_noise",
+          "detected": false,
+          "detection_latency_seconds": null,
+          "candidate_count": 0,
+          "false_candidate_count": 0,
+          "duplicate_candidate_count": 0
+        }
+      ],
+      "summary": {
+        "historical_cases": 3,
+        "historical_detected": 3,
+        "missed_historical": 0,
+        "noise_false_candidates": 0,
+        "historical_out_of_window_candidates": 2,
+        "duplicate_in_window_candidates": 0,
+        "mean_detection_latency_seconds": 48.032,
+        "engineering_score": 248.032
+      }
+    },
+    {
+      "profile": {
+        "sta_seconds": 1.0,
+        "lta_seconds": 20.0,
+        "trigger_on": 5.0,
+        "trigger_off": 1.2,
+        "minimum_stations": 4,
+        "coincidence_window_seconds": 15.0
+      },
+      "cases": [
+        {
+          "case_id": "co-2026-08-10-m7.4",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 59.663,
+          "candidate_count": 2,
+          "false_candidate_count": 1,
+          "duplicate_candidate_count": 0
+        },
+        {
+          "case_id": "co-2023-08-17-m6.1",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 58.968,
+          "candidate_count": 1,
+          "false_candidate_count": 0,
+          "duplicate_candidate_count": 0
+        },
+        {
+          "case_id": "co-2023-08-27-m5.7",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 62.545,
+          "candidate_count": 2,
+          "false_candidate_count": 1,
+          "duplicate_candidate_count": 0
+        },
+        {
+          "case_id": "co-2026-08-24-ambient",
+          "kind": "ambient_noise",
+          "detected": false,
+          "detection_latency_seconds": null,
+          "candidate_count": 0,
+          "false_candidate_count": 0,
+          "duplicate_candidate_count": 0
+        }
+      ],
+      "summary": {
+        "historical_cases": 3,
+        "historical_detected": 3,
+        "missed_historical": 0,
+        "noise_false_candidates": 0,
+        "historical_out_of_window_candidates": 2,
+        "duplicate_in_window_candidates": 0,
+        "mean_detection_latency_seconds": 60.392,
+        "engineering_score": 260.392
+      }
+    },
+    {
+      "profile": {
+        "sta_seconds": 0.8,
+        "lta_seconds": 15.0,
+        "trigger_on": 4.0,
+        "trigger_off": 1.2,
+        "minimum_stations": 4,
+        "coincidence_window_seconds": 10.0
+      },
+      "cases": [
+        {
+          "case_id": "co-2026-08-10-m7.4",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 52.783,
+          "candidate_count": 2,
+          "false_candidate_count": 0,
+          "duplicate_candidate_count": 1
+        },
+        {
+          "case_id": "co-2023-08-17-m6.1",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 89.098,
+          "candidate_count": 2,
+          "false_candidate_count": 1,
+          "duplicate_candidate_count": 0
+        },
+        {
+          "case_id": "co-2023-08-27-m5.7",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 62.035,
+          "candidate_count": 1,
+          "false_candidate_count": 0,
+          "duplicate_candidate_count": 0
+        },
+        {
+          "case_id": "co-2026-08-24-ambient",
+          "kind": "ambient_noise",
+          "detected": false,
+          "detection_latency_seconds": null,
+          "candidate_count": 1,
+          "false_candidate_count": 1,
+          "duplicate_candidate_count": 0
+        }
+      ],
+      "summary": {
+        "historical_cases": 3,
+        "historical_detected": 3,
+        "missed_historical": 0,
+        "noise_false_candidates": 1,
+        "historical_out_of_window_candidates": 1,
+        "duplicate_in_window_candidates": 1,
+        "mean_detection_latency_seconds": 67.972,
+        "engineering_score": 1217.972
+      }
+    },
+    {
+      "profile": {
+        "sta_seconds": 1.0,
+        "lta_seconds": 20.0,
+        "trigger_on": 4.0,
+        "trigger_off": 1.2,
+        "minimum_stations": 4,
+        "coincidence_window_seconds": 15.0
+      },
+      "cases": [
+        {
+          "case_id": "co-2026-08-10-m7.4",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 59.663,
+          "candidate_count": 2,
+          "false_candidate_count": 0,
+          "duplicate_candidate_count": 1
+        },
+        {
+          "case_id": "co-2023-08-17-m6.1",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 58.968,
+          "candidate_count": 2,
+          "false_candidate_count": 1,
+          "duplicate_candidate_count": 0
+        },
+        {
+          "case_id": "co-2023-08-27-m5.7",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 14.505,
+          "candidate_count": 2,
+          "false_candidate_count": 0,
+          "duplicate_candidate_count": 1
+        },
+        {
+          "case_id": "co-2026-08-24-ambient",
+          "kind": "ambient_noise",
+          "detected": false,
+          "detection_latency_seconds": null,
+          "candidate_count": 1,
+          "false_candidate_count": 1,
+          "duplicate_candidate_count": 0
+        }
+      ],
+      "summary": {
+        "historical_cases": 3,
+        "historical_detected": 3,
+        "missed_historical": 0,
+        "noise_false_candidates": 1,
+        "historical_out_of_window_candidates": 1,
+        "duplicate_in_window_candidates": 2,
+        "mean_detection_latency_seconds": 44.379,
+        "engineering_score": 1244.379
+      }
+    },
+    {
+      "profile": {
+        "sta_seconds": 0.5,
+        "lta_seconds": 10.0,
+        "trigger_on": 5.0,
+        "trigger_off": 1.2,
+        "minimum_stations": 3,
+        "coincidence_window_seconds": 10.0
+      },
+      "cases": [
+        {
+          "case_id": "co-2026-08-10-m7.4",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 52.633,
+          "candidate_count": 2,
+          "false_candidate_count": 0,
+          "duplicate_candidate_count": 1
+        },
+        {
+          "case_id": "co-2023-08-17-m6.1",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 55.718,
+          "candidate_count": 3,
+          "false_candidate_count": 2,
+          "duplicate_candidate_count": 0
+        },
+        {
+          "case_id": "co-2023-08-27-m5.7",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 7.185,
+          "candidate_count": 3,
+          "false_candidate_count": 1,
+          "duplicate_candidate_count": 1
+        },
+        {
+          "case_id": "co-2026-08-24-ambient",
+          "kind": "ambient_noise",
+          "detected": false,
+          "detection_latency_seconds": null,
+          "candidate_count": 1,
+          "false_candidate_count": 1,
+          "duplicate_candidate_count": 0
+        }
+      ],
+      "summary": {
+        "historical_cases": 3,
+        "historical_detected": 3,
+        "missed_historical": 0,
+        "noise_false_candidates": 1,
+        "historical_out_of_window_candidates": 3,
+        "duplicate_in_window_candidates": 2,
+        "mean_detection_latency_seconds": 38.512,
+        "engineering_score": 1438.512
+      }
+    },
+    {
+      "profile": {
+        "sta_seconds": 1.0,
+        "lta_seconds": 20.0,
+        "trigger_on": 4.0,
+        "trigger_off": 1.2,
+        "minimum_stations": 3,
+        "coincidence_window_seconds": 10.0
+      },
+      "cases": [
+        {
+          "case_id": "co-2026-08-10-m7.4",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 52.793,
+          "candidate_count": 2,
+          "false_candidate_count": 0,
+          "duplicate_candidate_count": 1
+        },
+        {
+          "case_id": "co-2023-08-17-m6.1",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 56.208,
+          "candidate_count": 3,
+          "false_candidate_count": 2,
+          "duplicate_candidate_count": 0
+        },
+        {
+          "case_id": "co-2023-08-27-m5.7",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 14.505,
+          "candidate_count": 3,
+          "false_candidate_count": 1,
+          "duplicate_candidate_count": 1
+        },
+        {
+          "case_id": "co-2026-08-24-ambient",
+          "kind": "ambient_noise",
+          "detected": false,
+          "detection_latency_seconds": null,
+          "candidate_count": 1,
+          "false_candidate_count": 1,
+          "duplicate_candidate_count": 0
+        }
+      ],
+      "summary": {
+        "historical_cases": 3,
+        "historical_detected": 3,
+        "missed_historical": 0,
+        "noise_false_candidates": 1,
+        "historical_out_of_window_candidates": 3,
+        "duplicate_in_window_candidates": 2,
+        "mean_detection_latency_seconds": 41.169,
+        "engineering_score": 1441.169
+      }
+    },
+    {
+      "profile": {
+        "sta_seconds": 0.8,
+        "lta_seconds": 15.0,
+        "trigger_on": 4.0,
+        "trigger_off": 1.2,
+        "minimum_stations": 4,
+        "coincidence_window_seconds": 15.0
+      },
+      "cases": [
+        {
+          "case_id": "co-2026-08-10-m7.4",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 52.783,
+          "candidate_count": 2,
+          "false_candidate_count": 0,
+          "duplicate_candidate_count": 1
+        },
+        {
+          "case_id": "co-2023-08-17-m6.1",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 58.868,
+          "candidate_count": 3,
+          "false_candidate_count": 2,
+          "duplicate_candidate_count": 0
+        },
+        {
+          "case_id": "co-2023-08-27-m5.7",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 13.445,
+          "candidate_count": 3,
+          "false_candidate_count": 1,
+          "duplicate_candidate_count": 1
+        },
+        {
+          "case_id": "co-2026-08-24-ambient",
+          "kind": "ambient_noise",
+          "detected": false,
+          "detection_latency_seconds": null,
+          "candidate_count": 1,
+          "false_candidate_count": 1,
+          "duplicate_candidate_count": 0
+        }
+      ],
+      "summary": {
+        "historical_cases": 3,
+        "historical_detected": 3,
+        "missed_historical": 0,
+        "noise_false_candidates": 1,
+        "historical_out_of_window_candidates": 3,
+        "duplicate_in_window_candidates": 2,
+        "mean_detection_latency_seconds": 41.699,
+        "engineering_score": 1441.699
+      }
+    },
+    {
+      "profile": {
+        "sta_seconds": 0.5,
+        "lta_seconds": 10.0,
+        "trigger_on": 5.0,
+        "trigger_off": 1.2,
+        "minimum_stations": 3,
+        "coincidence_window_seconds": 15.0
+      },
+      "cases": [
+        {
+          "case_id": "co-2026-08-10-m7.4",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 16.853,
+          "candidate_count": 2,
+          "false_candidate_count": 0,
+          "duplicate_candidate_count": 1
+        },
+        {
+          "case_id": "co-2023-08-17-m6.1",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 55.718,
+          "candidate_count": 4,
+          "false_candidate_count": 3,
+          "duplicate_candidate_count": 0
+        },
+        {
+          "case_id": "co-2023-08-27-m5.7",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 7.185,
+          "candidate_count": 3,
+          "false_candidate_count": 1,
+          "duplicate_candidate_count": 1
+        },
+        {
+          "case_id": "co-2026-08-24-ambient",
+          "kind": "ambient_noise",
+          "detected": false,
+          "detection_latency_seconds": null,
+          "candidate_count": 1,
+          "false_candidate_count": 1,
+          "duplicate_candidate_count": 0
+        }
+      ],
+      "summary": {
+        "historical_cases": 3,
+        "historical_detected": 3,
+        "missed_historical": 0,
+        "noise_false_candidates": 1,
+        "historical_out_of_window_candidates": 4,
+        "duplicate_in_window_candidates": 2,
+        "mean_detection_latency_seconds": 26.585,
+        "engineering_score": 1526.585
+      }
+    },
+    {
+      "profile": {
+        "sta_seconds": 0.5,
+        "lta_seconds": 10.0,
+        "trigger_on": 4.0,
+        "trigger_off": 1.2,
+        "minimum_stations": 4,
+        "coincidence_window_seconds": 10.0
+      },
+      "cases": [
+        {
+          "case_id": "co-2026-08-10-m7.4",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 23.593,
+          "candidate_count": 4,
+          "false_candidate_count": 2,
+          "duplicate_candidate_count": 1
+        },
+        {
+          "case_id": "co-2023-08-17-m6.1",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 58.678,
+          "candidate_count": 5,
+          "false_candidate_count": 4,
+          "duplicate_candidate_count": 0
+        },
+        {
+          "case_id": "co-2023-08-27-m5.7",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 13.635,
+          "candidate_count": 5,
+          "false_candidate_count": 3,
+          "duplicate_candidate_count": 1
+        },
+        {
+          "case_id": "co-2026-08-24-ambient",
+          "kind": "ambient_noise",
+          "detected": false,
+          "detection_latency_seconds": null,
+          "candidate_count": 1,
+          "false_candidate_count": 1,
+          "duplicate_candidate_count": 0
+        }
+      ],
+      "summary": {
+        "historical_cases": 3,
+        "historical_detected": 3,
+        "missed_historical": 0,
+        "noise_false_candidates": 1,
+        "historical_out_of_window_candidates": 9,
+        "duplicate_in_window_candidates": 2,
+        "mean_detection_latency_seconds": 31.969,
+        "engineering_score": 2031.969
+      }
+    },
+    {
+      "profile": {
+        "sta_seconds": 1.0,
+        "lta_seconds": 20.0,
+        "trigger_on": 4.0,
+        "trigger_off": 1.2,
+        "minimum_stations": 3,
+        "coincidence_window_seconds": 15.0
+      },
+      "cases": [
+        {
+          "case_id": "co-2026-08-10-m7.4",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 24.083,
+          "candidate_count": 3,
+          "false_candidate_count": 1,
+          "duplicate_candidate_count": 1
+        },
+        {
+          "case_id": "co-2023-08-17-m6.1",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 11.428,
+          "candidate_count": 5,
+          "false_candidate_count": 3,
+          "duplicate_candidate_count": 1
+        },
+        {
+          "case_id": "co-2023-08-27-m5.7",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 14.505,
+          "candidate_count": 3,
+          "false_candidate_count": 1,
+          "duplicate_candidate_count": 1
+        },
+        {
+          "case_id": "co-2026-08-24-ambient",
+          "kind": "ambient_noise",
+          "detected": false,
+          "detection_latency_seconds": null,
+          "candidate_count": 2,
+          "false_candidate_count": 2,
+          "duplicate_candidate_count": 0
+        }
+      ],
+      "summary": {
+        "historical_cases": 3,
+        "historical_detected": 3,
+        "missed_historical": 0,
+        "noise_false_candidates": 2,
+        "historical_out_of_window_candidates": 5,
+        "duplicate_in_window_candidates": 3,
+        "mean_detection_latency_seconds": 16.672,
+        "engineering_score": 2666.672
+      }
+    },
+    {
+      "profile": {
+        "sta_seconds": 0.8,
+        "lta_seconds": 15.0,
+        "trigger_on": 4.0,
+        "trigger_off": 1.2,
+        "minimum_stations": 3,
+        "coincidence_window_seconds": 10.0
+      },
+      "cases": [
+        {
+          "case_id": "co-2026-08-10-m7.4",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 51.925,
+          "candidate_count": 3,
+          "false_candidate_count": 1,
+          "duplicate_candidate_count": 1
+        },
+        {
+          "case_id": "co-2023-08-17-m6.1",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 56.328,
+          "candidate_count": 4,
+          "false_candidate_count": 3,
+          "duplicate_candidate_count": 0
+        },
+        {
+          "case_id": "co-2023-08-27-m5.7",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 7.175,
+          "candidate_count": 5,
+          "false_candidate_count": 3,
+          "duplicate_candidate_count": 1
+        },
+        {
+          "case_id": "co-2026-08-24-ambient",
+          "kind": "ambient_noise",
+          "detected": false,
+          "detection_latency_seconds": null,
+          "candidate_count": 2,
+          "false_candidate_count": 2,
+          "duplicate_candidate_count": 0
+        }
+      ],
+      "summary": {
+        "historical_cases": 3,
+        "historical_detected": 3,
+        "missed_historical": 0,
+        "noise_false_candidates": 2,
+        "historical_out_of_window_candidates": 7,
+        "duplicate_in_window_candidates": 2,
+        "mean_detection_latency_seconds": 38.476,
+        "engineering_score": 2838.476
+      }
+    },
+    {
+      "profile": {
+        "sta_seconds": 0.8,
+        "lta_seconds": 15.0,
+        "trigger_on": 4.0,
+        "trigger_off": 1.2,
+        "minimum_stations": 3,
+        "coincidence_window_seconds": 15.0
+      },
+      "cases": [
+        {
+          "case_id": "co-2026-08-10-m7.4",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 17.063,
+          "candidate_count": 4,
+          "false_candidate_count": 2,
+          "duplicate_candidate_count": 1
+        },
+        {
+          "case_id": "co-2023-08-17-m6.1",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 11.428,
+          "candidate_count": 5,
+          "false_candidate_count": 3,
+          "duplicate_candidate_count": 1
+        },
+        {
+          "case_id": "co-2023-08-27-m5.7",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 7.175,
+          "candidate_count": 6,
+          "false_candidate_count": 4,
+          "duplicate_candidate_count": 1
+        },
+        {
+          "case_id": "co-2026-08-24-ambient",
+          "kind": "ambient_noise",
+          "detected": false,
+          "detection_latency_seconds": null,
+          "candidate_count": 2,
+          "false_candidate_count": 2,
+          "duplicate_candidate_count": 0
+        }
+      ],
+      "summary": {
+        "historical_cases": 3,
+        "historical_detected": 3,
+        "missed_historical": 0,
+        "noise_false_candidates": 2,
+        "historical_out_of_window_candidates": 9,
+        "duplicate_in_window_candidates": 3,
+        "mean_detection_latency_seconds": 11.889,
+        "engineering_score": 3061.889
+      }
+    },
+    {
+      "profile": {
+        "sta_seconds": 0.5,
+        "lta_seconds": 10.0,
+        "trigger_on": 4.0,
+        "trigger_off": 1.2,
+        "minimum_stations": 4,
+        "coincidence_window_seconds": 15.0
+      },
+      "cases": [
+        {
+          "case_id": "co-2026-08-10-m7.4",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 11.593,
+          "candidate_count": 5,
+          "false_candidate_count": 3,
+          "duplicate_candidate_count": 1
+        },
+        {
+          "case_id": "co-2023-08-17-m6.1",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 58.678,
+          "candidate_count": 6,
+          "false_candidate_count": 4,
+          "duplicate_candidate_count": 1
+        },
+        {
+          "case_id": "co-2023-08-27-m5.7",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 13.635,
+          "candidate_count": 6,
+          "false_candidate_count": 4,
+          "duplicate_candidate_count": 1
+        },
+        {
+          "case_id": "co-2026-08-24-ambient",
+          "kind": "ambient_noise",
+          "detected": false,
+          "detection_latency_seconds": null,
+          "candidate_count": 2,
+          "false_candidate_count": 2,
+          "duplicate_candidate_count": 0
+        }
+      ],
+      "summary": {
+        "historical_cases": 3,
+        "historical_detected": 3,
+        "missed_historical": 0,
+        "noise_false_candidates": 2,
+        "historical_out_of_window_candidates": 11,
+        "duplicate_in_window_candidates": 3,
+        "mean_detection_latency_seconds": 27.969,
+        "engineering_score": 3277.969
+      }
+    },
+    {
+      "profile": {
+        "sta_seconds": 0.5,
+        "lta_seconds": 10.0,
+        "trigger_on": 4.0,
+        "trigger_off": 1.2,
+        "minimum_stations": 3,
+        "coincidence_window_seconds": 10.0
+      },
+      "cases": [
+        {
+          "case_id": "co-2026-08-10-m7.4",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 44.653,
+          "candidate_count": 6,
+          "false_candidate_count": 4,
+          "duplicate_candidate_count": 1
+        },
+        {
+          "case_id": "co-2023-08-17-m6.1",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 18.048,
+          "candidate_count": 7,
+          "false_candidate_count": 5,
+          "duplicate_candidate_count": 1
+        },
+        {
+          "case_id": "co-2023-08-27-m5.7",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 13.635,
+          "candidate_count": 6,
+          "false_candidate_count": 4,
+          "duplicate_candidate_count": 1
+        },
+        {
+          "case_id": "co-2026-08-24-ambient",
+          "kind": "ambient_noise",
+          "detected": false,
+          "detection_latency_seconds": null,
+          "candidate_count": 3,
+          "false_candidate_count": 3,
+          "duplicate_candidate_count": 0
+        }
+      ],
+      "summary": {
+        "historical_cases": 3,
+        "historical_detected": 3,
+        "missed_historical": 0,
+        "noise_false_candidates": 3,
+        "historical_out_of_window_candidates": 13,
+        "duplicate_in_window_candidates": 3,
+        "mean_detection_latency_seconds": 25.445,
+        "engineering_score": 4475.445
+      }
+    },
+    {
+      "profile": {
+        "sta_seconds": 0.5,
+        "lta_seconds": 10.0,
+        "trigger_on": 4.0,
+        "trigger_off": 1.2,
+        "minimum_stations": 3,
+        "coincidence_window_seconds": 15.0
+      },
+      "cases": [
+        {
+          "case_id": "co-2026-08-10-m7.4",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 23.593,
+          "candidate_count": 7,
+          "false_candidate_count": 5,
+          "duplicate_candidate_count": 1
+        },
+        {
+          "case_id": "co-2023-08-17-m6.1",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 18.048,
+          "candidate_count": 7,
+          "false_candidate_count": 5,
+          "duplicate_candidate_count": 1
+        },
+        {
+          "case_id": "co-2023-08-27-m5.7",
+          "kind": "historical_earthquake",
+          "detected": true,
+          "detection_latency_seconds": 55.445,
+          "candidate_count": 7,
+          "false_candidate_count": 5,
+          "duplicate_candidate_count": 1
+        },
+        {
+          "case_id": "co-2026-08-24-ambient",
+          "kind": "ambient_noise",
+          "detected": false,
+          "detection_latency_seconds": null,
+          "candidate_count": 3,
+          "false_candidate_count": 3,
+          "duplicate_candidate_count": 0
+        }
+      ],
+      "summary": {
+        "historical_cases": 3,
+        "historical_detected": 3,
+        "missed_historical": 0,
+        "noise_false_candidates": 3,
+        "historical_out_of_window_candidates": 15,
+        "duplicate_in_window_candidates": 3,
+        "mean_detection_latency_seconds": 32.362,
+        "engineering_score": 4682.362
+      }
+    }
+  ]
+}

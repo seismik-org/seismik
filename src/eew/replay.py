@@ -7,6 +7,7 @@ import hashlib
 import json
 import logging
 from dataclasses import asdict, dataclass
+from datetime import timezone
 from pathlib import Path
 from typing import Any
 
@@ -56,7 +57,7 @@ class MiniSeedReplay:
         self._processors = {
             self._key(item.network, item.station, item.location, item.channel): StationProcessor(
                 item,
-                detection,
+                detection.for_stream(item.network, item.channel),
                 provider_id="replay",
                 country_code=item.country_code or "XX",
                 zone_id=item.zone_id or item.country_code or "XX",
@@ -116,7 +117,10 @@ class MiniSeedReplay:
                 )
             if processor is None:
                 continue
-            trigger = processor.process(trace)
+            trigger = processor.process(
+                trace,
+                received_at=trace.stats.endtime.datetime.replace(tzinfo=timezone.utc),
+            )
             if trigger is None:
                 continue
             triggers.append(

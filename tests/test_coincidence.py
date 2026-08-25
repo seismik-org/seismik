@@ -70,3 +70,42 @@ def test_router_combines_countries_only_inside_same_seismic_zone() -> None:
     assert cross_border is not None
     assert cross_border.country_code is None
     assert cross_border.country_codes == ("CO", "EC")
+
+
+def test_stale_station_does_not_count_silently() -> None:
+    from dataclasses import replace
+
+    detector = CoincidenceDetector(
+        CoincidenceSettings(
+            minimum_stations=2,
+            window_seconds=10,
+            alert_cooldown_seconds=0,
+            max_station_lag_seconds=5,
+        )
+    )
+    assert detector.add(replace(trigger("A", 1), packet_lag_seconds=30)) is None
+    assert detector.add(replace(trigger("B", 2), packet_lag_seconds=1)) is None
+    event = detector.add(replace(trigger("C", 3), packet_lag_seconds=1))
+    assert event is not None
+    assert {item.station_id for item in event.stations} == {"CX.B", "CX.C"}
+
+
+def test_requires_minimum_geographic_aperture() -> None:
+    from dataclasses import replace
+
+    settings = CoincidenceSettings(
+        minimum_stations=2,
+        window_seconds=10,
+        alert_cooldown_seconds=0,
+        minimum_located_stations=2,
+        minimum_network_aperture_km=50,
+    )
+    detector = CoincidenceDetector(settings)
+    near_a = replace(trigger("A", 1), latitude=4.65, longitude=-74.05)
+    near_b = replace(trigger("B", 2), latitude=4.66, longitude=-74.06)
+    assert detector.add(near_a) is None
+    assert detector.add(near_b) is None
+    far = replace(trigger("C", 3), latitude=6.25, longitude=-75.57)
+    event = detector.add(far)
+    assert event is not None
+    assert event.station_count == 3

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 import threading
 import time
 import uuid
@@ -42,11 +43,30 @@ class CoincidenceDetector:
             # Un canal o paquete repetido nunca cuenta dos veces como dos estaciones.
             latest_by_station: dict[str, StationTrigger] = {}
             for item in self._triggers:
+                if (
+                    item.packet_lag_seconds is not None
+                    and item.packet_lag_seconds > self.settings.max_station_lag_seconds
+                ):
+                    continue
                 latest_by_station[item.station_id] = item
             matches = tuple(
                 sorted(latest_by_station.values(), key=lambda item: item.trigger_time)
             )
             if len(matches) < self.settings.minimum_stations:
+                return None
+
+            located = [
+                item
+                for item in matches
+                if item.latitude is not None and item.longitude is not None
+            ]
+            if len(located) < self.settings.minimum_located_stations:
+                return None
+            if (
+                self.settings.minimum_network_aperture_km > 0
+                and _network_aperture_km(located)
+                < self.settings.minimum_network_aperture_km
+            ):
                 return None
 
             now_monotonic = self._monotonic_clock()
@@ -55,10 +75,6 @@ class CoincidenceDetector:
             self._last_alert_monotonic = now_monotonic
 
             countries = tuple(sorted({item.country_code for item in matches}))
-            located = [
-                item for item in matches
-                if item.latitude is not None and item.longitude is not None
-            ]
             return EarthquakeCandidate(
                 event_id=str(uuid.uuid4()),
                 type="earthquake_candidate",
@@ -107,3 +123,30 @@ class ZoneCoincidenceRouter:
 
 # Alias compatible con configuraciones/imports de la versión multi-país anterior.
 CountryCoincidenceRouter = ZoneCoincidenceRouter
+
+
+def _network_aperture_km(stations: list[StationTrigger]) -> float:
+    maximum = 0.0
+    for index, first in enumerate(stations):
+        for second in stations[index + 1 :]:
+            assert first.latitude is not None and first.longitude is not None
+            assert second.latitude is not None and second.longitude is not None
+            maximum = max(
+                maximum,
+                _haversine_km(
+                    first.latitude,
+                    first.longitude,
+                    second.latitude,
+                    second.longitude,
+                ),
+            )
+    return maximum
+
+
+def _haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    radius = 6371.0088
+    p1, p2 = math.radians(lat1), math.radians(lat2)
+    dp = math.radians(lat2 - lat1)
+    dl = math.radians(lon2 - lon1)
+    a = math.sin(dp / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dl / 2) ** 2
+    return radius * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
