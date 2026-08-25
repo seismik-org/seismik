@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 import asyncio
-from dataclasses import dataclass
 import hashlib
+from dataclasses import dataclass
 from typing import Any
 
 import firebase_admin  # type: ignore[import-untyped]
-from firebase_admin import app_check, credentials
 from fastapi import HTTPException, status
+from firebase_admin import app_check, credentials
 
 from api.config import AppSettings
 from api.schemas import DeviceRegistration, Platform

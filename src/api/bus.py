@@ -6,7 +6,6 @@ from typing import Any
 
 from redis.asyncio import Redis
 
-
 PUBLISH_ONCE_LUA = """
 local created = redis.call('SET', KEYS[1], '1', 'EX', ARGV[1], 'NX')
 if not created then

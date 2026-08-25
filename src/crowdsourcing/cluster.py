@@ -11,7 +11,6 @@ from redis.asyncio import Redis
 from api.config import AppSettings
 from api.schemas import ShakePing
 
-
 # KEYS: N ventanas H3, N locks de cooldown y el stream de candidatos.
 # La operacion es atomica en Redis standalone/Sentinel. Redis Cluster no puede
 # ejecutar este script sobre slots distintos; vea la nota de despliegue del README.

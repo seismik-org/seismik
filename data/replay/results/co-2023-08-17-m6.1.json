@@ -1,0 +1,490 @@
+{
+  "schema_version": 1,
+  "clock": "waveform_timestamps",
+  "chunk_seconds": 1.0,
+  "inputs": [
+    {
+      "path": "C:\\Users\\chave\\Documents\\Codex\\2026-08-16\\act-a-como-un-arquitecto-de\\outputs\\seismik\\data\\replay\\fixtures\\co-2023-08-17-m6.1.mseed",
+      "bytes": 487424,
+      "sha256": "224e48c4a61c4d000bb7ede4a20d4578bee340784dfe9ed77164eed22b641764"
+    }
+  ],
+  "chunk_count": 2907,
+  "triggers": [
+    {
+      "station_id": "CM.RUS",
+      "stream_id": "CM.RUS.00.HHZ",
+      "zone_id": "CO",
+      "trigger_time": "2023-08-17T17:02:57.018393Z",
+      "sta_lta_ratio": 4.5282
+    },
+    {
+      "station_id": "CM.LCBC",
+      "stream_id": "CM.LCBC.00.HHZ",
+      "zone_id": "CO",
+      "trigger_time": "2023-08-17T17:02:59.008393Z",
+      "sta_lta_ratio": 3.7058
+    },
+    {
+      "station_id": "CM.CRJC",
+      "stream_id": "CM.CRJC.00.HHZ",
+      "zone_id": "CO",
+      "trigger_time": "2023-08-17T17:03:18.178393Z",
+      "sta_lta_ratio": 3.8595
+    },
+    {
+      "station_id": "CM.ARGC",
+      "stream_id": "CM.ARGC.00.HHZ",
+      "zone_id": "CO",
+      "trigger_time": "2023-08-17T17:03:22.928393Z",
+      "sta_lta_ratio": 5.2333
+    },
+    {
+      "station_id": "CM.CRJC",
+      "stream_id": "CM.CRJC.00.HHZ",
+      "zone_id": "CO",
+      "trigger_time": "2023-08-17T17:03:43.828393Z",
+      "sta_lta_ratio": 4.3128
+    },
+    {
+      "station_id": "CM.HEL",
+      "stream_id": "CM.HEL.00.HHZ",
+      "zone_id": "CO",
+      "trigger_time": "2023-08-17T17:03:50.658393Z",
+      "sta_lta_ratio": 3.9535
+    },
+    {
+      "station_id": "CM.CRJC",
+      "stream_id": "CM.CRJC.00.HHZ",
+      "zone_id": "CO",
+      "trigger_time": "2023-08-17T17:04:09.728393Z",
+      "sta_lta_ratio": 4.5196
+    },
+    {
+      "station_id": "CM.HEL",
+      "stream_id": "CM.HEL.00.HHZ",
+      "zone_id": "CO",
+      "trigger_time": "2023-08-17T17:04:13.298393Z",
+      "sta_lta_ratio": 8.5599
+    },
+    {
+      "station_id": "CM.ARGC",
+      "stream_id": "CM.ARGC.00.HHZ",
+      "zone_id": "CO",
+      "trigger_time": "2023-08-17T17:04:15.348393Z",
+      "sta_lta_ratio": 3.5741
+    },
+    {
+      "station_id": "CM.RUS",
+      "stream_id": "CM.RUS.00.HHZ",
+      "zone_id": "CO",
+      "trigger_time": "2023-08-17T17:04:16.048393Z",
+      "sta_lta_ratio": 5.4572
+    },
+    {
+      "station_id": "CM.CRJC",
+      "stream_id": "CM.CRJC.00.HHZ",
+      "zone_id": "CO",
+      "trigger_time": "2023-08-17T17:04:38.548393Z",
+      "sta_lta_ratio": 5.6991
+    },
+    {
+      "station_id": "CM.ARGC",
+      "stream_id": "CM.ARGC.00.HHZ",
+      "zone_id": "CO",
+      "trigger_time": "2023-08-17T17:04:59.678393Z",
+      "sta_lta_ratio": 4.0941
+    },
+    {
+      "station_id": "CM.RUS",
+      "stream_id": "CM.RUS.00.HHZ",
+      "zone_id": "CO",
+      "trigger_time": "2023-08-17T17:05:00.838393Z",
+      "sta_lta_ratio": 3.8983
+    },
+    {
+      "station_id": "CM.RUS",
+      "stream_id": "CM.RUS.00.HHZ",
+      "zone_id": "CO",
+      "trigger_time": "2023-08-17T17:05:21.038393Z",
+      "sta_lta_ratio": 19.9993
+    },
+    {
+      "station_id": "CM.HEL",
+      "stream_id": "CM.HEL.00.HHZ",
+      "zone_id": "CO",
+      "trigger_time": "2023-08-17T17:05:23.218393Z",
+      "sta_lta_ratio": 4.4364
+    },
+    {
+      "station_id": "CM.ARGC",
+      "stream_id": "CM.ARGC.00.HHZ",
+      "zone_id": "CO",
+      "trigger_time": "2023-08-17T17:05:35.348393Z",
+      "sta_lta_ratio": 3.5491
+    },
+    {
+      "station_id": "CM.RUS",
+      "stream_id": "CM.RUS.00.HHZ",
+      "zone_id": "CO",
+      "trigger_time": "2023-08-17T17:05:41.758393Z",
+      "sta_lta_ratio": 4.3732
+    },
+    {
+      "station_id": "CM.HEL",
+      "stream_id": "CM.HEL.00.HHZ",
+      "zone_id": "CO",
+      "trigger_time": "2023-08-17T17:06:02.388393Z",
+      "sta_lta_ratio": 4.0941
+    },
+    {
+      "station_id": "CM.LCBC",
+      "stream_id": "CM.LCBC.00.HHZ",
+      "zone_id": "CO",
+      "trigger_time": "2023-08-17T17:06:11.228393Z",
+      "sta_lta_ratio": 4.632
+    },
+    {
+      "station_id": "CM.ARGC",
+      "stream_id": "CM.ARGC.00.HHZ",
+      "zone_id": "CO",
+      "trigger_time": "2023-08-17T17:06:14.318393Z",
+      "sta_lta_ratio": 4.3967
+    },
+    {
+      "station_id": "CM.CRJC",
+      "stream_id": "CM.CRJC.00.HHZ",
+      "zone_id": "CO",
+      "trigger_time": "2023-08-17T17:06:29.998393Z",
+      "sta_lta_ratio": 8.2704
+    },
+    {
+      "station_id": "CM.LCBC",
+      "stream_id": "CM.LCBC.00.HHZ",
+      "zone_id": "CO",
+      "trigger_time": "2023-08-17T17:06:33.998393Z",
+      "sta_lta_ratio": 3.6315
+    },
+    {
+      "station_id": "CM.SMAR",
+      "stream_id": "CM.SMAR.00.HHZ",
+      "zone_id": "CO",
+      "trigger_time": "2023-08-17T17:06:34.058393Z",
+      "sta_lta_ratio": 4.9762
+    },
+    {
+      "station_id": "CM.LCBC",
+      "stream_id": "CM.LCBC.00.HHZ",
+      "zone_id": "CO",
+      "trigger_time": "2023-08-17T17:06:58.138393Z",
+      "sta_lta_ratio": 5.0219
+    },
+    {
+      "station_id": "CM.ARGC",
+      "stream_id": "CM.ARGC.00.HHZ",
+      "zone_id": "CO",
+      "trigger_time": "2023-08-17T17:06:59.658393Z",
+      "sta_lta_ratio": 3.5371
+    },
+    {
+      "station_id": "CM.HEL",
+      "stream_id": "CM.HEL.00.HHZ",
+      "zone_id": "CO",
+      "trigger_time": "2023-08-17T17:07:09.258393Z",
+      "sta_lta_ratio": 4.7942
+    },
+    {
+      "station_id": "CM.RUS",
+      "stream_id": "CM.RUS.00.HHZ",
+      "zone_id": "CO",
+      "trigger_time": "2023-08-17T17:07:25.938393Z",
+      "sta_lta_ratio": 4.6132
+    },
+    {
+      "station_id": "CM.ARGC",
+      "stream_id": "CM.ARGC.00.HHZ",
+      "zone_id": "CO",
+      "trigger_time": "2023-08-17T17:07:27.328393Z",
+      "sta_lta_ratio": 7.0295
+    },
+    {
+      "station_id": "CM.LCBC",
+      "stream_id": "CM.LCBC.00.HHZ",
+      "zone_id": "CO",
+      "trigger_time": "2023-08-17T17:07:27.388393Z",
+      "sta_lta_ratio": 4.697
+    },
+    {
+      "station_id": "CM.SMAR",
+      "stream_id": "CM.SMAR.00.HHZ",
+      "zone_id": "CO",
+      "trigger_time": "2023-08-17T17:07:35.308393Z",
+      "sta_lta_ratio": 3.6163
+    },
+    {
+      "station_id": "CM.CRJC",
+      "stream_id": "CM.CRJC.00.HHZ",
+      "zone_id": "CO",
+      "trigger_time": "2023-08-17T17:07:42.708393Z",
+      "sta_lta_ratio": 5.2608
+    },
+    {
+      "station_id": "CM.LCBC",
+      "stream_id": "CM.LCBC.00.HHZ",
+      "zone_id": "CO",
+      "trigger_time": "2023-08-17T17:07:51.828393Z",
+      "sta_lta_ratio": 6.2075
+    },
+    {
+      "station_id": "CM.ARGC",
+      "stream_id": "CM.ARGC.00.HHZ",
+      "zone_id": "CO",
+      "trigger_time": "2023-08-17T17:07:55.108393Z",
+      "sta_lta_ratio": 4.5038
+    },
+    {
+      "station_id": "CM.HEL",
+      "stream_id": "CM.HEL.00.HHZ",
+      "zone_id": "CO",
+      "trigger_time": "2023-08-17T17:08:00.628393Z",
+      "sta_lta_ratio": 3.7702
+    },
+    {
+      "station_id": "CM.SMAR",
+      "stream_id": "CM.SMAR.00.HHZ",
+      "zone_id": "CO",
+      "trigger_time": "2023-08-17T17:08:04.008393Z",
+      "sta_lta_ratio": 4.518
+    },
+    {
+      "station_id": "CM.RUS",
+      "stream_id": "CM.RUS.00.HHZ",
+      "zone_id": "CO",
+      "trigger_time": "2023-08-17T17:08:07.298393Z",
+      "sta_lta_ratio": 4.8145
+    },
+    {
+      "station_id": "CM.LCBC",
+      "stream_id": "CM.LCBC.00.HHZ",
+      "zone_id": "CO",
+      "trigger_time": "2023-08-17T17:08:16.138393Z",
+      "sta_lta_ratio": 4.307
+    },
+    {
+      "station_id": "CM.ARGC",
+      "stream_id": "CM.ARGC.00.HHZ",
+      "zone_id": "CO",
+      "trigger_time": "2023-08-17T17:08:15.858393Z",
+      "sta_lta_ratio": 5.2933
+    },
+    {
+      "station_id": "CM.CRJC",
+      "stream_id": "CM.CRJC.00.HHZ",
+      "zone_id": "CO",
+      "trigger_time": "2023-08-17T17:08:20.438393Z",
+      "sta_lta_ratio": 4.2198
+    },
+    {
+      "station_id": "CM.SMAR",
+      "stream_id": "CM.SMAR.00.HHZ",
+      "zone_id": "CO",
+      "trigger_time": "2023-08-17T17:08:29.198393Z",
+      "sta_lta_ratio": 4.2767
+    },
+    {
+      "station_id": "CM.RUS",
+      "stream_id": "CM.RUS.00.HHZ",
+      "zone_id": "CO",
+      "trigger_time": "2023-08-17T17:08:29.588393Z",
+      "sta_lta_ratio": 3.98
+    },
+    {
+      "station_id": "CM.CRJC",
+      "stream_id": "CM.CRJC.00.HHZ",
+      "zone_id": "CO",
+      "trigger_time": "2023-08-17T17:08:47.728393Z",
+      "sta_lta_ratio": 3.7903
+    },
+    {
+      "station_id": "CM.SMAR",
+      "stream_id": "CM.SMAR.00.HHZ",
+      "zone_id": "CO",
+      "trigger_time": "2023-08-17T17:08:54.028393Z",
+      "sta_lta_ratio": 3.5988
+    },
+    {
+      "station_id": "CM.HEL",
+      "stream_id": "CM.HEL.00.HHZ",
+      "zone_id": "CO",
+      "trigger_time": "2023-08-17T17:09:03.728393Z",
+      "sta_lta_ratio": 5.168
+    },
+    {
+      "station_id": "CM.RUS",
+      "stream_id": "CM.RUS.00.HHZ",
+      "zone_id": "CO",
+      "trigger_time": "2023-08-17T17:09:08.428393Z",
+      "sta_lta_ratio": 3.5312
+    },
+    {
+      "station_id": "CM.CRJC",
+      "stream_id": "CM.CRJC.00.HHZ",
+      "zone_id": "CO",
+      "trigger_time": "2023-08-17T17:09:18.888393Z",
+      "sta_lta_ratio": 3.6521
+    },
+    {
+      "station_id": "CM.LCBC",
+      "stream_id": "CM.LCBC.00.HHZ",
+      "zone_id": "CO",
+      "trigger_time": "2023-08-17T17:09:19.958393Z",
+      "sta_lta_ratio": 4.7973
+    },
+    {
+      "station_id": "CM.SMAR",
+      "stream_id": "CM.SMAR.00.HHZ",
+      "zone_id": "CO",
+      "trigger_time": "2023-08-17T17:09:25.318393Z",
+      "sta_lta_ratio": 6.5717
+    },
+    {
+      "station_id": "CM.HEL",
+      "stream_id": "CM.HEL.00.HHZ",
+      "zone_id": "CO",
+      "trigger_time": "2023-08-17T17:09:39.748393Z",
+      "sta_lta_ratio": 3.7197
+    },
+    {
+      "station_id": "CM.LCBC",
+      "stream_id": "CM.LCBC.00.HHZ",
+      "zone_id": "CO",
+      "trigger_time": "2023-08-17T17:09:48.638393Z",
+      "sta_lta_ratio": 5.1361
+    },
+    {
+      "station_id": "CM.ARGC",
+      "stream_id": "CM.ARGC.00.HHZ",
+      "zone_id": "CO",
+      "trigger_time": "2023-08-17T17:09:49.998393Z",
+      "sta_lta_ratio": 4.1806
+    },
+    {
+      "station_id": "CM.CRJC",
+      "stream_id": "CM.CRJC.00.HHZ",
+      "zone_id": "CO",
+      "trigger_time": "2023-08-17T17:09:55.818393Z",
+      "sta_lta_ratio": 4.9575
+    },
+    {
+      "station_id": "CM.RUS",
+      "stream_id": "CM.RUS.00.HHZ",
+      "zone_id": "CO",
+      "trigger_time": "2023-08-17T17:10:01.738393Z",
+      "sta_lta_ratio": 4.036
+    },
+    {
+      "station_id": "CM.HEL",
+      "stream_id": "CM.HEL.00.HHZ",
+      "zone_id": "CO",
+      "trigger_time": "2023-08-17T17:10:08.528393Z",
+      "sta_lta_ratio": 4.1728
+    },
+    {
+      "station_id": "CM.SMAR",
+      "stream_id": "CM.SMAR.00.HHZ",
+      "zone_id": "CO",
+      "trigger_time": "2023-08-17T17:10:20.648393Z",
+      "sta_lta_ratio": 3.7671
+    },
+    {
+      "station_id": "CM.CRJC",
+      "stream_id": "CM.CRJC.00.HHZ",
+      "zone_id": "CO",
+      "trigger_time": "2023-08-17T17:10:34.978393Z",
+      "sta_lta_ratio": 3.9751
+    },
+    {
+      "station_id": "CM.RUS",
+      "stream_id": "CM.RUS.00.HHZ",
+      "zone_id": "CO",
+      "trigger_time": "2023-08-17T17:10:38.138393Z",
+      "sta_lta_ratio": 5.0486
+    },
+    {
+      "station_id": "CM.ARGC",
+      "stream_id": "CM.ARGC.00.HHZ",
+      "zone_id": "CO",
+      "trigger_time": "2023-08-17T17:10:41.948393Z",
+      "sta_lta_ratio": 3.6928
+    },
+    {
+      "station_id": "CM.SMAR",
+      "stream_id": "CM.SMAR.00.HHZ",
+      "zone_id": "CO",
+      "trigger_time": "2023-08-17T17:10:46.888393Z",
+      "sta_lta_ratio": 3.5593
+    }
+  ],
+  "candidates": [
+    {
+      "replay_event_id": "eed920e50f02f65983efa076",
+      "zone_id": "CO",
+      "detected_at": "2023-08-17T17:04:15.348393Z",
+      "stations": [
+        "CM.ARGC",
+        "CM.CRJC",
+        "CM.HEL"
+      ]
+    },
+    {
+      "replay_event_id": "d8abf7fe4fd66ff440b25f60",
+      "zone_id": "CO",
+      "detected_at": "2023-08-17T17:05:35.348393Z",
+      "stations": [
+        "CM.ARGC",
+        "CM.HEL",
+        "CM.RUS"
+      ]
+    },
+    {
+      "replay_event_id": "0ff52e41d352f7816f67c337",
+      "zone_id": "CO",
+      "detected_at": "2023-08-17T17:07:09.258393Z",
+      "stations": [
+        "CM.ARGC",
+        "CM.HEL",
+        "CM.LCBC"
+      ]
+    },
+    {
+      "replay_event_id": "fbf4830188f081bca56a3570",
+      "zone_id": "CO",
+      "detected_at": "2023-08-17T17:08:16.138393Z",
+      "stations": [
+        "CM.LCBC",
+        "CM.RUS",
+        "CM.SMAR"
+      ]
+    },
+    {
+      "replay_event_id": "d1871d95c064d5950d7015f0",
+      "zone_id": "CO",
+      "detected_at": "2023-08-17T17:09:19.958393Z",
+      "stations": [
+        "CM.CRJC",
+        "CM.LCBC",
+        "CM.RUS"
+      ]
+    },
+    {
+      "replay_event_id": "40aa802f8646ecfcf78c7eb6",
+      "zone_id": "CO",
+      "detected_at": "2023-08-17T17:10:41.948393Z",
+      "stations": [
+        "CM.ARGC",
+        "CM.CRJC",
+        "CM.RUS"
+      ]
+    }
+  ]
+}

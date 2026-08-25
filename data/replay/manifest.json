@@ -1,0 +1,244 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-08-25T01:52:04.930Z",
+  "waveform_sources": [
+    "https://service.earthscope.org/fdsnws/dataselect/1/query",
+    "https://sismo.sgc.gov.co:8443/fdsnws/dataselect/1/query"
+  ],
+  "event_catalog_source": "https://earthquake.usgs.gov/fdsnws/event/1/",
+  "cases": [
+    {
+      "id": "co-2026-08-10-m7.4",
+      "kind": "historical_earthquake",
+      "origin_time": "2026-08-10T12:34:28.125Z",
+      "magnitude": 7.4,
+      "place": "5 km S of San Jose del Palmar, Colombia",
+      "official_event_id": "us6000tjl2",
+      "official_url": "https://earthquake.usgs.gov/earthquakes/eventpage/us6000tjl2",
+      "window_start": "2026-08-10T12:32:28.125Z",
+      "window_end": "2026-08-10T12:40:28.125Z",
+      "data_provider": "EarthScope FDSN with SGC FDSN fallback",
+      "network_operator": "Servicio Geologico Colombiano (network CM)",
+      "station_results": [
+        {
+          "station": "ARGC",
+          "status": 200,
+          "traces": 1,
+          "source": "https://service.earthscope.org/fdsnws/dataselect/1/query"
+        },
+        {
+          "station": "CRJC",
+          "status": 200,
+          "traces": 1,
+          "source": "https://service.earthscope.org/fdsnws/dataselect/1/query"
+        },
+        {
+          "station": "HEL",
+          "status": 200,
+          "traces": 1,
+          "source": "https://service.earthscope.org/fdsnws/dataselect/1/query"
+        },
+        {
+          "station": "LCBC",
+          "status": 200,
+          "traces": 1,
+          "source": "https://service.earthscope.org/fdsnws/dataselect/1/query"
+        },
+        {
+          "station": "RUS",
+          "status": 200,
+          "traces": 1,
+          "source": "https://service.earthscope.org/fdsnws/dataselect/1/query"
+        },
+        {
+          "station": "SMAR",
+          "status": 200,
+          "traces": 1,
+          "source": "https://service.earthscope.org/fdsnws/dataselect/1/query"
+        }
+      ],
+      "waveforms": [
+        {
+          "path": "fixtures/co-2026-08-10-m7.4.mseed",
+          "bytes": 618496,
+          "sha256": "8247b06fb1a103f83a43869e3683ca9540668b7236f36611e10e840a28c27a5c"
+        }
+      ]
+    },
+    {
+      "id": "co-2023-08-17-m6.1",
+      "kind": "historical_earthquake",
+      "origin_time": "2023-08-17T17:04:48.770Z",
+      "magnitude": 6.1,
+      "place": "10 km E of El Calvario, Colombia",
+      "official_event_id": "us7000kp2i",
+      "official_url": "https://earthquake.usgs.gov/earthquakes/eventpage/us7000kp2i",
+      "window_start": "2023-08-17T17:02:48.770Z",
+      "window_end": "2023-08-17T17:10:48.770Z",
+      "data_provider": "EarthScope FDSN with SGC FDSN fallback",
+      "network_operator": "Servicio Geologico Colombiano (network CM)",
+      "station_results": [
+        {
+          "station": "ARGC",
+          "status": 200,
+          "traces": 1,
+          "source": "https://sismo.sgc.gov.co:8443/fdsnws/dataselect/1/query"
+        },
+        {
+          "station": "CRJC",
+          "status": 200,
+          "traces": 1,
+          "source": "https://sismo.sgc.gov.co:8443/fdsnws/dataselect/1/query"
+        },
+        {
+          "station": "HEL",
+          "status": 200,
+          "traces": 1,
+          "source": "https://sismo.sgc.gov.co:8443/fdsnws/dataselect/1/query"
+        },
+        {
+          "station": "LCBC",
+          "status": 200,
+          "traces": 1,
+          "source": "https://sismo.sgc.gov.co:8443/fdsnws/dataselect/1/query"
+        },
+        {
+          "station": "RUS",
+          "status": 200,
+          "traces": 1,
+          "source": "https://sismo.sgc.gov.co:8443/fdsnws/dataselect/1/query"
+        },
+        {
+          "station": "SMAR",
+          "status": 200,
+          "traces": 1,
+          "source": "https://sismo.sgc.gov.co:8443/fdsnws/dataselect/1/query"
+        }
+      ],
+      "waveforms": [
+        {
+          "path": "fixtures/co-2023-08-17-m6.1.mseed",
+          "bytes": 487424,
+          "sha256": "224e48c4a61c4d000bb7ede4a20d4578bee340784dfe9ed77164eed22b641764"
+        }
+      ]
+    },
+    {
+      "id": "co-2023-08-27-m5.7",
+      "kind": "historical_earthquake",
+      "origin_time": "2023-08-27T21:45:00.683Z",
+      "magnitude": 5.7,
+      "place": "5 km E of El Canton de San Pablo, Colombia",
+      "official_event_id": "us7000kre0",
+      "official_url": "https://earthquake.usgs.gov/earthquakes/eventpage/us7000kre0",
+      "window_start": "2023-08-27T21:43:00.683Z",
+      "window_end": "2023-08-27T21:51:00.683Z",
+      "data_provider": "EarthScope FDSN with SGC FDSN fallback",
+      "network_operator": "Servicio Geologico Colombiano (network CM)",
+      "station_results": [
+        {
+          "station": "ARGC",
+          "status": 200,
+          "traces": 1,
+          "source": "https://sismo.sgc.gov.co:8443/fdsnws/dataselect/1/query"
+        },
+        {
+          "station": "CRJC",
+          "status": 200,
+          "traces": 1,
+          "source": "https://sismo.sgc.gov.co:8443/fdsnws/dataselect/1/query"
+        },
+        {
+          "station": "HEL",
+          "status": 200,
+          "traces": 1,
+          "source": "https://sismo.sgc.gov.co:8443/fdsnws/dataselect/1/query"
+        },
+        {
+          "station": "LCBC",
+          "status": 200,
+          "traces": 1,
+          "source": "https://sismo.sgc.gov.co:8443/fdsnws/dataselect/1/query"
+        },
+        {
+          "station": "RUS",
+          "status": 200,
+          "traces": 1,
+          "source": "https://sismo.sgc.gov.co:8443/fdsnws/dataselect/1/query"
+        },
+        {
+          "station": "SMAR",
+          "status": 200,
+          "traces": 1,
+          "source": "https://sismo.sgc.gov.co:8443/fdsnws/dataselect/1/query"
+        }
+      ],
+      "waveforms": [
+        {
+          "path": "fixtures/co-2023-08-27-m5.7.mseed",
+          "bytes": 430080,
+          "sha256": "5117e1023c75c0783db6f85cd6ba83aafa26f33543b0ad13bfc1c438c284438d"
+        }
+      ]
+    },
+    {
+      "id": "co-2026-08-24-ambient",
+      "kind": "ambient_noise",
+      "origin_time": "2026-08-24T12:00:00.000Z",
+      "magnitude": null,
+      "place": "Colombian CM network ambient interval",
+      "official_event_id": null,
+      "official_url": null,
+      "window_start": "2026-08-24T12:00:00.000Z",
+      "window_end": "2026-08-24T12:05:00.000Z",
+      "data_provider": "EarthScope FDSN with SGC FDSN fallback",
+      "network_operator": "Servicio Geologico Colombiano (network CM)",
+      "station_results": [
+        {
+          "station": "ARGC",
+          "status": 200,
+          "traces": 1,
+          "source": "https://service.earthscope.org/fdsnws/dataselect/1/query"
+        },
+        {
+          "station": "CRJC",
+          "status": 200,
+          "traces": 1,
+          "source": "https://service.earthscope.org/fdsnws/dataselect/1/query"
+        },
+        {
+          "station": "HEL",
+          "status": 200,
+          "traces": 1,
+          "source": "https://service.earthscope.org/fdsnws/dataselect/1/query"
+        },
+        {
+          "station": "LCBC",
+          "status": 200,
+          "traces": 1,
+          "source": "https://service.earthscope.org/fdsnws/dataselect/1/query"
+        },
+        {
+          "station": "RUS",
+          "status": 200,
+          "traces": 1,
+          "source": "https://service.earthscope.org/fdsnws/dataselect/1/query"
+        },
+        {
+          "station": "SMAR",
+          "status": 200,
+          "traces": 1,
+          "source": "https://service.earthscope.org/fdsnws/dataselect/1/query"
+        }
+      ],
+      "waveforms": [
+        {
+          "path": "fixtures/co-2026-08-24-ambient.mseed",
+          "bytes": 221184,
+          "sha256": "f275c0d952f302ca2191d95957b996e99c323efedff2448ba9520855fa973163"
+        }
+      ]
+    }
+  ],
+  "license_note": "Waveform and catalog data retain their source terms and attribution; the repository Apache-2.0 license does not relicense third-party data."
+}

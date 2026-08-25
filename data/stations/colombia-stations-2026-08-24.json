@@ -1,0 +1,188 @@
+{
+  "schema_version": 1,
+  "observed_at": "2026-08-25T01:54:00.871Z",
+  "purpose": "Sprint 1 station/channel and acquisition-lag evidence",
+  "network": "CM",
+  "provider": "EarthScope",
+  "seedlink_server": "rtserve.earthscope.org:18000",
+  "archive_probe_delay_seconds": 120,
+  "sources": {
+    "station_metadata": "https://service.earthscope.org/fdsnws/station/1/query",
+    "recent_waveforms": "https://service.earthscope.org/fdsnws/dataselect/1/query",
+    "seedlink_documentation": "https://docs.earthscope.org/service/seedlink"
+  },
+  "transport_probes": [
+    {
+      "port": 18000,
+      "reachable": true,
+      "latency_ms": 214.1
+    },
+    {
+      "port": 18500,
+      "reachable": true,
+      "latency_ms": 123.4
+    },
+    {
+      "port": 443,
+      "reachable": true,
+      "latency_ms": 132.9
+    }
+  ],
+  "stations": [
+    {
+      "network": "CM",
+      "station": "ARGC",
+      "location": "00",
+      "channel": "HHZ",
+      "latitude": 9.857669,
+      "longitude": -74.245833,
+      "elevation_m": 187.0,
+      "sample_rate_hz": 100.0,
+      "epoch_start": "2015-08-26T23:30:00.0000",
+      "epoch_end": null,
+      "metadata_active": true,
+      "archive_probe": {
+        "http_status": 200,
+        "requested_start": "2026-08-25T01:47:00.871Z",
+        "requested_end": "2026-08-25T01:52:00.871Z",
+        "bytes": 31744,
+        "has_recent_data": true,
+        "trace_count": 1,
+        "latest_sample_time": "2026-08-25T01:52:00.868Z",
+        "archive_freshness_seconds": 120.003,
+        "latest_vs_requested_end_seconds": 0.003,
+        "sha256": "51feb84f27727b6c381bf14a09ecae4b158f70b2a15ba6f33af65f4e65e4bc48"
+      }
+    },
+    {
+      "network": "CM",
+      "station": "CRJC",
+      "location": "00",
+      "channel": "HHZ",
+      "latitude": 11.020012,
+      "longitude": -72.8816,
+      "elevation_m": 827.0,
+      "sample_rate_hz": 100.0,
+      "epoch_start": "2019-03-06T15:53:00.0000",
+      "epoch_end": null,
+      "metadata_active": true,
+      "archive_probe": {
+        "http_status": 200,
+        "requested_start": "2026-08-25T01:47:00.871Z",
+        "requested_end": "2026-08-25T01:52:00.871Z",
+        "bytes": 36352,
+        "has_recent_data": true,
+        "trace_count": 1,
+        "latest_sample_time": "2026-08-25T01:52:00.868Z",
+        "archive_freshness_seconds": 120.003,
+        "latest_vs_requested_end_seconds": 0.003,
+        "sha256": "c90469357007ed4eb43dc6c6651254a56ba40e8728584d3f51050d298c0bb97a"
+      }
+    },
+    {
+      "network": "CM",
+      "station": "HEL",
+      "location": "00",
+      "channel": "HHZ",
+      "latitude": 6.1909,
+      "longitude": -75.529,
+      "elevation_m": 2857.0,
+      "sample_rate_hz": 100.0,
+      "epoch_start": "2011-06-18T18:40:00.0000",
+      "epoch_end": null,
+      "metadata_active": true,
+      "archive_probe": {
+        "http_status": 200,
+        "requested_start": "2026-08-25T01:47:00.871Z",
+        "requested_end": "2026-08-25T01:52:00.871Z",
+        "bytes": 29696,
+        "has_recent_data": true,
+        "trace_count": 1,
+        "latest_sample_time": "2026-08-25T01:52:00.868Z",
+        "archive_freshness_seconds": 120.003,
+        "latest_vs_requested_end_seconds": 0.003,
+        "sha256": "29bb3afd55cf02420805e79514965c6abd9c4a01afc3179914ceebb582d4c823"
+      }
+    },
+    {
+      "network": "CM",
+      "station": "LCBC",
+      "location": "00",
+      "channel": "HHZ",
+      "latitude": 8.857167,
+      "longitude": -76.367667,
+      "elevation_m": 75.0,
+      "sample_rate_hz": 100.0,
+      "epoch_start": "2017-07-22T00:00:00.0000",
+      "epoch_end": null,
+      "metadata_active": true,
+      "archive_probe": {
+        "http_status": 200,
+        "requested_start": "2026-08-25T01:47:00.871Z",
+        "requested_end": "2026-08-25T01:52:00.871Z",
+        "bytes": 33280,
+        "has_recent_data": true,
+        "trace_count": 1,
+        "latest_sample_time": "2026-08-25T01:52:00.868Z",
+        "archive_freshness_seconds": 120.003,
+        "latest_vs_requested_end_seconds": 0.003,
+        "sha256": "3abe8370fd20c8101a50a2bcc915ab92ae54ae3f37fd09cb9a392de87c2fbc12"
+      }
+    },
+    {
+      "network": "CM",
+      "station": "RUS",
+      "location": "00",
+      "channel": "HHZ",
+      "latitude": 5.8925,
+      "longitude": -73.083167,
+      "elevation_m": 3697.0,
+      "sample_rate_hz": 100.0,
+      "epoch_start": "2014-03-17T00:00:00.0000",
+      "epoch_end": null,
+      "metadata_active": true,
+      "archive_probe": {
+        "http_status": 200,
+        "requested_start": "2026-08-25T01:47:00.871Z",
+        "requested_end": "2026-08-25T01:52:00.871Z",
+        "bytes": 31744,
+        "has_recent_data": true,
+        "trace_count": 1,
+        "latest_sample_time": "2026-08-25T01:52:00.868Z",
+        "archive_freshness_seconds": 120.003,
+        "latest_vs_requested_end_seconds": 0.003,
+        "sha256": "8739bbceb6520ac18f16c63d761203969816fc380eca932ed1cb6dcf95d457c6"
+      }
+    },
+    {
+      "network": "CM",
+      "station": "SMAR",
+      "location": "00",
+      "channel": "HHZ",
+      "latitude": 11.163833,
+      "longitude": -74.2245,
+      "elevation_m": 122.0,
+      "sample_rate_hz": 100.0,
+      "epoch_start": "2017-07-05T00:00:00.0000",
+      "epoch_end": null,
+      "metadata_active": true,
+      "archive_probe": {
+        "http_status": 200,
+        "requested_start": "2026-08-25T01:47:00.871Z",
+        "requested_end": "2026-08-25T01:52:00.871Z",
+        "bytes": 38912,
+        "has_recent_data": true,
+        "trace_count": 1,
+        "latest_sample_time": "2026-08-25T01:52:00.868Z",
+        "archive_freshness_seconds": 120.003,
+        "latest_vs_requested_end_seconds": 0.003,
+        "sha256": "3f7475fe4d631ae592602d2ad29ed1e125c5cd30b4f6ff8932da708742d8abbf"
+      }
+    }
+  ],
+  "limitations": [
+    "FDSN recent-data presence verifies archive arrival, not SeedLink packet latency.",
+    "TCP reachability is a point-in-time probe and does not guarantee continuity.",
+    "Station selection must be revalidated before every field or public pilot."
+  ]
+}

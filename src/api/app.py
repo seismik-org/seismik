@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from contextlib import asynccontextmanager
 from typing import AsyncIterator
-import uvicorn
 
+import uvicorn
 from fastapi import FastAPI
 from redis.asyncio import Redis
 

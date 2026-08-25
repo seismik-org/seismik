@@ -11,8 +11,8 @@ from pathlib import Path
 from typing import Any
 from uuid import NAMESPACE_URL, UUID, uuid5
 
-from aioapns import APNs, NotificationRequest, PushType
 import firebase_admin  # type: ignore[import-untyped]
+from aioapns import APNs, NotificationRequest, PushType
 from firebase_admin import credentials, messaging
 
 from api.config import AppSettings

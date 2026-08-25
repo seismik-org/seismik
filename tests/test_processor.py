@@ -53,4 +53,46 @@ def test_large_gap_resets_buffer_without_trigger() -> None:
     start = UTCDateTime("2026-01-01T00:00:00Z")
     assert processor.process(make_trace(np.zeros(1000), start)) is None
     assert processor.process(make_trace(np.ones(100), start + 20)) is None
+    assert processor.stats.reset_count == 1
+    assert processor.stats.last_reset_reason == "large_gap"
 
+
+def test_small_gap_is_interpolated_and_audited() -> None:
+    settings = DetectionSettings(
+        buffer_seconds=30,
+        sta_seconds=0.2,
+        lta_seconds=5,
+        trigger_on=3,
+        trigger_off=1,
+        filter_enabled=False,
+        max_interpolated_gap_seconds=0.05,
+    )
+    processor = StationProcessor(StationSubscription("XX", "TEST", "HHZ"), settings)
+    start = UTCDateTime("2026-01-01T00:00:00Z")
+    first = make_trace(np.zeros(600), start)
+    assert processor.process(first) is None
+    second_start = first.stats.endtime + 0.03
+    assert processor.process(make_trace(np.zeros(100), second_start)) is None
+    assert processor.stats.interpolated_gap_samples == 2
+    assert processor.stats.reset_count == 0
+
+
+def test_non_finite_samples_do_not_compress_timeline() -> None:
+    settings = DetectionSettings(
+        buffer_seconds=30,
+        sta_seconds=0.2,
+        lta_seconds=5,
+        trigger_on=3,
+        trigger_off=1,
+        filter_enabled=False,
+        max_interpolated_gap_seconds=0.01,
+    )
+    processor = StationProcessor(StationSubscription("XX", "TEST", "HHZ"), settings)
+    start = UTCDateTime("2026-01-01T00:00:00Z")
+    contaminated = np.concatenate((np.zeros(300), np.full(5, np.nan), np.zeros(300)))
+    assert processor.process(make_trace(np.zeros(600), start)) is None
+    assert processor.process(make_trace(contaminated, start + 6)) is None
+    stats = processor.stats
+    assert stats.non_finite_samples == 5
+    assert stats.reset_count == 1
+    assert stats.last_reset_reason == "non_finite_run"

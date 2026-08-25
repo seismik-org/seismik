@@ -8,8 +8,8 @@ from pathlib import Path
 
 from eew.alerts import AlertDispatcher
 from eew.config import Settings
-from eew.seedlink import SeedLinkDetectionService
 from eew.official import OfficialReportService
+from eew.seedlink import SeedLinkDetectionService
 
 
 def parse_args() -> argparse.Namespace:

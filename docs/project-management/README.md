@@ -1,5 +1,9 @@
 # Gestión del proyecto Seismik
 
+## Evidencia de sprints
+
+- [Cierre técnico Sprint 1 — 2026-08-24](SPRINT_1_CIERRE_2026-08-24.md)
+
 Este directorio es la fuente verificable compartida para el gobierno y seguimiento
 del proyecto. Los archivos Markdown permiten revisar cambios línea por línea en Git;
 las copias `.docx` son los documentos formales para reuniones y aprobación.
@@ -33,4 +37,3 @@ las copias `.docx` son los documentos formales para reuniones y aprobación.
 3. Regenerar Word con `tools/generate_project_docs.ps1`.
 4. Ejecutar validaciones y revisar que no existan secretos.
 5. Registrar el cambio en Git.
-

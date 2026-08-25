@@ -1,8 +1,7 @@
-from pathlib import Path
 import json
+from pathlib import Path
 
 from eew.config import Settings
-
 
 PROJECT = Path(__file__).resolve().parents[1]
 

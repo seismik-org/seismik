@@ -1,14 +1,19 @@
 param(
-    [string]$ProjectRoot = (Split-Path -Parent $PSScriptRoot)
+    [string]$ProjectRoot = (Split-Path -Parent $PSScriptRoot),
+    [ValidateSet('All', 'Master', 'Plan', 'Control')]
+    [string]$Document = 'All'
 )
 
 $ErrorActionPreference = 'Stop'
 $docsDir = Join-Path $ProjectRoot 'docs\project-management'
 $documents = @(
-    @{ Source = 'SEISMIK_DOCUMENTO_MAESTRO_v0.1.md'; Target = 'SEISMIK_DOCUMENTO_MAESTRO_v0.1.docx'; ShortTitle = 'Documento Maestro'; Version = '0.1' },
-    @{ Source = 'SEISMIK_PLAN_SCRUM_MVP_v0.1.md'; Target = 'SEISMIK_PLAN_SCRUM_MVP_v0.1.docx'; ShortTitle = 'Plan Scrum MVP'; Version = '0.1' },
-    @{ Source = 'SEISMIK_CONTROL_AVANCE_v0.1.md'; Target = 'SEISMIK_CONTROL_AVANCE_v0.1.docx'; ShortTitle = 'Control de Avance'; Version = '0.1' }
+    @{ Key = 'Master'; Source = 'SEISMIK_DOCUMENTO_MAESTRO_v0.1.md'; Target = 'SEISMIK_DOCUMENTO_MAESTRO_v0.1.docx'; ShortTitle = 'Documento Maestro'; Version = '0.1' },
+    @{ Key = 'Plan'; Source = 'SEISMIK_PLAN_SCRUM_MVP_v0.1.md'; Target = 'SEISMIK_PLAN_SCRUM_MVP_v0.1.docx'; ShortTitle = 'Plan Scrum MVP'; Version = '0.1' },
+    @{ Key = 'Control'; Source = 'SEISMIK_CONTROL_AVANCE_v0.1.md'; Target = 'SEISMIK_CONTROL_AVANCE_v0.1.docx'; ShortTitle = 'Control de Avance'; Version = '0.1.1' }
 )
+if ($Document -ne 'All') {
+    $documents = @($documents | Where-Object { $_.Key -eq $Document })
+}
 
 function Clean-MarkdownText {
     param([string]$Text)
@@ -206,4 +211,3 @@ try {
     [GC]::Collect()
     [GC]::WaitForPendingFinalizers()
 }
-

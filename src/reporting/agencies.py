@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from reporting.schemas import AgencyRoute
 
-
 COUNTRY_ROUTES: dict[str, AgencyRoute] = {
     "CO": AgencyRoute(
         agency_id="sgc",

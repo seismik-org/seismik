@@ -28,6 +28,7 @@ dependencies = [
 seismik-detector = "eew.main:main"
 seismik-api = "api.app:main"
 seismik-dispatcher = "dispatcher.consumer:main"
+seismik-replay = "eew.replay:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
@@ -37,6 +38,16 @@ testpaths = ["tests"]
 pythonpath = ["src"]
 addopts = "-q"
 asyncio_mode = "auto"
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+# Reglas de alta senal para el baseline: errores Python, imports y sintaxis.
+# Reglas de modernizacion mas amplias se incorporaran sin mezclar el Sprint 1
+# con una reescritura mecanica de todo el backend.
+select = ["E4", "E7", "E9", "F", "I"]
 
 [[tool.mypy.overrides]]
 module = ["obspy", "obspy.*", "h3", "h3.*", "firebase_admin", "firebase_admin.*"]

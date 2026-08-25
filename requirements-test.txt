@@ -3,3 +3,5 @@ httpx>=0.28,<0.29
 pytest>=8.2,<9
 pytest-asyncio>=1.2,<2
 fakeredis>=2.37,<3
+ruff>=0.12,<1
+mypy>=1.15,<2

@@ -1,9 +1,9 @@
 from __future__ import annotations
 
+from api.security import verify_signature
 from eew.alerts import AlertDispatcher
 from eew.config import AlertSettings
 from eew.models import EarthquakeCandidate, StationTrigger
-from api.security import verify_signature
 
 
 class FakeResponse:

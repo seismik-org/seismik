@@ -30,6 +30,8 @@ class SeedLinkSettings:
     providers: tuple["SeedLinkProvider", ...]
     reconnect_initial_seconds: float = 2.0
     reconnect_max_seconds: float = 60.0
+    reconnect_jitter_fraction: float = 0.2
+    network_timeout_seconds: float = 30.0
 
 
 @dataclass(frozen=True)
@@ -180,6 +182,8 @@ class Settings:
             providers=tuple(filtered_providers),
             reconnect_initial_seconds=seedlink_input.get("reconnect_initial_seconds", 2.0),
             reconnect_max_seconds=seedlink_input.get("reconnect_max_seconds", 60.0),
+            reconnect_jitter_fraction=seedlink_input.get("reconnect_jitter_fraction", 0.2),
+            network_timeout_seconds=seedlink_input.get("network_timeout_seconds", 30.0),
         )
 
         alert_raw = raw.get("alert", {})
@@ -219,6 +223,14 @@ class Settings:
         enabled_providers = tuple(provider for provider in self.seedlink.providers if provider.enabled)
         if not enabled_providers:
             raise ValueError("Debe configurarse al menos un proveedor SeedLink habilitado")
+        if self.seedlink.reconnect_initial_seconds <= 0:
+            raise ValueError("reconnect_initial_seconds debe ser positivo")
+        if self.seedlink.reconnect_max_seconds < self.seedlink.reconnect_initial_seconds:
+            raise ValueError("reconnect_max_seconds debe ser mayor o igual al inicial")
+        if not 0 <= self.seedlink.reconnect_jitter_fraction <= 1:
+            raise ValueError("reconnect_jitter_fraction debe estar entre 0 y 1")
+        if self.seedlink.network_timeout_seconds <= 0:
+            raise ValueError("network_timeout_seconds debe ser positivo")
         provider_ids = [provider.id for provider in self.seedlink.providers]
         if len(provider_ids) != len(set(provider_ids)):
             raise ValueError("Los id de proveedor deben ser únicos")

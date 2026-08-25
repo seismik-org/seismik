@@ -2,6 +2,8 @@
   "seedlink": {
     "reconnect_initial_seconds": 2.0,
     "reconnect_max_seconds": 60.0,
+    "reconnect_jitter_fraction": 0.2,
+    "network_timeout_seconds": 30.0,
     "providers": [
       {
         "id": "earthscope_colombia",
@@ -10,10 +12,12 @@
         "enabled": true,
         "required": true,
         "stations": [
-          {"network": "CM", "station": "ARGC", "location": "00", "channel": "HHZ", "selector": "00HHZ", "latitude": 9.857669, "longitude": -74.245833},
-          {"network": "CM", "station": "HEL", "location": "00", "channel": "HHZ", "selector": "00HHZ", "latitude": 6.1909, "longitude": -75.529},
-          {"network": "CM", "station": "PRA", "location": "00", "channel": "HHZ", "selector": "00HHZ", "latitude": 3.713833, "longitude": -74.886167},
-          {"network": "CM", "station": "RUS", "location": "00", "channel": "HHZ", "selector": "00HHZ", "latitude": 5.8925, "longitude": -73.083167}
+          {"network": "CM", "station": "ARGC", "location": "00", "channel": "HHZ", "selector": "HHZ", "latitude": 9.857669, "longitude": -74.245833},
+          {"network": "CM", "station": "CRJC", "location": "00", "channel": "HHZ", "selector": "HHZ", "latitude": 11.020012, "longitude": -72.8816},
+          {"network": "CM", "station": "HEL", "location": "00", "channel": "HHZ", "selector": "HHZ", "latitude": 6.1909, "longitude": -75.529},
+          {"network": "CM", "station": "LCBC", "location": "00", "channel": "HHZ", "selector": "HHZ", "latitude": 8.857167, "longitude": -76.367667},
+          {"network": "CM", "station": "RUS", "location": "00", "channel": "HHZ", "selector": "HHZ", "latitude": 5.8925, "longitude": -73.083167},
+          {"network": "CM", "station": "SMAR", "location": "00", "channel": "HHZ", "selector": "HHZ", "latitude": 11.163833, "longitude": -74.2245}
         ]
       },
       {

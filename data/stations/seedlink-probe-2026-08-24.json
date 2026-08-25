@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "server": "rtserve.earthscope.org:18000",
+  "selection": "CM_ARGC_HHZ",
+  "received": true,
+  "received_at": "2026-08-25T01:58:14.843Z",
+  "stream_id": "CM.ARGC.00.HHZ",
+  "samples": 464,
+  "sample_rate_hz": 100.0,
+  "packet_start": "2026-08-25T01:58:06.218Z",
+  "packet_end": "2026-08-25T01:58:10.848Z",
+  "observed_packet_lag_seconds": 3.995,
+  "termination_pending": true,
+  "completed_at": "2026-08-25T01:58:17.531Z",
+  "limitation": "Single-packet point-in-time probe; not an uptime guarantee."
+}

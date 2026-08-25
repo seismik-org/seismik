@@ -4,6 +4,7 @@ import threading
 import time
 import uuid
 from collections import deque
+from collections.abc import Callable
 
 from obspy import UTCDateTime  # type: ignore[import-untyped]
 
@@ -14,8 +15,13 @@ from eew.models import EarthquakeCandidate, StationTrigger, utc_now_iso
 class CoincidenceDetector:
     """Confirma un candidato cuando N estaciones disparan dentro de una ventana."""
 
-    def __init__(self, settings: CoincidenceSettings):
+    def __init__(
+        self,
+        settings: CoincidenceSettings,
+        monotonic_clock: Callable[[], float] = time.monotonic,
+    ):
         self.settings = settings
+        self._monotonic_clock = monotonic_clock
         self._triggers: deque[StationTrigger] = deque()
         self._last_alert_monotonic = float("-inf")
         self._lock = threading.Lock()
@@ -43,7 +49,7 @@ class CoincidenceDetector:
             if len(matches) < self.settings.minimum_stations:
                 return None
 
-            now_monotonic = time.monotonic()
+            now_monotonic = self._monotonic_clock()
             if now_monotonic - self._last_alert_monotonic < self.settings.alert_cooldown_seconds:
                 return None
             self._last_alert_monotonic = now_monotonic
@@ -81,15 +87,20 @@ class CoincidenceDetector:
 class ZoneCoincidenceRouter:
     """Mantiene ventanas independientes por zona sísmica, incluso transfronteriza."""
 
-    def __init__(self, settings: CoincidenceSettings):
+    def __init__(
+        self,
+        settings: CoincidenceSettings,
+        monotonic_clock: Callable[[], float] = time.monotonic,
+    ):
         self.settings = settings
+        self._monotonic_clock = monotonic_clock
         self._detectors: dict[str, CoincidenceDetector] = {}
         self._lock = threading.Lock()
 
     def add(self, trigger: StationTrigger) -> EarthquakeCandidate | None:
         with self._lock:
             detector = self._detectors.setdefault(
-                trigger.zone_id, CoincidenceDetector(self.settings)
+                trigger.zone_id, CoincidenceDetector(self.settings, self._monotonic_clock)
             )
         return detector.add(trigger)
 

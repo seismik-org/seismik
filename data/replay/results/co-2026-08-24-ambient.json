@@ -1,0 +1,177 @@
+{
+  "schema_version": 1,
+  "clock": "waveform_timestamps",
+  "chunk_seconds": 1.0,
+  "inputs": [
+    {
+      "path": "C:\\Users\\chave\\Documents\\Codex\\2026-08-16\\act-a-como-un-arquitecto-de\\outputs\\seismik\\data\\replay\\fixtures\\co-2026-08-24-ambient.mseed",
+      "bytes": 221184,
+      "sha256": "f275c0d952f302ca2191d95957b996e99c323efedff2448ba9520855fa973163"
+    }
+  ],
+  "chunk_count": 1800,
+  "triggers": [
+    {
+      "station_id": "CM.LCBC",
+      "stream_id": "CM.LCBC.00.HHZ",
+      "zone_id": "CO",
+      "trigger_time": "2026-08-24T12:00:11.198394Z",
+      "sta_lta_ratio": 3.9034
+    },
+    {
+      "station_id": "CM.CRJC",
+      "stream_id": "CM.CRJC.00.HHZ",
+      "zone_id": "CO",
+      "trigger_time": "2026-08-24T12:00:42.998393Z",
+      "sta_lta_ratio": 4.445
+    },
+    {
+      "station_id": "CM.ARGC",
+      "stream_id": "CM.ARGC.00.HHZ",
+      "zone_id": "CO",
+      "trigger_time": "2026-08-24T12:01:12.488393Z",
+      "sta_lta_ratio": 3.6975
+    },
+    {
+      "station_id": "CM.LCBC",
+      "stream_id": "CM.LCBC.00.HHZ",
+      "zone_id": "CO",
+      "trigger_time": "2026-08-24T12:01:22.948394Z",
+      "sta_lta_ratio": 4.0792
+    },
+    {
+      "station_id": "CM.ARGC",
+      "stream_id": "CM.ARGC.00.HHZ",
+      "zone_id": "CO",
+      "trigger_time": "2026-08-24T12:01:42.408393Z",
+      "sta_lta_ratio": 4.1148
+    },
+    {
+      "station_id": "CM.HEL",
+      "stream_id": "CM.HEL.00.HHZ",
+      "zone_id": "CO",
+      "trigger_time": "2026-08-24T12:01:47.998393Z",
+      "sta_lta_ratio": 3.7391
+    },
+    {
+      "station_id": "CM.HEL",
+      "stream_id": "CM.HEL.00.HHZ",
+      "zone_id": "CO",
+      "trigger_time": "2026-08-24T12:02:09.318393Z",
+      "sta_lta_ratio": 3.6869
+    },
+    {
+      "station_id": "CM.RUS",
+      "stream_id": "CM.RUS.00.HHZ",
+      "zone_id": "CO",
+      "trigger_time": "2026-08-24T12:02:19.878393Z",
+      "sta_lta_ratio": 3.9455
+    },
+    {
+      "station_id": "CM.LCBC",
+      "stream_id": "CM.LCBC.00.HHZ",
+      "zone_id": "CO",
+      "trigger_time": "2026-08-24T12:02:20.418394Z",
+      "sta_lta_ratio": 3.8778
+    },
+    {
+      "station_id": "CM.HEL",
+      "stream_id": "CM.HEL.00.HHZ",
+      "zone_id": "CO",
+      "trigger_time": "2026-08-24T12:02:41.808393Z",
+      "sta_lta_ratio": 3.7763
+    },
+    {
+      "station_id": "CM.ARGC",
+      "stream_id": "CM.ARGC.00.HHZ",
+      "zone_id": "CO",
+      "trigger_time": "2026-08-24T12:02:46.538393Z",
+      "sta_lta_ratio": 3.6086
+    },
+    {
+      "station_id": "CM.ARGC",
+      "stream_id": "CM.ARGC.00.HHZ",
+      "zone_id": "CO",
+      "trigger_time": "2026-08-24T12:03:22.988393Z",
+      "sta_lta_ratio": 5.4441
+    },
+    {
+      "station_id": "CM.CRJC",
+      "stream_id": "CM.CRJC.00.HHZ",
+      "zone_id": "CO",
+      "trigger_time": "2026-08-24T12:03:34.518393Z",
+      "sta_lta_ratio": 4.6452
+    },
+    {
+      "station_id": "CM.HEL",
+      "stream_id": "CM.HEL.00.HHZ",
+      "zone_id": "CO",
+      "trigger_time": "2026-08-24T12:03:40.998393Z",
+      "sta_lta_ratio": 4.8675
+    },
+    {
+      "station_id": "CM.ARGC",
+      "stream_id": "CM.ARGC.00.HHZ",
+      "zone_id": "CO",
+      "trigger_time": "2026-08-24T12:04:05.198393Z",
+      "sta_lta_ratio": 3.532
+    },
+    {
+      "station_id": "CM.ARGC",
+      "stream_id": "CM.ARGC.00.HHZ",
+      "zone_id": "CO",
+      "trigger_time": "2026-08-24T12:04:29.508393Z",
+      "sta_lta_ratio": 3.9321
+    },
+    {
+      "station_id": "CM.CRJC",
+      "stream_id": "CM.CRJC.00.HHZ",
+      "zone_id": "CO",
+      "trigger_time": "2026-08-24T12:04:30.698393Z",
+      "sta_lta_ratio": 3.6829
+    },
+    {
+      "station_id": "CM.HEL",
+      "stream_id": "CM.HEL.00.HHZ",
+      "zone_id": "CO",
+      "trigger_time": "2026-08-24T12:04:40.418393Z",
+      "sta_lta_ratio": 4.091
+    },
+    {
+      "station_id": "CM.ARGC",
+      "stream_id": "CM.ARGC.00.HHZ",
+      "zone_id": "CO",
+      "trigger_time": "2026-08-24T12:04:49.998393Z",
+      "sta_lta_ratio": 3.8009
+    },
+    {
+      "station_id": "CM.LCBC",
+      "stream_id": "CM.LCBC.00.HHZ",
+      "zone_id": "CO",
+      "trigger_time": "2026-08-24T12:04:58.678394Z",
+      "sta_lta_ratio": 4.8677
+    }
+  ],
+  "candidates": [
+    {
+      "replay_event_id": "0fc126e959ba2df8f9ca5893",
+      "zone_id": "CO",
+      "detected_at": "2026-08-24T12:02:20.418394Z",
+      "stations": [
+        "CM.HEL",
+        "CM.LCBC",
+        "CM.RUS"
+      ]
+    },
+    {
+      "replay_event_id": "99dbdf4c1775063c3ec28595",
+      "zone_id": "CO",
+      "detected_at": "2026-08-24T12:04:40.418393Z",
+      "stations": [
+        "CM.ARGC",
+        "CM.CRJC",
+        "CM.HEL"
+      ]
+    }
+  ]
+}

@@ -5,6 +5,12 @@ ingeniería y todavía no es un MVP operativo ni un sistema certificado. El obje
 de los primeros ocho sprints es entregar el **MVP Experimental 1.0 para Colombia**,
 en Android, modo sombra y con pruebas controladas.
 
+**Sprint 1 cerrado técnicamente (2026-08-24):** entorno Python 3.12.10,
+catálogo colombiano fechado, reconexión/gaps auditables y replay determinista
+de tres sismos históricos más una ventana ambiente. Los resultados muestran
+falsos candidatos en ruido con los parámetros actuales; por eso Seismik sigue en
+modo sombra y la calibración científica pertenece al Sprint 2.
+
 ## Gobierno, Scrum y control de avance
 
 La fuente compartida y verificable de planificación se encuentra en
@@ -109,11 +115,13 @@ Servicios:
 Ejecución Python:
 
 ```bash
+python --version  # debe indicar 3.12.10
 python -m venv .venv
 .venv/Scripts/pip install -r requirements.txt -r requirements-test.txt
+.venv/Scripts/pip install -e .
 .venv/Scripts/seismik-api
 .venv/Scripts/seismik-dispatcher
-.venv/Scripts/seismik-detector --config config.global.json
+.venv/Scripts/seismik-detector --config config.json
 ```
 
 Pruebas y análisis:
@@ -123,6 +131,26 @@ pytest
 ruff check src tests
 mypy src
 ```
+
+Evidencia y replay del Sprint 1:
+
+- `data/stations/colombia-stations-2026-08-24.json`: metadatos, presencia de
+  datos recientes y probes TCP.
+- `data/stations/seedlink-probe-2026-08-24.json`: paquete real
+  `CM.ARGC.00.HHZ`, con lag puntual observado; no es una garantía de uptime.
+- `data/replay/manifest.json`: procedencia y SHA-256 de cuatro fixtures.
+- `data/replay/results/`: salida canónica con reloj derivado de MiniSEED.
+
+```powershell
+.\.venv\Scripts\seismik-replay `
+  --config config.json `
+  --manifest data\replay\manifest.json `
+  --case co-2023-08-17-m6.1 `
+  --output work\replay.json
+```
+
+El verificador FDSN separa la antigüedad deliberada de la consulta de archivo
+de la latencia SeedLink. No debe usarse la primera como si fuera latencia EEW.
 
 ## Push a gran escala
 
