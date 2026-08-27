@@ -11,7 +11,7 @@ from redis.exceptions import ResponseError
 
 from api.config import AppSettings, get_settings
 from api.devices_store import DeviceRepository
-from dispatcher.push import PushDispatcher
+from dispatcher.push import PushDispatcher, PushResult, notification_content
 
 LOGGER = logging.getLogger(__name__)
 
@@ -49,7 +49,7 @@ class StreamConsumer:
                     self.settings.dispatcher_group,
                     self.settings.consumer_name,
                     {stream: ">" for stream in self.streams},
-                    count=10,
+                    count=self.settings.consumer_batch_size,
                     block=self.settings.consumer_block_ms,
                 )
                 messages = cast(
@@ -103,6 +103,7 @@ class StreamConsumer:
             radius_km=self.settings.geofence_radius_km,
         )
         result = await self.push.send(event, targets, critical=True)
+        await self._record_dry_run(event, result, critical=True)
         await self._remove_invalid(result.invalid_device_ids)
         await self.redis.set(cooldown_key, event["event_id"], ex=self.settings.alert_cooldown_seconds)
         LOGGER.info(
@@ -124,6 +125,7 @@ class StreamConsumer:
             radius_km=self.settings.geofence_radius_km,
         )
         result = await self.push.send(event, targets, critical=False)
+        await self._record_dry_run(event, result, critical=False)
         await self._remove_invalid(result.invalid_device_ids)
         await self.redis.set(sent_key, "1", ex=self.settings.push_idempotency_seconds)
         LOGGER.info(
@@ -135,6 +137,33 @@ class StreamConsumer:
         for device_id in device_ids:
             await self.devices.unregister(device_id)
 
+    async def _record_dry_run(
+        self, event: dict[str, Any], result: PushResult, *, critical: bool
+    ) -> None:
+        """Persiste la evidencia TEST sin incluir tokens de APNs/FCM."""
+
+        if not result.dry_run:
+            return
+        title, body, payload = notification_content(event, critical=critical)
+        await self.redis.xadd(
+            self.settings.push_audit_stream,
+            {
+                "event_id": str(event["event_id"]),
+                "event_type": str(event["type"]),
+                "test": "true",
+                "critical": "true" if critical else "false",
+                "attempted": str(result.attempted),
+                "target_device_ids": json.dumps(result.target_device_ids),
+                "payload": json.dumps(
+                    {"title": title, "body": body, "data": payload},
+                    ensure_ascii=False,
+                    separators=(",", ":"),
+                ),
+            },
+            maxlen=self.settings.stream_maxlen,
+            approximate=True,
+        )
+
     async def _recover_pending(self) -> None:
         for stream in self.streams:
             result = await self.redis.xautoclaim(
@@ -143,7 +172,7 @@ class StreamConsumer:
                 self.settings.consumer_name,
                 min_idle_time=self.settings.pending_claim_idle_ms,
                 start_id="0-0",
-                count=10,
+                count=self.settings.consumer_batch_size,
             )
             entries = result[1] if len(result) > 1 else []
             for message_id, fields in entries:

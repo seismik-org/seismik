@@ -1,0 +1,1522 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Seismik Platform API",
+    "version": "0.3.0"
+  },
+  "paths": {
+    "/v1/events/candidate": {
+      "post": {
+        "tags": [
+          "events"
+        ],
+        "summary": "Ingest Candidate",
+        "operationId": "ingest_candidate_v1_events_candidate_post",
+        "parameters": [
+          {
+            "name": "X-Seismik-Timestamp",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Seismik-Timestamp"
+            }
+          },
+          {
+            "name": "X-Seismik-Signature",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Seismik-Signature"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcceptedResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$defs": {
+                  "StationTrigger": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "provider_id": {
+                        "title": "Provider Id",
+                        "type": "string"
+                      },
+                      "country_code": {
+                        "maxLength": 2,
+                        "minLength": 2,
+                        "title": "Country Code",
+                        "type": "string"
+                      },
+                      "zone_id": {
+                        "title": "Zone Id",
+                        "type": "string"
+                      },
+                      "station_id": {
+                        "title": "Station Id",
+                        "type": "string"
+                      },
+                      "stream_id": {
+                        "title": "Stream Id",
+                        "type": "string"
+                      },
+                      "trigger_time": {
+                        "format": "date-time",
+                        "title": "Trigger Time",
+                        "type": "string"
+                      },
+                      "received_at": {
+                        "format": "date-time",
+                        "title": "Received At",
+                        "type": "string"
+                      },
+                      "sta_lta_ratio": {
+                        "exclusiveMinimum": 0,
+                        "title": "Sta Lta Ratio",
+                        "type": "number"
+                      },
+                      "latitude": {
+                        "anyOf": [
+                          {
+                            "maximum": 90,
+                            "minimum": -90,
+                            "type": "number"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "title": "Latitude"
+                      },
+                      "longitude": {
+                        "anyOf": [
+                          {
+                            "maximum": 180,
+                            "minimum": -180,
+                            "type": "number"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "title": "Longitude"
+                      },
+                      "packet_lag_seconds": {
+                        "anyOf": [
+                          {
+                            "minimum": 0,
+                            "type": "number"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "title": "Packet Lag Seconds"
+                      }
+                    },
+                    "required": [
+                      "provider_id",
+                      "country_code",
+                      "zone_id",
+                      "station_id",
+                      "stream_id",
+                      "trigger_time",
+                      "received_at",
+                      "sta_lta_ratio"
+                    ],
+                    "title": "StationTrigger",
+                    "type": "object",
+                    "x-product": "Seismik"
+                  }
+                },
+                "additionalProperties": false,
+                "properties": {
+                  "event_id": {
+                    "maxLength": 128,
+                    "minLength": 1,
+                    "title": "Event Id",
+                    "type": "string"
+                  },
+                  "type": {
+                    "const": "earthquake_candidate",
+                    "title": "Type",
+                    "type": "string"
+                  },
+                  "status": {
+                    "const": "unlocated_unreviewed",
+                    "title": "Status",
+                    "type": "string"
+                  },
+                  "zone_id": {
+                    "maxLength": 128,
+                    "minLength": 1,
+                    "title": "Zone Id",
+                    "type": "string"
+                  },
+                  "country_code": {
+                    "anyOf": [
+                      {
+                        "maxLength": 2,
+                        "minLength": 2,
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "title": "Country Code"
+                  },
+                  "country_codes": {
+                    "items": {
+                      "type": "string"
+                    },
+                    "minItems": 1,
+                    "title": "Country Codes",
+                    "type": "array"
+                  },
+                  "detected_at": {
+                    "format": "date-time",
+                    "title": "Detected At",
+                    "type": "string"
+                  },
+                  "coincidence_window_seconds": {
+                    "exclusiveMinimum": 0,
+                    "title": "Coincidence Window Seconds",
+                    "type": "number"
+                  },
+                  "required_stations": {
+                    "minimum": 2,
+                    "title": "Required Stations",
+                    "type": "integer"
+                  },
+                  "station_count": {
+                    "minimum": 2,
+                    "title": "Station Count",
+                    "type": "integer"
+                  },
+                  "stations": {
+                    "items": {
+                      "$ref": "#/$defs/StationTrigger"
+                    },
+                    "minItems": 2,
+                    "title": "Stations",
+                    "type": "array"
+                  },
+                  "estimated_latitude": {
+                    "anyOf": [
+                      {
+                        "maximum": 90,
+                        "minimum": -90,
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "title": "Estimated Latitude"
+                  },
+                  "estimated_longitude": {
+                    "anyOf": [
+                      {
+                        "maximum": 180,
+                        "minimum": -180,
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "title": "Estimated Longitude"
+                  }
+                },
+                "required": [
+                  "event_id",
+                  "type",
+                  "status",
+                  "zone_id",
+                  "country_codes",
+                  "detected_at",
+                  "coincidence_window_seconds",
+                  "required_stations",
+                  "station_count",
+                  "stations"
+                ],
+                "title": "EarthquakeCandidate",
+                "type": "object",
+                "x-product": "Seismik"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/events/official-update": {
+      "post": {
+        "tags": [
+          "events"
+        ],
+        "summary": "Ingest Official Update",
+        "operationId": "ingest_official_update_v1_events_official_update_post",
+        "parameters": [
+          {
+            "name": "X-Seismik-Timestamp",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Seismik-Timestamp"
+            }
+          },
+          {
+            "name": "X-Seismik-Signature",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Seismik-Signature"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcceptedResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$defs": {
+                  "OfficialReport": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "source_id": {
+                        "title": "Source Id",
+                        "type": "string"
+                      },
+                      "agency": {
+                        "title": "Agency",
+                        "type": "string"
+                      },
+                      "jurisdiction": {
+                        "title": "Jurisdiction",
+                        "type": "string"
+                      },
+                      "official_event_id": {
+                        "title": "Official Event Id",
+                        "type": "string"
+                      },
+                      "origin_time": {
+                        "format": "date-time",
+                        "title": "Origin Time",
+                        "type": "string"
+                      },
+                      "updated_at": {
+                        "anyOf": [
+                          {
+                            "format": "date-time",
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "title": "Updated At"
+                      },
+                      "latitude": {
+                        "maximum": 90,
+                        "minimum": -90,
+                        "title": "Latitude",
+                        "type": "number"
+                      },
+                      "longitude": {
+                        "maximum": 180,
+                        "minimum": -180,
+                        "title": "Longitude",
+                        "type": "number"
+                      },
+                      "depth_km": {
+                        "anyOf": [
+                          {
+                            "maximum": 800,
+                            "minimum": 0,
+                            "type": "number"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "title": "Depth Km"
+                      },
+                      "magnitude": {
+                        "anyOf": [
+                          {
+                            "maximum": 12,
+                            "minimum": -2,
+                            "type": "number"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "title": "Magnitude"
+                      },
+                      "magnitude_type": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "title": "Magnitude Type"
+                      },
+                      "place": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "title": "Place"
+                      },
+                      "review_status": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "title": "Review Status"
+                      },
+                      "official_url": {
+                        "format": "uri",
+                        "maxLength": 2083,
+                        "minLength": 1,
+                        "title": "Official Url",
+                        "type": "string"
+                      },
+                      "attribution": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "title": "Attribution"
+                      },
+                      "tsunami": {
+                        "anyOf": [
+                          {
+                            "type": "boolean"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "title": "Tsunami"
+                      },
+                      "felt": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "title": "Felt"
+                      },
+                      "distance_from_station_centroid_km": {
+                        "anyOf": [
+                          {
+                            "minimum": 0,
+                            "type": "number"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "title": "Distance From Station Centroid Km"
+                      },
+                      "origin_time_delta_seconds": {
+                        "anyOf": [
+                          {
+                            "minimum": 0,
+                            "type": "number"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "title": "Origin Time Delta Seconds"
+                      }
+                    },
+                    "required": [
+                      "source_id",
+                      "agency",
+                      "jurisdiction",
+                      "official_event_id",
+                      "origin_time",
+                      "latitude",
+                      "longitude",
+                      "official_url"
+                    ],
+                    "title": "OfficialReport",
+                    "type": "object",
+                    "x-product": "Seismik"
+                  }
+                },
+                "additionalProperties": false,
+                "properties": {
+                  "event_id": {
+                    "maxLength": 128,
+                    "minLength": 1,
+                    "title": "Event Id",
+                    "type": "string"
+                  },
+                  "candidate_event_id": {
+                    "maxLength": 128,
+                    "minLength": 1,
+                    "title": "Candidate Event Id",
+                    "type": "string"
+                  },
+                  "type": {
+                    "const": "official_report_update",
+                    "title": "Type",
+                    "type": "string"
+                  },
+                  "status": {
+                    "const": "official_report_available",
+                    "title": "Status",
+                    "type": "string"
+                  },
+                  "matched_at": {
+                    "format": "date-time",
+                    "title": "Matched At",
+                    "type": "string"
+                  },
+                  "preferred_report": {
+                    "$ref": "#/$defs/OfficialReport"
+                  },
+                  "reports": {
+                    "items": {
+                      "$ref": "#/$defs/OfficialReport"
+                    },
+                    "minItems": 1,
+                    "title": "Reports",
+                    "type": "array"
+                  }
+                },
+                "required": [
+                  "event_id",
+                  "candidate_event_id",
+                  "type",
+                  "status",
+                  "matched_at",
+                  "preferred_report",
+                  "reports"
+                ],
+                "title": "OfficialReportUpdate",
+                "type": "object",
+                "x-product": "Seismik"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/devices/register": {
+      "post": {
+        "tags": [
+          "devices"
+        ],
+        "summary": "Register Device",
+        "operationId": "register_device_v1_devices_register_post",
+        "parameters": [
+          {
+            "name": "X-Seismik-Device-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Seismik-Device-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeviceRegistration"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceRegistrationResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/devices/unregister": {
+      "post": {
+        "tags": [
+          "devices"
+        ],
+        "summary": "Unregister Device",
+        "operationId": "unregister_device_v1_devices_unregister_post",
+        "parameters": [
+          {
+            "name": "X-Seismik-Device-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Seismik-Device-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeviceUnregister"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "boolean"
+                  },
+                  "title": "Response Unregister Device V1 Devices Unregister Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/crowd/shake": {
+      "post": {
+        "tags": [
+          "crowdsourcing"
+        ],
+        "summary": "Ingest Shake",
+        "operationId": "ingest_shake_v1_crowd_shake_post",
+        "parameters": [
+          {
+            "name": "X-Seismik-Timestamp",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Seismik-Timestamp"
+            }
+          },
+          {
+            "name": "X-Seismik-Signature",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Seismik-Signature"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShakeAccepted"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "device_id": {
+                    "maxLength": 128,
+                    "minLength": 8,
+                    "title": "Device Id",
+                    "type": "string"
+                  },
+                  "lat": {
+                    "maximum": 90,
+                    "minimum": -90,
+                    "title": "Lat",
+                    "type": "number"
+                  },
+                  "lon": {
+                    "maximum": 180,
+                    "minimum": -180,
+                    "title": "Lon",
+                    "type": "number"
+                  },
+                  "pga": {
+                    "description": "Peak ground acceleration in g",
+                    "maximum": 5,
+                    "minimum": 0,
+                    "title": "Pga",
+                    "type": "number"
+                  },
+                  "timestamp": {
+                    "description": "Unix timestamp; milliseconds preferred, seconds accepted for compatibility",
+                    "exclusiveMinimum": 0,
+                    "title": "Timestamp",
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "device_id",
+                  "lat",
+                  "lon",
+                  "pga",
+                  "timestamp"
+                ],
+                "title": "ShakePing",
+                "type": "object",
+                "x-product": "Seismik"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/network/stations": {
+      "get": {
+        "tags": [
+          "public-monitor"
+        ],
+        "summary": "Network Stations",
+        "operationId": "network_stations_v1_network_stations_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "items": {
+                      "additionalProperties": true,
+                      "type": "object"
+                    },
+                    "type": "array"
+                  },
+                  "type": "object",
+                  "title": "Response Network Stations V1 Network Stations Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/events/recent": {
+      "get": {
+        "tags": [
+          "public-monitor"
+        ],
+        "summary": "Recent Events",
+        "operationId": "recent_events_v1_events_recent_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "items": {
+                      "additionalProperties": true,
+                      "type": "object"
+                    },
+                    "type": "array"
+                  },
+                  "type": "object",
+                  "title": "Response Recent Events V1 Events Recent Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/reports/felt": {
+      "post": {
+        "tags": [
+          "citizen-reports"
+        ],
+        "summary": "Submit Felt Report",
+        "operationId": "submit_felt_report_v1_reports_felt_post",
+        "parameters": [
+          {
+            "name": "X-Seismik-Timestamp",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Seismik-Timestamp"
+            }
+          },
+          {
+            "name": "X-Seismik-Signature",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Seismik-Signature"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportAccepted"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/reports/damage": {
+      "post": {
+        "tags": [
+          "citizen-reports"
+        ],
+        "summary": "Submit Damage Report",
+        "operationId": "submit_damage_report_v1_reports_damage_post",
+        "parameters": [
+          {
+            "name": "X-Seismik-Timestamp",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Seismik-Timestamp"
+            }
+          },
+          {
+            "name": "X-Seismik-Signature",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Seismik-Signature"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportAccepted"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health/live": {
+      "get": {
+        "tags": [
+          "health"
+        ],
+        "summary": "Live",
+        "operationId": "live_health_live_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object",
+                  "title": "Response Live Health Live Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health/ready": {
+      "get": {
+        "tags": [
+          "health"
+        ],
+        "summary": "Ready",
+        "operationId": "ready_health_ready_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object",
+                  "title": "Response Ready Health Ready Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AcceptedResponse": {
+        "properties": {
+          "accepted": {
+            "type": "boolean",
+            "title": "Accepted",
+            "default": true
+          },
+          "duplicate": {
+            "type": "boolean",
+            "title": "Duplicate",
+            "default": false
+          },
+          "stream_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stream Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "AcceptedResponse",
+        "x-product": "Seismik"
+      },
+      "AgencyRoute": {
+        "properties": {
+          "agency_id": {
+            "type": "string",
+            "title": "Agency Id"
+          },
+          "agency_name": {
+            "type": "string",
+            "title": "Agency Name"
+          },
+          "country_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Country Code"
+          },
+          "report_kind": {
+            "type": "string",
+            "const": "felt_and_effects",
+            "title": "Report Kind",
+            "default": "felt_and_effects"
+          },
+          "submission_mode": {
+            "type": "string",
+            "const": "external_form",
+            "title": "Submission Mode",
+            "default": "external_form"
+          },
+          "official_url": {
+            "type": "string",
+            "title": "Official Url"
+          },
+          "automatic_submission": {
+            "type": "boolean",
+            "title": "Automatic Submission",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "agency_id",
+          "agency_name",
+          "official_url"
+        ],
+        "title": "AgencyRoute",
+        "x-product": "Seismik"
+      },
+      "DeviceRegistration": {
+        "properties": {
+          "device_id": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 8,
+            "pattern": "^[A-Za-z0-9._:-]+$",
+            "title": "Device Id"
+          },
+          "platform": {
+            "$ref": "#/components/schemas/Platform"
+          },
+          "apns_token": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 512,
+                "minLength": 32
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Apns Token"
+          },
+          "fcm_token": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 4096,
+                "minLength": 32
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fcm Token"
+          },
+          "country_code": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2,
+                "minLength": 2
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Country Code"
+          },
+          "zone_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 128,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Zone Id"
+          },
+          "latitude": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 90.0,
+                "minimum": -90.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latitude"
+          },
+          "longitude": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 180.0,
+                "minimum": -180.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Longitude"
+          },
+          "critical_alerts_authorized": {
+            "type": "boolean",
+            "title": "Critical Alerts Authorized",
+            "default": false
+          },
+          "locale": {
+            "type": "string",
+            "maxLength": 16,
+            "minLength": 2,
+            "title": "Locale",
+            "default": "es"
+          },
+          "app_attest_token": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 8192,
+                "minLength": 16
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "App Attest Token",
+            "description": "Firebase App Check token backed by App Attest/DeviceCheck"
+          },
+          "play_integrity_token": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 8192,
+                "minLength": 16
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Play Integrity Token",
+            "description": "Firebase App Check token backed by Play Integrity"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "device_id",
+          "platform"
+        ],
+        "title": "DeviceRegistration",
+        "x-product": "Seismik"
+      },
+      "DeviceRegistrationResponse": {
+        "properties": {
+          "device_id": {
+            "type": "string",
+            "title": "Device Id"
+          },
+          "registered": {
+            "type": "boolean",
+            "title": "Registered"
+          },
+          "crowd_token": {
+            "type": "string",
+            "title": "Crowd Token"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "device_id",
+          "registered",
+          "crowd_token"
+        ],
+        "title": "DeviceRegistrationResponse",
+        "x-product": "Seismik"
+      },
+      "DeviceUnregister": {
+        "properties": {
+          "device_id": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 8,
+            "title": "Device Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "device_id"
+        ],
+        "title": "DeviceUnregister",
+        "x-product": "Seismik"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "LocationPrecision": {
+        "type": "string",
+        "enum": [
+          "approximate",
+          "precise"
+        ],
+        "title": "LocationPrecision"
+      },
+      "Platform": {
+        "type": "string",
+        "enum": [
+          "ios",
+          "android"
+        ],
+        "title": "Platform"
+      },
+      "ReportAccepted": {
+        "properties": {
+          "accepted": {
+            "type": "boolean",
+            "title": "Accepted"
+          },
+          "duplicate": {
+            "type": "boolean",
+            "title": "Duplicate",
+            "default": false
+          },
+          "stream_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stream Id"
+          },
+          "report_id": {
+            "type": "string",
+            "title": "Report Id"
+          },
+          "stored_location_precision": {
+            "$ref": "#/components/schemas/LocationPrecision"
+          },
+          "emergency_action_recommended": {
+            "type": "boolean",
+            "title": "Emergency Action Recommended",
+            "default": false
+          },
+          "agency_routes": {
+            "items": {
+              "$ref": "#/components/schemas/AgencyRoute"
+            },
+            "type": "array",
+            "title": "Agency Routes",
+            "default": []
+          },
+          "notice": {
+            "type": "string",
+            "title": "Notice"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "accepted",
+          "report_id",
+          "stored_location_precision",
+          "notice"
+        ],
+        "title": "ReportAccepted",
+        "x-product": "Seismik"
+      },
+      "ShakeAccepted": {
+        "properties": {
+          "accepted": {
+            "type": "boolean",
+            "title": "Accepted",
+            "default": true
+          },
+          "above_threshold": {
+            "type": "boolean",
+            "title": "Above Threshold"
+          },
+          "cell_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cell Id"
+          },
+          "independent_devices": {
+            "type": "integer",
+            "title": "Independent Devices",
+            "default": 0
+          },
+          "triggered": {
+            "type": "boolean",
+            "title": "Triggered",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "above_threshold"
+        ],
+        "title": "ShakeAccepted",
+        "x-product": "Seismik"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    }
+  }
+}

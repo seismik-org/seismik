@@ -4,6 +4,7 @@
 
 - [Cierre técnico Sprint 1 — 2026-08-24](SPRINT_1_CIERRE_2026-08-24.md)
 - [Cierre técnico Sprint 2 — 2026-08-24](SPRINT_2_CIERRE_TECNICO_2026-08-24.md)
+- [Avance técnico Sprint 3 — 2026-08-26](SPRINT_3_AVANCE_2026-08-26.md)
 
 Este directorio es la fuente verificable compartida para el gobierno y seguimiento
 del proyecto. Los archivos Markdown permiten revisar cambios línea por línea en Git;

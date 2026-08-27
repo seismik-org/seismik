@@ -77,7 +77,13 @@ class MiniSeedReplay:
         )
         return cls(subscriptions, settings.detection, settings.coincidence)
 
-    def run(self, paths: list[Path], chunk_seconds: float = 1.0) -> dict[str, Any]:
+    def run(
+        self,
+        paths: list[Path],
+        chunk_seconds: float = 1.0,
+        *,
+        include_event_payload: bool = False,
+    ) -> dict[str, Any]:
         if chunk_seconds <= 0:
             raise ValueError("chunk_seconds debe ser positivo")
         chunks: list[Trace] = []
@@ -96,6 +102,7 @@ class MiniSeedReplay:
 
         triggers: list[ReplayTrigger] = []
         candidates: list[ReplayCandidate] = []
+        candidate_payloads: dict[str, dict[str, Any]] = {}
         for trace in chunks:
             self._clock.value = float(trace.stats.endtime)
             processor = self._processors.get(
@@ -138,14 +145,20 @@ class MiniSeedReplay:
             station_ids = tuple(sorted(item.station_id for item in candidate.stations))
             detected_at = max(item.trigger_time for item in candidate.stations)
             identity = "|".join((candidate.zone_id, detected_at, *station_ids))
+            replay_event_id = hashlib.sha256(identity.encode()).hexdigest()[:24]
             candidates.append(
                 ReplayCandidate(
-                    replay_event_id=hashlib.sha256(identity.encode()).hexdigest()[:24],
+                    replay_event_id=replay_event_id,
                     zone_id=candidate.zone_id,
                     detected_at=detected_at,
                     stations=station_ids,
                 )
             )
+            if include_event_payload:
+                payload = asdict(candidate)
+                payload["event_id"] = replay_event_id
+                payload["detected_at"] = detected_at
+                candidate_payloads[replay_event_id] = payload
 
         return {
             "schema_version": 1,
@@ -154,7 +167,17 @@ class MiniSeedReplay:
             "inputs": inputs,
             "chunk_count": len(chunks),
             "triggers": [asdict(item) for item in triggers],
-            "candidates": [asdict(item) for item in candidates],
+            "candidates": [
+                {
+                    **asdict(item),
+                    **(
+                        {"event": candidate_payloads[item.replay_event_id]}
+                        if include_event_payload
+                        else {}
+                    ),
+                }
+                for item in candidates
+            ],
         }
 
     @staticmethod

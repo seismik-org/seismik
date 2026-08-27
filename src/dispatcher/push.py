@@ -27,6 +27,8 @@ class PushResult:
     attempted: int
     succeeded: int
     invalid_device_ids: tuple[str, ...] = ()
+    dry_run: bool = False
+    target_device_ids: tuple[str, ...] = ()
 
 
 class PushDispatcher:
@@ -48,6 +50,9 @@ class PushDispatcher:
         self, event: dict[str, Any], targets: Iterable[DeviceTarget], *, critical: bool
     ) -> PushResult:
         target_list = list(targets)
+        if self.settings.push_mode == "testers":
+            allowlist = set(self.settings.push_test_device_ids)
+            target_list = [item for item in target_list if item.device_id in allowlist]
         if not target_list:
             return PushResult(attempted=0, succeeded=0)
         if not self.settings.push_enabled:
@@ -56,7 +61,12 @@ class PushDispatcher:
                 event.get("event_id"),
                 len(target_list),
             )
-            return PushResult(attempted=len(target_list), succeeded=len(target_list))
+            return PushResult(
+                attempted=len(target_list),
+                succeeded=0,
+                dry_run=True,
+                target_device_ids=tuple(item.device_id for item in target_list),
+            )
 
         ios = [item for item in target_list if item.platform is Platform.IOS]
         android = [item for item in target_list if item.platform is Platform.ANDROID]
@@ -68,6 +78,7 @@ class PushDispatcher:
             attempted=apns_result.attempted + fcm_result.attempted,
             succeeded=apns_result.succeeded + fcm_result.succeeded,
             invalid_device_ids=apns_result.invalid_device_ids + fcm_result.invalid_device_ids,
+            target_device_ids=tuple(item.device_id for item in target_list),
         )
 
     async def _send_apns(

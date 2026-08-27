@@ -103,3 +103,71 @@ async def test_candidate_endpoint_rejects_body_tampering() -> None:
             headers={"X-Seismik-Timestamp": timestamp, "X-Seismik-Signature": bad_signature},
         )
     assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("headers", "expected_detail"),
+    [
+        ({}, "Missing signature headers"),
+        (
+            {"X-Seismik-Timestamp": "not-a-number", "X-Seismik-Signature": "0" * 64},
+            "Invalid timestamp",
+        ),
+    ],
+)
+async def test_candidate_endpoint_rejects_missing_or_invalid_security_headers(
+    headers: dict[str, str], expected_detail: str
+) -> None:
+    settings = AppSettings(webhook_hmac_secret="test-secret")
+    app = FastAPI()
+    app.state.settings = settings
+    app.include_router(router)
+    app.dependency_overrides[get_bus] = lambda: FakeBus()
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        response = await client.post(
+            "/v1/events/candidate", content=json.dumps(candidate_payload()), headers=headers
+        )
+    assert response.status_code == 401
+    assert response.json()["detail"] == expected_detail
+
+
+@pytest.mark.asyncio
+async def test_signed_malformed_candidate_is_rejected_before_enqueue() -> None:
+    settings = AppSettings(webhook_hmac_secret="test-secret")
+    bus = FakeBus()
+    app = FastAPI()
+    app.state.settings = settings
+    app.include_router(router)
+    app.dependency_overrides[get_bus] = lambda: bus
+    body = b'{"event_id":"broken"}'
+    timestamp = str(time.time())
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        response = await client.post(
+            "/v1/events/candidate",
+            content=body,
+            headers={
+                "X-Seismik-Timestamp": timestamp,
+                "X-Seismik-Signature": create_signature("test-secret", timestamp, body),
+            },
+        )
+    assert response.status_code == 422
+    assert bus.events == []
+
+
+@pytest.mark.asyncio
+async def test_oversized_event_is_rejected_before_signature_processing() -> None:
+    settings = AppSettings(webhook_hmac_secret="test-secret", event_max_body_bytes=1024)
+    app = FastAPI()
+    app.state.settings = settings
+    app.include_router(router)
+    app.dependency_overrides[get_bus] = lambda: FakeBus()
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        response = await client.post("/v1/events/candidate", content=b"x" * 1025)
+    assert response.status_code == 413

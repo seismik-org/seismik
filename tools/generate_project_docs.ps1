@@ -9,7 +9,7 @@ $docsDir = Join-Path $ProjectRoot 'docs\project-management'
 $documents = @(
     @{ Key = 'Master'; Source = 'SEISMIK_DOCUMENTO_MAESTRO_v0.1.md'; Target = 'SEISMIK_DOCUMENTO_MAESTRO_v0.1.docx'; ShortTitle = 'Documento Maestro'; Version = '0.1' },
     @{ Key = 'Plan'; Source = 'SEISMIK_PLAN_SCRUM_MVP_v0.1.md'; Target = 'SEISMIK_PLAN_SCRUM_MVP_v0.1.docx'; ShortTitle = 'Plan Scrum MVP'; Version = '0.1' },
-    @{ Key = 'Control'; Source = 'SEISMIK_CONTROL_AVANCE_v0.1.md'; Target = 'SEISMIK_CONTROL_AVANCE_v0.1.docx'; ShortTitle = 'Control de Avance'; Version = '0.1.2' },
+    @{ Key = 'Control'; Source = 'SEISMIK_CONTROL_AVANCE_v0.1.md'; Target = 'SEISMIK_CONTROL_AVANCE_v0.1.docx'; ShortTitle = 'Control de Avance'; Version = '0.1.3' },
     @{ Key = 'ScientificReview'; Source = 'PAQUETE_REVISION_SISMOLOGICA_v0.1.md'; Target = 'PAQUETE_REVISION_SISMOLOGICA_v0.1.docx'; ShortTitle = 'Revision Sismologica'; Version = '0.1' }
 )
 if ($Document -ne 'All') {

@@ -25,6 +25,11 @@ async def _ingest(
     signature: str | None,
 ) -> AcceptedResponse:
     body = await request.body()
+    if len(body) > settings.event_max_body_bytes:
+        raise HTTPException(
+            status_code=status.HTTP_413_CONTENT_TOO_LARGE,
+            detail="Event payload exceeds configured limit",
+        )
     verify_signature(
         secret=settings.webhook_hmac_secret.get_secret_value(),
         timestamp=timestamp,
@@ -35,7 +40,10 @@ async def _ingest(
     try:
         event = model.model_validate_json(body)
     except ValidationError as exc:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=exc.errors()) from exc
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=exc.errors(),
+        ) from exc
     result = await bus.publish_once(stream, event.model_dump(mode="json"))
     return AcceptedResponse(
         accepted=True,

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from functools import lru_cache
+from typing import Literal
 
 from pydantic import Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -19,6 +20,7 @@ class AppSettings(BaseSettings):
     webhook_hmac_secret: SecretStr = SecretStr("change-me-webhook")
     webhook_max_skew_seconds: int = Field(default=30, ge=5, le=300)
     webhook_idempotency_seconds: int = Field(default=600, ge=60)
+    event_max_body_bytes: int = Field(default=65_536, ge=1_024, le=1_048_576)
     device_api_key: SecretStr = SecretStr("change-me-device-api-key")
     crowd_master_secret: SecretStr = SecretStr("change-me-crowd-secret")
 
@@ -30,6 +32,7 @@ class AppSettings(BaseSettings):
     dispatcher_group: str = "push-dispatchers"
     consumer_name: str = "dispatcher-1"
     consumer_block_ms: int = Field(default=1_000, ge=10, le=60_000)
+    consumer_batch_size: int = Field(default=10, ge=1, le=1_000)
     pending_claim_idle_ms: int = Field(default=30_000, ge=1_000)
     max_delivery_attempts: int = Field(default=5, ge=1, le=100)
     dead_letter_stream: str = "stream:seismik:dead-letter"
@@ -42,6 +45,9 @@ class AppSettings(BaseSettings):
     fcm_concurrency: int = Field(default=20, ge=1, le=200)
 
     push_enabled: bool = False
+    push_mode: Literal["dry_run", "testers", "production"] = "dry_run"
+    push_test_device_ids: tuple[str, ...] = ()
+    push_audit_stream: str = "stream:seismik:push-test"
     apns_key_path: str | None = None
     apns_key_id: str | None = None
     apns_team_id: str | None = None
@@ -65,6 +71,14 @@ class AppSettings(BaseSettings):
 
     @model_validator(mode="after")
     def validate_production_secrets(self) -> "AppSettings":
+        if self.push_enabled and self.push_mode == "dry_run":
+            raise ValueError("push_enabled requires push_mode testers or production")
+        if not self.push_enabled and self.push_mode != "dry_run":
+            raise ValueError("dry_run is required while push delivery is disabled")
+        if self.push_mode == "testers" and not self.push_test_device_ids:
+            raise ValueError("Tester push requires a non-empty device allowlist")
+        if self.push_mode == "production" and self.environment.lower() != "production":
+            raise ValueError("Production push requires the production environment")
         if self.environment.lower() == "production":
             secrets = {
                 self.webhook_hmac_secret.get_secret_value(),

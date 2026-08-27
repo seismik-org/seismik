@@ -18,6 +18,12 @@ detectó los tres casos históricos y no produjo candidatos en cinco minutos de
 ruido ambiente, pero su latencia media fue 56,552 s. El corpus es pequeño y no
 incluye una validación sismológica independiente: sigue siendo **No-Go público**.
 
+**Sprint 3 en curso (2026-08-26):** contratos OpenAPI estrictos, ingesta HMAC
+idempotente, Redis Streams/DLQ y pipeline replay → API → dispatcher validados en
+memoria. El modo `dry_run` guarda un payload marcado `TEST` sin tokens ni envío
+externo. Docker Desktop quedó instalado; falta habilitar WSL 2 como administrador,
+reiniciar Windows y repetir la misma prueba con Compose para cerrar el Sprint.
+
 ## Gobierno, Scrum y control de avance
 
 La fuente compartida y verificable de planificación se encuentra en
@@ -138,6 +144,17 @@ pytest
 ruff check src tests
 mypy src
 ```
+
+Contrato e integración del Sprint 3:
+
+- `docs/api/openapi-v1.json`: contrato OpenAPI exportado y versionado.
+- `docs/architecture/ADR-0001-redis-streams-mvp.md`: decisión Redis vs. Pub/Sub.
+- `stream:seismik:push-test`: auditoría de simulacros sin tokens APNs/FCM.
+- `tools/run_docker_e2e.py`: replay histórico contra API, Redis y dispatcher reales.
+
+Push permanece en `SEISMIK_PUSH_MODE=dry_run`. Para una prueba FCM real se exige
+`push_mode=testers`, `push_enabled=true` y una allowlist explícita de dispositivos.
+El modo `production` se rechaza si el ambiente no está declarado como producción.
 
 Evidencia y replay del Sprint 1:
 

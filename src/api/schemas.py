@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-from datetime import datetime
 from enum import StrEnum
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, HttpUrl, model_validator
+from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, HttpUrl, model_validator
 
 Latitude = Annotated[float, Field(ge=-90, le=90)]
 Longitude = Annotated[float, Field(ge=-180, le=180)]
@@ -24,8 +23,8 @@ class StationTrigger(StrictModel):
     zone_id: str
     station_id: str
     stream_id: str
-    trigger_time: datetime
-    received_at: datetime
+    trigger_time: AwareDatetime
+    received_at: AwareDatetime
     sta_lta_ratio: float = Field(gt=0)
     latitude: Latitude | None = None
     longitude: Longitude | None = None
@@ -35,11 +34,11 @@ class StationTrigger(StrictModel):
 class EarthquakeCandidate(StrictModel):
     event_id: str = Field(min_length=1, max_length=128)
     type: Literal["earthquake_candidate"]
-    status: str
+    status: Literal["unlocated_unreviewed"]
     zone_id: str = Field(min_length=1, max_length=128)
     country_code: str | None = Field(default=None, min_length=2, max_length=2)
     country_codes: tuple[str, ...] = Field(min_length=1)
-    detected_at: datetime
+    detected_at: AwareDatetime
     coincidence_window_seconds: float = Field(gt=0)
     required_stations: int = Field(ge=2)
     station_count: int = Field(ge=2)
@@ -53,6 +52,19 @@ class EarthquakeCandidate(StrictModel):
             raise ValueError("station_count must match stations length")
         if self.station_count < self.required_stations:
             raise ValueError("station_count must be >= required_stations")
+        station_ids = [station.station_id for station in self.stations]
+        if len(set(station_ids)) != len(station_ids):
+            raise ValueError("stations must be unique by station_id")
+        if any(station.zone_id != self.zone_id for station in self.stations):
+            raise ValueError("all stations must belong to candidate zone_id")
+        if len(set(self.country_codes)) != len(self.country_codes):
+            raise ValueError("country_codes must be unique")
+        if any(len(code) != 2 or code.upper() != code for code in self.country_codes):
+            raise ValueError("country_codes must contain uppercase ISO alpha-2 codes")
+        if self.country_code and self.country_code not in self.country_codes:
+            raise ValueError("country_code must be included in country_codes")
+        if (self.estimated_latitude is None) != (self.estimated_longitude is None):
+            raise ValueError("estimated coordinates must be provided together")
         return self
 
 
@@ -61,8 +73,8 @@ class OfficialReport(StrictModel):
     agency: str
     jurisdiction: str
     official_event_id: str
-    origin_time: datetime
-    updated_at: datetime | None = None
+    origin_time: AwareDatetime
+    updated_at: AwareDatetime | None = None
     latitude: Latitude
     longitude: Longitude
     depth_km: float | None = Field(default=None, ge=0, le=800)
@@ -83,9 +95,22 @@ class OfficialReportUpdate(StrictModel):
     candidate_event_id: str = Field(min_length=1, max_length=128)
     type: Literal["official_report_update"]
     status: Literal["official_report_available"]
-    matched_at: datetime
+    matched_at: AwareDatetime
     preferred_report: OfficialReport
     reports: tuple[OfficialReport, ...] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def validate_preferred_report(self) -> "OfficialReportUpdate":
+        identities = [(item.source_id, item.official_event_id) for item in self.reports]
+        preferred = (
+            self.preferred_report.source_id,
+            self.preferred_report.official_event_id,
+        )
+        if preferred not in identities:
+            raise ValueError("preferred_report must be included in reports")
+        if len(set(identities)) != len(identities):
+            raise ValueError("reports must be unique by source and official_event_id")
+        return self
 
 
 class Platform(StrEnum):
@@ -198,7 +223,7 @@ class CrowdsourcedCandidate(StrictModel):
     type: Literal["crowdsourced_earthquake_candidate"]
     status: Literal["unlocated_unreviewed"]
     zone_id: str
-    detected_at: datetime
+    detected_at: AwareDatetime
     estimated_latitude: Latitude
     estimated_longitude: Longitude
     pga_threshold_g: float

@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from redis.asyncio import Redis
+from redis.exceptions import ResponseError, WatchError
 
 PUBLISH_ONCE_LUA = """
 local created = redis.call('SET', KEYS[1], '1', 'EX', ARGV[1], 'NX')
@@ -34,22 +35,57 @@ class RedisEventBus:
     async def publish_once(self, stream: str, event: dict[str, Any]) -> PublishResult:
         event_id = str(event["event_id"])
         event_type = str(event["type"])
-        result = await self.redis.eval(
-            PUBLISH_ONCE_LUA,
-            2,
-            f"seismik:webhook:seen:{event_id}",
-            stream,
-            self.idempotency_seconds,
-            self.stream_maxlen,
-            json.dumps(event, ensure_ascii=False, separators=(",", ":"), default=str),
-            event_id,
-            event_type,
-        )
+        seen_key = f"seismik:webhook:seen:{event_type}:{event_id}"
+        payload = json.dumps(event, ensure_ascii=False, separators=(",", ":"), default=str)
+        try:
+            result = await self.redis.eval(
+                PUBLISH_ONCE_LUA,
+                2,
+                seen_key,
+                stream,
+                self.idempotency_seconds,
+                self.stream_maxlen,
+                payload,
+                event_id,
+                event_type,
+            )
+        except ResponseError as exc:
+            if "unknown command" not in str(exc).lower() or "eval" not in str(exc).lower():
+                raise
+            return await self._publish_once_transaction(
+                seen_key, stream, payload, event_id, event_type
+            )
         accepted = bool(int(result[0]))
         stream_id = result[1] or None
         if isinstance(stream_id, bytes):
             stream_id = stream_id.decode()
         return PublishResult(accepted=accepted, stream_id=stream_id)
+
+    async def _publish_once_transaction(
+        self, seen_key: str, stream: str, payload: str, event_id: str, event_type: str
+    ) -> PublishResult:
+        """Fallback atomico para Redis con EVAL deshabilitado y para fakeredis."""
+
+        while True:
+            async with self.redis.pipeline(transaction=True) as pipe:
+                try:
+                    await pipe.watch(seen_key)
+                    if await pipe.exists(seen_key):
+                        return PublishResult(False, None)
+                    pipe.multi()
+                    pipe.set(seen_key, "1", ex=self.idempotency_seconds)
+                    pipe.xadd(
+                        stream,
+                        {"payload": payload, "event_id": event_id, "event_type": event_type},
+                        maxlen=self.stream_maxlen,
+                        approximate=True,
+                    )
+                    _created, stream_id = await pipe.execute()
+                    if isinstance(stream_id, bytes):
+                        stream_id = stream_id.decode()
+                    return PublishResult(True, str(stream_id))
+                except WatchError:
+                    continue
 
     async def publish(self, stream: str, event: dict[str, Any]) -> str:
         result = await self.redis.xadd(

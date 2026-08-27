@@ -9,6 +9,7 @@ from api.config import AppSettings
 from api.schemas import DeviceTarget
 from dispatcher.consumer import StreamConsumer
 from dispatcher.push import (
+    PushDispatcher,
     PushResult,
     apns_notification_id,
     collapse_key,
@@ -66,6 +67,8 @@ async def test_candidate_routes_by_zone_and_official_reuses_mapping() -> None:
     await consumer._handle_official(official)
     assert push.calls[1][2] is False
     assert devices.calls[1]["zone_id"] == "andes"
+    await consumer._handle_official(official)
+    assert len(push.calls) == 2
 
 
 def test_notification_payloads_distinguish_critical_and_official() -> None:
@@ -92,3 +95,53 @@ def test_notification_payloads_distinguish_critical_and_official() -> None:
 def test_apns_headers_use_valid_bounded_identifiers() -> None:
     assert len(apns_notification_id("not-a-uuid")) == 36
     assert len(collapse_key("x" * 200).encode()) == 64
+
+
+@pytest.mark.asyncio
+async def test_dry_run_is_audited_without_claiming_push_success() -> None:
+    redis = FakeRedis(decode_responses=True)
+    settings = AppSettings(push_enabled=False, push_mode="dry_run")
+    devices = FakeDevices()
+    consumer = StreamConsumer(
+        redis, settings, devices, PushDispatcher(settings)  # type: ignore[arg-type]
+    )
+    event = {
+        "event_id": "candidate-audit",
+        "type": "earthquake_candidate",
+        "zone_id": "andes",
+        "detected_at": "2026-01-01T00:00:00Z",
+    }
+    await consumer._handle_candidate(event)
+    entries = await redis.xrevrange(settings.push_audit_stream, count=1)
+    fields = entries[0][1]
+    assert fields["test"] == "true"
+    assert fields["critical"] == "true"
+    assert fields["attempted"] == "1"
+    assert json.loads(fields["target_device_ids"]) == ["device-0001"]
+    assert "x" * 64 not in fields["payload"]
+
+
+@pytest.mark.asyncio
+async def test_poison_message_moves_to_dead_letter_after_bounded_retries() -> None:
+    redis = FakeRedis(decode_responses=True)
+    settings = AppSettings(max_delivery_attempts=2)
+    consumer = StreamConsumer(
+        redis, settings, FakeDevices(), FakePush()  # type: ignore[arg-type]
+    )
+    await consumer.ensure_groups()
+    message_id = await redis.xadd(settings.candidate_stream, {"payload": "not-json"})
+    messages = await redis.xreadgroup(
+        settings.dispatcher_group,
+        settings.consumer_name,
+        {settings.candidate_stream: ">"},
+        count=1,
+    )
+    fields = messages[0][1][0][1]
+    await consumer._handle(settings.candidate_stream, message_id, fields)
+    assert await redis.xlen(settings.dead_letter_stream) == 0
+    await consumer._handle(settings.candidate_stream, message_id, fields)
+    dead_letter = (await redis.xrevrange(settings.dead_letter_stream, count=1))[0][1]
+    assert dead_letter["source_id"] == message_id
+    assert dead_letter["attempts"] == "2"
+    pending = await redis.xpending(settings.candidate_stream, settings.dispatcher_group)
+    assert pending["pending"] == 0
