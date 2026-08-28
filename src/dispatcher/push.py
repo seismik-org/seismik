@@ -256,7 +256,7 @@ def notification_content(
             f"M {magnitude:.1f}" if isinstance(magnitude, (int, float)) else "Magnitud pendiente"
         )
         depth_text = f", profundidad {depth:.0f} km" if isinstance(depth, (int, float)) else ""
-        title = "Reporte sísmico oficial"
+        title = "Reporte s\u00edsmico oficial"
         body = f"{magnitude_text}{depth_text}. {report.get('place') or report.get('agency')}"
         data = {
             "type": event["type"],
@@ -276,8 +276,11 @@ def notification_content(
         }
         return title, body, data
 
-    title = "¡ALERTA SISMICA!"
-    body = "¡Agáchate, Cúbrete y Sujétate! Aléjate de ventanas y objetos que puedan caer."
+    title = "\u00a1ALERTA S\u00cdSMICA!"
+    body = (
+        "\u00a1Ag\u00e1chate, C\u00fabrete y Suj\u00e9tate! "
+        "Al\u00e9jate de ventanas y objetos que puedan caer."
+    )
     return title, body, {
         "type": event["type"],
         "event_id": event["event_id"],

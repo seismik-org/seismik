@@ -76,8 +76,8 @@ def test_notification_payloads_distinguish_critical_and_official() -> None:
         {"event_id": "c1", "type": "earthquake_candidate", "zone_id": "andes", "detected_at": "now"},
         critical=True,
     )
-    assert "ALERTA" in title
-    assert "Cúbrete" in body
+    assert title == "\u00a1ALERTA S\u00cdSMICA!"
+    assert "C\u00fabrete" in body
     assert data["critical"] is True
 
     title, body, data = notification_content({
@@ -87,7 +87,7 @@ def test_notification_payloads_distinguish_critical_and_official() -> None:
             "latitude": 6.8, "longitude": -73.1, "official_url": "https://example.test",
         },
     }, critical=False)
-    assert title == "Reporte sísmico oficial"
+    assert title == "Reporte s\u00edsmico oficial"
     assert "M 4.3" in body
     assert data["candidate_event_id"] == "c1"
 

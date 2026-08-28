@@ -1,8 +1,8 @@
 # SEISMIK — CONTROL DE AVANCE DEL MVP
 
-Versión: 0.1.3
-Fecha de corte: 26 de agosto de 2026
-Estado general: Alfa 0.1 — Sprint 3 en curso; E2E Docker pendiente de WSL 2
+Versión: 0.1.4
+Fecha de corte: 27 de agosto de 2026
+Estado general: Alfa 0.1 — Sprint 3 cerrado técnicamente; No-Go público
 Propietario del control: Codex  
 Aprobador: Product Owner
 
@@ -14,6 +14,7 @@ Aprobador: Product Owner
 | 0.1.1 | 2026-08-24 | Codex | Evidencia y cierre técnico del Sprint 1 | Activo |
 | 0.1.2 | 2026-08-24 | Codex | Calibración sombra y cierre técnico del Sprint 2 | Activo |
 | 0.1.3 | 2026-08-26 | Codex | Seguridad, bus y avance técnico del Sprint 3 | Activo |
+| 0.1.4 | 2026-08-27 | Codex | E2E Docker real y cierre técnico del Sprint 3 | Activo |
 
 ## 1. Semáforo y estados
 
@@ -36,10 +37,10 @@ Semáforo del Sprint:
 
 | Indicador | Valor inicial | Meta MVP | Semáforo | Evidencia |
 |---|---:|---:|---|---|
-| Progreso de sprints | 2 de 8 cerrados técnicamente | 8 de 8 | Amarillo | Informes Sprint 1 y 2 |
+| Progreso de sprints | 3 de 8 cerrados técnicamente | 8 de 8 | Amarillo | Informes Sprint 1, 2 y 3 |
 | Análisis Flutter | Sin problemas | Sin problemas | Verde | Ejecución 2026-08-23 |
 | Pruebas Flutter | 2 aprobadas | Suite ampliada | Amarillo | `mobile_app/test/` |
-| Pruebas backend actuales | 55 aprobadas; Ruff y mypy limpios | Suite completa aprobada | Verde | Entorno local 2026-08-26 |
+| Pruebas backend actuales | 55 aprobadas; Ruff y mypy limpios | Suite completa aprobada | Verde | Entorno local 2026-08-27 |
 | Backend desplegado | No | Sí, ambiente beta | Amarillo | Pendiente Sprint 6 |
 | URL móvil real | No, dominio de ejemplo | Sí | Amarillo | `mobile_app/lib/core/constants.dart` |
 | Operación en sombra | 0 días | 14 días | Amarillo | Pendiente Sprint 6 |
@@ -88,7 +89,7 @@ Semáforo del Sprint:
 | S3-03 | Elegir bus MVP | Codex propone; PO aprueba | CO técnico | ADR Redis Streams | `ADR-0001-redis-streams-mvp.md` |
 | S3-04 | App Check y registro | Codex | CO técnico | Integridad tipada | Token inválido y configuración productiva probados |
 | S3-05 | Dispatcher seguro | Codex | CO | Dry run auditable y allowlist | `stream:seismik:push-test`, tests |
-| S3-06 | E2E local | Codex | ER | Replay → payload TEST | E2E en memoria aprobado; Compose pendiente |
+| S3-06 | E2E local | Codex | CO | Replay → payload TEST | `docs/evidence/sprint3-docker-e2e.json` |
 | S3-07 | IaC, cuotas y límites | Codex | CO técnico | Guardrails sin recursos | `deploy/README.md`, `.env.example` |
 
 ## 4. Registro maestro de entregables
@@ -99,7 +100,7 @@ Semáforo del Sprint:
 | ENT-002 | Gobierno y documentos v0.1 | 0 | Codex + PO | ER | PO revisa alcance y roles | `docs/project-management/` |
 | ENT-003 | Detector reproducible | 1 | Codex | CO | Replay y reconexión demostrados | `SPRINT_1_CIERRE_2026-08-24.md` |
 | ENT-004 | Detector shadow calibrado | 2 | Codex + asesor | ER | Métricas listas; revisión científica pendiente | `SPRINT_2_CIERRE_TECNICO_2026-08-24.md` |
-| ENT-005 | Backend integrado | 3 | Codex | ER | E2E en memoria aprobado; falta Compose real | Tests y `SPRINT_3_AVANCE_2026-08-26.md` |
+| ENT-005 | Backend integrado | 3 | Codex | CO | E2E Docker real, duplicado suprimido y cero push externo | Evidencia JSON y `SPRINT_3_CIERRE_TECNICO_2026-08-27.md` |
 | ENT-006 | Android offline mínimo | 4 | Codex + PO | NI | Prueba en 2+ dispositivos | Evidencia de testing |
 | ENT-007 | Simulacro cerrado | 5 | Equipo | NI | Solo testers y marca TEST | Acta y trazas |
 | ENT-008 | Entorno beta en sombra | 6 | Codex | NI | 14 días de telemetría iniciados | Dashboard y runbook |
@@ -159,7 +160,7 @@ Semáforo del Sprint:
 | IMP-003 | 2026-08-23 | Falta asesor sismológico formal | No se validan umbrales para uso público | Product Owner | Contactar universidad/experto | Abierto |
 | IMP-004 | 2026-08-23 | Falta grupo cerrado suficiente | Retrasa elegibilidad Play | Product Owner | Reclutar antes de Sprint 6 | Abierto |
 | IMP-005 | 2026-08-24 | Feed rápido SGC no conserva replays antiguos | Impide validar en vivo asociaciones históricas | Codex | Usar fixture contractual y catálogo archivado con atribución | Documentado |
-| IMP-006 | 2026-08-26 | WSL 2 no está habilitado | Docker daemon no inicia; E2E Compose pendiente | Product Owner | Ejecutar `wsl --install` como administrador y reiniciar | Abierto |
+| IMP-006 | 2026-08-26 | WSL 2 no estaba habilitado | Docker daemon no iniciaba | Product Owner + Codex | WSL 2 habilitado; runtime Docker reparado y E2E ejecutado | Resuelto 2026-08-27 |
 
 ## 9. Evidencia mínima por Sprint
 
@@ -189,7 +190,7 @@ Semáforo del Sprint:
 
 ## 11. Checklist Go/No-Go del MVP
 
-- [ ] Pipeline replay → candidato → API → bus → push TEST demostrado.
+- [x] Pipeline replay → candidato → API → bus → push TEST demostrado.
 - [ ] Cero secretos en Git y rotación realizada si existió exposición.
 - [ ] App Android usa API real de beta y firma válida.
 - [ ] Reportes offline sincronizan sin duplicados.

@@ -1,5 +1,8 @@
 # Seismik — avance técnico Sprint 3
 
+> Documento histórico. El impedimento descrito aquí fue resuelto y el cierre
+> vigente está en `SPRINT_3_CIERRE_TECNICO_2026-08-27.md`.
+
 Versión: 0.1  
 Fecha de corte: 2026-08-26 (America/Bogota)  
 Estado: seis actividades técnicamente listas; E2E Compose pendiente

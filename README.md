@@ -18,11 +18,12 @@ detectó los tres casos históricos y no produjo candidatos en cinco minutos de
 ruido ambiente, pero su latencia media fue 56,552 s. El corpus es pequeño y no
 incluye una validación sismológica independiente: sigue siendo **No-Go público**.
 
-**Sprint 3 en curso (2026-08-26):** contratos OpenAPI estrictos, ingesta HMAC
-idempotente, Redis Streams/DLQ y pipeline replay → API → dispatcher validados en
-memoria. El modo `dry_run` guarda un payload marcado `TEST` sin tokens ni envío
-externo. Docker Desktop quedó instalado; falta habilitar WSL 2 como administrador,
-reiniciar Windows y repetir la misma prueba con Compose para cerrar el Sprint.
+**Sprint 3 cerrado técnicamente (2026-08-27):** contratos OpenAPI estrictos,
+ingesta HMAC idempotente, Redis Streams/DLQ y pipeline MiniSEED → API → Redis →
+dispatcher verificados con Docker Compose real. El modo `dry_run` produjo un
+payload crítico marcado `TEST`, suprimió el duplicado y no envió ningún push
+externo. La evidencia reproducible está en
+[`docs/evidence/sprint3-docker-e2e.json`](docs/evidence/sprint3-docker-e2e.json).
 
 ## Gobierno, Scrum y control de avance
 

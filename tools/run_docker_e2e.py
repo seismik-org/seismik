@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import logging
 import sys
 import time
 from datetime import datetime, timezone
@@ -44,6 +45,7 @@ async def wait_for_audit(redis_url: str, stream: str, event_id: str) -> dict[str
 
 
 def main() -> int:
+    logging.getLogger("eew.processor").setLevel(logging.ERROR)
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--api-base", default="http://localhost:8000")
     parser.add_argument("--redis-url", default="redis://localhost:6379/0")
@@ -108,12 +110,22 @@ def main() -> int:
             device_headers,
         )
 
+    audit_payload = json.loads(audit["payload"])
+    waveform_inputs = []
+    for item in replay["inputs"]:
+        source_path = Path(item["path"])
+        try:
+            portable_path = source_path.relative_to(PROJECT_ROOT).as_posix()
+        except ValueError:
+            portable_path = source_path.name
+        waveform_inputs.append({**item, "path": portable_path})
+
     evidence = {
         "schema_version": 1,
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "mode": "TEST",
         "case_id": args.case,
-        "waveform_inputs": replay["inputs"],
+        "waveform_inputs": waveform_inputs,
         "candidate_event_id": event["event_id"],
         "first_ingest": accepted.json(),
         "duplicate_ingest": duplicate.json(),
@@ -127,6 +139,10 @@ def main() -> int:
             "duplicate_suppressed": duplicate.json()["duplicate"],
             "payload_marked_test": audit.get("test") == "true",
             "external_push_disabled": audit.get("test") == "true",
+            "critical_text_utf8": (
+                audit_payload.get("title") == "\u00a1ALERTA S\u00cdSMICA!"
+                and "C\u00fabrete" in audit_payload.get("body", "")
+            ),
         },
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)

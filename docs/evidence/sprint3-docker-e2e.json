@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-08-28T00:57:34.238744+00:00",
+  "mode": "TEST",
+  "case_id": "co-2023-08-17-m6.1",
+  "waveform_inputs": [
+    {
+      "path": "data/replay/fixtures/co-2023-08-17-m6.1.mseed",
+      "bytes": 974848,
+      "sha256": "307eb2e655680918d097274d96cae67087332198e24034f05cbaf16ada905f48"
+    }
+  ],
+  "candidate_event_id": "31bc9af545ee16f8df48884f-fa368e630055",
+  "first_ingest": {
+    "accepted": true,
+    "duplicate": false,
+    "stream_id": "1787878648067-0"
+  },
+  "duplicate_ingest": {
+    "accepted": true,
+    "duplicate": true,
+    "stream_id": null
+  },
+  "audit": {
+    "event_id": "31bc9af545ee16f8df48884f-fa368e630055",
+    "event_type": "earthquake_candidate",
+    "test": "true",
+    "critical": "true",
+    "attempted": "1",
+    "payload": "{\"title\":\"¡ALERTA SÍSMICA!\",\"body\":\"¡Agáchate, Cúbrete y Sujétate! Aléjate de ventanas y objetos que puedan caer.\",\"data\":{\"type\":\"earthquake_candidate\",\"event_id\":\"31bc9af545ee16f8df48884f-fa368e630055\",\"zone_id\":\"CO-TEST-fa368e630055\",\"detected_at\":\"2023-08-17T17:05:44.978393Z\",\"estimated_latitude\":5.265744333333333,\"estimated_longitude\":-74.49944466666666,\"critical\":true}}"
+  },
+  "assertions": {
+    "first_accepted": true,
+    "duplicate_suppressed": true,
+    "payload_marked_test": true,
+    "external_push_disabled": true,
+    "critical_text_utf8": true
+  }
+}
