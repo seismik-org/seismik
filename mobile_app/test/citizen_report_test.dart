@@ -12,6 +12,7 @@ void main() {
       'notice': 'not an emergency service',
       'agency_routes': <Map<String, dynamic>>[
         <String, dynamic>{
+          'agency_id': 'usgs_dyfi',
           'agency_name': 'USGS Did You Feel It?',
           'official_url': 'https://earthquake.usgs.gov/data/dyfi/',
           'automatic_submission': false,
@@ -23,5 +24,16 @@ void main() {
     expect(result.emergencyActionRecommended, isTrue);
     expect(result.locationPrecision, 'approximate');
     expect(result.agencyRoutes.single.automaticSubmission, isFalse);
+    expect(result.agencyRoutes.single.agencyId, 'usgs_dyfi');
+  });
+
+  test('offline catalog offers Colombia local agency and USGS', () {
+    final List<AgencyRoute> agencies = OfficialAgencyCatalog.fallbackFor(
+      countryCode: 'CO',
+      officialEventId: 'us7000abcd',
+    );
+
+    expect(agencies.map((item) => item.agencyId), <String>['sgc', 'usgs_dyfi']);
+    expect(agencies.last.officialUrl, endsWith('/us7000abcd/tellus'));
   });
 }

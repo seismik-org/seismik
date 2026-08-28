@@ -902,6 +902,73 @@
         }
       }
     },
+    "/v1/reports/agencies": {
+      "get": {
+        "tags": [
+          "citizen-reports"
+        ],
+        "summary": "List Reporting Agencies",
+        "description": "Return user-selectable official forms; no report is submitted here.",
+        "operationId": "list_reporting_agencies_v1_reports_agencies_get",
+        "parameters": [
+          {
+            "name": "country_code",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 2,
+              "title": "Country Code"
+            }
+          },
+          {
+            "name": "official_event_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Official Event Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AgencyRoute"
+                  },
+                  "title": "Response List Reporting Agencies V1 Reports Agencies Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/reports/felt": {
       "post": {
         "tags": [

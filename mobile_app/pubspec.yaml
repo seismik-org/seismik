@@ -1,7 +1,7 @@
 name: seismik
 description: Cliente móvil multiplataforma de alerta sísmica temprana Seismik.
 publish_to: none
-version: 0.3.0+3
+version: 0.4.0+4
 
 environment:
   sdk: ">=3.11.0 <4.0.0"
@@ -12,6 +12,7 @@ dependencies:
     sdk: flutter
   battery_plus: ^7.1.1
   crypto: ^3.0.7
+  dynamic_color: 1.8.1
   firebase_app_check: ^0.4.6
   firebase_core: ^4.13.0
   firebase_messaging: ^16.5.0

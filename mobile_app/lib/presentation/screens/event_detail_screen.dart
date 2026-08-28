@@ -13,6 +13,7 @@ class EventDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final ColorScheme colors = Theme.of(context).colorScheme;
     final LatLng epicenter = LatLng(event.latitude ?? 0, event.longitude ?? 0);
     return Scaffold(
       appBar: AppBar(
@@ -35,11 +36,14 @@ class EventDetailScreen extends StatelessWidget {
                   height: 1,
                 ),
               ),
-              const Padding(
+              Padding(
                 padding: EdgeInsets.only(top: 12, left: 4),
                 child: Text(
                   'M_w',
-                  style: TextStyle(fontSize: 22, color: Colors.white70),
+                  style: TextStyle(
+                    fontSize: 22,
+                    color: colors.onSurfaceVariant,
+                  ),
                 ),
               ),
             ],
@@ -148,24 +152,27 @@ class _Metric extends StatelessWidget {
   final String caption;
 
   @override
-  Widget build(BuildContext context) => Container(
-    width: 155,
-    padding: const EdgeInsets.all(14),
-    decoration: BoxDecoration(
-      color: Colors.white.withValues(alpha: 0.07),
-      borderRadius: BorderRadius.circular(16),
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        Icon(icon, color: const Color(0xFF1ECB7B)),
-        const SizedBox(height: 10),
-        Text(
-          label,
-          style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 17),
-        ),
-        Text(caption, style: const TextStyle(color: Colors.white60)),
-      ],
-    ),
-  );
+  Widget build(BuildContext context) {
+    final ColorScheme colors = Theme.of(context).colorScheme;
+    return Container(
+      width: 155,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: colors.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Icon(icon, color: colors.primary),
+          const SizedBox(height: 10),
+          Text(
+            label,
+            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 17),
+          ),
+          Text(caption, style: TextStyle(color: colors.onSurfaceVariant)),
+        ],
+      ),
+    );
+  }
 }

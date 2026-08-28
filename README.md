@@ -25,6 +25,14 @@ payload crítico marcado `TEST`, suprimió el duplicado y no envió ningún push
 externo. La evidencia reproducible está en
 [`docs/evidence/sprint3-docker-e2e.json`](docs/evidence/sprint3-docker-e2e.json).
 
+**Sprint 4 en curso (2026-08-27):** la app Android usa Material You con color
+dinámico y modo claro/oscuro del sistema. El reporte “¿Lo sentiste?” permite
+elegir una o varias organizaciones geológicas para cada sismo, conserva la
+preferencia localmente y usa un catálogo de respaldo sin red. Seismik nunca
+envía datos a esas entidades de forma automática: abre sus formularios oficiales
+después del consentimiento. La cola completa de reportes offline y las pruebas
+en dos dispositivos Android siguen pendientes.
+
 ## Gobierno, Scrum y control de avance
 
 La fuente compartida y verificable de planificación se encuentra en

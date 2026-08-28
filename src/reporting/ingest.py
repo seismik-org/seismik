@@ -3,7 +3,7 @@ from __future__ import annotations
 import time
 from typing import TypeVar
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, status
 from pydantic import BaseModel, ValidationError
 from redis.asyncio import Redis
 
@@ -13,10 +13,25 @@ from api.dependencies import get_app_settings, get_bus, get_devices, get_redis
 from api.devices_store import DeviceRepository
 from api.security import derive_crowd_token, verify_signature
 from reporting.agencies import routes_for
-from reporting.schemas import DamageReport, FeltReport, LocationPrecision, ReportAccepted
+from reporting.schemas import (
+    AgencyRoute,
+    DamageReport,
+    FeltReport,
+    LocationPrecision,
+    ReportAccepted,
+)
 
 router = APIRouter(prefix="/v1/reports", tags=["citizen-reports"])
 ReportModel = TypeVar("ReportModel", bound=BaseModel)
+
+
+@router.get("/agencies", response_model=tuple[AgencyRoute, ...])
+async def list_reporting_agencies(
+    country_code: str = Query(min_length=2, max_length=2),
+    official_event_id: str | None = Query(default=None, min_length=1, max_length=128),
+) -> tuple[AgencyRoute, ...]:
+    """Return user-selectable official forms; no report is submitted here."""
+    return routes_for(country_code, official_event_id)
 
 
 async def _ingest_report(
@@ -37,6 +52,21 @@ async def _ingest_report(
     except ValidationError as exc:
         raise HTTPException(status_code=422, detail=exc.errors()) from exc
     device_id = str(getattr(report, "device_id"))
+    selected_agencies = tuple(getattr(report, "selected_agency_ids", ()))
+    if selected_agencies:
+        available = {
+            route.agency_id
+            for route in routes_for(
+                str(getattr(report, "country_code")),
+                getattr(report, "official_event_id", None),
+            )
+        }
+        unknown = sorted(set(selected_agencies) - available)
+        if unknown:
+            raise HTTPException(
+                status_code=422,
+                detail={"unknown_agency_ids": unknown},
+            )
     if not await devices.exists(device_id):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unknown device")
     secret = derive_crowd_token(settings.crowd_master_secret.get_secret_value(), device_id)
@@ -90,7 +120,11 @@ async def submit_felt_report(
     )
     report = FeltReport.model_validate(raw)
     agency_routes = (
-        routes_for(report.country_code, report.official_event_id)
+        routes_for(
+            report.country_code,
+            report.official_event_id,
+            report.selected_agency_ids or None,
+        )
         if report.share_with_official_agencies
         else ()
     )
@@ -131,7 +165,11 @@ async def submit_damage_report(
     )
     report = DamageReport.model_validate(raw)
     agency_routes = (
-        routes_for(report.country_code, report.official_event_id)
+        routes_for(
+            report.country_code,
+            report.official_event_id,
+            report.selected_agency_ids or None,
+        )
         if report.share_with_official_agencies
         else ()
     )

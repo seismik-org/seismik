@@ -44,8 +44,19 @@ class CitizenReportBase(StrictModel):
     location_precision: LocationPrecision = LocationPrecision.APPROXIMATE
     country_code: str = Field(min_length=2, max_length=2)
     share_with_official_agencies: bool = False
+    selected_agency_ids: tuple[str, ...] = Field(default=(), max_length=5)
     consent_version: Literal["2026-08"] = "2026-08"
     comment: str | None = Field(default=None, max_length=1_000)
+
+    @model_validator(mode="after")
+    def validate_agency_selection(self) -> "CitizenReportBase":
+        if len(set(self.selected_agency_ids)) != len(self.selected_agency_ids):
+            raise ValueError("selected_agency_ids must be unique")
+        if self.selected_agency_ids and not self.share_with_official_agencies:
+            raise ValueError(
+                "share_with_official_agencies must be true when agencies are selected"
+            )
+        return self
 
 
 class FeltReport(CitizenReportBase):

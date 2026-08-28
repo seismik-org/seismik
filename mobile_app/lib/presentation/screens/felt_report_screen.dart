@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../data/models/citizen_report.dart';
 import '../../data/models/seismic_event.dart';
+import '../../services/agency_preference_store.dart';
 import '../../state/seismik_state.dart';
 import 'report_result_screen.dart';
 
@@ -28,6 +31,13 @@ class _FeltReportScreenState extends State<FeltReportScreen> {
   bool _precise = false;
   bool _official = true;
   bool _submitting = false;
+  bool _loadingAgencies = false;
+  List<AgencyRoute> _agencies = <AgencyRoute>[];
+  Set<String> _selectedAgencyIds = <String>{};
+  String? _agencyLoadWarning;
+
+  static const AgencyPreferenceStore _agencyPreferences =
+      AgencyPreferenceStore();
 
   @override
   void initState() {
@@ -36,6 +46,7 @@ class _FeltReportScreenState extends State<FeltReportScreen> {
         widget.event?.countryCode ??
         WidgetsBinding.instance.platformDispatcher.locale.countryCode ??
         'CO';
+    unawaited(_loadAgencies());
   }
 
   @override
@@ -54,9 +65,21 @@ class _FeltReportScreenState extends State<FeltReportScreen> {
       );
       return;
     }
+    if (_official && _selectedAgencyIds.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Selecciona al menos una organización geológica.'),
+        ),
+      );
+      return;
+    }
     setState(() => _submitting = true);
+    final SeismikState state = context.read<SeismikState>();
     try {
-      final SeismikState state = context.read<SeismikState>();
+      await _agencyPreferences.save(
+        _preferenceKey,
+        _official ? _selectedAgencyIds : <String>{},
+      );
       final ({double latitude, double longitude})? coordinates = await state
           .currentCoordinates();
       if (coordinates == null) throw Exception('No hay ubicación disponible');
@@ -65,7 +88,8 @@ class _FeltReportScreenState extends State<FeltReportScreen> {
         longitude: coordinates.longitude,
         countryCode: _country.text,
         preciseLocation: _precise,
-        shareWithOfficialAgencies: _official,
+        shareWithOfficialAgencies: _official && _selectedAgencyIds.isNotEmpty,
+        selectedAgencyIds: _official ? _selectedAgencyIds : <String>{},
         felt: _felt,
         intensityMmi: _felt ? _intensity.round() : null,
         earthquakeEventId: widget.event?.id,
@@ -93,6 +117,49 @@ class _FeltReportScreenState extends State<FeltReportScreen> {
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
+  }
+
+  String get _preferenceKey =>
+      widget.event?.id ?? 'manual-${_country.text.trim().toUpperCase()}';
+
+  Future<void> _loadAgencies() async {
+    final String country = _country.text.trim().toUpperCase();
+    if (country.length != 2) return;
+    if (mounted) {
+      setState(() {
+        _loadingAgencies = true;
+        _agencyLoadWarning = null;
+      });
+    }
+    List<AgencyRoute> agencies = OfficialAgencyCatalog.fallbackFor(
+      countryCode: country,
+      officialEventId: widget.event?.officialEventId,
+    );
+    try {
+      final List<AgencyRoute> remote = await context
+          .read<SeismikState>()
+          .api
+          .fetchReportingAgencies(
+            countryCode: country,
+            officialEventId: widget.event?.officialEventId,
+          );
+      if (remote.isNotEmpty) agencies = remote;
+    } catch (_) {
+      _agencyLoadWarning =
+          'Sin conexión: se muestra el catálogo oficial guardado en la app.';
+    }
+    final Set<String> available = agencies.map((item) => item.agencyId).toSet();
+    final Set<String> saved = await _agencyPreferences.load(_preferenceKey);
+    final Set<String> selected = saved.intersection(available);
+    if (selected.isEmpty && agencies.isNotEmpty) {
+      selected.add(agencies.first.agencyId);
+    }
+    if (!mounted) return;
+    setState(() {
+      _agencies = agencies;
+      _selectedAgencyIds = selected;
+      _loadingAgencies = false;
+    });
   }
 
   @override
@@ -125,7 +192,9 @@ class _FeltReportScreenState extends State<FeltReportScreen> {
           ),
           Text(
             _intensityDescription(_intensity.round()),
-            style: const TextStyle(color: Colors.white70),
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
           ),
           const SizedBox(height: 16),
           _check('Estaba en interiores', _indoors, (v) => _indoors = v),
@@ -188,6 +257,7 @@ class _FeltReportScreenState extends State<FeltReportScreen> {
             maxLength: 2,
             textCapitalization: TextCapitalization.characters,
             decoration: const InputDecoration(labelText: 'País (ISO, ej. CO)'),
+            onSubmitted: (_) => _loadAgencies(),
           ),
           SwitchListTile.adaptive(
             value: _precise,
@@ -200,11 +270,62 @@ class _FeltReportScreenState extends State<FeltReportScreen> {
           SwitchListTile.adaptive(
             value: _official,
             onChanged: (value) => setState(() => _official = value),
-            title: const Text('Mostrar formularios de agencias oficiales'),
+            title: const Text('Reportar también a una entidad oficial'),
             subtitle: const Text(
-              'Se abrirán aparte; nada se envía sin tu acción.',
+              'Tú eliges la organización. Su formulario se abre aparte.',
             ),
           ),
+          if (_official) ...<Widget>[
+            const Divider(),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                'Organización geológica para este sismo',
+                style: Theme.of(context).textTheme.titleSmall,
+              ),
+            ),
+            const SizedBox(height: 8),
+            if (_loadingAgencies)
+              const LinearProgressIndicator()
+            else
+              for (final AgencyRoute agency in _agencies)
+                CheckboxListTile(
+                  contentPadding: EdgeInsets.zero,
+                  value: _selectedAgencyIds.contains(agency.agencyId),
+                  onChanged: (bool? selected) {
+                    setState(() {
+                      if (selected ?? false) {
+                        _selectedAgencyIds.add(agency.agencyId);
+                      } else {
+                        _selectedAgencyIds.remove(agency.agencyId);
+                      }
+                    });
+                  },
+                  title: Text(agency.agencyName),
+                  subtitle: Text(
+                    agency.countryCode == null
+                        ? 'Cobertura internacional'
+                        : 'Entidad de ${agency.countryCode}',
+                  ),
+                ),
+            if (_agencyLoadWarning != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Text(
+                  _agencyLoadWarning!,
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.tertiary,
+                  ),
+                ),
+              ),
+            const Padding(
+              padding: EdgeInsets.only(top: 8),
+              child: Text(
+                'Seismik no suplanta ni envía automáticamente a la entidad. '
+                'Tras guardar tu reporte abrirá el formulario oficial elegido.',
+              ),
+            ),
+          ],
         ],
       ),
     ),

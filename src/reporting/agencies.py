@@ -31,7 +31,11 @@ USGS_GLOBAL = AgencyRoute(
 )
 
 
-def routes_for(country_code: str, official_event_id: str | None) -> tuple[AgencyRoute, ...]:
+def routes_for(
+    country_code: str,
+    official_event_id: str | None,
+    selected_agency_ids: tuple[str, ...] | None = None,
+) -> tuple[AgencyRoute, ...]:
     country = country_code.upper()
     routes: list[AgencyRoute] = []
     local = COUNTRY_ROUTES.get(country)
@@ -48,4 +52,7 @@ def routes_for(country_code: str, official_event_id: str | None) -> tuple[Agency
             }
         )
     routes.append(usgs)
-    return tuple(routes)
+    if selected_agency_ids is None:
+        return tuple(routes)
+    selected = set(selected_agency_ids)
+    return tuple(route for route in routes if route.agency_id in selected)

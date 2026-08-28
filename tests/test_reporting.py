@@ -77,6 +77,17 @@ def test_agency_routes_include_local_and_global_official_forms() -> None:
     assert [route.agency_id for route in routes] == ["sgc", "usgs_dyfi"]
     assert routes[1].official_url.endswith("/us7000abcd/tellus")
     assert all(not route.automatic_submission for route in routes)
+    selected = routes_for("CO", "us7000abcd", ("sgc",))
+    assert [route.agency_id for route in selected] == ["sgc"]
+
+
+def test_felt_report_rejects_agency_selection_without_consent() -> None:
+    payload = felt_payload() | {
+        "share_with_official_agencies": False,
+        "selected_agency_ids": ["sgc"],
+    }
+    with pytest.raises(ValidationError, match="share_with_official_agencies"):
+        FeltReport.model_validate(payload)
 
 
 @pytest.mark.asyncio
@@ -115,3 +126,18 @@ async def test_felt_endpoint_signs_stores_and_redacts_approximate_location() -> 
     assert stored["latitude"] == 4.65
     assert stored["longitude"] == -74.05
     assert stored["location_accuracy_m"] is None
+
+
+@pytest.mark.asyncio
+async def test_agency_catalog_is_available_before_reporting() -> None:
+    app = FastAPI()
+    app.include_router(router)
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        response = await client.get(
+            "/v1/reports/agencies",
+            params={"country_code": "CO", "official_event_id": "us7000abcd"},
+        )
+    assert response.status_code == 200
+    assert [item["agency_id"] for item in response.json()] == ["sgc", "usgs_dyfi"]

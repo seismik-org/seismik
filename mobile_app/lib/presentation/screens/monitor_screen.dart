@@ -19,8 +19,8 @@ class MonitorScreen extends StatelessWidget {
     final LatLng center = state.position == null
         ? const LatLng(4.65, -74.05)
         : LatLng(state.position!.latitude, state.position!.longitude);
+    final ColorScheme colors = Theme.of(context).colorScheme;
     return Scaffold(
-      backgroundColor: const Color(0xFF081018),
       appBar: AppBar(
         title: const Text(
           'SEISMIK',
@@ -83,9 +83,9 @@ class MonitorScreen extends StatelessWidget {
                               height: 30,
                               child: Tooltip(
                                 message: '${station.network}.${station.id}',
-                                child: const Icon(
+                                child: Icon(
                                   Icons.sensors,
-                                  color: Color(0xFF1ECB7B),
+                                  color: colors.primary,
                                   size: 22,
                                 ),
                               ),
@@ -96,9 +96,9 @@ class MonitorScreen extends StatelessWidget {
                               point: center,
                               width: 32,
                               height: 32,
-                              child: const Icon(
+                              child: Icon(
                                 Icons.my_location,
-                                color: Colors.lightBlueAccent,
+                                color: colors.tertiary,
                               ),
                             ),
                         ],
@@ -178,7 +178,8 @@ class _EventTile extends StatelessWidget {
   Widget build(BuildContext context) => Card(
     child: ListTile(
       leading: CircleAvatar(
-        backgroundColor: Colors.redAccent,
+        backgroundColor: Theme.of(context).colorScheme.errorContainer,
+        foregroundColor: Theme.of(context).colorScheme.onErrorContainer,
         child: Text(event.magnitude?.toStringAsFixed(1) ?? '?'),
       ),
       title: Text(event.place ?? 'Evento sísmico'),

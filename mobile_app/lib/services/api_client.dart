@@ -140,6 +140,7 @@ class ApiClient {
     required String countryCode,
     required bool preciseLocation,
     required bool shareWithOfficialAgencies,
+    required Set<String> selectedAgencyIds,
     required bool felt,
     required int? intensityMmi,
     required String? earthquakeEventId,
@@ -160,6 +161,7 @@ class ApiClient {
             countryCode: countryCode,
             preciseLocation: preciseLocation,
             shareWithOfficialAgencies: shareWithOfficialAgencies,
+            selectedAgencyIds: selectedAgencyIds,
             earthquakeEventId: earthquakeEventId,
             officialEventId: officialEventId,
             comment: comment,
@@ -203,6 +205,7 @@ class ApiClient {
             countryCode: countryCode,
             preciseLocation: preciseLocation,
             shareWithOfficialAgencies: shareWithOfficialAgencies,
+            selectedAgencyIds: const <String>{},
             earthquakeEventId: earthquakeEventId,
             officialEventId: officialEventId,
             comment: comment,
@@ -228,6 +231,7 @@ class ApiClient {
     required String countryCode,
     required bool preciseLocation,
     required bool shareWithOfficialAgencies,
+    required Set<String> selectedAgencyIds,
     required String? earthquakeEventId,
     required String? officialEventId,
     required String? comment,
@@ -243,6 +247,7 @@ class ApiClient {
     'location_precision': preciseLocation ? 'precise' : 'approximate',
     'country_code': countryCode.trim().toUpperCase(),
     'share_with_official_agencies': shareWithOfficialAgencies,
+    'selected_agency_ids': selectedAgencyIds.toList()..sort(),
     'consent_version': '2026-08',
     'comment': _nullIfBlank(comment),
   };
@@ -300,6 +305,38 @@ class ApiClient {
     return (decoded['stations'] as List<dynamic>? ?? <dynamic>[])
         .whereType<Map<String, dynamic>>()
         .map(SeismicStation.fromMap)
+        .toList(growable: false);
+  }
+
+  Future<List<AgencyRoute>> fetchReportingAgencies({
+    required String countryCode,
+    String? officialEventId,
+  }) async {
+    final Uri uri = _uri('/v1/reports/agencies').replace(
+      queryParameters: <String, String>{
+        'country_code': countryCode.trim().toUpperCase(),
+        if (officialEventId != null && officialEventId.isNotEmpty)
+          'official_event_id': officialEventId,
+      },
+    );
+    final http.Response response = await _http
+        .get(uri, headers: _jsonHeaders())
+        .timeout(const Duration(seconds: 8));
+    final Object? decoded = response.body.isEmpty
+        ? <dynamic>[]
+        : jsonDecode(response.body);
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw SeismikApiException(decoded.toString(), response.statusCode);
+    }
+    if (decoded is! List<dynamic>) {
+      throw SeismikApiException(
+        'Unexpected agency catalog response',
+        response.statusCode,
+      );
+    }
+    return decoded
+        .whereType<Map<String, dynamic>>()
+        .map(AgencyRoute.fromMap)
         .toList(growable: false);
   }
 

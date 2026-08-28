@@ -2,11 +2,13 @@ import 'dart:async';
 
 import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'core/constants.dart';
+import 'core/theme.dart';
 import 'presentation/screens/alert_overlay.dart';
 import 'presentation/screens/event_detail_screen.dart';
 import 'presentation/screens/monitor_screen.dart';
@@ -37,21 +39,19 @@ class SeismikApp extends StatelessWidget {
       unawaited(state.initialize());
       return state;
     },
-    child: MaterialApp(
-      title: SeismikConstants.appName,
-      debugShowCheckedModeBanner: false,
-      themeMode: ThemeMode.dark,
-      darkTheme: ThemeData(
-        brightness: Brightness.dark,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF1ECB7B),
-          brightness: Brightness.dark,
+    child: DynamicColorBuilder(
+      builder: (lightDynamic, darkDynamic) => MaterialApp(
+        title: SeismikConstants.appName,
+        debugShowCheckedModeBanner: false,
+        themeMode: ThemeMode.system,
+        theme: SeismikTheme.fromScheme(
+          lightDynamic ?? SeismikTheme.fallback(Brightness.light),
         ),
-        scaffoldBackgroundColor: const Color(0xFF081018),
-        cardTheme: const CardThemeData(color: Color(0xFF111E29)),
-        useMaterial3: true,
+        darkTheme: SeismikTheme.fromScheme(
+          darkDynamic ?? SeismikTheme.fallback(Brightness.dark),
+        ),
+        home: const _SeismikShell(),
       ),
-      home: const _SeismikShell(),
     ),
   );
 }
