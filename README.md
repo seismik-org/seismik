@@ -33,6 +33,14 @@ envía datos a esas entidades de forma automática: abre sus formularios oficial
 después del consentimiento. La cola completa de reportes offline y las pruebas
 en dos dispositivos Android siguen pendientes.
 
+**Beta técnica GCP 0.4.1 validada (2026-08-29):** Redis y FastAPI reportaron
+`healthy`/`ready` en la VM `seismik-beta-01`. El detector abrió SeedLink v4.0,
+recibió miles de muestras de estaciones CM de Colombia y CX de Chile, y ejecutó
+STA/LTA en modo sombra. Algunas estaciones configuradas no entregaron datos y
+deben depurarse durante la calibración. Push continúa deshabilitado y no existe
+todavía un endpoint público, dominio ni HTTPS; esta prueba no cambia el estado
+**No-Go público**.
+
 ## Gobierno, Scrum y control de avance
 
 La fuente compartida y verificable de planificación se encuentra en
