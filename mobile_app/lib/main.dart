@@ -14,11 +14,13 @@ import 'presentation/screens/event_detail_screen.dart';
 import 'presentation/screens/felt_report_screen.dart';
 import 'presentation/screens/monitor_screen.dart';
 import 'presentation/screens/settings_screen.dart';
+import 'services/material_you_service.dart';
 import 'state/seismik_state.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   SeismikConstants.validateBuildConfiguration();
+  final Color? exactSystemAccent = await MaterialYouService.readExactAccent();
   await Firebase.initializeApp();
   await FirebaseAppCheck.instance.activate(
     providerAndroid: kReleaseMode
@@ -28,11 +30,13 @@ Future<void> main() async {
         ? const AppleAppAttestWithDeviceCheckFallbackProvider()
         : const AppleDebugProvider(),
   );
-  runApp(const SeismikApp());
+  runApp(SeismikApp(exactSystemAccent: exactSystemAccent));
 }
 
 class SeismikApp extends StatelessWidget {
-  const SeismikApp({super.key});
+  const SeismikApp({this.exactSystemAccent, super.key});
+
+  final Color? exactSystemAccent;
 
   @override
   Widget build(BuildContext context) => ChangeNotifierProvider<SeismikState>(
@@ -45,17 +49,27 @@ class SeismikApp extends StatelessWidget {
       title: SeismikConstants.appName,
       debugShowCheckedModeBanner: false,
       themeMode: ThemeMode.system,
-      theme: SeismikTheme.fromScheme(SeismikTheme.fallback(Brightness.light)),
-      darkTheme: SeismikTheme.fromScheme(
-        SeismikTheme.fallback(Brightness.dark),
+      theme: SeismikTheme.fromScheme(
+        SeismikTheme.scheme(
+          brightness: Brightness.light,
+          exactSystemAccent: exactSystemAccent,
+        ),
       ),
-      home: const _SeismikShell(),
+      darkTheme: SeismikTheme.fromScheme(
+        SeismikTheme.scheme(
+          brightness: Brightness.dark,
+          exactSystemAccent: exactSystemAccent,
+        ),
+      ),
+      home: _SeismikShell(exactSystemAccent: exactSystemAccent),
     ),
   );
 }
 
 class _SeismikShell extends StatefulWidget {
-  const _SeismikShell();
+  const _SeismikShell({required this.exactSystemAccent});
+
+  final Color? exactSystemAccent;
 
   @override
   State<_SeismikShell> createState() => _SeismikShellState();
@@ -89,7 +103,10 @@ class _SeismikShellState extends State<_SeismikShell> {
               const MonitorScreen(),
               FeltReportScreen(event: event),
               DamageReportScreen(event: event),
-              const SettingsScreen(),
+              SettingsScreen(
+                activeAccent: Theme.of(context).colorScheme.primary,
+                usesSystemAccent: widget.exactSystemAccent != null,
+              ),
             ],
           ),
           Positioned(

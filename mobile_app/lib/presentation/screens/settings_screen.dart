@@ -2,7 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 
 class SettingsScreen extends StatelessWidget {
-  const SettingsScreen({super.key});
+  const SettingsScreen({
+    required this.activeAccent,
+    required this.usesSystemAccent,
+    super.key,
+  });
+
+  final Color activeAccent;
+  final bool usesSystemAccent;
 
   @override
   Widget build(BuildContext context) {
@@ -34,7 +41,7 @@ class SettingsScreen extends StatelessWidget {
                             fontWeight: FontWeight.w900,
                           ),
                         ),
-                        Text('Beta experimental 0.5.0'),
+                        Text('Beta experimental 0.5.1'),
                       ],
                     ),
                   ),
@@ -48,9 +55,11 @@ class SettingsScreen extends StatelessWidget {
               children: <Widget>[
                 ListTile(
                   leading: Icon(Icons.palette_outlined, color: colors.primary),
-                  title: const Text('Tema Seismik para One UI'),
-                  subtitle: const Text(
-                    'Paleta índigo exacta · modo claro/oscuro del sistema',
+                  title: const Text('Material You'),
+                  subtitle: Text(
+                    usesSystemAccent
+                        ? 'Color exacto leído de Android: ${_hex(activeAccent)}'
+                        : 'El sistema no publicó un color; respaldo Seismik: ${_hex(activeAccent)}',
                   ),
                 ),
                 const Divider(height: 1),
@@ -95,4 +104,7 @@ class SettingsScreen extends StatelessWidget {
       ),
     );
   }
+
+  static String _hex(Color color) =>
+      '#${color.toARGB32().toRadixString(16).padLeft(8, '0').substring(2).toUpperCase()}';
 }

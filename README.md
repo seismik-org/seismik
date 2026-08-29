@@ -25,8 +25,8 @@ payload crítico marcado `TEST`, suprimió el duplicado y no envió ningún push
 externo. La evidencia reproducible está en
 [`docs/evidence/sprint3-docker-e2e.json`](docs/evidence/sprint3-docker-e2e.json).
 
-**Sprint 4 en curso (2026-08-27):** la app Android usa Material You con color
-de marca One UI estable y modo claro/oscuro del sistema. La versión 0.5.0 añade
+**Sprint 4 en curso (2026-08-27):** la app Android lee el color Material You
+exacto publicado por Android/One UI y respeta el modo claro/oscuro. La versión 0.5.1 añade
 logotipo propio, Google Maps y navegación flotante para Historial, Sismo sentido,
 Daños y Configuración. El reporte “¿Lo sentiste?” permite
 elegir una o varias organizaciones geológicas para cada sismo, conserva la

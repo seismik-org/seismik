@@ -1,11 +1,7 @@
 import 'package:flutter/material.dart';
 
 abstract final class SeismikTheme {
-  // Paleta de marca estable: evita que fabricantes sin Dynamic Color completo
-  // sustituyan el diseño por el azul Material predeterminado de Google.
-  static const Color oneUiIndigo = Color(0xFF4669A6);
-  static const Color oneUiPeriwinkle = Color(0xFF8EA7D8);
-  static const Color safetyCoral = Color(0xFFE6655E);
+  static const Color fallbackSeed = Color(0xFF4669A6);
 
   static ThemeData fromScheme(ColorScheme scheme) => ThemeData(
     useMaterial3: true,
@@ -48,30 +44,23 @@ abstract final class SeismikTheme {
     ),
   );
 
-  static ColorScheme fallback(Brightness brightness) {
-    final bool dark = brightness == Brightness.dark;
-    return ColorScheme.fromSeed(
-      seedColor: oneUiIndigo,
+  static ColorScheme scheme({
+    required Brightness brightness,
+    Color? exactSystemAccent,
+  }) {
+    final Color seed = exactSystemAccent ?? fallbackSeed;
+    final ColorScheme generated = ColorScheme.fromSeed(
+      seedColor: seed,
       brightness: brightness,
       dynamicSchemeVariant: DynamicSchemeVariant.fidelity,
-    ).copyWith(
-      primary: dark ? const Color(0xFFAFC6F2) : oneUiIndigo,
-      onPrimary: dark ? const Color(0xFF142748) : Colors.white,
-      primaryContainer: dark
-          ? const Color(0xFF304A7A)
-          : const Color(0xFFD9E4FF),
-      onPrimaryContainer: dark
-          ? const Color(0xFFE4ECFF)
-          : const Color(0xFF142748),
-      secondary: dark ? const Color(0xFFC2CBE0) : const Color(0xFF566176),
-      tertiary: dark ? const Color(0xFFFFB4AE) : safetyCoral,
-      surface: dark ? const Color(0xFF0B0D12) : const Color(0xFFF9F9FD),
-      surfaceContainer: dark
-          ? const Color(0xFF1B1D24)
-          : const Color(0xFFEFEFF5),
-      surfaceContainerHighest: dark
-          ? const Color(0xFF303139)
-          : const Color(0xFFE2E2EA),
+    );
+    if (exactSystemAccent == null) return generated;
+    final bool accentIsDark =
+        ThemeData.estimateBrightnessForColor(exactSystemAccent) ==
+        Brightness.dark;
+    return generated.copyWith(
+      primary: exactSystemAccent,
+      onPrimary: accentIsDark ? Colors.white : Colors.black,
     );
   }
 }

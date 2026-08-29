@@ -3,11 +3,12 @@
 Cliente Flutter 3.47 para Android e iOS. Incluye monitor sísmico, alertas críticas,
 DSP voluntario del acelerómetro, reportes oficiales, “¿lo sentiste?” y daños.
 
-La versión 0.5.0 incorpora el logotipo oficial, Google Maps y un menú Material 3
+La versión 0.5.1 incorpora el logotipo oficial, Google Maps y un menú Material 3
 flotante con Historial de Sismos, Sismo sentido, Reporte de daños y Configuración.
-Usa una paleta Seismik inspirada en One UI (`#4669A6`) para evitar que Samsung
-termine mostrando el azul Material predeterminado de Google. Respeta el modo
-claro u oscuro del sistema, pero los colores de marca son estables.
+En Android 12 o posterior lee directamente `system_accent1_500`, el código ARGB
+que Android/One UI publica para la paleta Material You seleccionada por el
+usuario. Ese valor se conserva como color primario exacto en modo claro y oscuro;
+solo se usa la semilla Seismik de respaldo si el sistema no publica el recurso.
 
 En cada sismo, “¿Lo sentiste?” permite escoger las organizaciones geológicas
 disponibles para el país. La selección se guarda localmente por evento. Si no hay
