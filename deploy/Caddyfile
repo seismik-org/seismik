@@ -1,0 +1,39 @@
+{
+	admin off
+}
+
+(seismik_security_headers) {
+	header {
+		-Server
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "no-referrer"
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		Cache-Control "no-store"
+	}
+}
+
+api.seismik.org {
+	import seismik_security_headers
+	encode zstd gzip
+
+	request_body {
+		max_size 64KB
+	}
+
+	reverse_proxy api:8000 {
+		health_uri /health/live
+		health_interval 30s
+		health_timeout 3s
+	}
+}
+
+www.seismik.org {
+	redir https://seismik.org{uri} permanent
+}
+
+seismik.org {
+	import seismik_security_headers
+	respond "Seismik — red abierta de monitoreo sísmico. Sitio público en construcción." 200
+}

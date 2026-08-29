@@ -1,7 +1,8 @@
-# Preparación de despliegue — no ejecuta recursos
+# Preparación y operación del despliegue beta
 
-Este directorio registra límites para el futuro ambiente beta. Su presencia no
-autoriza activar GCP, vincular facturación ni aplicar infraestructura.
+Este directorio registra límites y procedimientos del ambiente beta. Ningún
+script crea proyectos GCP, vincula facturación ni modifica reglas de firewall;
+esas acciones requieren autorización explícita del Product Owner.
 
 ## Gate previo a cualquier despliegue
 
@@ -42,6 +43,33 @@ El archivo `bootstrap-beta.sh` inicia solamente Redis, API y dispatcher en modo
 `staging`/`dry_run`. Genera secretos aleatorios con permisos `0600`, no los
 imprime y conserva un `.env` existente. La API y Redis permanecen enlazados a
 `127.0.0.1`; no crea reglas de firewall ni activa FCM/APNs.
+
+## Publicación HTTPS detrás de Cloudflare
+
+La API permanece enlazada a `127.0.0.1:8000`. El único punto de entrada
+público es Caddy en 80/443, definido en `docker-compose.public.yml`:
+
+```bash
+sudo docker compose \
+  -f docker-compose.yml \
+  -f docker-compose.public.yml \
+  --profile detector up -d
+```
+
+Si el paquete incluye `docker-compose.global.yml`, puede añadirse como overlay
+opcional entre los dos archivos anteriores para ejecutar el catálogo global de
+proveedores. La beta actual usa el detector definido en `docker-compose.yml`.
+
+Requisitos de red para producción:
+
+- `api.seismik.org`, `seismik.org` y `www.seismik.org` deben estar bajo proxy
+  de Cloudflare.
+- La VM debe aceptar TCP 80/443 exclusivamente desde los rangos IP oficiales
+  de Cloudflare y mantener 6379/8000 sin exposición pública.
+- Cloudflare SSL/TLS debe quedar en `Full (strict)` después de que Caddy emita
+  los certificados del origen.
+- El registro de firewall se mantiene desactivado en la beta para evitar
+  costos inesperados de Cloud Logging.
 
 Desde la raíz del paquete cargado en la VM:
 
