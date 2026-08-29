@@ -3,10 +3,16 @@
 Cliente Flutter 3.47 para Android e iOS. Incluye monitor sísmico, alertas críticas,
 DSP voluntario del acelerómetro, reportes oficiales, “¿lo sentiste?” y daños.
 
-La versión 0.6.0 incorpora el logotipo, Google Maps y un menú Material 3 con
+La versión 0.6.1 incorpora el logotipo, Google Maps y un menú Material 3 con
 Historial de Sismos, Sismo sentido, Reporte de daños y Configuración. El menú
 reserva espacio real, respeta las barras del sistema y se oculta cuando aparece
 el teclado para no bloquear formularios.
+
+La interfaz aparece antes de completar ubicación, Firebase, App Check y el
+registro push. En una beta instalada fuera de Play Store se permite un marcador
+de integridad no verificado solamente mientras el backend conserve
+`SEISMIK_INTEGRITY_VERIFICATION_ENABLED=false`; producción debe compilar con
+`SEISMIK_INTEGRITY_REQUIRED=true` y verificar Play Integrity.
 
 En Android 12 o posterior `dynamic_color` lee el `CorePalette` completo publicado
 por Android/One UI: primarios, secundarios, terciarios, superficies y sus tonos

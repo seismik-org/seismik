@@ -1,9 +1,6 @@
 import 'dart:async';
 
 import 'package:dynamic_color/dynamic_color.dart';
-import 'package:firebase_app_check/firebase_app_check.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -25,15 +22,6 @@ Future<void> main() async {
   SeismikConstants.validateBuildConfiguration();
   final MobileSettings settings = MobileSettings();
   await settings.load();
-  await Firebase.initializeApp();
-  await FirebaseAppCheck.instance.activate(
-    providerAndroid: kReleaseMode
-        ? const AndroidPlayIntegrityProvider()
-        : const AndroidDebugProvider(),
-    providerApple: kReleaseMode
-        ? const AppleAppAttestWithDeviceCheckFallbackProvider()
-        : const AppleDebugProvider(),
-  );
   runApp(SeismikApp(settings: settings));
 }
 
@@ -117,9 +105,6 @@ class _SeismikShellState extends State<_SeismikShell> {
   @override
   Widget build(BuildContext context) {
     final SeismikState state = context.watch<SeismikState>();
-    if (state.initializing) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    }
     final Widget base;
     if (state.officialEvent != null) {
       base = EventDetailScreen(

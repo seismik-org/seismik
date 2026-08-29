@@ -37,19 +37,46 @@ class SeismikState extends ChangeNotifier {
   SeismicEvent? officialEvent;
 
   Future<void> initialize() async {
+    statusMessage = 'Conectando servicios en segundo plano…';
+    notifyListeners();
+    _notificationSubscription = notifications.events.listen(_onNotification);
+
+    final Future<void> notificationReady = _initializeNotifications();
+    final Future<void> locationReady = _resolveLocationSafely();
+    unawaited(refreshNetworkData());
+
+    await Future.wait(<Future<void>>[notificationReady, locationReady]);
+    initializing = false;
+    notifyListeners();
+    if (position != null) {
+      unawaited(_registerAndStartSensors());
+    }
+  }
+
+  Future<void> _initializeNotifications() async {
     try {
       await notifications.initialize();
-      _notificationSubscription = notifications.events.listen(_onNotification);
-      await _resolveLocation();
-      if (position != null) {
-        await _registerWithRetry();
-        await _syncCrowdsourcing();
-      }
-      await refreshNetworkData();
     } catch (error) {
-      statusMessage = 'Inicialización parcial: $error';
-    } finally {
-      initializing = false;
+      statusMessage = 'Notificaciones pendientes: $error';
+      notifyListeners();
+    }
+  }
+
+  Future<void> _resolveLocationSafely() async {
+    try {
+      await _resolveLocation();
+    } catch (error) {
+      statusMessage = 'Ubicación pendiente: $error';
+      notifyListeners();
+    }
+  }
+
+  Future<void> _registerAndStartSensors() async {
+    try {
+      await _registerWithRetry();
+      await _syncCrowdsourcing();
+    } catch (error) {
+      statusMessage = 'Registro del dispositivo pendiente: $error';
       notifyListeners();
     }
   }

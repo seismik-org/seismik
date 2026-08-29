@@ -2,8 +2,10 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 import '../core/constants.dart';
@@ -57,6 +59,19 @@ class NotificationService {
   Stream<NotificationEnvelope> get events => _events.stream;
 
   Future<void> initialize() async {
+    if (Firebase.apps.isEmpty) await Firebase.initializeApp();
+    try {
+      await FirebaseAppCheck.instance.activate(
+        providerAndroid: kReleaseMode
+            ? const AndroidPlayIntegrityProvider()
+            : const AndroidDebugProvider(),
+        providerApple: kReleaseMode
+            ? const AppleAppAttestWithDeviceCheckFallbackProvider()
+            : const AppleDebugProvider(),
+      );
+    } catch (_) {
+      if (SeismikConstants.integrityRequired) rethrow;
+    }
     FirebaseMessaging.onBackgroundMessage(seismikFirebaseBackgroundHandler);
     await _initializeLocalPlugin(
       _local,

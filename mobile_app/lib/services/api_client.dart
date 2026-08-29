@@ -45,12 +45,19 @@ class ApiClient {
     String? zoneId,
   }) async {
     final String deviceId = await ensureDeviceId();
-    final String? integrityToken = await FirebaseAppCheck.instance.getToken(
-      true,
-    );
-    if (integrityToken == null) {
+    String? integrityToken;
+    try {
+      integrityToken = await FirebaseAppCheck.instance.getToken(true);
+    } catch (_) {
+      if (SeismikConstants.integrityRequired) rethrow;
+    }
+    if (integrityToken == null && SeismikConstants.integrityRequired) {
       throw const SeismikApiException('App Check did not return a token', null);
     }
+    // La beta distribuida fuera de Play Store no siempre obtiene un veredicto
+    // Play Integrity. El backend beta no verifica este marcador; producción
+    // compila con SEISMIK_INTEGRITY_REQUIRED=true y nunca usa este fallback.
+    integrityToken ??= 'seismik-beta-sideload-unverified';
     final FirebaseMessaging messaging = FirebaseMessaging.instance;
     final String? pushToken = Platform.isIOS
         ? await messaging.getAPNSToken()

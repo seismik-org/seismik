@@ -249,7 +249,7 @@ class _Header extends StatelessWidget {
                   'Seismik',
                   style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900),
                 ),
-                Text('Beta experimental 0.6.0'),
+                Text('Beta experimental 0.6.1'),
               ],
             ),
           ),

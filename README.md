@@ -25,7 +25,7 @@ payload crítico marcado `TEST`, suprimió el duplicado y no envió ningún push
 externo. La evidencia reproducible está en
 [`docs/evidence/sprint3-docker-e2e.json`](docs/evidence/sprint3-docker-e2e.json).
 
-**Sprint 4 en curso (2026-08-29):** la versión móvil 0.6.0 consume la paleta
+**Sprint 4 en curso (2026-08-29):** la versión móvil 0.6.1 consume la paleta
 Material You completa publicada por Android/One UI, respeta barras e insets del
 sistema y convierte Configuración en preferencias persistentes y funcionales.
 Incluye Google Maps y navegación para Historial, Sismo sentido, Daños y
