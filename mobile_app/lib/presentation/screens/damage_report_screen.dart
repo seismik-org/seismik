@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../data/models/citizen_report.dart';
 import '../../data/models/seismic_event.dart';
+import '../../state/mobile_settings.dart';
 import '../../state/seismik_state.dart';
 import 'report_result_screen.dart';
 
@@ -37,6 +38,7 @@ class _DamageReportScreenState extends State<DamageReportScreen> {
   bool _precise = false;
   bool _official = true;
   bool _submitting = false;
+  bool _settingsLoaded = false;
 
   @override
   void initState() {
@@ -45,6 +47,14 @@ class _DamageReportScreenState extends State<DamageReportScreen> {
         widget.event?.countryCode ??
         WidgetsBinding.instance.platformDispatcher.locale.countryCode ??
         'CO';
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_settingsLoaded) return;
+    _precise = context.read<MobileSettings>().preciseLocationByDefault;
+    _settingsLoaded = true;
   }
 
   @override
@@ -114,7 +124,7 @@ class _DamageReportScreenState extends State<DamageReportScreen> {
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(title: const Text('Reportar daños')),
     body: ListView(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 28),
       children: <Widget>[
         Card(
           color: _urgent ? const Color(0xFF7A1717) : const Color(0xFF49330B),
@@ -264,7 +274,7 @@ class _DamageReportScreenState extends State<DamageReportScreen> {
               : const Icon(Icons.send),
           label: const Text('Enviar reporte a Seismik'),
         ),
-        const SizedBox(height: 100),
+        const SizedBox(height: 24),
       ],
     ),
   );

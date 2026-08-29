@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../data/models/seismic_event.dart';
 import 'felt_report_screen.dart';
@@ -38,7 +39,9 @@ class EventDetailScreen extends StatelessWidget {
               Padding(
                 padding: EdgeInsets.only(top: 12, left: 4),
                 child: Text(
-                  'M_w',
+                  event.magnitudeType == null
+                      ? 'M'
+                      : 'M${event.magnitudeType!.toLowerCase()}',
                   style: TextStyle(
                     fontSize: 22,
                     color: colors.onSurfaceVariant,
@@ -61,6 +64,12 @@ class EventDetailScreen extends StatelessWidget {
                 label: '${event.depthKm?.toStringAsFixed(1) ?? '—'} km',
                 caption: 'Profundidad',
               ),
+              if (event.reviewStatus != null)
+                _Metric(
+                  icon: Icons.verified_outlined,
+                  label: event.reviewStatus!,
+                  caption: 'Estado oficial',
+                ),
               _Metric(
                 icon: Icons.public,
                 label: event.agency ?? '—',
@@ -103,6 +112,34 @@ class EventDetailScreen extends StatelessWidget {
               ),
             ),
           const SizedBox(height: 18),
+          if (event.tsunami == true) ...<Widget>[
+            Card(
+              color: colors.errorContainer,
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Text(
+                  'La fuente marcó este evento con información de tsunami. Consulta inmediatamente a la autoridad local.',
+                  style: TextStyle(
+                    color: colors.onErrorContainer,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+          ],
+          if (event.officialUrl != null)
+            OutlinedButton.icon(
+              onPressed: () => launchUrl(
+                Uri.parse(event.officialUrl!),
+                mode: LaunchMode.externalApplication,
+              ),
+              icon: const Icon(Icons.open_in_new_rounded),
+              label: Text(
+                'Abrir fuente oficial${event.attribution == null ? '' : ' · ${event.attribution}'}',
+              ),
+            ),
+          const SizedBox(height: 8),
           FilledButton.tonalIcon(
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute<void>(

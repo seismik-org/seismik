@@ -27,6 +27,7 @@ class ApiClient {
 
   static const String _deviceIdKey = 'seismik.device_id';
   static const String _crowdTokenKey = 'seismik.crowd_token';
+  static const String _eventCacheKey = 'seismik.official_event_cache';
   final http.Client _http;
 
   Future<String> ensureDeviceId() async {
@@ -340,12 +341,71 @@ class ApiClient {
         .toList(growable: false);
   }
 
-  Future<List<SeismicEvent>> fetchRecentEvents() async {
+  Future<List<SeismicEvent>> fetchRecentEvents({
+    Set<String> sourceIds = const <String>{'sgc_colombia', 'usgs_global'},
+    int days = 7,
+    double minimumMagnitude = 2.5,
+  }) async {
+    try {
+      final Uri historyUri = _uri('/v1/events/history').replace(
+        queryParameters: <String, String>{
+          'sources': (sourceIds.toList()..sort()).join(','),
+          'days': days.toString(),
+          'minimum_magnitude': minimumMagnitude.toStringAsFixed(1),
+          'limit': '200',
+        },
+      );
+      final http.Response response = await _http
+          .get(historyUri, headers: _jsonHeaders())
+          .timeout(const Duration(seconds: 15));
+      if (response.statusCode == 404) {
+        return await _fetchLegacyRecentEvents();
+      }
+      final Map<String, dynamic> decoded = _decode(response);
+      final List<SeismicEvent> events = _eventsFromPayload(decoded);
+      await _cacheEvents(events);
+      return events;
+    } catch (_) {
+      try {
+        final List<SeismicEvent> events = await _fetchLegacyRecentEvents();
+        await _cacheEvents(events);
+        return events;
+      } catch (_) {
+        final List<SeismicEvent> cached = await _readCachedEvents();
+        if (cached.isNotEmpty) return cached;
+        rethrow;
+      }
+    }
+  }
+
+  Future<List<SeismicEvent>> _fetchLegacyRecentEvents() async {
     final http.Response response = await _http
         .get(_uri('/v1/events/recent'), headers: _jsonHeaders())
         .timeout(const Duration(seconds: 8));
-    final Map<String, dynamic> decoded = _decode(response);
-    return (decoded['events'] as List<dynamic>? ?? <dynamic>[])
+    return _eventsFromPayload(_decode(response));
+  }
+
+  static List<SeismicEvent> _eventsFromPayload(Map<String, dynamic> decoded) =>
+      (decoded['events'] as List<dynamic>? ?? <dynamic>[])
+          .whereType<Map<String, dynamic>>()
+          .map(SeismicEvent.fromMap)
+          .toList(growable: false);
+
+  Future<void> _cacheEvents(List<SeismicEvent> events) async {
+    final SharedPreferences preferences = await SharedPreferences.getInstance();
+    await preferences.setString(
+      _eventCacheKey,
+      jsonEncode(events.map((event) => event.toMap()).toList(growable: false)),
+    );
+  }
+
+  Future<List<SeismicEvent>> _readCachedEvents() async {
+    final SharedPreferences preferences = await SharedPreferences.getInstance();
+    final String? raw = preferences.getString(_eventCacheKey);
+    if (raw == null) return <SeismicEvent>[];
+    final Object? decoded = jsonDecode(raw);
+    if (decoded is! List<dynamic>) return <SeismicEvent>[];
+    return decoded
         .whereType<Map<String, dynamic>>()
         .map(SeismicEvent.fromMap)
         .toList(growable: false);

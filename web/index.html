@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Seismik: red abierta y experimental de monitoreo sísmico, reportes ciudadanos y datos oficiales.">
+  <title>Seismik · Monitoreo sísmico abierto</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="nav">
+    <a class="brand" href="/" aria-label="Seismik, inicio"><span class="mark">S</span>SEISMIK</a>
+    <nav><a href="#como-funciona">Cómo funciona</a><a href="/developers.html">API</a><a href="/privacy.html">Privacidad</a></nav>
+  </header>
+  <main>
+    <section class="hero">
+      <p class="eyebrow">BETA EXPERIMENTAL · COLOMBIA</p>
+      <h1>Información sísmica abierta, rápida y verificable.</h1>
+      <p class="lead">Seismik combina estaciones sismológicas abiertas, reportes oficiales y señales voluntarias de teléfonos para investigar una alerta temprana accesible.</p>
+      <div class="actions"><a class="button" href="#estado">Ver estado</a><a class="button secondary" href="/developers.html">Conocer la API</a></div>
+      <p class="warning">No es todavía un sistema certificado de alerta pública y no reemplaza a las autoridades ni a los servicios de emergencia.</p>
+    </section>
+    <section id="estado" class="grid">
+      <article><span class="dot"></span><h2>Motor en modo sombra</h2><p>Detección STA/LTA multiestación sin emitir alertas públicas automáticas.</p></article>
+      <article><h2>Fuentes acreditadas</h2><p>Historial atribuido a SGC, USGS y otras organizaciones geológicas seleccionadas.</p></article>
+      <article><h2>Privacidad primero</h2><p>Ubicación aproximada por defecto y participación voluntaria en el crowdsourcing.</p></article>
+    </section>
+    <section id="como-funciona" class="section">
+      <p class="eyebrow">DOS MOMENTOS</p>
+      <h2>Detección rápida y confirmación oficial</h2>
+      <ol class="steps">
+        <li><b>Señal candidata.</b> Varias estaciones coinciden y Seismik genera un evento técnico no revisado.</li>
+        <li><b>Reporte oficial.</b> SGC, USGS u otra autoridad publica magnitud, profundidad, epicentro y enlace acreditado.</li>
+        <li><b>Comunidad.</b> Las personas pueden indicar si lo sintieron o reportar daños sin fotografías durante el MVP.</li>
+      </ol>
+    </section>
+  </main>
+  <footer><span>© 2026 Seismik · Proyecto abierto</span><a href="/privacy.html">Privacidad</a><a href="/developers.html">Desarrolladores</a></footer>
+</body>
+</html>

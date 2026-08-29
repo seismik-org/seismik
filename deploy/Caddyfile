@@ -35,5 +35,7 @@ www.seismik.org {
 
 seismik.org {
 	import seismik_security_headers
-	respond "Seismik — red abierta de monitoreo sísmico. Sitio público en construcción." 200
+	header Content-Security-Policy "default-src 'self'; style-src 'self'; img-src 'self' data:; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"
+	root * /srv
+	file_server
 }

@@ -59,6 +59,9 @@ class AppSettings(BaseSettings):
     allowed_android_app_ids: tuple[str, ...] = ()
     station_catalog_path: str = "config.global.json"
     public_recent_event_limit: int = Field(default=50, ge=1, le=200)
+    official_sources_path: str = "official_sources.json"
+    official_history_timeout_seconds: float = Field(default=8.0, ge=1, le=30)
+    official_history_cache_seconds: int = Field(default=120, ge=30, le=3_600)
 
     crowd_pga_threshold_g: float = Field(default=0.04, gt=0, le=5)
     crowd_min_devices: int = Field(default=10, ge=2)

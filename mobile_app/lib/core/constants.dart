@@ -4,7 +4,7 @@ abstract final class SeismikConstants {
   static const String appName = 'Seismik';
   static const String apiBaseUrl = String.fromEnvironment(
     'SEISMIK_API_BASE_URL',
-    defaultValue: 'https://api.seismik.example',
+    defaultValue: 'https://api.seismik.org',
   );
   static const String deviceApiKey = String.fromEnvironment(
     'SEISMIK_DEVICE_KEY',
@@ -19,7 +19,7 @@ abstract final class SeismikConstants {
   static const double userMotionVarianceThreshold = 0.12;
   static void validateBuildConfiguration() {
     if (kReleaseMode &&
-        (deviceApiKey.isEmpty || apiBaseUrl.contains('.example'))) {
+        deviceApiKey.isEmpty) {
       throw StateError(
         'Release requires SEISMIK_API_BASE_URL and SEISMIK_DEVICE_KEY.',
       );

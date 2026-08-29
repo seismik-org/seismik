@@ -44,23 +44,10 @@ abstract final class SeismikTheme {
     ),
   );
 
-  static ColorScheme scheme({
-    required Brightness brightness,
-    Color? exactSystemAccent,
-  }) {
-    final Color seed = exactSystemAccent ?? fallbackSeed;
-    final ColorScheme generated = ColorScheme.fromSeed(
-      seedColor: seed,
-      brightness: brightness,
-      dynamicSchemeVariant: DynamicSchemeVariant.fidelity,
-    );
-    if (exactSystemAccent == null) return generated;
-    final bool accentIsDark =
-        ThemeData.estimateBrightnessForColor(exactSystemAccent) ==
-        Brightness.dark;
-    return generated.copyWith(
-      primary: exactSystemAccent,
-      onPrimary: accentIsDark ? Colors.white : Colors.black,
-    );
-  }
+  static ColorScheme scheme({required Brightness brightness}) =>
+      ColorScheme.fromSeed(
+        seedColor: fallbackSeed,
+        brightness: brightness,
+        dynamicSchemeVariant: DynamicSchemeVariant.fidelity,
+      );
 }

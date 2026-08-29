@@ -8,15 +8,20 @@ import '../data/models/station.dart';
 import '../services/accelerometer_service.dart';
 import '../services/api_client.dart';
 import '../services/notification_service.dart';
+import 'mobile_settings.dart';
 
 class SeismikState extends ChangeNotifier {
-  SeismikState() : api = ApiClient(), notifications = NotificationService() {
+  SeismikState({required this.settings})
+    : api = ApiClient(),
+      notifications = NotificationService() {
     accelerometer = AccelerometerService(
       apiClient: api,
       positionProvider: currentCoordinates,
     );
+    settings.addListener(_onSettingsChanged);
   }
 
+  final MobileSettings settings;
   final ApiClient api;
   final NotificationService notifications;
   late final AccelerometerService accelerometer;
@@ -38,7 +43,7 @@ class SeismikState extends ChangeNotifier {
       await _resolveLocation();
       if (position != null) {
         await _registerWithRetry();
-        await accelerometer.start();
+        await _syncCrowdsourcing();
       }
       await refreshNetworkData();
     } catch (error) {
@@ -46,6 +51,19 @@ class SeismikState extends ChangeNotifier {
     } finally {
       initializing = false;
       notifyListeners();
+    }
+  }
+
+  void _onSettingsChanged() {
+    unawaited(_syncCrowdsourcing());
+    unawaited(refreshNetworkData());
+  }
+
+  Future<void> _syncCrowdsourcing() async {
+    if (settings.crowdsourcingEnabled && position != null) {
+      await accelerometer.start();
+    } else {
+      await accelerometer.stop();
     }
   }
 
@@ -69,7 +87,11 @@ class SeismikState extends ChangeNotifier {
     try {
       final (List<SeismicStation>, List<SeismicEvent>) response = await (
         api.fetchStations(),
-        api.fetchRecentEvents(),
+        api.fetchRecentEvents(
+          sourceIds: settings.historySources,
+          days: settings.historyDays,
+          minimumMagnitude: settings.minimumHistoryMagnitude,
+        ),
       ).wait;
       stations = response.$1;
       recentEvents = response.$2;
@@ -147,6 +169,7 @@ class SeismikState extends ChangeNotifier {
 
   @override
   void dispose() {
+    settings.removeListener(_onSettingsChanged);
     unawaited(_notificationSubscription?.cancel());
     unawaited(accelerometer.stop());
     unawaited(notifications.dispose());

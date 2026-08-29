@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../../data/models/citizen_report.dart';
 import '../../data/models/seismic_event.dart';
 import '../../services/agency_preference_store.dart';
+import '../../state/mobile_settings.dart';
 import '../../state/seismik_state.dart';
 import 'report_result_screen.dart';
 
@@ -35,6 +36,7 @@ class _FeltReportScreenState extends State<FeltReportScreen> {
   List<AgencyRoute> _agencies = <AgencyRoute>[];
   Set<String> _selectedAgencyIds = <String>{};
   String? _agencyLoadWarning;
+  bool _settingsLoaded = false;
 
   static const AgencyPreferenceStore _agencyPreferences =
       AgencyPreferenceStore();
@@ -47,6 +49,14 @@ class _FeltReportScreenState extends State<FeltReportScreen> {
         WidgetsBinding.instance.platformDispatcher.locale.countryCode ??
         'CO';
     unawaited(_loadAgencies());
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_settingsLoaded) return;
+    _precise = context.read<MobileSettings>().preciseLocationByDefault;
+    _settingsLoaded = true;
   }
 
   @override
@@ -166,7 +176,7 @@ class _FeltReportScreenState extends State<FeltReportScreen> {
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(title: const Text('¿Sentiste el sismo?')),
     body: ListView(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 28),
       children: <Widget>[
         SwitchListTile.adaptive(
           value: _felt,
@@ -235,7 +245,7 @@ class _FeltReportScreenState extends State<FeltReportScreen> {
               : const Icon(Icons.send),
           label: const Text('Enviar a Seismik'),
         ),
-        const SizedBox(height: 100),
+        const SizedBox(height: 24),
       ],
     ),
   );

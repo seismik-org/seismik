@@ -25,10 +25,12 @@ payload crítico marcado `TEST`, suprimió el duplicado y no envió ningún push
 externo. La evidencia reproducible está en
 [`docs/evidence/sprint3-docker-e2e.json`](docs/evidence/sprint3-docker-e2e.json).
 
-**Sprint 4 en curso (2026-08-27):** la app Android lee el color Material You
-exacto publicado por Android/One UI y respeta el modo claro/oscuro. La versión 0.5.1 añade
-logotipo propio, Google Maps y navegación flotante para Historial, Sismo sentido,
-Daños y Configuración. El reporte “¿Lo sentiste?” permite
+**Sprint 4 en curso (2026-08-29):** la versión móvil 0.6.0 consume la paleta
+Material You completa publicada por Android/One UI, respeta barras e insets del
+sistema y convierte Configuración en preferencias persistentes y funcionales.
+Incluye Google Maps y navegación para Historial, Sismo sentido, Daños y
+Configuración. El historial agrega SGC, USGS y otras fuentes oficiales con caché
+offline, atribución y filtros. El reporte “¿Lo sentiste?” permite
 elegir una o varias organizaciones geológicas para cada sismo, conserva la
 preferencia localmente y usa un catálogo de respaldo sin red. Seismik nunca
 envía datos a esas entidades de forma automática: abre sus formularios oficiales

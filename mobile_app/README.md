@@ -3,12 +3,20 @@
 Cliente Flutter 3.47 para Android e iOS. Incluye monitor sísmico, alertas críticas,
 DSP voluntario del acelerómetro, reportes oficiales, “¿lo sentiste?” y daños.
 
-La versión 0.5.1 incorpora el logotipo oficial, Google Maps y un menú Material 3
-flotante con Historial de Sismos, Sismo sentido, Reporte de daños y Configuración.
-En Android 12 o posterior lee directamente `system_accent1_500`, el código ARGB
-que Android/One UI publica para la paleta Material You seleccionada por el
-usuario. Ese valor se conserva como color primario exacto en modo claro y oscuro;
-solo se usa la semilla Seismik de respaldo si el sistema no publica el recurso.
+La versión 0.6.0 incorpora el logotipo, Google Maps y un menú Material 3 con
+Historial de Sismos, Sismo sentido, Reporte de daños y Configuración. El menú
+reserva espacio real, respeta las barras del sistema y se oculta cuando aparece
+el teclado para no bloquear formularios.
+
+En Android 12 o posterior `dynamic_color` lee el `CorePalette` completo publicado
+por Android/One UI: primarios, secundarios, terciarios, superficies y sus tonos
+claro/oscuro. No se reconstruye la interfaz a partir de un solo color. La pantalla
+de Configuración permite activar/desactivar esa paleta, elegir modo del sistema,
+claro u oscuro y aplicar el cambio inmediatamente.
+
+El historial consulta el agregador de Seismik para SGC, USGS, IGP, INGV,
+GeoNet, BMKG y JMA, conserva una copia offline y permite elegir fuentes, periodo
+y magnitud mínima. Cada ficha mantiene atribución y enlace a la fuente oficial.
 
 En cada sismo, “¿Lo sentiste?” permite escoger las organizaciones geológicas
 disponibles para el país. La selección se guarda localmente por evento. Si no hay
@@ -25,6 +33,9 @@ flutter test
 flutter run --dart-define=SEISMIK_API_BASE_URL=https://api.example.org \
   --dart-define=SEISMIK_DEVICE_KEY=bootstrap-de-desarrollo
 ```
+
+La URL predeterminada es `https://api.seismik.org`; la clave de dispositivo
+continúa siendo obligatoria en compilaciones release.
 
 Google Maps requiere una clave restringida a Maps SDK for Android y al paquete
 `com.seismik.app`. No se versiona la clave. En PowerShell:

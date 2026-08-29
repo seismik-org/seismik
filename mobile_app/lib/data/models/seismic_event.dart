@@ -12,6 +12,12 @@ class SeismicEvent {
     this.officialUrl,
     this.officialEventId,
     this.countryCode,
+    this.sourceId,
+    this.magnitudeType,
+    this.reviewStatus,
+    this.updatedAt,
+    this.attribution,
+    this.tsunami,
   });
 
   factory SeismicEvent.fromMap(Map<String, dynamic> map) {
@@ -38,6 +44,14 @@ class SeismicEvent {
       officialUrl: map['official_url']?.toString(),
       officialEventId: map['official_event_id']?.toString(),
       countryCode: map['country_code']?.toString(),
+      sourceId: map['source_id']?.toString(),
+      magnitudeType: map['magnitude_type']?.toString(),
+      reviewStatus: map['review_status']?.toString(),
+      updatedAt: DateTime.tryParse(
+        (map['updated_at'] ?? '').toString(),
+      )?.toUtc(),
+      attribution: map['attribution']?.toString(),
+      tsunami: map['tsunami'] as bool?,
     );
   }
 
@@ -53,6 +67,33 @@ class SeismicEvent {
   final String? officialUrl;
   final String? officialEventId;
   final String? countryCode;
+  final String? sourceId;
+  final String? magnitudeType;
+  final String? reviewStatus;
+  final DateTime? updatedAt;
+  final String? attribution;
+  final bool? tsunami;
 
   bool get isOfficial => type == 'official_report_update';
+
+  Map<String, dynamic> toMap() => <String, dynamic>{
+    'event_id': id,
+    'type': type,
+    'origin_time': detectedAt.toIso8601String(),
+    'latitude': latitude,
+    'longitude': longitude,
+    'magnitude': magnitude,
+    'depth_km': depthKm,
+    'agency': agency,
+    'place': place,
+    'official_url': officialUrl,
+    'official_event_id': officialEventId,
+    'country_code': countryCode,
+    'source_id': sourceId,
+    'magnitude_type': magnitudeType,
+    'review_status': reviewStatus,
+    'updated_at': updatedAt?.toIso8601String(),
+    'attribution': attribution,
+    'tsunami': tsunami,
+  };
 }

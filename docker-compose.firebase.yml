@@ -1,0 +1,7 @@
+services:
+  api:
+    volumes:
+      - ./secrets/firebase-admin.json:/run/secrets/firebase-admin.json:ro
+  dispatcher:
+    volumes:
+      - ./secrets/firebase-admin.json:/run/secrets/firebase-admin.json:ro

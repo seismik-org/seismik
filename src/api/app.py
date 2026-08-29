@@ -11,6 +11,7 @@ from api.bus import RedisEventBus
 from api.config import AppSettings, get_settings
 from api.devices import router as devices_router
 from api.devices_store import DeviceRepository
+from api.history import router as history_router
 from api.integrity import DeviceIntegrityVerifier
 from api.public import router as public_router
 from api.webhooks import router as webhooks_router
@@ -48,6 +49,7 @@ def create_app(settings: AppSettings | None = None) -> FastAPI:
     app.include_router(devices_router)
     app.include_router(crowd_router)
     app.include_router(public_router)
+    app.include_router(history_router)
     app.include_router(reporting_router)
 
     @app.get("/health/live", tags=["health"])

@@ -17,18 +17,15 @@ void main() {
     expect(light.colorScheme.primary, isNot(dark.colorScheme.primary));
   });
 
-  test('uses the exact Android Material You accent without substitution', () {
-    const Color samsungAccent = Color(0xFF8D6E63);
-    final ColorScheme light = SeismikTheme.scheme(
-      brightness: Brightness.light,
-      exactSystemAccent: samsungAccent,
-    );
-    final ColorScheme dark = SeismikTheme.scheme(
+  test('accepts the complete platform dynamic color scheme unchanged', () {
+    final ColorScheme samsungScheme = ColorScheme.fromSeed(
+      seedColor: const Color(0xFF8D6E63),
       brightness: Brightness.dark,
-      exactSystemAccent: samsungAccent,
     );
+    final ThemeData theme = SeismikTheme.fromScheme(samsungScheme);
 
-    expect(light.primary, samsungAccent);
-    expect(dark.primary, samsungAccent);
+    expect(theme.colorScheme, samsungScheme);
+    expect(theme.colorScheme.primary, samsungScheme.primary);
+    expect(theme.colorScheme.surface, samsungScheme.surface);
   });
 }

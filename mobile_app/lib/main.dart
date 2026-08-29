@@ -1,9 +1,11 @@
 import 'dart:async';
 
+import 'package:dynamic_color/dynamic_color.dart';
 import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import 'core/constants.dart';
@@ -14,13 +16,15 @@ import 'presentation/screens/event_detail_screen.dart';
 import 'presentation/screens/felt_report_screen.dart';
 import 'presentation/screens/monitor_screen.dart';
 import 'presentation/screens/settings_screen.dart';
-import 'services/material_you_service.dart';
+import 'state/mobile_settings.dart';
 import 'state/seismik_state.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
   SeismikConstants.validateBuildConfiguration();
-  final Color? exactSystemAccent = await MaterialYouService.readExactAccent();
+  final MobileSettings settings = MobileSettings();
+  await settings.load();
   await Firebase.initializeApp();
   await FirebaseAppCheck.instance.activate(
     providerAndroid: kReleaseMode
@@ -30,46 +34,78 @@ Future<void> main() async {
         ? const AppleAppAttestWithDeviceCheckFallbackProvider()
         : const AppleDebugProvider(),
   );
-  runApp(SeismikApp(exactSystemAccent: exactSystemAccent));
+  runApp(SeismikApp(settings: settings));
 }
 
 class SeismikApp extends StatelessWidget {
-  const SeismikApp({this.exactSystemAccent, super.key});
+  const SeismikApp({required this.settings, super.key});
 
-  final Color? exactSystemAccent;
+  final MobileSettings settings;
 
   @override
-  Widget build(BuildContext context) => ChangeNotifierProvider<SeismikState>(
-    create: (_) {
-      final SeismikState state = SeismikState();
-      unawaited(state.initialize());
-      return state;
-    },
-    child: MaterialApp(
-      title: SeismikConstants.appName,
-      debugShowCheckedModeBanner: false,
-      themeMode: ThemeMode.system,
-      theme: SeismikTheme.fromScheme(
-        SeismikTheme.scheme(
-          brightness: Brightness.light,
-          exactSystemAccent: exactSystemAccent,
-        ),
+  Widget build(BuildContext context) => MultiProvider(
+    providers: <ChangeNotifierProvider<ChangeNotifier>>[
+      ChangeNotifierProvider<MobileSettings>.value(value: settings),
+      ChangeNotifierProvider<SeismikState>(
+        create: (_) {
+          final SeismikState state = SeismikState(settings: settings);
+          unawaited(state.initialize());
+          return state;
+        },
       ),
-      darkTheme: SeismikTheme.fromScheme(
-        SeismikTheme.scheme(
-          brightness: Brightness.dark,
-          exactSystemAccent: exactSystemAccent,
-        ),
-      ),
-      home: _SeismikShell(exactSystemAccent: exactSystemAccent),
+    ],
+    child: DynamicColorBuilder(
+      builder: (ColorScheme? systemLight, ColorScheme? systemDark) {
+        return Consumer<MobileSettings>(
+          builder: (context, settings, _) {
+            final bool useSystem =
+                settings.useDynamicColor &&
+                systemLight != null &&
+                systemDark != null;
+            final ColorScheme light = useSystem
+                ? systemLight
+                : SeismikTheme.scheme(brightness: Brightness.light);
+            final ColorScheme dark = useSystem
+                ? systemDark
+                : SeismikTheme.scheme(brightness: Brightness.dark);
+            return MaterialApp(
+              title: SeismikConstants.appName,
+              debugShowCheckedModeBanner: false,
+              themeMode: settings.themeMode,
+              theme: SeismikTheme.fromScheme(light),
+              darkTheme: SeismikTheme.fromScheme(dark),
+              builder: (context, child) {
+                final bool darkMode =
+                    Theme.of(context).brightness == Brightness.dark;
+                return AnnotatedRegion<SystemUiOverlayStyle>(
+                  value: SystemUiOverlayStyle(
+                    statusBarColor: Colors.transparent,
+                    statusBarIconBrightness: darkMode
+                        ? Brightness.light
+                        : Brightness.dark,
+                    systemNavigationBarColor: Colors.transparent,
+                    systemNavigationBarDividerColor: Colors.transparent,
+                    systemNavigationBarIconBrightness: darkMode
+                        ? Brightness.light
+                        : Brightness.dark,
+                    systemNavigationBarContrastEnforced: false,
+                  ),
+                  child: child ?? const SizedBox.shrink(),
+                );
+              },
+              home: _SeismikShell(dynamicColorAvailable: systemLight != null),
+            );
+          },
+        );
+      },
     ),
   );
 }
 
 class _SeismikShell extends StatefulWidget {
-  const _SeismikShell({required this.exactSystemAccent});
+  const _SeismikShell({required this.dynamicColorAvailable});
 
-  final Color? exactSystemAccent;
+  final bool dynamicColorAvailable;
 
   @override
   State<_SeismikShell> createState() => _SeismikShellState();
@@ -94,34 +130,32 @@ class _SeismikShellState extends State<_SeismikShell> {
       final event = state.recentEvents.isEmpty
           ? null
           : state.recentEvents.first;
-      base = Stack(
-        fit: StackFit.expand,
-        children: <Widget>[
-          IndexedStack(
-            index: _selectedIndex,
-            children: <Widget>[
-              const MonitorScreen(),
-              FeltReportScreen(event: event),
-              DamageReportScreen(event: event),
-              SettingsScreen(
-                activeAccent: Theme.of(context).colorScheme.primary,
-                usesSystemAccent: widget.exactSystemAccent != null,
+      final bool keyboardVisible = MediaQuery.viewInsetsOf(context).bottom > 0;
+      base = Scaffold(
+        resizeToAvoidBottomInset: true,
+        body: IndexedStack(
+          index: _selectedIndex,
+          children: <Widget>[
+            const MonitorScreen(),
+            FeltReportScreen(event: event),
+            DamageReportScreen(event: event),
+            SettingsScreen(dynamicColorAvailable: widget.dynamicColorAvailable),
+          ],
+        ),
+        bottomNavigationBar: keyboardVisible
+            ? null
+            : Padding(
+                padding: const EdgeInsets.fromLTRB(14, 4, 14, 10),
+                child: SafeArea(
+                  top: false,
+                  minimum: const EdgeInsets.only(bottom: 2),
+                  child: _FloatingMenu(
+                    selectedIndex: _selectedIndex,
+                    onSelected: (index) =>
+                        setState(() => _selectedIndex = index),
+                  ),
+                ),
               ),
-            ],
-          ),
-          Positioned(
-            left: 14,
-            right: 14,
-            bottom: 12,
-            child: SafeArea(
-              top: false,
-              child: _FloatingMenu(
-                selectedIndex: _selectedIndex,
-                onSelected: (index) => setState(() => _selectedIndex = index),
-              ),
-            ),
-          ),
-        ],
       );
     }
     if (state.activeAlert == null) return base;
@@ -163,7 +197,7 @@ class _FloatingMenu extends StatelessWidget {
       child: ClipRRect(
         borderRadius: BorderRadius.circular(34),
         child: NavigationBar(
-          height: 76,
+          height: 72,
           selectedIndex: selectedIndex,
           onDestinationSelected: onSelected,
           backgroundColor: colors.surfaceContainerHigh,
