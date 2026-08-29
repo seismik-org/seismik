@@ -57,3 +57,19 @@ núcleo:
 ```bash
 sudo docker compose --profile detector up --build --detach detector
 ```
+
+## Actualizar una beta existente
+
+Los paquetes no incluyen `.env`, credenciales ni datos de Redis. Por tanto, una
+actualización puede extraerse sobre `/home/todozhop/seismik` sin reemplazar los
+secretos ni el volumen persistente:
+
+```bash
+cd /home/todozhop/seismik
+unzip -oq ~/seismik-beta-0.4.1.zip -d .
+docker compose --profile detector up --build --detach detector
+docker compose logs --tail 100 --follow detector
+```
+
+La versión `0.4.1` corrige la creación del cliente SeedLink para establecer el
+timeout de conexión antes de abrir el socket, requerido por ObsPy 1.4.x.

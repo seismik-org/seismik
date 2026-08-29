@@ -10,7 +10,6 @@ from datetime import datetime, timezone
 from obspy import Trace  # type: ignore[import-untyped]
 from obspy.clients.seedlink.easyseedlink import (  # type: ignore[import-untyped]
     EasySeedLinkClient,
-    create_client,
 )
 
 from eew.alerts import AlertDispatcher
@@ -20,6 +19,32 @@ from eew.models import EarthquakeCandidate
 from eew.processor import StationProcessor
 
 LOGGER = logging.getLogger(__name__)
+
+
+def create_seedlink_client(
+    server_url: str,
+    *,
+    on_data: Callable[[Trace], None],
+    on_seedlink_error: Callable[[], None],
+    on_terminate: Callable[[], None],
+    network_timeout_seconds: float,
+) -> EasySeedLinkClient:
+    """Construye el cliente y fija el timeout antes de abrir el socket.
+
+    ``obspy.create_client()`` conecta internamente antes de devolver el objeto.
+    En algunas versiones de ObsPy el timeout inicial queda en ``None`` y la
+    conexión falla al compararlo con el reloj. Crear el cliente sin autoconexión
+    permite configurar tanto el timeout de conexión como el de lectura primero.
+    """
+
+    client = EasySeedLinkClient(server_url, autoconnect=False)
+    client.on_data = on_data
+    client.on_seedlink_error = on_seedlink_error
+    client.on_terminate = on_terminate
+    client.conn.timeout = network_timeout_seconds
+    client.conn.set_net_timeout(network_timeout_seconds)
+    client.connect()
+    return client
 
 
 class SeedLinkProviderWorker:
@@ -33,7 +58,7 @@ class SeedLinkProviderWorker:
         coincidence: ZoneCoincidenceRouter,
         dispatcher: AlertDispatcher,
         on_candidate: Callable[[EarthquakeCandidate], None] | None = None,
-        client_factory: Callable[..., EasySeedLinkClient] = create_client,
+        client_factory: Callable[..., EasySeedLinkClient] = create_seedlink_client,
         jitter_source: Callable[[float, float], float] = random.uniform,
     ):
         self.provider = provider
@@ -78,6 +103,7 @@ class SeedLinkProviderWorker:
                     on_data=self._on_data,
                     on_seedlink_error=self._on_seedlink_error,
                     on_terminate=self._on_terminate,
+                    network_timeout_seconds=self.seedlink_settings.network_timeout_seconds,
                 )
                 self._client = client
                 if hasattr(client.conn, "set_net_timeout"):

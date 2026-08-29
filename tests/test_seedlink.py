@@ -16,7 +16,7 @@ from eew.config import (
     SeedLinkSettings,
     StationSubscription,
 )
-from eew.seedlink import SeedLinkProviderWorker
+from eew.seedlink import SeedLinkProviderWorker, create_seedlink_client
 
 
 class FakeConnection:
@@ -56,6 +56,30 @@ class FakeClient:
         self.stop()
 
 
+def test_client_applies_timeout_before_connect(monkeypatch: Any) -> None:
+    observed: dict[str, float | None] = {}
+
+    def connect(client: Any) -> None:
+        observed["connect_timeout"] = client.conn.timeout
+        observed["network_timeout"] = client.conn.netto
+
+    monkeypatch.setattr(
+        "eew.seedlink.EasySeedLinkClient.connect",
+        connect,
+    )
+
+    client = create_seedlink_client(
+        "seedlink.example:18000",
+        on_data=lambda _trace: None,
+        on_seedlink_error=lambda: None,
+        on_terminate=lambda: None,
+        network_timeout_seconds=7,
+    )
+
+    assert observed == {"connect_timeout": 7, "network_timeout": 7}
+    assert client.conn.timeout == 7
+
+
 def test_worker_recovers_after_simulated_connection_cut() -> None:
     provider = SeedLinkProvider(
         id="test-co",
@@ -78,6 +102,7 @@ def test_worker_recovers_after_simulated_connection_cut() -> None:
     worker: SeedLinkProviderWorker
 
     def factory(_server: str, **callbacks: Any) -> FakeClient:
+        assert callbacks["network_timeout_seconds"] == 7
         client = FakeClient(
             callbacks["on_data"],
             fail=not clients,
