@@ -29,6 +29,7 @@ mobile_app/ios/Runner/GoogleService-Info.plist
 firebase-admin*.json
 service-account*.json
 secrets/
+deploy/artifacts/
 
 # Temporary Office lock and recovery files
 ~$*.docx

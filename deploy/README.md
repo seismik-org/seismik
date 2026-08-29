@@ -35,3 +35,25 @@ de continuidad. Kubernetes y TPU no son requisitos del MVP.
 La futura IaC se añadirá después de elegir proyecto, región, dominio, presupuesto
 y modelo Redis. No se incluye Terraform que pueda crear recursos facturables sin
 esas decisiones, evitando un `apply` accidental.
+
+## Bootstrap manual de la VM beta
+
+El archivo `bootstrap-beta.sh` inicia solamente Redis, API y dispatcher en modo
+`staging`/`dry_run`. Genera secretos aleatorios con permisos `0600`, no los
+imprime y conserva un `.env` existente. La API y Redis permanecen enlazados a
+`127.0.0.1`; no crea reglas de firewall ni activa FCM/APNs.
+
+Desde la raíz del paquete cargado en la VM:
+
+```bash
+bash deploy/bootstrap-beta.sh
+curl http://127.0.0.1:8000/health/live
+curl http://127.0.0.1:8000/health/ready
+```
+
+El detector SeedLink se inicia por separado solo después de validar la salud del
+núcleo:
+
+```bash
+sudo docker compose --profile detector up --build --detach detector
+```
