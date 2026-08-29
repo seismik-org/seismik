@@ -264,6 +264,7 @@ class _DamageReportScreenState extends State<DamageReportScreen> {
               : const Icon(Icons.send),
           label: const Text('Enviar reporte a Seismik'),
         ),
+        const SizedBox(height: 100),
       ],
     ),
   );

@@ -10,9 +10,12 @@
     <application
         android:label="Seismik"
         android:name="${applicationName}"
-        android:icon="@drawable/ic_launcher_seismik"
+        android:icon="@mipmap/ic_launcher"
         android:allowBackup="false"
         android:usesCleartextTraffic="false">
+        <meta-data
+            android:name="com.google.android.geo.API_KEY"
+            android:value="${SEISMIK_GOOGLE_MAPS_API_KEY}" />
         <activity
             android:name=".MainActivity"
             android:exported="true"

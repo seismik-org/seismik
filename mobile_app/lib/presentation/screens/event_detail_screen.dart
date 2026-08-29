@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
-import 'package:latlong2/latlong.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import '../../data/models/seismic_event.dart';
 import 'felt_report_screen.dart';
@@ -80,34 +79,26 @@ class EventDetailScreen extends StatelessWidget {
               height: 360,
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(22),
-                child: FlutterMap(
-                  options: MapOptions(initialCenter: epicenter, initialZoom: 7),
-                  children: <Widget>[
-                    TileLayer(
-                      urlTemplate:
-                          'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                      userAgentPackageName: 'com.seismik.app',
+                child: GoogleMap(
+                  initialCameraPosition: CameraPosition(
+                    target: epicenter,
+                    zoom: 7,
+                  ),
+                  markers: <Marker>{
+                    Marker(
+                      markerId: MarkerId(event.id),
+                      position: epicenter,
+                      infoWindow: InfoWindow(
+                        title: event.place ?? 'Epicentro',
+                        snippet: event.agency,
+                      ),
+                      icon: BitmapDescriptor.defaultMarkerWithHue(
+                        BitmapDescriptor.hueRed,
+                      ),
                     ),
-                    MarkerLayer(
-                      markers: <Marker>[
-                        Marker(
-                          point: epicenter,
-                          width: 64,
-                          height: 64,
-                          child: const Icon(
-                            Icons.crisis_alert,
-                            size: 56,
-                            color: Colors.redAccent,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const RichAttributionWidget(
-                      attributions: <SourceAttribution>[
-                        TextSourceAttribution('OpenStreetMap contributors'),
-                      ],
-                    ),
-                  ],
+                  },
+                  zoomControlsEnabled: false,
+                  mapToolbarEnabled: false,
                 ),
               ),
             ),

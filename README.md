@@ -26,7 +26,9 @@ externo. La evidencia reproducible está en
 [`docs/evidence/sprint3-docker-e2e.json`](docs/evidence/sprint3-docker-e2e.json).
 
 **Sprint 4 en curso (2026-08-27):** la app Android usa Material You con color
-dinámico y modo claro/oscuro del sistema. El reporte “¿Lo sentiste?” permite
+de marca One UI estable y modo claro/oscuro del sistema. La versión 0.5.0 añade
+logotipo propio, Google Maps y navegación flotante para Historial, Sismo sentido,
+Daños y Configuración. El reporte “¿Lo sentiste?” permite
 elegir una o varias organizaciones geológicas para cada sismo, conserva la
 preferencia localmente y usa un catálogo de respaldo sin red. Seismik nunca
 envía datos a esas entidades de forma automática: abre sus formularios oficiales

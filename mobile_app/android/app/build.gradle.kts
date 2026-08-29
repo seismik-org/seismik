@@ -23,6 +23,10 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        manifestPlaceholders["SEISMIK_GOOGLE_MAPS_API_KEY"] =
+            (project.findProperty("SEISMIK_GOOGLE_MAPS_API_KEY") as String?)
+                ?: System.getenv("SEISMIK_GOOGLE_MAPS_API_KEY")
+                ?: ""
     }
 
     signingConfigs {

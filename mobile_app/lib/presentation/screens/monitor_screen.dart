@@ -1,14 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
-import 'package:latlong2/latlong.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:provider/provider.dart';
 
 import '../../data/models/seismic_event.dart';
 import '../../state/seismik_state.dart';
 import '../widgets/status_pill.dart';
 import 'event_detail_screen.dart';
-import 'felt_report_screen.dart';
-import 'damage_report_screen.dart';
 
 class MonitorScreen extends StatelessWidget {
   const MonitorScreen({super.key});
@@ -19,12 +16,35 @@ class MonitorScreen extends StatelessWidget {
     final LatLng center = state.position == null
         ? const LatLng(4.65, -74.05)
         : LatLng(state.position!.latitude, state.position!.longitude);
-    final ColorScheme colors = Theme.of(context).colorScheme;
+    final Set<Marker> markers = <Marker>{
+      for (final station in state.stations)
+        Marker(
+          markerId: MarkerId('${station.network}.${station.id}'),
+          position: LatLng(station.latitude, station.longitude),
+          infoWindow: InfoWindow(
+            title: '${station.network}.${station.id}',
+            snippet: 'Estación sísmica',
+          ),
+          icon: BitmapDescriptor.defaultMarkerWithHue(
+            BitmapDescriptor.hueAzure,
+          ),
+        ),
+    };
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          'SEISMIK',
-          style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 3),
+        title: Row(
+          children: <Widget>[
+            Image.asset(
+              'assets/images/seismik_logo.png',
+              width: 38,
+              height: 38,
+            ),
+            const SizedBox(width: 10),
+            const Text(
+              'SEISMIK',
+              style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 2),
+            ),
+          ],
         ),
         actions: <Widget>[
           IconButton(
@@ -37,7 +57,7 @@ class MonitorScreen extends StatelessWidget {
         child: RefreshIndicator(
           onRefresh: state.refreshNetworkData,
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 116),
             children: <Widget>[
               StatusPill(online: state.networkOnline),
               if (state.statusMessage != null) ...<Widget>[
@@ -48,67 +68,28 @@ class MonitorScreen extends StatelessWidget {
                 ),
               ],
               const SizedBox(height: 14),
-              _ReportingActions(
-                event:
-                    state.officialEvent ??
-                    (state.recentEvents.isEmpty
-                        ? null
-                        : state.recentEvents.first),
+              Text(
+                'Historial de Sismos',
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.w900,
+                ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
               SizedBox(
                 height: 380,
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(24),
-                  child: FlutterMap(
-                    options: MapOptions(
-                      initialCenter: center,
-                      initialZoom: 5.8,
+                  child: GoogleMap(
+                    initialCameraPosition: CameraPosition(
+                      target: center,
+                      zoom: 5.8,
                     ),
-                    children: <Widget>[
-                      TileLayer(
-                        urlTemplate:
-                            'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                        userAgentPackageName: 'com.seismik.app',
-                      ),
-                      MarkerLayer(
-                        markers: <Marker>[
-                          ...state.stations.map(
-                            (station) => Marker(
-                              point: LatLng(
-                                station.latitude,
-                                station.longitude,
-                              ),
-                              width: 30,
-                              height: 30,
-                              child: Tooltip(
-                                message: '${station.network}.${station.id}',
-                                child: Icon(
-                                  Icons.sensors,
-                                  color: colors.primary,
-                                  size: 22,
-                                ),
-                              ),
-                            ),
-                          ),
-                          if (state.position != null)
-                            Marker(
-                              point: center,
-                              width: 32,
-                              height: 32,
-                              child: Icon(
-                                Icons.my_location,
-                                color: colors.tertiary,
-                              ),
-                            ),
-                        ],
-                      ),
-                      const RichAttributionWidget(
-                        attributions: <SourceAttribution>[
-                          TextSourceAttribution('OpenStreetMap contributors'),
-                        ],
-                      ),
-                    ],
+                    markers: markers,
+                    myLocationEnabled: state.position != null,
+                    myLocationButtonEnabled: state.position != null,
+                    compassEnabled: false,
+                    zoomControlsEnabled: false,
+                    mapToolbarEnabled: false,
                   ),
                 ),
               ),
@@ -133,41 +114,6 @@ class MonitorScreen extends StatelessWidget {
       ),
     );
   }
-}
-
-class _ReportingActions extends StatelessWidget {
-  const _ReportingActions({required this.event});
-  final SeismicEvent? event;
-
-  @override
-  Widget build(BuildContext context) => Row(
-    children: <Widget>[
-      Expanded(
-        child: FilledButton.tonalIcon(
-          onPressed: () => Navigator.of(context).push(
-            MaterialPageRoute<void>(
-              builder: (_) => FeltReportScreen(event: event),
-            ),
-          ),
-          icon: const Icon(Icons.waves),
-          label: const Text('¿Lo sentiste?'),
-        ),
-      ),
-      const SizedBox(width: 10),
-      Expanded(
-        child: FilledButton.icon(
-          style: FilledButton.styleFrom(backgroundColor: Colors.red.shade700),
-          onPressed: () => Navigator.of(context).push(
-            MaterialPageRoute<void>(
-              builder: (_) => DamageReportScreen(event: event),
-            ),
-          ),
-          icon: const Icon(Icons.report_problem),
-          label: const Text('Reportar daños'),
-        ),
-      ),
-    ],
-  );
 }
 
 class _EventTile extends StatelessWidget {

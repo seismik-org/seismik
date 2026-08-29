@@ -3,9 +3,11 @@
 Cliente Flutter 3.47 para Android e iOS. Incluye monitor sísmico, alertas críticas,
 DSP voluntario del acelerómetro, reportes oficiales, “¿lo sentiste?” y daños.
 
-La interfaz usa Material 3/Material You: en Android 12 o superior toma la paleta
-del fondo configurado por el usuario y en otros sistemas usa una paleta Seismik
-de respaldo. Respeta automáticamente el modo claro u oscuro del sistema.
+La versión 0.5.0 incorpora el logotipo oficial, Google Maps y un menú Material 3
+flotante con Historial de Sismos, Sismo sentido, Reporte de daños y Configuración.
+Usa una paleta Seismik inspirada en One UI (`#4669A6`) para evitar que Samsung
+termine mostrando el azul Material predeterminado de Google. Respeta el modo
+claro u oscuro del sistema, pero los colores de marca son estables.
 
 En cada sismo, “¿Lo sentiste?” permite escoger las organizaciones geológicas
 disponibles para el país. La selección se guarda localmente por evento. Si no hay
@@ -22,6 +24,18 @@ flutter test
 flutter run --dart-define=SEISMIK_API_BASE_URL=https://api.example.org \
   --dart-define=SEISMIK_DEVICE_KEY=bootstrap-de-desarrollo
 ```
+
+Google Maps requiere una clave restringida a Maps SDK for Android y al paquete
+`com.seismik.app`. No se versiona la clave. En PowerShell:
+
+```powershell
+$env:SEISMIK_GOOGLE_MAPS_API_KEY = 'clave-restringida'
+flutter build apk --debug --split-per-abi
+```
+
+Sin esa variable el proyecto compila, pero el mapa no carga mosaicos en el
+dispositivo. La clave de iOS se suministra como build setting
+`SEISMIK_GOOGLE_MAPS_API_KEY` en Xcode.
 
 Añade fuera de Git `android/app/google-services.json` y
 `ios/Runner/GoogleService-Info.plist`. Las alertas críticas iOS requieren el

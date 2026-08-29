@@ -17,8 +17,6 @@ abstract final class SeismikConstants {
   static const Duration dspWindow = Duration(milliseconds: 2500);
   static const int dspMaximumSamples = 160;
   static const double userMotionVarianceThreshold = 0.12;
-  static const String osmUserAgent = 'com.seismik.app';
-
   static void validateBuildConfiguration() {
     if (kReleaseMode &&
         (deviceApiKey.isEmpty || apiBaseUrl.contains('.example'))) {

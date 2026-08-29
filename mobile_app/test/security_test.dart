@@ -14,11 +14,13 @@ void main() {
     expect(signature, matches(RegExp(r'^[0-9a-f]{64}$')));
     expect(
       signature,
-      isNot(SeismikSecurity.hmacSha256Hex(
-        secret: 'secret',
-        timestamp: '1723860604.121',
-        bodyBytes: utf8.encode('{"pga":0.08}'),
-      )),
+      isNot(
+        SeismikSecurity.hmacSha256Hex(
+          secret: 'secret',
+          timestamp: '1723860604.121',
+          bodyBytes: utf8.encode('{"pga":0.08}'),
+        ),
+      ),
     );
   });
 }

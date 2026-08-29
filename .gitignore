@@ -12,6 +12,7 @@ work/
 
 mobile_app/.dart_tool/
 mobile_app/build/
+mobile_app/releases/*.apk
 mobile_app/android/build/
 mobile_app/android/local.properties
 mobile_app/android/app/google-services.json

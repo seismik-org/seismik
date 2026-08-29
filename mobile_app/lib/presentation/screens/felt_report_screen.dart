@@ -235,6 +235,7 @@ class _FeltReportScreenState extends State<FeltReportScreen> {
               : const Icon(Icons.send),
           label: const Text('Enviar a Seismik'),
         ),
+        const SizedBox(height: 100),
       ],
     ),
   );

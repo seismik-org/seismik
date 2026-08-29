@@ -14,6 +14,8 @@ void main() {
     expect(light.useMaterial3, isTrue);
     expect(light.brightness, Brightness.light);
     expect(dark.brightness, Brightness.dark);
+    expect(light.colorScheme.primary, SeismikTheme.oneUiIndigo);
+    expect(dark.colorScheme.primary, const Color(0xFFAFC6F2));
     expect(light.colorScheme.primary, isNot(dark.colorScheme.primary));
   });
 }
