@@ -71,7 +71,7 @@ async def official_history(
         selected = [available[source_id] for source_id in ("sgc_colombia", "usgs_global") if source_id in available]
 
     cache_key = (
-        f"cache:seismik:history:{days}:{minimum_magnitude:.1f}:"
+        f"cache:seismik:history:{days}:{minimum_magnitude:.1f}:{limit}:"
         f"{','.join(source.id for source in selected)}"
     )
     cached = await redis.get(cache_key)

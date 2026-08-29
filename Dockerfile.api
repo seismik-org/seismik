@@ -8,6 +8,7 @@ COPY requirements-backend.txt ./
 RUN pip install --no-cache-dir -r requirements-backend.txt
 COPY src ./src
 COPY config.global.json ./config.global.json
+COPY official_sources.json ./official_sources.json
 USER appuser
 
 EXPOSE 8000
