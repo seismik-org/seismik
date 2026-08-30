@@ -37,7 +37,7 @@ envía datos a esas entidades de forma automática: abre sus formularios oficial
 después del consentimiento. La cola completa de reportes offline y las pruebas
 en dos dispositivos Android siguen pendientes.
 
-La beta 0.6.2 recupera el evento que inició Android mediante una alerta de
+La beta 0.6.3 recupera el evento que inició Android mediante una alerta de
 pantalla completa, ofrece autorización explícita para ese acceso en Android
 14+ y agrega una simulación local que no publica ni distribuye un sismo. Android
 puede degradar la alerta a un banner si el usuario no concede ese acceso.
