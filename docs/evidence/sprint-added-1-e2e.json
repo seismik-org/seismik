@@ -1,0 +1,14 @@
+{
+  "sprint": "SA1",
+  "cutoff": "2026-08-30",
+  "status": "blocked_on_firebase_secret_sync",
+  "checks": {
+    "api_ready_public": 200,
+    "protected_events_without_key": 401,
+    "oauth_client": "331950364408-8l2e...",
+    "portal_origin": "https://devs.seismik.org",
+    "firebase_callback": "https://devs.seismik.org/__/auth/handler",
+    "public_developers_page": "/developers"
+  },
+  "secrets": "none"
+}
