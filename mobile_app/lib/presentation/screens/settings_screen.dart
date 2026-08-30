@@ -35,6 +35,52 @@ class SettingsScreen extends StatelessWidget {
           const _Header(),
           const SizedBox(height: 12),
           _Section(
+            title: 'Alertas críticas',
+            icon: Icons.notification_important_outlined,
+            children: <Widget>[
+              ListTile(
+                leading: const Icon(Icons.fullscreen_rounded),
+                title: const Text('Autorizar pantalla completa'),
+                subtitle: const Text(
+                  'Necesario en Android 14+ para abrir la guía con la pantalla bloqueada o apagada. Desbloqueado, Android puede mostrar un banner.',
+                ),
+                trailing: const Icon(Icons.open_in_new_rounded),
+                onTap: () async {
+                  final bool granted = await context
+                      .read<SeismikState>()
+                      .notifications
+                      .requestCriticalAlertAccess();
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          granted
+                              ? 'Pantalla completa autorizada.'
+                              : 'Activa “Permitir alertas a pantalla completa” para Seismik.',
+                        ),
+                      ),
+                    );
+                  }
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.crisis_alert_rounded),
+                title: const Text('Probar alerta en este teléfono'),
+                subtitle: const Text(
+                  'Ejecuta una simulación local. No reporta un sismo ni avisa a otros usuarios.',
+                ),
+                trailing: const Icon(Icons.play_arrow_rounded),
+                onTap: () => unawaited(
+                  context
+                      .read<SeismikState>()
+                      .notifications
+                      .runCriticalAlertTest(),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          _Section(
             title: 'Apariencia',
             icon: Icons.palette_outlined,
             children: <Widget>[
@@ -249,7 +295,7 @@ class _Header extends StatelessWidget {
                   'Seismik',
                   style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900),
                 ),
-                Text('Beta experimental 0.6.1'),
+                Text('Beta experimental 0.6.2'),
               ],
             ),
           ),

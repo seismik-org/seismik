@@ -25,7 +25,7 @@ payload crítico marcado `TEST`, suprimió el duplicado y no envió ningún push
 externo. La evidencia reproducible está en
 [`docs/evidence/sprint3-docker-e2e.json`](docs/evidence/sprint3-docker-e2e.json).
 
-**Sprint 4 en curso (2026-08-29):** la versión móvil 0.6.1 consume la paleta
+**Sprint 4 en curso (2026-08-29):** la versión móvil 0.6.2 consume la paleta
 Material You completa publicada por Android/One UI, respeta barras e insets del
 sistema y convierte Configuración en preferencias persistentes y funcionales.
 Incluye Google Maps y navegación para Historial, Sismo sentido, Daños y
@@ -36,6 +36,11 @@ preferencia localmente y usa un catálogo de respaldo sin red. Seismik nunca
 envía datos a esas entidades de forma automática: abre sus formularios oficiales
 después del consentimiento. La cola completa de reportes offline y las pruebas
 en dos dispositivos Android siguen pendientes.
+
+La beta 0.6.2 recupera el evento que inició Android mediante una alerta de
+pantalla completa, ofrece autorización explícita para ese acceso en Android
+14+ y agrega una simulación local que no publica ni distribuye un sismo. Android
+puede degradar la alerta a un banner si el usuario no concede ese acceso.
 
 **Beta técnica GCP 0.4.1 validada (2026-08-29):** Redis y FastAPI reportaron
 `healthy`/`ready` en la VM `seismik-beta-01`. El detector abrió SeedLink v4.0,

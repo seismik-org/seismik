@@ -76,12 +76,17 @@ class NotificationService {
     await _initializeLocalPlugin(
       _local,
       onResponse: (NotificationResponse response) {
-        final String? payload = response.payload;
-        if (payload == null) return;
-        final Object? decoded = jsonDecode(payload);
-        if (decoded is Map<String, dynamic>) _emit(decoded);
+        _emitPayload(response.payload);
       },
     );
+    // A full-screen intent behaves like a notification tap. When Android had
+    // to start a terminated Flutter process, the callback above did not exist
+    // yet, so the launch payload must be recovered explicitly.
+    final NotificationAppLaunchDetails? launchDetails = await _local
+        .getNotificationAppLaunchDetails();
+    if (launchDetails?.didNotificationLaunchApp ?? false) {
+      _emitPayload(launchDetails?.notificationResponse?.payload);
+    }
     await _requestPermissions();
     _subscriptions.add(
       FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
@@ -116,7 +121,6 @@ class NotificationService {
             AndroidFlutterLocalNotificationsPlugin
           >();
       await android?.requestNotificationsPermission();
-      await android?.requestFullScreenIntentPermission();
     } else if (Platform.isIOS) {
       await _local
           .resolvePlatformSpecificImplementation<
@@ -128,6 +132,42 @@ class NotificationService {
             sound: true,
             critical: true,
           );
+    }
+  }
+
+  /// Opens Android's dedicated full-screen alert access page when needed.
+  /// Android 14+ may otherwise downgrade an alarm to a heads-up banner.
+  Future<bool> requestCriticalAlertAccess() async {
+    if (!Platform.isAndroid) return true;
+    final AndroidFlutterLocalNotificationsPlugin? android = _local
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >();
+    await android?.requestNotificationsPermission();
+    return await android?.requestFullScreenIntentPermission() ?? false;
+  }
+
+  Future<void> runCriticalAlertTest() async {
+    final Map<String, dynamic> data = <String, dynamic>{
+      'type': 'earthquake_candidate',
+      'event_id':
+          'local-critical-test-${DateTime.now().millisecondsSinceEpoch}',
+      'zone_id': 'local-test',
+      'detected_at': DateTime.now().toUtc().toIso8601String(),
+      'critical': 'true',
+      'channel_id': SeismikConstants.criticalChannelId,
+    };
+    await _showCriticalNotification(_local, data);
+    _emit(data);
+  }
+
+  void _emitPayload(String? payload) {
+    if (payload == null || payload.isEmpty) return;
+    try {
+      final Object? decoded = jsonDecode(payload);
+      if (decoded is Map<String, dynamic>) _emit(decoded);
+    } on FormatException {
+      // Ignore notifications not created by Seismik.
     }
   }
 

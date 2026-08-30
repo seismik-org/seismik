@@ -3,10 +3,18 @@
 Cliente Flutter 3.47 para Android e iOS. Incluye monitor sísmico, alertas críticas,
 DSP voluntario del acelerómetro, reportes oficiales, “¿lo sentiste?” y daños.
 
-La versión 0.6.1 incorpora el logotipo, Google Maps y un menú Material 3 con
+La versión 0.6.2 incorpora el logotipo, Google Maps y un menú Material 3 con
 Historial de Sismos, Sismo sentido, Reporte de daños y Configuración. El menú
 reserva espacio real, respeta las barras del sistema y se oculta cuando aparece
 el teclado para no bloquear formularios.
+
+En Configuración → Alertas críticas se puede abrir el permiso especial de
+pantalla completa requerido por Android 14+ y ejecutar una simulación local.
+La simulación no crea un evento en el backend ni notifica a otros teléfonos. La
+app también recupera el payload si Android tuvo que iniciar un proceso terminado
+desde una alerta crítica. Con el teléfono desbloqueado, Android puede conservar
+la otra app visible y presentar un aviso emergente; la intención abre la pantalla
+completa cuando el equipo está bloqueado o con la pantalla apagada.
 
 La interfaz aparece antes de completar ubicación, Firebase, App Check y el
 registro push. En una beta instalada fuera de Play Store se permite un marcador
