@@ -9,4 +9,5 @@ RUN pip install --no-cache-dir -r requirements-backend.txt
 COPY src ./src
 USER appuser
 
+EXPOSE 8080
 CMD ["python", "-m", "dispatcher.consumer"]

@@ -12,6 +12,7 @@ from redis.exceptions import ResponseError
 from api.config import AppSettings, get_settings
 from api.devices_store import DeviceRepository
 from dispatcher.push import PushDispatcher, PushResult, notification_content
+from runtime_health import start_health_server
 
 LOGGER = logging.getLogger(__name__)
 
@@ -209,6 +210,7 @@ class StreamConsumer:
 
 
 async def run_dispatcher() -> None:
+    health_server = start_health_server()
     settings = get_settings()
     redis = Redis.from_url(settings.redis_url, decode_responses=True)
     devices = DeviceRepository(redis)
@@ -227,6 +229,7 @@ async def run_dispatcher() -> None:
     try:
         await worker.run()
     finally:
+        health_server.shutdown()
         await redis.aclose()
 
 

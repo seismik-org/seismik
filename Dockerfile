@@ -11,4 +11,5 @@ RUN pip install --no-cache-dir -r requirements-detector.txt
 COPY config.json official_sources.json ./
 ENV PYTHONPATH=/app/src
 USER appuser
+EXPOSE 8080
 CMD ["python", "-m", "eew", "--config", "/app/config.json"]

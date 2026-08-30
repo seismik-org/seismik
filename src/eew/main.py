@@ -10,6 +10,7 @@ from eew.alerts import AlertDispatcher
 from eew.config import Settings
 from eew.official import OfficialReportService
 from eew.seedlink import SeedLinkDetectionService
+from runtime_health import start_health_server
 
 
 def parse_args() -> argparse.Namespace:
@@ -23,6 +24,7 @@ def parse_args() -> argparse.Namespace:
 
 
 def main() -> None:
+    health_server = start_health_server()
     args = parse_args()
     logging.basicConfig(
         level=os.getenv("LOG_LEVEL", "INFO").upper(),
@@ -51,6 +53,7 @@ def main() -> None:
         service.stop()
         official_reports.close()
         dispatcher.close()
+        health_server.shutdown()
 
 
 if __name__ == "__main__":

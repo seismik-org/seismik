@@ -420,7 +420,9 @@ class ApiClient {
 
   Uri _uri(String path) => Uri.parse('${SeismikConstants.apiBaseUrl}$path');
 
-  Map<String, String> _jsonHeaders({bool deviceKey = false}) =>
+  // Mobile reads use the device bootstrap key as the app-client credential;
+  // partner integrations use X-Seismik-API-Key instead.
+  Map<String, String> _jsonHeaders({bool deviceKey = true}) =>
       <String, String>{
         'Accept': 'application/json',
         'Content-Type': 'application/json',

@@ -38,3 +38,21 @@ def require_device_api_key(
     expected = request.app.state.settings.device_api_key.get_secret_value()
     if not x_device_api_key or not hmac.compare_digest(x_device_api_key, expected):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid device API key")
+
+
+def require_consumer_api_key(
+    request: Request,
+    x_api_key: str | None = Header(default=None, alias="X-Seismik-API-Key"),
+    x_device_api_key: str | None = Header(default=None, alias="X-Seismik-Device-Key"),
+) -> None:
+    """Protect data exports while retaining the mobile device-key path."""
+    settings = request.app.state.settings
+    expected = settings.consumer_api_key.get_secret_value()
+    if not expected:
+        return
+    if (x_api_key and hmac.compare_digest(x_api_key, expected)) or (
+        x_device_api_key
+        and hmac.compare_digest(x_device_api_key, settings.device_api_key.get_secret_value())
+    ):
+        return
+    raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing or invalid Seismik API key")

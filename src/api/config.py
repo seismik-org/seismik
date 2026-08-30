@@ -22,6 +22,7 @@ class AppSettings(BaseSettings):
     webhook_idempotency_seconds: int = Field(default=600, ge=60)
     event_max_body_bytes: int = Field(default=65_536, ge=1_024, le=1_048_576)
     device_api_key: SecretStr = SecretStr("change-me-device-api-key")
+    consumer_api_key: SecretStr = SecretStr("")
     crowd_master_secret: SecretStr = SecretStr("change-me-crowd-secret")
 
     candidate_stream: str = "stream:seismik:candidates"
@@ -90,6 +91,8 @@ class AppSettings(BaseSettings):
             }
             if any(value.startswith("change-me") for value in secrets):
                 raise ValueError("Production requires non-default HMAC/API secrets")
+            if not self.consumer_api_key.get_secret_value():
+                raise ValueError("Production requires a consumer API key")
             if not self.integrity_verification_enabled:
                 raise ValueError("Production requires App Check integrity verification")
         return self
