@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-app.js";
-import { getAuth, getRedirectResult, GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signOut } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-auth.js";
+import { getAuth, getRedirectResult, GoogleAuthProvider, onAuthStateChanged, signInWithRedirect, signOut } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-auth.js";
 
 const API = "https://api.seismik.org";
 const elements = Object.fromEntries([...document.querySelectorAll("[id]")].map((item) => [item.id, item]));
@@ -33,7 +33,7 @@ async function api(path, options = {}, authenticated = true) {
 
 async function login() {
   if (!auth) return toast("OAuth todavía no está habilitado en este entorno.", true);
-  try { await signInWithPopup(auth, new GoogleAuthProvider()); } catch (error) { toast(error.message, true); }
+  try { await signInWithRedirect(auth, new GoogleAuthProvider()); } catch (error) { toast(error.message, true); }
 }
 
 async function copyText(value) {
