@@ -16,16 +16,16 @@ gratuitas con cuotas y trazabilidad.
 |---|---|---|
 | SA1-01 | En curso | Hostnames y Caddy separados en código; falta desplegar y comprobar TLS/origen |
 | SA1-02 | En curso | Portal Firebase/OAuth implementado; falta crear/activar la aplicación Web y dominio autorizado |
-| SA1-03 | Avanzado | Catálogo moderno, documentación inicial y diseño adaptable listos |
+| SA1-03 | Avanzado | Catálogo moderno y adaptable con productos y subrutas `/v1/...` explícitas |
 | SA1-04 | Completo técnico | Alta, listado, rotación y revocación; secreto visible una sola vez y hash en Redis |
 | SA1-05 | Completo técnico | Plan Free con límites por minuto/día, máximo de claves y contador de consumo |
-| SA1-06 | Completo técnico | Alcances `events:read` y `stations:read`; acceso inválido, revocado o insuficiente se rechaza |
+| SA1-06 | Completo técnico | Alcances `events:read` y `stations:read`; todas las consultas quedan cerradas por defecto y rechazan ausencia de clave, clave de dispositivo, clave revocada o alcance insuficiente |
 | SA1-07 | En curso | Términos beta fechados y aceptación obligatoria; pendiente revisión del Product Owner/legal |
 | SA1-08 | En curso | Suite automatizada aprobada; faltan E2E con Firebase real y despliegue beta |
 
 ## Validación de esta iteración
 
-- Backend: 65 pruebas aprobadas.
+- Backend: 66 pruebas aprobadas.
 - Ruff: sin hallazgos.
 - mypy: sin hallazgos en 37 archivos fuente.
 - JavaScript: sintaxis validada.

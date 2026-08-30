@@ -7,7 +7,7 @@ from fastapi import FastAPI
 
 from api import history
 from api.config import AppSettings
-from api.dependencies import get_app_settings, get_redis
+from api.dependencies import UNLIMITED_PRINCIPAL, get_app_settings, get_redis, require_events_read
 
 
 @pytest.mark.asyncio
@@ -47,6 +47,7 @@ async def test_history_aggregates_filters_and_caches(monkeypatch: pytest.MonkeyP
     app.include_router(history.router)
     app.dependency_overrides[get_app_settings] = lambda: settings
     app.dependency_overrides[get_redis] = lambda: redis
+    app.dependency_overrides[require_events_read] = lambda: UNLIMITED_PRINCIPAL
 
     async with httpx.AsyncClient(
         transport=httpx.ASGITransport(app=app), base_url="http://test"
@@ -112,6 +113,7 @@ async def test_history_cache_is_scoped_by_limit(monkeypatch: pytest.MonkeyPatch)
         official_sources_path="official_sources.json"
     )
     app.dependency_overrides[get_redis] = lambda: redis
+    app.dependency_overrides[require_events_read] = lambda: UNLIMITED_PRINCIPAL
 
     async with httpx.AsyncClient(
         transport=httpx.ASGITransport(app=app), base_url="http://test"

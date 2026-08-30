@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="/styles.css">
   <link rel="stylesheet" href="/logo.css">
   <link rel="stylesheet" href="/developers.css">
+  <link rel="stylesheet" href="/developer-endpoints.css">
 </head>
 <body class="developer-body">
   <header class="developer-nav">
@@ -98,6 +99,11 @@
 
     <section id="documentacion" class="developer-section docs-section">
       <div class="section-heading"><p class="eyebrow">DOCUMENTACIÓN</p><h2>Tu primera solicitud.</h2></div>
+      <div class="endpoint-grid" aria-label="Catálogo de endpoints disponibles">
+        <article class="endpoint-card"><span>GET</span><code>/v1/events/history</code><p>Historial oficial consolidado y filtrable.</p><small>Requiere <strong>events:read</strong></small></article>
+        <article class="endpoint-card"><span>GET</span><code>/v1/events/recent</code><p>Eventos oficiales recientes de baja latencia.</p><small>Requiere <strong>events:read</strong></small></article>
+        <article class="endpoint-card"><span>GET</span><code>/v1/network/stations</code><p>Catálogo geográfico de estaciones abiertas.</p><small>Requiere <strong>stations:read</strong></small></article>
+      </div>
       <div class="code-card"><div class="code-tabs"><span>cURL</span><button id="copy-example" class="text-button" type="button">Copiar</button></div><pre><code id="curl-example">curl "https://api.seismik.org/v1/events/history?days=7&amp;minimum_magnitude=4" \
   -H "X-Seismik-API-Key: sk_test_TU_CLAVE"</code></pre></div>
       <p class="docs-note">La API informa la agencia y el enlace oficial. Seismik agrega y normaliza; no sustituye a las entidades sismológicas.</p>

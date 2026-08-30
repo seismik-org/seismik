@@ -20,11 +20,12 @@ def developer_app(monkeypatch: pytest.MonkeyPatch, **settings_overrides: object)
     monkeypatch.setattr(developer_keys, "_identity", verified_identity)
     app = FastAPI()
     app.state.redis = FakeRedis(decode_responses=True)
-    app.state.settings = AppSettings(
-        consumer_api_key="internal-key",
-        developer_terms_version="2026-08-30",
+    settings_values: dict[str, object] = {
+        "consumer_api_key": "internal-key",
+        "developer_terms_version": "2026-08-30",
         **settings_overrides,
-    )
+    }
+    app.state.settings = AppSettings(**settings_values)
     app.include_router(developer_keys.router)
 
     @app.get("/events")
@@ -38,6 +39,22 @@ def developer_app(monkeypatch: pytest.MonkeyPatch, **settings_overrides: object)
         return {"ok": True}
 
     return app
+
+
+@pytest.mark.asyncio
+async def test_data_routes_are_closed_when_static_key_is_not_configured(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app = developer_app(monkeypatch, consumer_api_key="")
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        no_key = await client.get("/events")
+        device_key = await client.get(
+            "/events", headers={"X-Seismik-Device-Key": "development-device-key"}
+        )
+    assert no_key.status_code == 401
+    assert device_key.status_code == 401
 
 
 @pytest.mark.asyncio

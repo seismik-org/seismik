@@ -243,8 +243,18 @@ async def portal_config(request: Request) -> PortalConfigResponse:
             }
         ],
         products=[
-            {"id": "events", "name": "Eventos sísmicos", "scope": "events:read"},
-            {"id": "stations", "name": "Red de estaciones", "scope": "stations:read"},
+            {
+                "id": "events",
+                "name": "Eventos sísmicos",
+                "scope": "events:read",
+                "endpoints": ["/v1/events/history", "/v1/events/recent"],
+            },
+            {
+                "id": "stations",
+                "name": "Red de estaciones",
+                "scope": "stations:read",
+                "endpoints": ["/v1/network/stations"],
+            },
         ],
     )
 

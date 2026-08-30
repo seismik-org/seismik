@@ -1,0 +1,53 @@
+.endpoint-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin: 0 0 18px;
+}
+
+.endpoint-card {
+  padding: 20px;
+  border: 1px solid var(--dev-line);
+  border-radius: 20px;
+  background: var(--dev-panel);
+}
+
+.endpoint-card > span {
+  display: inline-block;
+  margin-bottom: 14px;
+  padding: 4px 8px;
+  border-radius: 7px;
+  background: #173d2c;
+  color: var(--dev-green);
+  font-size: .72rem;
+  font-weight: 900;
+}
+
+.endpoint-card code {
+  display: block;
+  color: var(--dev-blue);
+  overflow-wrap: anywhere;
+}
+
+.endpoint-card p,
+.endpoint-card small {
+  color: var(--dev-muted);
+}
+
+.endpoint-card p {
+  min-height: 48px;
+}
+
+.endpoint-card small strong {
+  color: var(--dev-text);
+}
+
+@media (max-width: 900px) {
+  .endpoint-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .endpoint-card p {
+    min-height: 0;
+  }
+}

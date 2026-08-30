@@ -62,17 +62,11 @@ def require_device_api_key(
 async def require_consumer_api_key(
     request: Request,
     x_api_key: str | None = Header(default=None, alias="X-Seismik-API-Key"),
-    x_device_api_key: str | None = Header(default=None, alias="X-Seismik-Device-Key"),
 ) -> ApiPrincipal:
-    """Protect data exports while retaining the mobile device-key path."""
+    """Protect human-facing data exports with a Seismik API key."""
     settings = request.app.state.settings
     expected = settings.consumer_api_key.get_secret_value()
-    if not expected:
-        return UNLIMITED_PRINCIPAL
-    if (x_api_key and hmac.compare_digest(x_api_key, expected)) or (
-        x_device_api_key
-        and hmac.compare_digest(x_device_api_key, settings.device_api_key.get_secret_value())
-    ):
+    if expected and x_api_key and hmac.compare_digest(x_api_key, expected):
         return UNLIMITED_PRINCIPAL
     if x_api_key and x_api_key.startswith("sk_live_"):
         return await _authorize_developer_key(request, x_api_key)
@@ -138,17 +132,11 @@ def require_api_scope(scope: str) -> Callable[..., Awaitable[ApiPrincipal]]:
     async def dependency(
         request: Request,
         x_api_key: str | None = Header(default=None, alias="X-Seismik-API-Key"),
-        x_device_api_key: str | None = Header(default=None, alias="X-Seismik-Device-Key"),
         settings: AppSettings = Depends(get_app_settings),
         redis: Redis = Depends(get_redis),
     ) -> ApiPrincipal:
         expected = settings.consumer_api_key.get_secret_value()
-        if not expected:
-            return UNLIMITED_PRINCIPAL
-        if (x_api_key and hmac.compare_digest(x_api_key, expected)) or (
-            x_device_api_key
-            and hmac.compare_digest(x_device_api_key, settings.device_api_key.get_secret_value())
-        ):
+        if expected and x_api_key and hmac.compare_digest(x_api_key, expected):
             return UNLIMITED_PRINCIPAL
         if x_api_key and x_api_key.startswith(("sk_live_", "sk_test_")):
             return await _authorize_developer_key(request, x_api_key, scope, settings, redis)
