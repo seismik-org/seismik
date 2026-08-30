@@ -20,6 +20,7 @@ services:
       dockerfile: Dockerfile.api
     restart: unless-stopped
     environment: &seismik-environment
+      PORT: 8000
       SEISMIK_ENVIRONMENT: ${SEISMIK_ENVIRONMENT:-development}
       SEISMIK_REDIS_URL: redis://redis:6379/0
       SEISMIK_WEBHOOK_HMAC_SECRET: ${SEISMIK_WEBHOOK_HMAC_SECRET:-local-webhook-secret-change-me}
