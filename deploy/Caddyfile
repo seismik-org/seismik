@@ -39,3 +39,12 @@ seismik.org {
 	root * /srv
 	file_server
 }
+
+devs.seismik.org {
+	import seismik_security_headers
+	header Content-Security-Policy "default-src 'self'; style-src 'self'; img-src 'self' data:; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"
+	root * /srv
+	@home path /
+	rewrite @home /developers.html
+	file_server
+}
