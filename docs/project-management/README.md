@@ -18,7 +18,7 @@ las copias `.docx` son los documentos formales para reuniones y aprobación.
 | Documento | Fuente editable | Copia Word | Versión | Estado |
 |---|---|---|---|---|
 | Documento maestro | `SEISMIK_DOCUMENTO_MAESTRO_v0.1.md` | `SEISMIK_DOCUMENTO_MAESTRO_v0.1.docx` | 0.1 | Borrador para aprobación |
-| Plan Scrum del MVP | `SEISMIK_PLAN_SCRUM_MVP_v0.2.md` | `SEISMIK_PLAN_SCRUM_MVP_v0.2.docx` | 0.2 | En ejecución; Sprint Añadido 1 en curso |
+| Plan Scrum del MVP | `SEISMIK_PLAN_SCRUM_MVP_v0.2.md` | `SEISMIK_PLAN_SCRUM_MVP_v0.2.docx` | 0.2 | En ejecución; Sprint Añadido 1 desplegado, cierre E2E pendiente |
 | Control de avance | `SEISMIK_CONTROL_AVANCE_v0.1.md` | `SEISMIK_CONTROL_AVANCE_v0.1.docx` | 0.1 | Activo |
 | Paquete de revisión sismológica | `PAQUETE_REVISION_SISMOLOGICA_v0.1.md` | `PAQUETE_REVISION_SISMOLOGICA_v0.1.docx` | 0.1 | Pendiente de revisor |
 

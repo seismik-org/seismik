@@ -1,5 +1,5 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
-import { getAuth, GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signOut } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-app.js";
+import { getAuth, getRedirectResult, GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signOut } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-auth.js";
 
 const API = "https://api.seismik.org";
 const elements = Object.fromEntries([...document.querySelectorAll("[id]")].map((item) => [item.id, item]));
@@ -150,6 +150,14 @@ async function boot() {
       appId: portalConfig.firebase.app_id,
     }));
     onAuthStateChanged(auth, updateSession);
+    try {
+      await getRedirectResult(auth);
+    } catch (error) {
+      // Keep the auth-state listener alive even if the browser cannot recover
+      // optional redirect metadata. A valid persisted Firebase session still
+      // grants access to the panel and is verified again by the API.
+      toast(`OAuth: ${error.message}`, true);
+    }
   } catch (error) { toast(`No fue posible cargar la plataforma: ${error.message}`, true); }
 }
 

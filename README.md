@@ -26,8 +26,9 @@ externo. La evidencia reproducible está en
 [`docs/evidence/sprint3-docker-e2e.json`](docs/evidence/sprint3-docker-e2e.json).
 
 **Sprint Añadido 1 en curso (2026-08-30):** la API Platform incorpora portal
-OAuth, claves revocables almacenadas como hash, alcances, cuotas y auditoría. La
-activación de Firebase Web y el despliegue E2E continúan pendientes. Todas las
+OAuth, claves revocables almacenadas como hash, alcances, cuotas y auditoría. El
+portal y la API ya están desplegados; resta sincronizar el secreto OAuth web y
+cerrar la prueba E2E con una clave temporal revocada al finalizar. Todas las
 rutas humanas de datos (`/v1/events/*` y `/v1/network/*`) están cerradas por
 defecto y requieren `X-Seismik-API-Key`; la falta de configuración nunca las
 convierte en públicas. Salud, OAuth, webhooks internos y dispositivos conservan
