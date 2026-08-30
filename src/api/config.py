@@ -24,6 +24,16 @@ class AppSettings(BaseSettings):
     device_api_key: SecretStr = SecretStr("change-me-device-api-key")
     consumer_api_key: SecretStr = SecretStr("")
     crowd_master_secret: SecretStr = SecretStr("change-me-crowd-secret")
+    developer_portal_origins: tuple[str, ...] = ("https://devs.seismik.org",)
+    developer_terms_version: str = "2026-08-30"
+    developer_max_active_keys: int = Field(default=3, ge=1, le=20)
+    developer_free_requests_per_minute: int = Field(default=60, ge=1, le=10_000)
+    developer_free_requests_per_day: int = Field(default=10_000, ge=10, le=10_000_000)
+    developer_audit_stream: str = "stream:seismik:developer-audit"
+    firebase_web_api_key: str = ""
+    firebase_web_auth_domain: str = ""
+    firebase_web_project_id: str = ""
+    firebase_web_app_id: str = ""
 
     candidate_stream: str = "stream:seismik:candidates"
     official_stream: str = "stream:seismik:official"
@@ -91,10 +101,10 @@ class AppSettings(BaseSettings):
             }
             if any(value.startswith("change-me") for value in secrets):
                 raise ValueError("Production requires non-default HMAC/API secrets")
-            if not self.consumer_api_key.get_secret_value():
-                raise ValueError("Production requires a consumer API key")
             if not self.integrity_verification_enabled:
                 raise ValueError("Production requires App Check integrity verification")
+            if not self.consumer_api_key.get_secret_value():
+                raise ValueError("Production requires a consumer API key")
         return self
 
 

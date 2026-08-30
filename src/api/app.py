@@ -5,12 +5,13 @@ from typing import AsyncIterator
 
 import uvicorn
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from redis.asyncio import Redis
 
 from api.bus import RedisEventBus
 from api.config import AppSettings, get_settings
-from api.devices import router as devices_router
 from api.developer_keys import router as developer_keys_router
+from api.devices import router as devices_router
 from api.devices_store import DeviceRepository
 from api.history import router as history_router
 from api.integrity import DeviceIntegrityVerifier
@@ -43,8 +44,16 @@ def create_app(settings: AppSettings | None = None) -> FastAPI:
 
     app = FastAPI(
         title="Seismik Platform API",
-        version="0.3.0",
+        version="0.4.0",
         lifespan=lifespan,
+    )
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=list(resolved.developer_portal_origins),
+        allow_credentials=False,
+        allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
+        allow_headers=["Authorization", "Content-Type", "X-Seismik-API-Key"],
+        max_age=600,
     )
     app.include_router(webhooks_router)
     app.include_router(devices_router)

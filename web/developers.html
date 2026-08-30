@@ -1,8 +1,119 @@
 <!doctype html>
-<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Seismik para desarrolladores</title><link rel="stylesheet" href="/styles.css"><link rel="stylesheet" href="/logo.css"></head>
-<body><header class="nav"><a class="brand" href="https://seismik.org/"><img class="brand-logo" src="/assets/seismik_logo.png" alt="">SEISMIK API</a><nav><a href="https://seismik.org/">Web</a><a href="https://seismik.org/privacy.html">Privacidad</a></nav></header>
-<main class="narrow"><p class="eyebrow">SEISMIK API</p><h1>Datos sísmicos para investigación e integración.</h1><p class="lead">El acceso externo permanece cerrado mientras validamos la beta. La futura plataforma ofrecerá claves revocables, cuotas, sandbox y trazabilidad.</p>
-<section class="grid"><article><h2>Investigación</h2><p>Catálogos oficiales normalizados y datos agregados/anonimizados.</p></article><article><h2>Webhooks</h2><p>Actualizaciones verificables para sistemas autorizados.</p></article><article><h2>IoT seguro</h2><p>Integración futura con ascensores y válvulas mediante control local, firma y confirmación redundante.</p></article></section>
-	<section class="section"><h2>Clave de API gratuita</h2><p><span class="badge">Plan Free</span> Una cuenta Google/Firebase verificada puede crear una clave personal. Se muestra una sola vez, se almacena únicamente como hash y puede revocarse.</p><p>Flujo: iniciar sesión, solicitar <code>POST /v1/developer/keys</code> con el token Firebase y guardar la clave.</p><pre><code>curl -H "Authorization: Bearer FIREBASE_ID_TOKEN" -X POST https://api.seismik.org/v1/developer/keys
-curl -H "X-Seismik-API-Key: sk_live_..." https://api.seismik.org/v1/events/history</code></pre><p>Las cuotas gratuitas son limitadas y no incluyen datos personales. Ningún comando IoT opera equipos reales sin una integración local autorizada y redundante.</p></section></main>
-<footer><span>© 2026 Seismik</span><a href="/">Inicio</a></footer></body></html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Plataforma de APIs de Seismik para investigación e integraciones seguras.">
+  <title>Seismik Developers</title>
+  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/logo.css">
+  <link rel="stylesheet" href="/developers.css">
+</head>
+<body class="developer-body">
+  <header class="developer-nav">
+    <a class="brand" href="https://seismik.org/">
+      <img class="brand-logo" src="/assets/seismik_logo.png" alt="">
+      SEISMIK <span>DEVELOPERS</span>
+    </a>
+    <nav aria-label="Navegación principal">
+      <a href="#productos">Productos</a>
+      <a href="#documentacion">Documentación</a>
+      <a href="https://seismik.org/privacy.html">Privacidad</a>
+    </nav>
+    <div class="auth-actions">
+      <span id="user-label" class="user-label" hidden></span>
+      <button id="login-button" class="button compact" type="button">Entrar con Google</button>
+      <button id="logout-button" class="button secondary compact" type="button" hidden>Salir</button>
+    </div>
+  </header>
+
+  <main class="developer-main">
+    <section class="developer-hero">
+      <div>
+        <p class="eyebrow">SEISMIK API PLATFORM · BETA</p>
+        <h1>Datos sísmicos listos para construir.</h1>
+        <p class="lead">Consulta eventos oficiales normalizados y la red de estaciones desde una API trazable, con OAuth, claves revocables y cuotas transparentes.</p>
+        <div class="actions">
+          <a class="button" href="#panel">Crear una clave gratuita</a>
+          <a class="button secondary" href="#documentacion">Ver ejemplo</a>
+        </div>
+      </div>
+      <aside class="status-card" aria-label="Estado de la plataforma">
+        <span class="status-dot"></span>
+        <div><strong>Beta controlada</strong><small>Plan Free · sin tarjeta</small></div>
+        <dl>
+          <div><dt>Autenticación</dt><dd>OAuth 2.0</dd></div>
+          <div><dt>Formato</dt><dd>JSON</dd></div>
+          <div><dt>Transporte</dt><dd>HTTPS</dd></div>
+        </dl>
+      </aside>
+    </section>
+
+    <section id="productos" class="developer-section">
+      <div class="section-heading"><p class="eyebrow">PRODUCTOS</p><h2>Empieza con lo esencial.</h2></div>
+      <div class="product-grid">
+        <article class="product-card"><span class="product-icon">01</span><h3>Eventos sísmicos</h3><p>Historial oficial consolidado, magnitud, profundidad, epicentro, fuente y estado de revisión.</p><code>events:read</code></article>
+        <article class="product-card"><span class="product-icon">02</span><h3>Red de estaciones</h3><p>Metadatos geográficos de estaciones abiertas y el proveedor SeedLink asociado.</p><code>stations:read</code></article>
+        <article class="product-card muted-card"><span class="product-icon">→</span><h3>Alertas e IoT</h3><p>En preparación. Requerirá acuerdos, redundancia local y un nivel de servicio específico.</p><span class="coming-soon">Próximamente</span></article>
+      </div>
+    </section>
+
+    <section id="panel" class="developer-section dashboard-section">
+      <div class="section-heading"><p class="eyebrow">TU CUENTA</p><h2>Claves y consumo.</h2><p id="panel-intro">Inicia sesión con una cuenta Google verificada para administrar tus credenciales.</p></div>
+
+      <div id="signed-out-panel" class="signin-panel">
+        <div><h3>Una cuenta, control completo.</h3><p>Las claves se muestran una sola vez. Se almacenan como hash y puedes revocarlas o rotarlas en cualquier momento.</p></div>
+        <button id="panel-login-button" class="button" type="button">Continuar con Google</button>
+      </div>
+
+      <div id="signed-in-panel" hidden>
+        <div class="dashboard-grid">
+          <form id="key-form" class="dashboard-card">
+            <div class="card-title"><div><p class="eyebrow">NUEVA CREDENCIAL</p><h3>Crear clave API</h3></div><span id="key-counter" class="counter">0 / 3</span></div>
+            <label>Nombre de la clave<input id="key-name" name="name" minlength="3" maxlength="60" placeholder="Ej. Laboratorio Universidad" required></label>
+            <fieldset><legend>Servicios autorizados</legend>
+              <label class="scope-option"><input type="checkbox" name="scope" value="events:read" checked><span><strong>Eventos</strong><small>Catálogo oficial normalizado</small></span></label>
+              <label class="scope-option"><input type="checkbox" name="scope" value="stations:read" checked><span><strong>Estaciones</strong><small>Red sismológica abierta</small></span></label>
+            </fieldset>
+            <label class="terms-option"><input id="terms-checkbox" type="checkbox" required><span>Acepto los <a href="/api-terms.html" target="_blank" rel="noopener">términos de la API</a> y el uso responsable de los datos.</span></label>
+            <button class="button full" type="submit">Generar clave</button>
+          </form>
+
+          <article class="dashboard-card quota-card">
+            <p class="eyebrow">PLAN FREE</p><h3>Cuotas de la beta</h3>
+            <div class="quota-row"><span>Por minuto</span><strong id="minute-quota">60</strong></div>
+            <div class="quota-row"><span>Por día</span><strong id="daily-quota">10.000</strong></div>
+            <div class="quota-row"><span>Claves activas</span><strong id="active-key-limit">3</strong></div>
+            <p class="fine-print">Sin tarjeta. Los límites protegen la disponibilidad del proyecto abierto y podrán evolucionar con aviso.</p>
+          </article>
+        </div>
+
+        <section class="keys-section" aria-labelledby="keys-title">
+          <div class="keys-heading"><div><p class="eyebrow">CREDENCIALES</p><h3 id="keys-title">Tus claves</h3></div><button id="refresh-button" class="text-button" type="button">Actualizar</button></div>
+          <div id="keys-empty" class="empty-state">Todavía no has creado ninguna clave.</div>
+          <div id="keys-list" class="keys-list" aria-live="polite"></div>
+        </section>
+      </div>
+    </section>
+
+    <section id="documentacion" class="developer-section docs-section">
+      <div class="section-heading"><p class="eyebrow">DOCUMENTACIÓN</p><h2>Tu primera solicitud.</h2></div>
+      <div class="code-card"><div class="code-tabs"><span>cURL</span><button id="copy-example" class="text-button" type="button">Copiar</button></div><pre><code id="curl-example">curl "https://api.seismik.org/v1/events/history?days=7&amp;minimum_magnitude=4" \
+  -H "X-Seismik-API-Key: sk_test_TU_CLAVE"</code></pre></div>
+      <p class="docs-note">La API informa la agencia y el enlace oficial. Seismik agrega y normaliza; no sustituye a las entidades sismológicas.</p>
+    </section>
+  </main>
+
+  <footer class="developer-footer"><span>© 2026 Seismik · Proyecto abierto</span><a href="https://seismik.org/">Inicio</a><a href="https://seismik.org/privacy.html">Privacidad</a><a href="/api-terms.html">Términos API</a></footer>
+
+  <dialog id="secret-dialog">
+    <form method="dialog" class="secret-card">
+      <p class="eyebrow">CLAVE CREADA</p><h2>Guárdala ahora.</h2><p>Por seguridad no podremos volver a mostrarla.</p>
+      <div class="secret-value"><code id="secret-value"></code><button id="copy-secret" class="text-button" type="button">Copiar</button></div>
+      <button class="button full" value="close">Ya la guardé</button>
+    </form>
+  </dialog>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script type="module" src="/developers.js"></script>
+</body>
+</html>

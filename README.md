@@ -25,7 +25,11 @@ payload crítico marcado `TEST`, suprimió el duplicado y no envió ningún push
 externo. La evidencia reproducible está en
 [`docs/evidence/sprint3-docker-e2e.json`](docs/evidence/sprint3-docker-e2e.json).
 
-**Sprint 4 en curso (2026-08-29):** la versión móvil 0.6.2 consume la paleta
+**Sprint Añadido 1 en curso (2026-08-30):** la API Platform incorpora portal
+OAuth, claves revocables almacenadas como hash, alcances, cuotas y auditoría. La
+activación de Firebase Web y el despliegue E2E continúan pendientes.
+
+**Sprint 4 móvil avanzado (2026-08-29):** la versión móvil 0.6.2 consume la paleta
 Material You completa publicada por Android/One UI, respeta barras e insets del
 sistema y convierte Configuración en preferencias persistentes y funcionales.
 Incluye Google Maps y navegación para Historial, Sismo sentido, Daños y

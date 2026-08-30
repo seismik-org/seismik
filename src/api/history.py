@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, Query
 from redis.asyncio import Redis
 
 from api.config import AppSettings
-from api.dependencies import get_app_settings, get_redis, require_consumer_api_key
+from api.dependencies import ApiPrincipal, get_app_settings, get_redis, require_events_read
 from eew.official import OfficialApiClient, OfficialSource, load_sources
 
 router = APIRouter(prefix="/v1/events", tags=["official-history"])
@@ -57,7 +57,7 @@ async def official_history(
     limit: int = Query(default=200, ge=1, le=500),
     settings: AppSettings = Depends(get_app_settings),
     redis: Redis = Depends(get_redis),
-    _authorized: None = Depends(require_consumer_api_key),
+    _authorized: ApiPrincipal = Depends(require_events_read),
 ) -> dict[str, Any]:
     requested = tuple(
         sorted({item.strip().lower() for item in sources.split(",") if item.strip()})
