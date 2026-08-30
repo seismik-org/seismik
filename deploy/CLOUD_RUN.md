@@ -33,6 +33,10 @@ $env:SEISMIK_REDIS_URL = 'rediss://usuario:clave@host:6379/0'
 ./deploy/cloudrun-deploy.ps1 -Project seismik-15bbb -Region us-east1
 ```
 
+Con el despliegue activo, el portal `https://devs.seismik.org` puede entregar
+claves gratuitas después del inicio de sesión Firebase/Google. La clave se
+presenta una sola vez y se guarda como hash en Redis; nunca la incluyas en Git.
+
 El script configura límites bajos (API 0–2 instancias y workers 1 instancia)
 para evitar consumo accidental. Revisa costos antes de subir el detector: una
 instancia siempre activa no es gratuita.

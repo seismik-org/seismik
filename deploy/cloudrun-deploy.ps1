@@ -9,10 +9,9 @@ $gcloud = "gcloud"
 if (-not $RedisUrl) {
   throw "SEISMIK_REDIS_URL es obligatorio. Cloud Run no incluye Redis; usa Memorystore/Redis gestionado y no una URL localhost."
 }
-foreach ($secret in @("SEISMIK_WEBHOOK_HMAC_SECRET", "SEISMIK_DEVICE_API_KEY", "SEISMIK_CROWD_MASTER_SECRET")) {
-  if (-not [Environment]::GetEnvironmentVariable($secret)) {
-    throw "$secret debe estar configurado en Secret Manager antes del despliegue."
-  }
+foreach ($secret in @("seismik-webhook", "seismik-device", "seismik-crowd", "seismik-consumer", "seismik-firebase")) {
+  & $gcloud secrets describe $secret --project $Project *> $null
+  if ($LASTEXITCODE -ne 0) { throw "Falta el secreto $secret en Secret Manager." }
 }
 
 & $gcloud config set project $Project | Out-Null
