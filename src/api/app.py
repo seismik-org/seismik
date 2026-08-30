@@ -10,6 +10,7 @@ from redis.asyncio import Redis
 from api.bus import RedisEventBus
 from api.config import AppSettings, get_settings
 from api.devices import router as devices_router
+from api.developer_keys import router as developer_keys_router
 from api.devices_store import DeviceRepository
 from api.history import router as history_router
 from api.integrity import DeviceIntegrityVerifier
@@ -47,6 +48,7 @@ def create_app(settings: AppSettings | None = None) -> FastAPI:
     )
     app.include_router(webhooks_router)
     app.include_router(devices_router)
+    app.include_router(developer_keys_router)
     app.include_router(crowd_router)
     app.include_router(public_router)
     app.include_router(history_router)

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hmac
+import hashlib
 
 from fastapi import Header, HTTPException, Request, status
 from redis.asyncio import Redis
@@ -40,7 +41,7 @@ def require_device_api_key(
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid device API key")
 
 
-def require_consumer_api_key(
+async def require_consumer_api_key(
     request: Request,
     x_api_key: str | None = Header(default=None, alias="X-Seismik-API-Key"),
     x_device_api_key: str | None = Header(default=None, alias="X-Seismik-Device-Key"),
@@ -55,4 +56,8 @@ def require_consumer_api_key(
         and hmac.compare_digest(x_device_api_key, settings.device_api_key.get_secret_value())
     ):
         return
+    if x_api_key and x_api_key.startswith("sk_live_"):
+        digest = hashlib.sha256(x_api_key.encode()).hexdigest()
+        if await request.app.state.redis.exists(f"seismik:developer-key:{digest}"):
+            return
     raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing or invalid Seismik API key")
