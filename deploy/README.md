@@ -62,8 +62,10 @@ opcional entre los dos archivos anteriores para ejecutar el catálogo global de
 proveedores. La beta actual usa el detector definido en `docker-compose.yml`.
 
 La credencial Firebase se instala únicamente como
-`secrets/firebase-admin.json`, con permisos `0600`, y se monta de solo lectura.
-El archivo está excluido de Git. Tener la credencial montada no activa envíos:
+`secrets/firebase-admin.json`, pertenece al UID/GID aislado `10001:10001` con
+permisos `0400`, y se monta de solo lectura. Así API y dispatcher pueden leerla
+sin volverla accesible para otros usuarios de la VM. El archivo está excluido
+de Git. Tener la credencial montada no activa envíos:
 la beta conserva `SEISMIK_PUSH_ENABLED=false` y `SEISMIK_PUSH_MODE=dry_run`
 hasta registrar explícitamente los dispositivos de prueba.
 
