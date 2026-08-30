@@ -101,6 +101,9 @@ class SeismikState extends ChangeNotifier {
         await api.registerDevice(
           latitude: current.latitude,
           longitude: current.longitude,
+          receiveEarlyAlerts: settings.receiveEarlyAlerts,
+          receiveOfficialUpdates: settings.receiveOfficialUpdates,
+          minimumNotificationMagnitude: settings.minimumNotificationMagnitude,
         );
         return;
       } catch (_) {

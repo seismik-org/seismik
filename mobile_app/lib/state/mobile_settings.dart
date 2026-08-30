@@ -9,6 +9,10 @@ class MobileSettings extends ChangeNotifier {
   static const String _minimumMagnitudeKey = 'settings.minimum_magnitude';
   static const String _historyDaysKey = 'settings.history_days';
   static const String _historySourcesKey = 'settings.history_sources';
+  static const String _earlyAlertsKey = 'settings.early_alerts';
+  static const String _officialUpdatesKey = 'settings.official_updates';
+  static const String _notificationMagnitudeKey =
+      'settings.notification_magnitude';
 
   ThemeMode themeMode = ThemeMode.system;
   bool useDynamicColor = true;
@@ -17,6 +21,9 @@ class MobileSettings extends ChangeNotifier {
   double minimumHistoryMagnitude = 2.5;
   int historyDays = 7;
   Set<String> historySources = <String>{'sgc_colombia', 'usgs_global'};
+  bool receiveEarlyAlerts = true;
+  bool receiveOfficialUpdates = true;
+  double minimumNotificationMagnitude = 4.0;
 
   Future<void> load() async {
     final SharedPreferences preferences = await SharedPreferences.getInstance();
@@ -36,6 +43,10 @@ class MobileSettings extends ChangeNotifier {
     if (sources != null && sources.isNotEmpty) {
       historySources = sources.toSet();
     }
+    receiveEarlyAlerts = preferences.getBool(_earlyAlertsKey) ?? true;
+    receiveOfficialUpdates = preferences.getBool(_officialUpdatesKey) ?? true;
+    minimumNotificationMagnitude =
+        preferences.getDouble(_notificationMagnitudeKey) ?? 4.0;
   }
 
   Future<void> setThemeMode(ThemeMode value) async {
@@ -102,6 +113,30 @@ class MobileSettings extends ChangeNotifier {
     await preferences.setStringList(
       _historySourcesKey,
       historySources.toList()..sort(),
+    );
+  }
+
+  Future<void> setReceiveEarlyAlerts(bool value) async {
+    receiveEarlyAlerts = value;
+    notifyListeners();
+    final SharedPreferences preferences = await SharedPreferences.getInstance();
+    await preferences.setBool(_earlyAlertsKey, value);
+  }
+
+  Future<void> setReceiveOfficialUpdates(bool value) async {
+    receiveOfficialUpdates = value;
+    notifyListeners();
+    final SharedPreferences preferences = await SharedPreferences.getInstance();
+    await preferences.setBool(_officialUpdatesKey, value);
+  }
+
+  Future<void> setMinimumNotificationMagnitude(double value) async {
+    minimumNotificationMagnitude = value.clamp(0, 9).toDouble();
+    notifyListeners();
+    final SharedPreferences preferences = await SharedPreferences.getInstance();
+    await preferences.setDouble(
+      _notificationMagnitudeKey,
+      minimumNotificationMagnitude,
     );
   }
 }

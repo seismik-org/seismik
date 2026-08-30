@@ -46,6 +46,9 @@ class DeviceRepository:
             "latitude": "" if registration.latitude is None else str(registration.latitude),
             "longitude": "" if registration.longitude is None else str(registration.longitude),
             "critical_alerts_authorized": "1" if registration.critical_alerts_authorized else "0",
+            "receive_early_alerts": "1" if registration.receive_early_alerts else "0",
+            "receive_official_updates": "1" if registration.receive_official_updates else "0",
+            "minimum_notification_magnitude": str(registration.minimum_notification_magnitude),
             "locale": registration.locale,
             "updated_at": datetime.now(timezone.utc).isoformat(),
         }
@@ -110,6 +113,9 @@ class DeviceRepository:
                     platform=record["platform"],
                     token=record["token"],
                     critical_alerts_authorized=record.get("critical_alerts_authorized") == "1",
+                    receive_early_alerts=record.get("receive_early_alerts", "1") == "1",
+                    receive_official_updates=record.get("receive_official_updates", "1") == "1",
+                    minimum_notification_magnitude=float(record.get("minimum_notification_magnitude", "4.0")),
                     locale=record.get("locale") or "es",
                 )
             )

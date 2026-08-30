@@ -71,79 +71,87 @@ class MonitorScreen extends StatelessWidget {
           ),
         ],
       ),
-      body: SafeArea(
-        child: RefreshIndicator(
-          onRefresh: state.refreshNetworkData,
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
-            children: <Widget>[
-              StatusPill(online: state.networkOnline),
-              if (state.statusMessage != null) ...<Widget>[
-                const SizedBox(height: 10),
-                Text(
-                  state.statusMessage!,
-                  style: const TextStyle(color: Colors.orangeAccent),
-                ),
-              ],
-              const SizedBox(height: 14),
-              Text(
-                'Historial de Sismos',
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                '${settings.historyDays} días · M ≥ ${settings.minimumHistoryMagnitude.toStringAsFixed(1)} · '
-                '${settings.historySources.map(_sourceLabel).join(' + ')}',
-                style: TextStyle(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-              ),
-              const SizedBox(height: 12),
-              SizedBox(
-                height: 380,
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(24),
-                  child: GoogleMap(
-                    initialCameraPosition: CameraPosition(
-                      target: center,
-                      zoom: 5.8,
-                    ),
-                    markers: markers,
-                    myLocationEnabled: state.position != null,
-                    myLocationButtonEnabled: state.position != null,
-                    compassEnabled: false,
-                    zoomControlsEnabled: false,
-                    mapToolbarEnabled: false,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 24),
-              Text(
-                'Sismos recientes',
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-              const SizedBox(height: 10),
-              if (state.recentEvents.isEmpty)
-                const Card(
-                  child: Padding(
-                    padding: EdgeInsets.all(18),
-                    child: Text('Aún no hay reportes oficiales sincronizados.'),
-                  ),
-                )
-              else
-                ...state.recentEvents.map((event) => _EventTile(event: event)),
-              if (state.recentEvents.isNotEmpty) ...<Widget>[
-                const SizedBox(height: 8),
-                Text(
-                  'Datos atribuidos a las organizaciones indicadas. Abre cada evento para consultar la fuente oficial.',
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-              ],
-            ],
+      body: Stack(
+        children: <Widget>[
+          GoogleMap(
+            initialCameraPosition: CameraPosition(target: center, zoom: 5.8),
+            markers: markers,
+            myLocationEnabled: state.position != null,
+            myLocationButtonEnabled: state.position != null,
+            compassEnabled: false,
+            zoomControlsEnabled: false,
+            mapToolbarEnabled: false,
           ),
-        ),
+          DraggableScrollableSheet(
+            initialChildSize: 0.34,
+            minChildSize: 0.16,
+            maxChildSize: 0.82,
+            builder: (context, controller) => Material(
+              elevation: 14,
+              color: Theme.of(context).colorScheme.surface,
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(28),
+              ),
+              child: RefreshIndicator(
+                onRefresh: state.refreshNetworkData,
+                child: ListView(
+                  controller: controller,
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
+                  children: <Widget>[
+                    Center(
+                      child: Container(
+                        width: 42,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.outlineVariant,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    StatusPill(online: state.networkOnline),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Historial de sismos',
+                      style: Theme.of(context).textTheme.headlineSmall
+                          ?.copyWith(fontWeight: FontWeight.w900),
+                    ),
+                    Text(
+                      '${settings.historyDays} días · M ≥ ${settings.minimumHistoryMagnitude.toStringAsFixed(1)} · ${settings.historySources.map(_sourceLabel).join(' + ')}',
+                    ),
+                    if (state.statusMessage != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8),
+                        child: Text(
+                          state.statusMessage!,
+                          style: const TextStyle(color: Colors.orangeAccent),
+                        ),
+                      ),
+                    const SizedBox(height: 14),
+                    if (state.recentEvents.isEmpty)
+                      const Card(
+                        child: Padding(
+                          padding: EdgeInsets.all(18),
+                          child: Text(
+                            'Aún no hay reportes oficiales sincronizados.',
+                          ),
+                        ),
+                      )
+                    else
+                      ...state.recentEvents.map(
+                        (event) => _EventTile(event: event),
+                      ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Arrastra esta barra para explorar los sismos; mueve y acerca el mapa libremente.',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

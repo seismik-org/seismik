@@ -103,6 +103,7 @@ class StreamConsumer:
             longitude=longitude,
             radius_km=self.settings.geofence_radius_km,
         )
+        targets = [target for target in targets if target.receive_early_alerts]
         result = await self.push.send(event, targets, critical=True)
         await self._record_dry_run(event, result, critical=True)
         await self._remove_invalid(result.invalid_device_ids)
@@ -125,6 +126,13 @@ class StreamConsumer:
             longitude=report.get("longitude", mapping.get("longitude")),
             radius_km=self.settings.geofence_radius_km,
         )
+        magnitude = report.get("magnitude")
+        targets = [
+            target
+            for target in targets
+            if target.receive_official_updates
+            and (magnitude is None or float(magnitude) >= target.minimum_notification_magnitude)
+        ]
         result = await self.push.send(event, targets, critical=False)
         await self._record_dry_run(event, result, critical=False)
         await self._remove_invalid(result.invalid_device_ids)

@@ -128,6 +128,9 @@ class DeviceRegistration(StrictModel):
     latitude: Latitude | None = None
     longitude: Longitude | None = None
     critical_alerts_authorized: bool = False
+    receive_early_alerts: bool = True
+    receive_official_updates: bool = True
+    minimum_notification_magnitude: float = Field(default=4.0, ge=0, le=10)
     locale: str = Field(default="es", min_length=2, max_length=16)
     app_attest_token: str | None = Field(
         default=None,
@@ -192,6 +195,9 @@ class DeviceTarget(StrictModel):
     platform: Platform
     token: str
     critical_alerts_authorized: bool = False
+    receive_early_alerts: bool = True
+    receive_official_updates: bool = True
+    minimum_notification_magnitude: float = 4.0
     locale: str = "es"
 
 

@@ -43,6 +43,9 @@ class ApiClient {
     required double latitude,
     required double longitude,
     String? zoneId,
+    bool receiveEarlyAlerts = true,
+    bool receiveOfficialUpdates = true,
+    double minimumNotificationMagnitude = 4.0,
   }) async {
     final String deviceId = await ensureDeviceId();
     String? integrityToken;
@@ -78,6 +81,9 @@ class ApiClient {
       'critical_alerts_authorized': Platform.isIOS
           ? permission.criticalAlert == AppleNotificationSetting.enabled
           : permission.authorizationStatus == AuthorizationStatus.authorized,
+      'receive_early_alerts': receiveEarlyAlerts,
+      'receive_official_updates': receiveOfficialUpdates,
+      'minimum_notification_magnitude': minimumNotificationMagnitude,
       'locale': Platform.localeName,
       'country_code': _localeCountryCode(),
       'app_attest_token': Platform.isIOS ? integrityToken : null,
@@ -422,12 +428,11 @@ class ApiClient {
 
   // Mobile reads use the device bootstrap key as the app-client credential;
   // partner integrations use X-Seismik-API-Key instead.
-  Map<String, String> _jsonHeaders({bool deviceKey = true}) =>
-      <String, String>{
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-        if (deviceKey) 'X-Seismik-Device-Key': SeismikConstants.deviceApiKey,
-      };
+  Map<String, String> _jsonHeaders({bool deviceKey = true}) => <String, String>{
+    'Accept': 'application/json',
+    'Content-Type': 'application/json',
+    if (deviceKey) 'X-Seismik-Device-Key': SeismikConstants.deviceApiKey,
+  };
 
   Map<String, dynamic> _decode(http.Response response) {
     final Object? decoded = response.body.isEmpty

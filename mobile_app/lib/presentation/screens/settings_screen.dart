@@ -77,6 +77,25 @@ class SettingsScreen extends StatelessWidget {
                       .runCriticalAlertTest(),
                 ),
               ),
+              SwitchListTile.adaptive(
+                value: settings.receiveEarlyAlerts,
+                onChanged: (value) =>
+                    unawaited(settings.setReceiveEarlyAlerts(value)),
+                title: const Text('Alertas tempranas'),
+                subtitle: const Text(
+                  'Avisos técnicos multiestación cercanos. Pueden llegar antes del reporte oficial.',
+                ),
+              ),
+              SwitchListTile.adaptive(
+                value: settings.receiveOfficialUpdates,
+                onChanged: (value) =>
+                    unawaited(settings.setReceiveOfficialUpdates(value)),
+                title: const Text('Actualizaciones oficiales'),
+                subtitle: const Text(
+                  'Magnitud, profundidad y fuente publicada por una entidad geológica.',
+                ),
+              ),
+              _NotificationMagnitudeSlider(settings: settings),
             ],
           ),
           const SizedBox(height: 12),
@@ -295,7 +314,7 @@ class _Header extends StatelessWidget {
                   'Seismik',
                   style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900),
                 ),
-                Text('Beta experimental 0.6.2'),
+                Text('Beta experimental 0.6.4'),
               ],
             ),
           ),
@@ -340,6 +359,36 @@ class _MagnitudeSlider extends StatefulWidget {
 
   @override
   State<_MagnitudeSlider> createState() => _MagnitudeSliderState();
+}
+
+class _NotificationMagnitudeSlider extends StatefulWidget {
+  const _NotificationMagnitudeSlider({required this.settings});
+  final MobileSettings settings;
+
+  @override
+  State<_NotificationMagnitudeSlider> createState() =>
+      _NotificationMagnitudeSliderState();
+}
+
+class _NotificationMagnitudeSliderState
+    extends State<_NotificationMagnitudeSlider> {
+  late double _value = widget.settings.minimumNotificationMagnitude;
+
+  @override
+  Widget build(BuildContext context) => ListTile(
+    title: const Text('Magnitud mínima para aviso oficial'),
+    subtitle: Slider(
+      value: _value,
+      min: 2,
+      max: 8,
+      divisions: 12,
+      label: 'M ${_value.toStringAsFixed(1)}',
+      onChanged: (value) => setState(() => _value = value),
+      onChangeEnd: (value) =>
+          unawaited(widget.settings.setMinimumNotificationMagnitude(value)),
+    ),
+    trailing: Text('M ${_value.toStringAsFixed(1)}'),
+  );
 }
 
 class _MagnitudeSliderState extends State<_MagnitudeSlider> {
