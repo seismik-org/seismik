@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 from typing import Any, Literal, cast
 
 import firebase_admin
-from fastapi import APIRouter, Header, HTTPException, Request, status
+from fastapi import APIRouter, Cookie, Header, HTTPException, Request, status
 from firebase_admin import App, auth, credentials
 from pydantic import BaseModel, Field, field_validator
 
@@ -90,7 +90,17 @@ def _firebase_app(request: Request) -> App:
         )
 
 
-async def _identity(request: Request, authorization: str | None) -> dict[str, Any]:
+async def _identity(
+    request: Request,
+    authorization: str | None,
+    seismik_session: str | None = None,
+) -> dict[str, Any]:
+    if seismik_session:
+        raw = await request.app.state.redis.get(f"seismik:oauth:session:{seismik_session}")
+        if raw:
+            session = json.loads(raw)
+            session["uid"] = session.get("uid") or session.get("email", "")
+            return session
     if not authorization or not authorization.lower().startswith("bearer "):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -113,6 +123,16 @@ async def _identity(request: Request, authorization: str | None) -> dict[str, An
     if not identity.get("email_verified", False):
         raise HTTPException(status_code=403, detail="A verified email address is required")
     return identity
+
+
+async def _request_identity(
+    request: Request,
+    authorization: str | None,
+    seismik_session: str | None,
+) -> dict[str, Any]:
+    if seismik_session:
+        return await _identity(request, authorization, seismik_session)
+    return await _identity(request, authorization)
 
 
 def _record_to_summary(record: dict[str, str], requests_today: int = 0) -> KeySummary:
@@ -263,8 +283,9 @@ async def portal_config(request: Request) -> PortalConfigResponse:
 async def list_keys(
     request: Request,
     authorization: str | None = Header(default=None),
+    seismik_session: str | None = Cookie(default=None),
 ) -> KeyListResponse:
-    identity = await _identity(request, authorization)
+    identity = await _request_identity(request, authorization, seismik_session)
     uid = str(identity["uid"])
     today = datetime.now(timezone.utc).strftime("%Y%m%d")
     summaries: list[KeySummary] = []
@@ -289,8 +310,9 @@ async def create_key(
     payload: KeyCreateRequest,
     request: Request,
     authorization: str | None = Header(default=None),
+    seismik_session: str | None = Cookie(default=None),
 ) -> KeySecretResponse:
-    identity = await _identity(request, authorization)
+    identity = await _request_identity(request, authorization, seismik_session)
     return await _create_key_record(request, str(identity["uid"]), payload)
 
 
@@ -300,8 +322,9 @@ async def rotate_key(
     payload: KeyCreateRequest,
     request: Request,
     authorization: str | None = Header(default=None),
+    seismik_session: str | None = Cookie(default=None),
 ) -> KeySecretResponse:
-    identity = await _identity(request, authorization)
+    identity = await _request_identity(request, authorization, seismik_session)
     uid = str(identity["uid"])
     digest = await request.app.state.redis.get(f"seismik:developer-key-id:{key_id}")
     record = (
@@ -326,8 +349,9 @@ async def revoke_key(
     request: Request,
     key_id: str,
     authorization: str | None = Header(default=None),
+    seismik_session: str | None = Cookie(default=None),
 ) -> None:
-    identity = await _identity(request, authorization)
+    identity = await _request_identity(request, authorization, seismik_session)
     uid = str(identity["uid"])
     digest = await request.app.state.redis.get(f"seismik:developer-key-id:{key_id}")
     record = (

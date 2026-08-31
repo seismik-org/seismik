@@ -34,6 +34,10 @@ class AppSettings(BaseSettings):
     firebase_web_auth_domain: str = ""
     firebase_web_project_id: str = ""
     firebase_web_app_id: str = ""
+    oauth_google_client_id: str = ""
+    oauth_google_client_secret: SecretStr = SecretStr("")
+    oauth_google_redirect_uri: str = "https://devs.seismik.org/v1/oauth/google/callback"
+    oauth_session_ttl_seconds: int = Field(default=86_400, ge=300, le=2_592_000)
 
     candidate_stream: str = "stream:seismik:candidates"
     official_stream: str = "stream:seismik:official"

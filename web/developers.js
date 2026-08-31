@@ -1,9 +1,5 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-app.js";
-import { getAuth, getRedirectResult, GoogleAuthProvider, onAuthStateChanged, signInWithRedirect, signOut } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-auth.js";
-
 const API = "https://api.seismik.org";
 const elements = Object.fromEntries([...document.querySelectorAll("[id]")].map((item) => [item.id, item]));
-let auth = null;
 let currentUser = null;
 let portalConfig = null;
 
@@ -17,11 +13,8 @@ function toast(message, error = false) {
 async function api(path, options = {}, authenticated = true) {
   const headers = new Headers(options.headers || {});
   if (options.body) headers.set("Content-Type", "application/json");
-  if (authenticated) {
-    if (!currentUser) throw new Error("Inicia sesión para continuar.");
-    headers.set("Authorization", `Bearer ${await currentUser.getIdToken()}`);
-  }
-  const response = await fetch(`${API}${path}`, { ...options, headers });
+  if (authenticated && !currentUser) throw new Error("Inicia sesión para continuar.");
+  const response = await fetch(`${API}${path}`, { ...options, headers, credentials: "include" });
   if (!response.ok) {
     let detail = `Error ${response.status}`;
     try { detail = (await response.json()).detail || detail; } catch (_) { /* no JSON */ }
@@ -32,8 +25,7 @@ async function api(path, options = {}, authenticated = true) {
 }
 
 async function login() {
-  if (!auth) return toast("OAuth todavía no está habilitado en este entorno.", true);
-  try { await signInWithRedirect(auth, new GoogleAuthProvider()); } catch (error) { toast(error.message, true); }
+  window.location.assign(`${API}/v1/oauth/google/start`);
 }
 
 async function copyText(value) {
@@ -142,28 +134,21 @@ async function boot() {
     elements["minute-quota"].textContent = plan.requests_per_minute.toLocaleString("es-CO");
     elements["daily-quota"].textContent = plan.requests_per_day.toLocaleString("es-CO");
     elements["active-key-limit"].textContent = plan.max_active_keys;
-    if (!portalConfig.firebase_enabled) return toast("El portal está listo; falta habilitar OAuth en el entorno beta.", true);
-    auth = getAuth(initializeApp({
-      apiKey: portalConfig.firebase.api_key,
-      authDomain: portalConfig.firebase.auth_domain,
-      projectId: portalConfig.firebase.project_id,
-      appId: portalConfig.firebase.app_id,
-    }));
-    onAuthStateChanged(auth, updateSession);
     try {
-      await getRedirectResult(auth);
-    } catch (error) {
-      // Keep the auth-state listener alive even if the browser cannot recover
-      // optional redirect metadata. A valid persisted Firebase session still
-      // grants access to the panel and is verified again by the API.
-      toast(`OAuth: ${error.message}`, true);
+      const session = await api("/v1/oauth/session", {}, false);
+      updateSession(session);
+    } catch (_) {
+      updateSession(null);
     }
   } catch (error) { toast(`No fue posible cargar la plataforma: ${error.message}`, true); }
 }
 
 elements["login-button"].addEventListener("click", login);
 elements["panel-login-button"].addEventListener("click", login);
-elements["logout-button"].addEventListener("click", () => auth && signOut(auth));
+elements["logout-button"].addEventListener("click", async () => {
+  await api("/v1/oauth/logout", { method: "POST" }, false);
+  window.location.reload();
+});
 elements["key-form"].addEventListener("submit", createKey);
 elements["refresh-button"].addEventListener("click", loadKeys);
 elements["keys-list"].addEventListener("click", keyAction);

@@ -15,6 +15,7 @@ from api.devices import router as devices_router
 from api.devices_store import DeviceRepository
 from api.history import router as history_router
 from api.integrity import DeviceIntegrityVerifier
+from api.oauth import router as oauth_router
 from api.public import router as public_router
 from api.webhooks import router as webhooks_router
 from crowdsourcing.cluster import CrowdClusterEngine
@@ -50,7 +51,7 @@ def create_app(settings: AppSettings | None = None) -> FastAPI:
     app.add_middleware(
         CORSMiddleware,
         allow_origins=list(resolved.developer_portal_origins),
-        allow_credentials=False,
+        allow_credentials=True,
         allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
         allow_headers=["Authorization", "Content-Type", "X-Seismik-API-Key"],
         max_age=600,
@@ -58,6 +59,7 @@ def create_app(settings: AppSettings | None = None) -> FastAPI:
     app.include_router(webhooks_router)
     app.include_router(devices_router)
     app.include_router(developer_keys_router)
+    app.include_router(oauth_router)
     app.include_router(crowd_router)
     app.include_router(public_router)
     app.include_router(history_router)

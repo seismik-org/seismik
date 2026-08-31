@@ -6,3 +6,4 @@ redis>=8.1,<9
 aioapns>=4,<5
 firebase-admin>=7.5,<8
 h3>=4.5,<5
+httpx>=0.28,<1
