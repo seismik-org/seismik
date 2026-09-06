@@ -113,6 +113,24 @@ public struct SeismicEvent: Identifiable, Codable, Hashable {
         }
     }
 
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encodeIfPresent(place, forKey: .place)
+        try container.encodeIfPresent(magnitude, forKey: .magnitude)
+        try container.encodeIfPresent(depthKm, forKey: .depthKm)
+        try container.encodeIfPresent(latitude, forKey: .latitude)
+        try container.encodeIfPresent(longitude, forKey: .longitude)
+        if let date = detectedAt {
+            try container.encode(ISO8601DateFormatter().string(from: date), forKey: .detectedAt)
+        }
+        try container.encodeIfPresent(sourceId, forKey: .sourceId)
+        try container.encodeIfPresent(agency, forKey: .agency)
+        try container.encode(isPreliminary, forKey: .isPreliminary)
+        try container.encodeIfPresent(intensityMmi, forKey: .intensityMmi)
+        try container.encode(tsunamiWarning, forKey: .tsunamiWarning)
+    }
+
     public var coordinate: CLLocationCoordinate2D? {
         guard let lat = latitude, let lon = longitude else { return nil }
         return CLLocationCoordinate2D(latitude: lat, longitude: lon)

@@ -121,8 +121,8 @@ public struct FeltReportView: View {
             .navigationTitle("¿Sentiste el Sismo?")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                if showsCloseButton {
-                    ToolbarItem(placement: .navigationBarLeading) {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    if showsCloseButton {
                         Button("Cancelar") {
                             dismiss()
                         }

@@ -48,7 +48,7 @@ public struct SettingsView: View {
                     Text("Seismik filtra en el servidor los avisos por magnitud y distancia. Ninguna alerta puede garantizar tiempo previo al movimiento.")
                 }
 
-                Section("Historial y mapa") {
+                Section(header: Text("Historial y mapa")) {
                     Stepper(value: $state.minMagnitude, in: 0...8, step: 0.5) {
                         SettingsValueRow(
                             title: "Magnitud visible",
@@ -74,7 +74,10 @@ public struct SettingsView: View {
                     }
                 }
 
-                Section("Permisos de este iPhone") {
+                Section(
+                    header: Text("Permisos de este iPhone"),
+                    footer: Text("iOS controla estos permisos. Toca una fila para revisarlos en Ajustes.")
+                ) {
                     Button(action: openSystemSettings) {
                         SettingsStatusRow(
                             title: "Notificaciones",
@@ -100,11 +103,9 @@ public struct SettingsView: View {
                         )
                     }
                     .foregroundColor(.primary)
-                } footer: {
-                    Text("iOS controla estos permisos. Toca una fila para revisarlos en Ajustes.")
                 }
 
-                Section("Estado de Seismik") {
+                Section(header: Text("Estado de Seismik")) {
                     SettingsStatusRow(
                         title: "Dispositivo",
                         value: state.isRegistered ? "Registrado" : "Pendiente",
@@ -121,7 +122,7 @@ public struct SettingsView: View {
                     }
                 }
 
-                Section("Acerca de Seismik") {
+                Section(header: Text("Acerca de Seismik")) {
                     SettingsValueRow(title: "Versión", value: versionDescription)
                     SettingsValueRow(title: "Mapa", value: "Apple MapKit")
                     Link("Privacidad", destination: URL(string: "https://seismik.org/terms-of-privacy")!)
@@ -131,8 +132,8 @@ public struct SettingsView: View {
             .navigationTitle("Configuración")
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
-                if showsCloseButton {
-                    ToolbarItem(placement: .navigationBarTrailing) {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    if showsCloseButton {
                         Button("Listo") { dismiss() }
                     }
                 }

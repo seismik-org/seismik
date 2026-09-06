@@ -48,6 +48,15 @@ public struct SeismicStation: Identifiable, Codable, Hashable {
         self.elevation = try? container.decodeIfPresent(Double.self, forKey: .elevation)
     }
 
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(network, forKey: .network)
+        try container.encode(stationCode, forKey: .stationId)
+        try container.encode(latitude, forKey: .latitude)
+        try container.encode(longitude, forKey: .longitude)
+        try container.encodeIfPresent(elevation, forKey: .elevation)
+    }
+
     public var coordinate: CLLocationCoordinate2D {
         CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
     }
