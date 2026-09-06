@@ -55,6 +55,15 @@ public final class SeismikAPIClient {
         return true
     }
 
+    /// Token APNs del dispositivo para recepción de alertas en segundo plano.
+    public var apnsToken: String {
+        let key = "seismik.apns_device_token"
+        if let token = UserDefaults.standard.string(forKey: key), !token.isEmpty {
+            return token
+        }
+        return "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+
     // MARK: - Registro del Dispositivo
 
     /// Registra la instalación en el backend Seismik y guarda los tokens en Keychain.
@@ -75,7 +84,7 @@ public final class SeismikAPIClient {
         let registrationPayload: [String: Any] = [
             "device_id": deviceId,
             "platform": "ios",
-            "apns_token": "0000000000000000000000000000000000000000000000000000000000000000",
+            "apns_token": apnsToken,
             "country_code": countryCode.uppercased(),
             "latitude": latitude,
             "longitude": longitude,

@@ -12,16 +12,82 @@ public struct SeismicSheetView: View {
     let onDrawerHandleTapped: () -> Void
 
     public var body: some View {
-        VStack(spacing: 0) {
-            Button(action: onDrawerHandleTapped) {
+            VStack(spacing: 0) {
+                // Manija táctil de arrastre
                 Capsule()
                     .fill(Color.secondary.opacity(0.38))
                     .frame(width: 38, height: 5)
                     .frame(maxWidth: .infinity, minHeight: 24)
                     .contentShape(Rectangle())
+
+                // Estado de sincronización / red exactamente como en Android
+                HStack(spacing: 6) {
+                    Circle()
+                        .fill(state.isOnline ? SeismikColors.emerald : SeismikColors.amber)
+                        .frame(width: 8, height: 8)
+                    Text(state.isOnline ? "En línea" : "Reconectando con Seismik")
+                        .font(.system(size: 12.5, weight: .medium, design: .rounded))
+                        .foregroundColor(state.isOnline ? .secondary : SeismikColors.amber)
+                    Spacer()
+                    Text("\(state.events.count) eventos")
+                        .font(.system(size: 12, weight: .medium, design: .rounded))
+                        .foregroundColor(.secondary)
+                }
+                .padding(.horizontal, 18)
+                .padding(.bottom, 2)
+
+                // Título y subtítulo con paridad total con Android
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Historial de sismos")
+                        .font(.system(size: 22, weight: .bold, design: .rounded))
+                        .foregroundColor(.primary)
+
+                    Text("\(state.historyDays) días · M ≥ \(String(format: "%.1f", state.minMagnitude)) · SGC + USGS")
+                        .font(.system(size: 13, weight: .regular, design: .rounded))
+                        .foregroundColor(.secondary)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 18)
+                .padding(.bottom, 10)
+
+                // Barra de Acciones Rápidas Comunitarias
+                HStack(spacing: 12) {
+                    Button {
+                        HapticManager.selection()
+                        showFeltReport = true
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "hand.tap.fill")
+                                .font(.system(size: 13, weight: .semibold))
+                            Text("¿Lo sentiste?")
+                                .font(.system(size: 13, weight: .semibold, design: .rounded))
+                        }
+                        .foregroundColor(.primary)
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                        .liquidGlass(cornerRadius: 14, showShadow: false)
+                    }
+                    .buttonStyle(.plain)
+
+                    Button {
+                        HapticManager.selection()
+                        showDamageReport = true
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "house.fill")
+                                .font(.system(size: 13, weight: .semibold))
+                            Text("Reportar daños")
+                                .font(.system(size: 13, weight: .semibold, design: .rounded))
+                        }
+                        .foregroundColor(.primary)
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                        .liquidGlass(cornerRadius: 14, showShadow: false)
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(.horizontal, 16)
+                .padding(.bottom, 12)
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Cambiar altura del panel de sismos")
+            .contentShape(Rectangle())
             .simultaneousGesture(
                 DragGesture(minimumDistance: 4)
                     .onChanged { value in
@@ -31,73 +97,9 @@ public struct SeismicSheetView: View {
                         onDrawerDragEnded(value.predictedEndTranslation.height)
                     }
             )
-
-            // Estado de sincronización / red exactamente como en Android
-            HStack(spacing: 6) {
-                Circle()
-                    .fill(state.isOnline ? SeismikColors.emerald : SeismikColors.amber)
-                    .frame(width: 8, height: 8)
-                Text(state.isOnline ? "En línea" : "Reconectando con Seismik")
-                    .font(.system(size: 12.5, weight: .medium, design: .rounded))
-                    .foregroundColor(state.isOnline ? .secondary : SeismikColors.amber)
-                Spacer()
-                Text("\(state.events.count) eventos")
-                    .font(.system(size: 12, weight: .medium, design: .rounded))
-                    .foregroundColor(.secondary)
+            .onTapGesture {
+                onDrawerHandleTapped()
             }
-            .padding(.horizontal, 18)
-            .padding(.bottom, 2)
-
-            // Título y subtítulo con paridad total con Android
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Historial de sismos")
-                    .font(.system(size: 22, weight: .bold, design: .rounded))
-                    .foregroundColor(.primary)
-
-                Text("\(state.historyDays) días · M ≥ \(String(format: "%.1f", state.minMagnitude)) · SGC + USGS")
-                    .font(.system(size: 13, weight: .regular, design: .rounded))
-                    .foregroundColor(.secondary)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, 18)
-            .padding(.bottom, 10)
-
-            // Barra de Acciones Rápidas Comunitarias
-            HStack(spacing: 12) {
-                Button {
-                    HapticManager.selection()
-                    showFeltReport = true
-                } label: {
-                    HStack(spacing: 6) {
-                        Image(systemName: "hand.tap.fill")
-                            .font(.system(size: 13, weight: .semibold))
-                        Text("¿Lo sentiste?")
-                            .font(.system(size: 13, weight: .semibold, design: .rounded))
-                    }
-                    .foregroundColor(.primary)
-                    .frame(maxWidth: .infinity, minHeight: 44)
-                    .liquidGlass(cornerRadius: 14, showShadow: false)
-                }
-                .buttonStyle(.plain)
-
-                Button {
-                    HapticManager.selection()
-                    showDamageReport = true
-                } label: {
-                    HStack(spacing: 6) {
-                        Image(systemName: "house.fill")
-                            .font(.system(size: 13, weight: .semibold))
-                        Text("Reportar daños")
-                            .font(.system(size: 13, weight: .semibold, design: .rounded))
-                    }
-                    .foregroundColor(.primary)
-                    .frame(maxWidth: .infinity, minHeight: 44)
-                    .liquidGlass(cornerRadius: 14, showShadow: false)
-                }
-                .buttonStyle(.plain)
-            }
-            .padding(.horizontal, 16)
-            .padding(.bottom, 12)
 
             Divider()
 
