@@ -611,9 +611,18 @@ flutter build ios --release \
   --dart-define=SEISMIK_API_BASE_URL=https://api.su-dominio.example
 ```
 
-`GoogleService-Info.plist` se agrega mediante Xcode y no se versiona. Sin la
-aprobación de Apple para el entitlement de alertas críticas, iOS degrada la
-alerta a una notificación normal.
+`GoogleService-Info.plist` no se versiona nunca. El proyecto Xcode lo copia como
+recurso, de modo que su ausencia rompe la compilación antes de llegar al código
+Dart, y cada workflow lo resuelve de forma distinta:
+
+| Workflow | Origen del archivo |
+|---|---|
+| `ios-testflight.yml` | El secreto `IOS_GOOGLE_SERVICE_INFO_BASE64`, validado con `plutil -lint` |
+| `ci.yml` (job `ios`) | Un marcador evidente, porque ese job compila y nunca ejecuta la app |
+
+Sin la aprobación de Apple para el entitlement de alertas críticas, iOS degrada
+la alerta a una notificación normal; por eso el workflow de TestFlight cambia a
+`Runner.basic.entitlements` salvo que se marque `critical_alerts_approved`.
 
 Como Xcode no existe fuera de macOS, la compilación iOS se verifica en CI: el job
 `ios` corre en `macos-latest`, instala los Pods y ejecuta
@@ -622,6 +631,44 @@ AOT de Dart sin necesidad de certificados. Después comprueba que el bundle
 resultante conserve `LSApplicationQueriesSchemes` y el entitlement de alertas
 críticas. `pytest tests/test_ios_configuration.py` valida los plists desde
 cualquier sistema operativo.
+
+### Lenguaje visual de iPhone
+
+Flutter 3.47 **no expone la API Liquid Glass de Apple**: UIKit la aplica sola a
+su propia interfaz, y Flutter dibuja cada píxel por su cuenta, así que ninguna
+app Flutter la recibe automáticamente. Seismik reconstruye ese material con las
+primitivas reales del motor en `lib/presentation/widgets/liquid_glass.dart`:
+
+- desenfoque del fondo con `BackdropFilter`;
+- la esquina superelíptica de Apple mediante `ClipRSuperellipse`, no un radio
+  circular, que es lo que evita el «corner break» delator;
+- un tinte que se adapta al brillo del sistema;
+- un borde especular con degradado, más brillante en el arco superior.
+
+Cada capa de vidrio cuesta una pasada de `BackdropFilter`, así que se usan pocas
+y grandes: la hoja del historial, la cabecera flotante sobre el mapa y las
+tarjetas de contenido. La barra de pestañas usa el material translúcido del
+propio sistema en lugar de una recreación.
+
+El resto de la paridad vive en `lib/presentation/widgets/adaptive.dart`:
+
+| Elemento | iPhone | Android |
+|---|---|---|
+| Pantalla | `CupertinoPageScaffold` + barra translúcida | `Scaffold` + `AppBar` |
+| Transición | `CupertinoPageRoute` (volver arrastrando) | `MaterialPageRoute` |
+| Botón | `CupertinoButton` | `FilledButton` |
+| Aviso breve | `CupertinoAlertDialog` | `SnackBar` |
+| Casilla de formulario | Interruptor | `CheckboxListTile` |
+| Tarjeta | Vidrio | `Card` |
+
+La bifurcación se decide con `usesCupertino` (`lib/core/platform.dart`), que lee
+`defaultTargetPlatform`. Eso permite probar ambas plataformas sin dispositivo:
+`test/adaptive_platform_test.dart` verifica que Android no pierde ninguno de sus
+widgets Material mientras iPhone recibe los suyos.
+
+La pantalla de alerta crítica es la excepción deliberada: conserva la misma
+forma en ambas plataformas, porque es la única salida de una pantalla que
+aparece en una emergencia y no debe depender de reconocer un control nuevo.
 
 ## Proyecto abierto
 

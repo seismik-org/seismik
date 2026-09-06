@@ -90,6 +90,35 @@ jobs:
           channel: stable
           cache: true
       - run: flutter pub get
+      - name: Provide a placeholder Firebase configuration
+        # El proyecto Xcode copia GoogleService-Info.plist como recurso, asi que
+        # su ausencia rompe la compilacion antes de llegar al codigo. El archivo
+        # real llega desde un secreto solo en el workflow de TestFlight; aqui
+        # basta un plist valido porque este job compila y nunca ejecuta la app.
+        run: |
+          set -euo pipefail
+          test ! -f ios/Runner/GoogleService-Info.plist
+          cat > ios/Runner/GoogleService-Info.plist <<'PLIST'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>API_KEY</key><string>ci-placeholder-not-a-real-key</string>
+            <key>GCM_SENDER_ID</key><string>000000000000</string>
+            <key>PLIST_VERSION</key><string>1</string>
+            <key>BUNDLE_ID</key><string>com.seismik.app</string>
+            <key>PROJECT_ID</key><string>ci-placeholder</string>
+            <key>STORAGE_BUCKET</key><string>ci-placeholder.appspot.com</string>
+            <key>GOOGLE_APP_ID</key><string>1:000000000000:ios:0000000000000000</string>
+            <key>IS_ADS_ENABLED</key><false/>
+            <key>IS_ANALYTICS_ENABLED</key><false/>
+            <key>IS_APPINVITE_ENABLED</key><false/>
+            <key>IS_GCM_ENABLED</key><true/>
+            <key>IS_SIGNIN_ENABLED</key><true/>
+          </dict>
+          </plist>
+          PLIST
+          plutil -lint ios/Runner/GoogleService-Info.plist
       - name: Install CocoaPods dependencies
         run: |
           flutter precache --ios
