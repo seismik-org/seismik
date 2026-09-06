@@ -45,8 +45,15 @@ jobs:
           certificate_path="$RUNNER_TEMP/seismik-distribution.p12"
           profile_path="$RUNNER_TEMP/seismik.mobileprovision"
           keychain_path="$RUNNER_TEMP/seismik-signing.keychain-db"
-          echo "$IOS_CERTIFICATE_BASE64" | base64 --decode > "$certificate_path"
-          echo "$IOS_PROVISIONING_PROFILE_BASE64" | base64 --decode > "$profile_path"
+          CERT_B64="$IOS_CERTIFICATE_BASE64" PROFILE_B64="$IOS_PROVISIONING_PROFILE_BASE64" CERT_OUT="$certificate_path" PROFILE_OUT="$profile_path" python3 - <<'PY'
+          import base64, os, re
+          for env_name, out_name in (("CERT_B64", "CERT_OUT"), ("PROFILE_B64", "PROFILE_OUT")):
+              raw = os.environ[env_name]
+              # GitHub secret pastes may contain wrapping whitespace; ignore it safely.
+              clean = re.sub(r"[^A-Za-z0-9+/=]", "", raw)
+              with open(os.environ[out_name], "wb") as stream:
+                  stream.write(base64.b64decode(clean, validate=True))
+          PY
           security create-keychain -p "$KEYCHAIN_PASSWORD" "$keychain_path"
           security set-keychain-settings -lut 21600 "$keychain_path"
           security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$keychain_path"
