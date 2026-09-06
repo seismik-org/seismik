@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:flutter/cupertino.dart';
 import 'package:dynamic_color/dynamic_color.dart';
@@ -8,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import 'core/constants.dart';
+import 'core/platform.dart';
 import 'core/theme.dart';
 import 'data/models/seismic_event.dart';
 import 'presentation/screens/alert_overlay.dart';
@@ -108,7 +108,7 @@ class _SeismikShellState extends State<_SeismikShell> {
 
   @override
   Widget build(BuildContext context) {
-    if (Platform.isIOS) {
+    if (usesCupertino) {
       return _IosSeismikShell(
         dynamicColorAvailable: widget.dynamicColorAvailable,
       );
@@ -190,6 +190,12 @@ class _IosSeismikShell extends StatelessWidget {
         : state.recentEvents.first;
     final Widget tabs = CupertinoTabScaffold(
       tabBar: CupertinoTabBar(
+        // Un color translúcido activa el material del sistema en la barra: el
+        // mapa se difumina debajo en lugar de quedar cortado por una franja
+        // opaca. Con alfa 1.0 iOS dibujaría una barra sólida.
+        backgroundColor: CupertinoColors.systemBackground
+            .resolveFrom(context)
+            .withValues(alpha: 0.72),
         items: <BottomNavigationBarItem>[
           BottomNavigationBarItem(
             icon: Icon(CupertinoIcons.clock),

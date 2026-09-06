@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
+import '../../core/platform.dart';
 import '../../data/models/seismic_event.dart';
 import '../../services/in_app_browser.dart';
+import '../widgets/adaptive.dart';
 import '../widgets/open_in_maps_button.dart';
 import 'felt_report_screen.dart';
 import 'damage_report_screen.dart';
@@ -16,16 +18,10 @@ class EventDetailScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final ColorScheme colors = Theme.of(context).colorScheme;
     final LatLng epicenter = LatLng(event.latitude ?? 0, event.longitude ?? 0);
-    return Scaffold(
-      appBar: AppBar(
-        leading: onClose == null
-            ? null
-            : IconButton(icon: const Icon(Icons.close), onPressed: onClose),
-        title: Text(
-          event.isPreliminary ? 'Reporte preliminar' : 'Reporte oficial',
-        ),
-      ),
-      body: ListView(
+    return AdaptiveScreen(
+      title: event.isPreliminary ? 'Reporte preliminar' : 'Reporte oficial',
+      onClose: onClose,
+      child: ListView(
         padding: const EdgeInsets.all(18),
         children: <Widget>[
           if (event.isPreliminary) ...<Widget>[
@@ -232,34 +228,38 @@ class EventDetailScreen extends StatelessWidget {
             const SizedBox(height: 10),
           ],
           if (event.officialUrl != null)
-            OutlinedButton.icon(
+            AdaptiveButton(
+              kind: AdaptiveButtonKind.tinted,
+              icon: Icons.open_in_new_rounded,
               onPressed: () => openWebLink(Uri.parse(event.officialUrl!)),
-              icon: const Icon(Icons.open_in_new_rounded),
-              label: Text(
-                'Abrir fuente oficial${event.attribution == null ? '' : ' · ${event.attribution}'}',
-              ),
+              label:
+                  'Abrir fuente oficial${event.attribution == null ? '' : ' · ${event.attribution}'}',
             ),
-          const SizedBox(height: 8),
-          FilledButton.tonalIcon(
+          const SizedBox(height: 10),
+          AdaptiveButton(
+            kind: AdaptiveButtonKind.tinted,
+            icon: Icons.waves,
+            label: 'Informar si lo sentí',
             onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(
-                builder: (_) => FeltReportScreen(event: event),
+              adaptiveRoute<void>(
+                (_) => FeltReportScreen(event: event),
+                title: 'Sismo sentido',
               ),
             ),
-            icon: const Icon(Icons.waves),
-            label: const Text('Informar si lo sentí'),
           ),
-          const SizedBox(height: 8),
-          FilledButton.icon(
-            style: FilledButton.styleFrom(backgroundColor: Colors.red.shade700),
+          const SizedBox(height: 10),
+          AdaptiveButton(
+            kind: AdaptiveButtonKind.destructive,
+            icon: Icons.report_problem,
+            label: 'Reportar daños',
             onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(
-                builder: (_) => DamageReportScreen(event: event),
+              adaptiveRoute<void>(
+                (_) => DamageReportScreen(event: event),
+                title: 'Daños',
               ),
             ),
-            icon: const Icon(Icons.report_problem),
-            label: const Text('Reportar daños'),
           ),
+          SizedBox(height: usesCupertino ? 28 : 8),
         ],
       ),
     );

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/platform.dart';
+import '../widgets/adaptive.dart';
 import '../../data/models/citizen_report.dart';
 import '../../data/models/pending_report.dart';
 import '../../data/models/seismic_event.dart';
@@ -76,8 +78,9 @@ class _DamageReportScreenState extends State<DamageReportScreen> {
 
   Future<void> _submit() async {
     if (_country.text.trim().length != 2) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Usa un código de país de dos letras.')),
+      await showAdaptiveNotice(
+        context,
+        message: 'Usa un código de país de dos letras.',
       );
       return;
     }
@@ -112,15 +115,14 @@ class _DamageReportScreenState extends State<DamageReportScreen> {
       );
       if (!mounted) return;
       await Navigator.of(context).pushReplacement(
-        MaterialPageRoute<void>(
-          builder: (_) => ReportResultScreen(result: result),
+        adaptiveRoute<void>(
+          (_) => ReportResultScreen(result: result),
+          title: 'Reporte',
         ),
       );
     } catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('No se pudo enviar: $error')));
+        await showAdaptiveNotice(context, message: 'No se pudo enviar: $error');
       }
     } finally {
       if (mounted) setState(() => _submitting = false);
@@ -128,9 +130,9 @@ class _DamageReportScreenState extends State<DamageReportScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Reportar daños')),
-    body: ListView(
+  Widget build(BuildContext context) => AdaptiveScreen(
+    title: 'Reportar daños',
+    child: ListView(
       padding: const EdgeInsets.fromLTRB(18, 18, 18, 28),
       children: <Widget>[
         Card(
@@ -268,26 +270,29 @@ class _DamageReportScreenState extends State<DamageReportScreen> {
           ),
         ),
         const SizedBox(height: 18),
-        FilledButton.icon(
-          style: _urgent
-              ? FilledButton.styleFrom(backgroundColor: Colors.red)
-              : null,
+        AdaptiveButton(
+          kind: _urgent
+              ? AdaptiveButtonKind.destructive
+              : AdaptiveButtonKind.primary,
           onPressed: _submitting ? null : _submit,
-          icon: _submitting
-              ? const SizedBox.square(
-                  dimension: 18,
-                  child: CircularProgressIndicator(),
-                )
-              : const Icon(Icons.send),
-          label: const Text('Enviar reporte a Seismik'),
+          icon: Icons.send,
+          label: _submitting ? 'Enviando…' : 'Enviar reporte a Seismik',
         ),
         const SizedBox(height: 24),
       ],
     ),
   );
 
+  /// En iPhone estos controles son interruptores; en Android, casillas.
   Widget _check(String label, bool value, ValueChanged<bool> update) =>
-      CheckboxListTile(
+      usesCupertino
+      ? SwitchListTile.adaptive(
+          dense: true,
+          value: value,
+          onChanged: (next) => setState(() => update(next)),
+          title: Text(label),
+        )
+      : CheckboxListTile(
         value: value,
         onChanged: (next) => setState(() => update(next ?? false)),
         title: Text(label),

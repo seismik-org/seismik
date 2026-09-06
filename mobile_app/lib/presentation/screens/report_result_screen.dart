@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../data/models/citizen_report.dart';
 import '../../services/in_app_browser.dart';
+import '../widgets/adaptive.dart';
 
 class ReportResultScreen extends StatelessWidget {
   const ReportResultScreen({required this.result, super.key});
@@ -10,10 +11,9 @@ class ReportResultScreen extends StatelessWidget {
   Future<void> _open(BuildContext context, String url) async {
     final bool opened = await openWebLink(Uri.parse(url));
     if (!opened && context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('No fue posible abrir el formulario oficial.'),
-        ),
+      await showAdaptiveNotice(
+        context,
+        message: 'No fue posible abrir el formulario oficial.',
       );
     }
   }
@@ -33,13 +33,9 @@ class ReportResultScreen extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(
-      title: Text(
-        result.queuedOffline ? 'Reporte guardado' : 'Reporte recibido',
-      ),
-    ),
-    body: ListView(
+  Widget build(BuildContext context) => AdaptiveScreen(
+    title: result.queuedOffline ? 'Reporte guardado' : 'Reporte recibido',
+    child: ListView(
       padding: const EdgeInsets.all(20),
       children: <Widget>[
         Icon(
@@ -89,18 +85,20 @@ class ReportResultScreen extends StatelessWidget {
           for (final route in result.agencyRoutes)
             Padding(
               padding: const EdgeInsets.only(bottom: 8),
-              child: FilledButton.tonalIcon(
+              child: AdaptiveButton(
+                kind: AdaptiveButtonKind.tinted,
                 onPressed: () => _open(context, route.officialUrl),
-                icon: const Icon(Icons.open_in_new),
-                label: Text('Abrir ${route.agencyName}'),
+                icon: Icons.open_in_new,
+                label: 'Abrir ${route.agencyName}',
               ),
             ),
         ],
         const SizedBox(height: 28),
-        FilledButton(
+        AdaptiveButton(
+          icon: Icons.map_outlined,
+          label: 'Volver al monitor',
           onPressed: () =>
               Navigator.of(context).popUntil((route) => route.isFirst),
-          child: const Text('Volver al monitor'),
         ),
       ],
     ),
