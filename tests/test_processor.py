@@ -39,6 +39,10 @@ def test_detects_impulsive_amplitude_change() -> None:
     assert event is not None
     assert event.station_id == "XX.TEST"
     assert event.sta_lta_ratio >= 3.0
+    assert event.peak_amplitude_counts is not None
+    assert event.peak_amplitude_counts > 1.0
+    assert event.noise_rms_counts is not None
+    assert event.noise_rms_counts > 0
 
 
 def test_large_gap_resets_buffer_without_trigger() -> None:

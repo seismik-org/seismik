@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../../data/models/seismic_event.dart';
+import '../widgets/open_in_maps_button.dart';
 import '../widgets/safety_steps.dart';
 
 class AlertOverlay extends StatefulWidget {
@@ -105,6 +106,18 @@ class _AlertOverlayState extends State<AlertOverlay>
               const Spacer(),
               const SafetySteps(),
               const Spacer(),
+              // La ubicación es contexto secundario: primero protegerse, y sólo
+              // después mirar dónde ocurrió.
+              Theme(
+                data: Theme.of(context).copyWith(
+                  textButtonTheme: TextButtonThemeData(
+                    style: TextButton.styleFrom(
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
+                ),
+                child: OpenInMapsButton(event: widget.event, compact: true),
+              ),
               FilledButton.tonalIcon(
                 onPressed: widget.onDismiss,
                 icon: const Icon(Icons.check_circle_outline),

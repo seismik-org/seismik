@@ -8,6 +8,7 @@
 - [Cierre técnico Sprint 3 — 2026-08-27](SPRINT_3_CIERRE_TECNICO_2026-08-27.md)
 - [Avance técnico Sprint 4 — 2026-08-27](SPRINT_4_AVANCE_2026-08-27.md)
 - [Avance Sprint Añadido 1 — 2026-08-30](SPRINT_ADDED_1_AVANCE_2026-08-30.md)
+- [Avance Sprint Añadido 2 — 2026-08-30](SPRINT_ADDED_2_AVANCE_2026-08-30.md)
 
 Este directorio es la fuente verificable compartida para el gobierno y seguimiento
 del proyecto. Los archivos Markdown permiten revisar cambios línea por línea en Git;
@@ -18,7 +19,7 @@ las copias `.docx` son los documentos formales para reuniones y aprobación.
 | Documento | Fuente editable | Copia Word | Versión | Estado |
 |---|---|---|---|---|
 | Documento maestro | `SEISMIK_DOCUMENTO_MAESTRO_v0.1.md` | `SEISMIK_DOCUMENTO_MAESTRO_v0.1.docx` | 0.1 | Borrador para aprobación |
-| Plan Scrum del MVP | `SEISMIK_PLAN_SCRUM_MVP_v0.2.md` | `SEISMIK_PLAN_SCRUM_MVP_v0.2.docx` | 0.2 | En ejecución; Sprint Añadido 1 desplegado, cierre E2E pendiente |
+| Plan Scrum del MVP | `SEISMIK_PLAN_SCRUM_MVP_v0.2.md` | `SEISMIK_PLAN_SCRUM_MVP_v0.2.docx` | 0.2 | En ejecución; Sprint Añadido 2 implementado, simulacro y revisión científica pendientes |
 | Control de avance | `SEISMIK_CONTROL_AVANCE_v0.1.md` | `SEISMIK_CONTROL_AVANCE_v0.1.docx` | 0.1 | Activo |
 | Paquete de revisión sismológica | `PAQUETE_REVISION_SISMOLOGICA_v0.1.md` | `PAQUETE_REVISION_SISMOLOGICA_v0.1.docx` | 0.1 | Pendiente de revisor |
 

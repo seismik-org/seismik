@@ -19,7 +19,7 @@
     <nav aria-label="Navegación principal">
       <a href="#productos">Productos</a>
       <a href="#documentacion">Documentación</a>
-      <a href="https://seismik.org/privacy.html">Privacidad</a>
+      <a href="https://seismik.org/terms-of-privacy">Privacidad</a>
     </nav>
     <div class="auth-actions">
       <span id="user-label" class="user-label" hidden></span>
@@ -55,7 +55,7 @@
       <div class="product-grid">
         <article class="product-card"><span class="product-icon">01</span><h3>Eventos sísmicos</h3><p>Historial oficial consolidado, magnitud, profundidad, epicentro, fuente y estado de revisión.</p><code>events:read</code></article>
         <article class="product-card"><span class="product-icon">02</span><h3>Red de estaciones</h3><p>Metadatos geográficos de estaciones abiertas y el proveedor SeedLink asociado.</p><code>stations:read</code></article>
-        <article class="product-card muted-card"><span class="product-icon">→</span><h3>Alertas e IoT</h3><p>En preparación. Requerirá acuerdos, redundancia local y un nivel de servicio específico.</p><span class="coming-soon">Próximamente</span></article>
+        <article class="product-card"><span class="product-icon">03</span><h3>Webhooks institucionales</h3><p>Eventos preliminares u oficiales, firmados y entregados desde una cola durable para simulacros e investigación.</p><code>simulation_only</code></article>
       </div>
     </section>
 
@@ -76,7 +76,7 @@
               <label class="scope-option"><input type="checkbox" name="scope" value="events:read" checked><span><strong>Eventos</strong><small>Catálogo oficial normalizado</small></span></label>
               <label class="scope-option"><input type="checkbox" name="scope" value="stations:read" checked><span><strong>Estaciones</strong><small>Red sismológica abierta</small></span></label>
             </fieldset>
-            <label class="terms-option"><input id="terms-checkbox" type="checkbox" required><span>Acepto los <a href="/api-terms.html" target="_blank" rel="noopener">términos de la API</a> y el uso responsable de los datos.</span></label>
+            <label class="terms-option"><input id="terms-checkbox" type="checkbox" required><span>Acepto los <a href="https://seismik.org/terms-of-service#api" target="_blank" rel="noopener">términos de la API</a> y el uso responsable de los datos.</span></label>
             <button class="button full" type="submit">Generar clave</button>
           </form>
 
@@ -94,6 +94,22 @@
           <div id="keys-empty" class="empty-state">Todavía no has creado ninguna clave.</div>
           <div id="keys-list" class="keys-list" aria-live="polite"></div>
         </section>
+
+        <section class="keys-section" aria-labelledby="webhooks-title">
+          <div class="keys-heading"><div><p class="eyebrow">INTEGRACIONES</p><h3 id="webhooks-title">Webhooks institucionales</h3></div><button id="refresh-webhooks-button" class="text-button" type="button">Actualizar</button></div>
+          <p class="fine-print">Sólo para simulación, investigación y tableros. Esta beta no autoriza el control de gas, agua, energía, ascensores ni otros equipos físicos.</p>
+          <form id="webhook-form" class="webhook-form">
+            <label>Nombre de la integración<input id="webhook-name" name="name" minlength="3" maxlength="60" placeholder="Ej. Simulador universidad" required></label>
+            <label>URL HTTPS pública<input id="webhook-endpoint" name="endpoint" type="url" placeholder="https://ejemplo.org/seismik" required></label>
+            <fieldset><legend>Eventos que deseas recibir</legend>
+              <label class="scope-option"><input type="checkbox" name="webhook-event" value="official_report_update" checked><span><strong>Reporte oficial</strong><small>Confirmación o actualización de una agencia sismológica.</small></span></label>
+              <label class="scope-option"><input type="checkbox" name="webhook-event" value="earthquake_candidate"><span><strong>Candidato preliminar</strong><small>Señal sin confirmar; nunca es una orden de acción física.</small></span></label>
+            </fieldset>
+            <button class="button full" type="submit">Crear webhook de simulación</button>
+          </form>
+          <div id="webhooks-empty" class="empty-state">Todavía no has creado ningún webhook.</div>
+          <div id="webhooks-list" class="keys-list" aria-live="polite"></div>
+        </section>
       </div>
     </section>
 
@@ -110,13 +126,20 @@
     </section>
   </main>
 
-  <footer class="developer-footer"><span>© 2026 Seismik · Proyecto abierto</span><a href="https://seismik.org/">Inicio</a><a href="https://seismik.org/privacy.html">Privacidad</a><a href="/api-terms.html">Términos API</a></footer>
+  <footer class="developer-footer"><span>© 2026 Seismik · Proyecto abierto</span><a href="https://seismik.org/">Inicio</a><a href="https://seismik.org/terms-of-privacy">Privacidad</a><a href="https://seismik.org/terms-of-service#api">Términos API</a></footer>
 
   <dialog id="secret-dialog">
     <form method="dialog" class="secret-card">
       <p class="eyebrow">CLAVE CREADA</p><h2>Guárdala ahora.</h2><p>Por seguridad no podremos volver a mostrarla.</p>
       <div class="secret-value"><code id="secret-value"></code><button id="copy-secret" class="text-button" type="button">Copiar</button></div>
       <button class="button full" value="close">Ya la guardé</button>
+    </form>
+  </dialog>
+  <dialog id="webhook-secret-dialog">
+    <form method="dialog" class="secret-card">
+      <p class="eyebrow">WEBHOOK CREADO</p><h2>Guarda el secreto de firma.</h2><p>Se muestra sólo una vez; tu servidor lo necesita para validar cada entrega.</p>
+      <div class="secret-value"><code id="webhook-secret-value"></code><button id="copy-webhook-secret" class="text-button" type="button">Copiar</button></div>
+      <button class="button full" value="close">Ya lo guardé</button>
     </form>
   </dialog>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>

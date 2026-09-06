@@ -7,12 +7,14 @@ from redis.asyncio import Redis
 
 from api.config import AppSettings
 from api.dependencies import (
+    DevicePrincipal,
     get_app_settings,
     get_devices,
     get_integrity_verifier,
     get_redis,
-    require_device_api_key,
+    require_device_session,
 )
+from api.device_sessions import DeviceSessionRepository
 from api.devices_store import DeviceRepository
 from api.integrity import DeviceIntegrityVerifier
 from api.schemas import (
@@ -25,7 +27,6 @@ from api.security import derive_crowd_token
 router = APIRouter(
     prefix="/v1/devices",
     tags=["devices"],
-    dependencies=[Depends(require_device_api_key)],
 )
 
 
@@ -55,6 +56,9 @@ async def register_device(
         device_id=registration.device_id,
         registered=True,
         crowd_token=crowd_token,
+        device_session_token=await DeviceSessionRepository(
+            redis, ttl_seconds=settings.device_session_ttl_seconds
+        ).issue(registration.device_id),
     )
 
 
@@ -62,6 +66,14 @@ async def register_device(
 async def unregister_device(
     unregister: DeviceUnregister,
     devices: DeviceRepository = Depends(get_devices),
+    settings: AppSettings = Depends(get_app_settings),
+    redis: Redis = Depends(get_redis),
+    principal: DevicePrincipal = Depends(require_device_session),
 ) -> dict[str, bool]:
+    if principal.device_id != unregister.device_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Device session mismatch")
     removed = await devices.unregister(unregister.device_id)
+    await DeviceSessionRepository(redis, ttl_seconds=settings.device_session_ttl_seconds).revoke(
+        unregister.device_id
+    )
     return {"unregistered": removed}

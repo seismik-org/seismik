@@ -7,7 +7,10 @@ plugins {
 
 android {
     namespace = "com.seismik.app"
-    compileSdk = flutter.compileSdkVersion
+    // flutter_secure_storage compila sus dependencias nativas contra API 37.
+    // Mantener el proyecto en esa API evita que el almacenamiento de las
+    // credenciales de sesión de Seismik falle al generar el release.
+    compileSdk = 37
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
@@ -38,9 +41,25 @@ android {
         }
     }
 
+    // Verificación de compilación sin el keystore de producción. Se activa sólo
+    // con -PseismikUnsignedReleaseCheck=true y produce un APK firmado en debug,
+    // no distribuible: sirve para comprobar Dart AOT, Kotlin y R8 en máquinas
+    // que no deben tener acceso a las credenciales de firma.
+    val releaseSigningCheckOnly =
+        (project.findProperty("seismikUnsignedReleaseCheck") as String?) == "true" &&
+            System.getenv("SEISMIK_KEYSTORE").isNullOrEmpty()
+
     buildTypes {
         release {
-            signingConfig = signingConfigs.getByName("release")
+            signingConfig = if (releaseSigningCheckOnly) {
+                logger.warn(
+                    "Seismik: APK de release firmado con la clave de depuración " +
+                        "para verificar la compilación. No distribuir este artefacto.",
+                )
+                signingConfigs.getByName("debug")
+            } else {
+                signingConfigs.getByName("release")
+            }
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(

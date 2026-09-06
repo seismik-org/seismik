@@ -1,0 +1,93 @@
+{
+  "schema_version": 1,
+  "started_at": "2026-08-31T02:39:18.232Z",
+  "completed_at": "2026-08-31T02:43:03.723Z",
+  "config": "config.json",
+  "providers": [
+    {
+      "provider_id": "earthscope_colombia",
+      "server": "rtserve.earthscope.org:18000",
+      "country_code": "CO",
+      "required": true,
+      "tcp": {
+        "reachable": true,
+        "connect_seconds": 0.156
+      },
+      "stations": [
+        {
+          "station_id": "CM.ARGC",
+          "channel": "HHZ",
+          "received": true,
+          "stream_id": "CM.ARGC.00.HHZ",
+          "received_at": "2026-08-31T02:39:57.336Z",
+          "samples": 572,
+          "sample_rate_hz": 100.0,
+          "first_packet_seconds": 38.953,
+          "packet_lag_seconds": 6.118
+        },
+        {
+          "station_id": "CM.CAP2",
+          "channel": "HHZ",
+          "received": false,
+          "error": "timeout"
+        }
+      ],
+      "reconnect": {
+        "station_id": "CM.ARGC",
+        "channel": "HHZ",
+        "received": true,
+        "stream_id": "CM.ARGC.00.HHZ",
+        "received_at": "2026-08-31T02:41:33.357Z",
+        "samples": 575,
+        "sample_rate_hz": 100.0,
+        "first_packet_seconds": 44.906,
+        "packet_lag_seconds": 3.749
+      },
+      "stations_probed": 2,
+      "stations_delivering": 1,
+      "delivery_ratio": 0.5,
+      "median_packet_lag_seconds": 6.118,
+      "healthy": true
+    },
+    {
+      "provider_id": "geofon_chile",
+      "server": "geofon.gfz.de:18000",
+      "country_code": "CL",
+      "required": false,
+      "tcp": {
+        "reachable": true,
+        "connect_seconds": 0.25
+      },
+      "stations": [
+        {
+          "station_id": "CX.PB01",
+          "channel": "HHZ",
+          "received": false,
+          "error": "timeout"
+        },
+        {
+          "station_id": "CX.PB03",
+          "channel": "HHZ",
+          "received": true,
+          "stream_id": "CX.PB03..HHZ",
+          "received_at": "2026-08-31T02:43:02.359Z",
+          "samples": 587,
+          "sample_rate_hz": 100.0,
+          "first_packet_seconds": 43.657,
+          "packet_lag_seconds": 1.241
+        }
+      ],
+      "stations_probed": 2,
+      "stations_delivering": 1,
+      "delivery_ratio": 0.5,
+      "median_packet_lag_seconds": 1.241,
+      "healthy": true
+    }
+  ],
+  "suggested_failover_order": [
+    "geofon_chile",
+    "earthscope_colombia"
+  ],
+  "healthy_providers": 2,
+  "limitation": "Medición puntual: describe el momento de la ejecución, no un acuerdo de disponibilidad ni la latencia sostenida del proveedor."
+}

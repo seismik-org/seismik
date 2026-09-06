@@ -7,6 +7,20 @@
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
 
+    <!-- Android 11+ oculta las apps instaladas salvo las declaradas aquí. Sin
+         estos filtros, abrir el epicentro en mapas o una fuente oficial
+         fallaría en lugar de mostrar el selector del sistema. -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="https" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="geo" />
+        </intent>
+    </queries>
+
     <application
         android:label="Seismik"
         android:name="${applicationName}"

@@ -32,7 +32,7 @@ else
 fi
 
 sudo docker compose config --quiet
-sudo docker compose up --build --detach redis api dispatcher
+sudo docker compose up --build --detach redis api dispatcher integrations
 
 for _attempt in $(seq 1 60); do
   if curl --fail --silent http://127.0.0.1:8000/health/ready >/dev/null; then
@@ -44,5 +44,5 @@ for _attempt in $(seq 1 60); do
 done
 
 echo "The API did not become ready; showing recent logs." >&2
-sudo docker compose logs --no-color --tail 100 api redis dispatcher >&2
+sudo docker compose logs --no-color --tail 100 api redis dispatcher integrations >&2
 exit 1

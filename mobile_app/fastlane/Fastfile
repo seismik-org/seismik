@@ -1,0 +1,13 @@
+default_platform(:ios)
+
+platform :ios do
+  desc "Sube un IPA ya firmado a TestFlight usando una clave de App Store Connect"
+  lane :upload_testflight do
+    upload_to_testflight(
+      ipa: ENV.fetch("SEISMIK_IPA_PATH"),
+      api_key_path: ENV.fetch("APP_STORE_CONNECT_API_KEY_PATH"),
+      skip_waiting_for_build_processing: true,
+      distribute_external: false
+    )
+  end
+end

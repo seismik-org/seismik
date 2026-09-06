@@ -53,7 +53,6 @@ def main() -> int:
     parser.add_argument("--manifest", type=Path, default=PROJECT_ROOT / "data/replay/manifest.json")
     parser.add_argument("--case", default="co-2023-08-17-m6.1")
     parser.add_argument("--webhook-secret", required=True)
-    parser.add_argument("--device-key", required=True)
     parser.add_argument("--output", type=Path, default=PROJECT_ROOT / "work/sprint3-e2e.json")
     args = parser.parse_args()
 
@@ -80,11 +79,13 @@ def main() -> int:
         "zone_id": zone_id,
         "play_integrity_token": "local-app-check-debug-token",
     }
-    device_headers = {"X-Seismik-Device-Key": args.device_key}
     registered = post_json(
-        f"{args.api_base.rstrip('/')}/v1/devices/register", device_payload, device_headers
+        f"{args.api_base.rstrip('/')}/v1/devices/register", device_payload, {}
     )
     registered.raise_for_status()
+    device_headers = {
+        "X-Seismik-Device-Session": registered.json()["device_session_token"]
+    }
     try:
         body = json.dumps(event, ensure_ascii=False, separators=(",", ":")).encode()
         timestamp = str(time.time())

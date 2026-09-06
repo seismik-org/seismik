@@ -11,6 +11,7 @@ from redis.asyncio import Redis
 
 from api.bus import RedisEventBus
 from api.config import AppSettings
+from api.device_sessions import DeviceSessionRepository
 from api.devices_store import DeviceRepository
 from api.integrity import DeviceIntegrityVerifier
 
@@ -23,10 +24,18 @@ class ApiPrincipal:
     key_id: str | None = None
 
 
+@dataclass(frozen=True)
+class DevicePrincipal:
+    device_id: str
+
+
 UNLIMITED_PRINCIPAL = ApiPrincipal(
     subject="seismik-internal",
     plan="internal",
     scopes=frozenset({"*"}),
+)
+MOBILE_PRINCIPAL = ApiPrincipal(
+    subject="verified-mobile-installation", plan="mobile", scopes=frozenset({"*"})
 )
 
 
@@ -50,13 +59,20 @@ def get_redis(request: Request) -> Redis:
     return request.app.state.redis
 
 
-def require_device_api_key(
+async def require_device_session(
     request: Request,
-    x_device_api_key: str | None = Header(default=None, alias="X-Seismik-Device-Key"),
-) -> None:
-    expected = request.app.state.settings.device_api_key.get_secret_value()
-    if not x_device_api_key or not hmac.compare_digest(x_device_api_key, expected):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid device API key")
+    x_device_session: str | None = Header(default=None, alias="X-Seismik-Device-Session"),
+) -> DevicePrincipal:
+    if not x_device_session:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing device session")
+    settings = request.app.state.settings
+    sessions = DeviceSessionRepository(
+        request.app.state.redis, ttl_seconds=settings.device_session_ttl_seconds
+    )
+    device_id = await sessions.resolve(x_device_session)
+    if not device_id:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid device session")
+    return DevicePrincipal(device_id=device_id)
 
 
 async def require_consumer_api_key(
@@ -148,5 +164,36 @@ def require_api_scope(scope: str) -> Callable[..., Awaitable[ApiPrincipal]]:
     return dependency
 
 
+def require_mobile_or_api_scope(scope: str) -> Callable[..., Awaitable[ApiPrincipal]]:
+    """Autoriza exportaciones para una instalación verificada o una API key.
+
+    La app no lleva una API key de empresa en el binario; los consumidores
+    externos siguen sujetos a scopes y cuotas mediante ``X-Seismik-API-Key``.
+    """
+
+    api_dependency = require_api_scope(scope)
+
+    async def dependency(
+        request: Request,
+        x_device_session: str | None = Header(default=None, alias="X-Seismik-Device-Session"),
+        x_api_key: str | None = Header(default=None, alias="X-Seismik-API-Key"),
+        settings: AppSettings = Depends(get_app_settings),
+        redis: Redis = Depends(get_redis),
+    ) -> ApiPrincipal:
+        if x_device_session:
+            device_id = await DeviceSessionRepository(
+                redis, ttl_seconds=settings.device_session_ttl_seconds
+            ).resolve(x_device_session)
+            if device_id:
+                return MOBILE_PRINCIPAL
+        return await api_dependency(
+            request=request, x_api_key=x_api_key, settings=settings, redis=redis
+        )
+
+    return dependency
+
+
 require_events_read = require_api_scope("events:read")
 require_stations_read = require_api_scope("stations:read")
+require_mobile_events_read = require_mobile_or_api_scope("events:read")
+require_mobile_stations_read = require_mobile_or_api_scope("stations:read")

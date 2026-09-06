@@ -19,9 +19,9 @@ Crear en Secret Manager, una vez y sin poner valores en Git:
 
 ```powershell
 gcloud secrets create seismik-webhook --data-file=webhook.secret
-gcloud secrets create seismik-device --data-file=device.secret
 gcloud secrets create seismik-crowd --data-file=crowd.secret
 gcloud secrets create seismik-consumer --data-file=consumer.secret
+gcloud secrets create seismik-integration --data-file=integration-webhook.secret
 gcloud secrets create seismik-firebase --data-file=firebase-admin.json
 ```
 

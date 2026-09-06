@@ -70,10 +70,12 @@ Markdown revisables en Git y copias formales en Word:
 - Plan Scrum de ocho sprints, responsables, entregables y checkpoints.
 - Control de avance, riesgos, decisiones, impedimentos y checklist Go/No-Go.
 
-Las fotografías, los videos, iOS, la expansión mundial, las alertas públicas
-automáticas y las integraciones IoT quedan fuera del MVP inicial. Todo simulacro
-debe permanecer restringido a testers autorizados y marcado visiblemente como
-`TEST` o `SIMULACRO`.
+Las fotografías, los videos, la expansión mundial, las alertas públicas
+automáticas y las integraciones IoT quedan fuera del MVP inicial. iOS entró en el
+Sprint Añadido 2 como beta cerrada: el proyecto está preparado, pero compilar,
+firmar y aprobar las Critical Alerts de Apple exige macOS y decisiones externas.
+Todo simulacro debe permanecer restringido a testers autorizados y marcado
+visiblemente como `TEST` o `SIMULACRO`.
 
 Seismik es una plataforma modular de alerta sísmica temprana: recibe formas de
 onda SeedLink, detecta candidatos mediante STA/LTA y coincidencia multiestación,
@@ -106,7 +108,125 @@ Flutter/App Check ──pings HMAC──> H3 res. 7 + Lua             │
   dispositivos.
 - `src/crowdsourcing/`: pings firmados y quorum espacio-temporal H3.
 - `src/dispatcher/`: consumidor durable, geocercas, cooldown y push masivo.
+- `src/dispatcher/policy.py`: deduplicación, enfriamiento y umbrales por
+  dispositivo antes de tocar APNs/FCM.
 - `mobile_app/`: aplicación Flutter por capas, App Check, DSP local, mapas y UI.
+
+## Enlace detector → API de eventos
+
+El detector firma cada candidato con HMAC-SHA256 sobre `timestamp.cuerpo` y
+lo entrega a `POST /v1/events/candidate`; las asociaciones oficiales viajan a
+`POST /v1/events/official-update`.
+
+El hilo que recibe paquetes SeedLink nunca se bloquea esperando a la API. Si
+la entrega falla, el evento se persiste en una cola en disco
+(`SEISMIK_ALERT_SPOOL_DIR`) con escritura atómica y se reintenta en orden.
+La respuesta de la API decide el destino del evento:
+
+| Respuesta | Decisión |
+|---|---|
+| 2xx | Entregado; `duplicate=true` se contabiliza aparte |
+| 5xx, 408, 429 o error de red | Reintento con la cola durable |
+| Resto de 4xx | Descarte con registro: repetir sólo repetiría el rechazo |
+
+Un evento que supera `spool_max_age_seconds` (15 minutos por defecto) se
+descarta: dejó de ser accionable mucho antes. La sonda del detector publica
+entregados, duplicados, pendientes y último error en `/health/ready`.
+
+```bash
+docker compose --profile detector up --build
+curl -s http://localhost:8080/health/ready
+```
+
+## Alertas en tiempo real
+
+Tres decisiones separan un aviso útil de una avalancha de notificaciones, y
+las tres viven en `src/dispatcher/policy.py`:
+
+1. **Deduplicación por evento.** `seismik:alert:sent:<tipo>:<event_id>` se
+   reclama con `SET NX` durante `SEISMIK_ALERT_DEDUP_SECONDS`. Un reinicio
+   del dispatcher reentrega el mensaje del stream, pero no la alerta.
+2. **Enfriamiento por zona.** `seismik:alert:cooldown:<zona>` se reclama
+   **antes** de enviar el push, no después: dos dispatchers en paralelo no
+   pueden alertar la misma zona. Si el envío falla de forma inesperada, la
+   reclamación se libera para que el stream vuelva a intentarlo.
+3. **Umbrales por dispositivo.** Suscripción a alertas tempranas y oficiales,
+   magnitud mínima y radio elegido por la persona, siempre acotado por la
+   geocerca de la plataforma (`SEISMIK_GEOFENCE_RADIUS_KM`).
+
+Las actualizaciones oficiales se deduplican pero no se enfrían: una revisión
+de magnitud debe llegar aunque el candidato haya alertado segundos antes.
+
+Cada alerta emitida se anota en `stream:seismik:alert-ledger`. La app la
+consulta con `GET /v1/alerts/recent?device_id=…&since=<cursor>` para
+recuperar lo que ocurrió mientras el teléfono estuvo sin conexión; el
+servidor reaplica los mismos filtros de ese dispositivo.
+
+## Simulacros y eventos simulados
+
+`tools/simulate_event.py` inyecta un sismo simulado por la ruta real —API
+firmada, bus, dispatcher y filtros— sin endpoints especiales de prueba. Todo
+identificador de simulacro empieza por `drill-`, de modo que la evidencia
+nunca se confunde con una detección real.
+
+```bash
+python tools/simulate_event.py --profile bogota --dry-run
+python tools/simulate_event.py --profile bogota \n  --base-url http://127.0.0.1:8000 --secret "$SEISMIK_WEBHOOK_HMAC_SECRET"
+```
+
+Un destino que no sea local exige `--confirm-production`: un simulacro contra
+un entorno con push habilitado envía notificaciones de verdad.
+
+`tools/run_drill.py` ejecuta el ensayo completo sin depender de Docker: levanta
+la API con uvicorn en un puerto local, registra cuatro dispositivos con umbrales
+distintos, inyecta el sismo firmado, consume el stream con el dispatcher real y
+consulta la bitácora de alertas de cada dispositivo. Sólo Redis se sustituye por
+`fakeredis`, y la evidencia lo declara.
+
+```bash
+# Sismo simulado
+python tools/run_drill.py --profile bogota --output data/drills/drill.json
+
+# Onda real grabada, a través del detector STA/LTA
+python tools/run_drill.py --replay-case co-2023-08-17-m6.1 --output data/drills/m61.json
+
+# Ruido ambiental: el silencio es el resultado esperado
+python tools/run_drill.py --replay-case co-2026-08-24-ambient --expect-silence   --output data/drills/ambient.json
+```
+
+Evidencia registrada en `data/drills/` (2026-08-30):
+
+| Ensayo | Alerta crítica | Actualización oficial |
+|---|---|---|
+| Simulado `bogota` | cerca, umbral-alto | cerca, silenciado |
+| Replay M7.4, M6.1 y M5.7 | cerca, umbral-alto | — |
+| Ruido ambiental | ninguna | — |
+
+En los tres sismos reales el dispositivo fuera del radio elegido nunca aparece, y
+en el caso de ruido ambiental hubo disparos locales de hasta 16.3 de razón
+STA/LTA en `CM.PRA` que la coincidencia multiestación descartó sin alertar.
+
+### Salud de los proveedores SeedLink
+
+`tools/measure_seedlink_health.py` recorre los proveedores habilitados y mide
+tiempo de conexión TCP, tiempo hasta el primer paquete, lag de ese paquete y la
+recuperación tras reconectar. Con eso el orden de respaldo se decide con datos:
+
+```bash
+python tools/measure_seedlink_health.py --config config.json   --output data/seedlink/provider-health.json
+```
+
+Medición del 2026-08-31 (`data/seedlink/sa2-provider-health-2026-08-30.json`):
+
+| Proveedor | TCP | Estaciones que entregan | Lag mediano | Reconexión |
+|---|---:|---:|---:|---|
+| `earthscope_colombia` | 0.16 s | 1 de 2 | 6.12 s | recuperó con 3.75 s de lag |
+| `geofon_chile` | 0.25 s | 1 de 2 | 1.24 s | no aplicada |
+
+Es una medición puntual, no un acuerdo de disponibilidad. Dos observaciones que
+importan para alerta temprana: el primer paquete tardó entre 39 y 45 s en llegar
+tras conectar, y dos de las cuatro estaciones probadas no entregaron nada dentro
+de la ventana de 45 s.
 
 ## H3 y concurrencia
 
@@ -127,6 +247,8 @@ Streams:
 - `stream:seismik:candidates`
 - `stream:seismik:official`
 - `stream:seismik:dead-letter`
+- `stream:seismik:integrations` (salida durable para organizaciones)
+- `stream:seismik:integrations-dead-letter`
 
 ## Seguridad
 
@@ -135,16 +257,56 @@ HMAC-SHA256:
 
 - `X-Seismik-Timestamp`
 - `X-Seismik-Signature`
-- `X-Seismik-Device-Key` solo para bootstrap de registro
+- `X-Seismik-Device-Session` para solicitudes posteriores de una instalación verificada
 
 El registro exige `app_attest_token` en iOS o `play_integrity_token` en Android.
 Esos campos transportan un **Firebase App Check token** corto respaldado por App
 Attest/DeviceCheck o Play Integrity; el servidor lo verifica con Firebase Admin.
-La clave bootstrap incluida en una app es extraíble y no sustituye App Check,
-rate limiting perimetral ni rotación de secretos.
+Tras verificar App Check, el servidor emite un token de sesión aleatorio por
+instalación. Sólo conserva su hash, lo rota al registrar de nuevo el dispositivo
+y no se incluye ninguna clave compartida en el APK o IPA.
 
 En producción, `SEISMIK_INTEGRITY_VERIFICATION_ENABLED=true` es obligatorio por
 validación de configuración. Restrinja también los Firebase App IDs permitidos.
+
+## Integraciones oficiales e IoT (Sprint 6)
+
+Las actualizaciones gubernamentales se normalizan como
+`official_report_update`; incluyen fuente, magnitud, profundidad, ubicación y
+enlace de atribución. La app y los consumidores externos pueden diferenciar
+claramente un candidato preliminar (`earthquake_candidate`) de una confirmación
+oficial.
+
+### Cobertura SeedLink preliminar y lectura de ondas
+
+La configuración beta activa grupos de estaciones en **Colombia**, norte de
+**Chile**, **Indonesia/Sunda** y **Europa central**. EarthScope ofrece su
+servicio SeedLink público y GEOFON publica aproximadamente 300 estaciones en
+tiempo real; cada conexión y estación se vigila antes de utilizarla. No es una
+red mundial completa ni un servicio oficial de alerta temprana: los canales,
+la telemetría y la disponibilidad pueden variar.
+
+Para cada disparo se conservan la relación STA/LTA, pico de onda en cuentas y
+ruido RMS. La app muestra un índice de señal/ruido por candidato. **No convierte
+cuentas crudas a magnitud**: hacerlo requiere deconvolucionar la respuesta de
+cada instrumento, localizar el evento y calibrar el modelo contra catálogos
+oficiales regionales. Por eso `magnitude_estimate` permanece nulo con estado
+`pending_station_calibration` hasta validar científicamente una red; ese campo
+nunca participa en el envío de alertas.
+
+Las organizaciones autenticadas en el portal pueden crear un webhook HTTPS en
+`POST /v1/developer/webhooks`. Seismik muestra el secreto de firma una sola vez.
+Cada entrega usa HMAC SHA-256 sobre `timestamp + "." + cuerpo` y lleva los
+encabezados `X-Seismik-Event-Id`, `X-Seismik-Delivery-Id`,
+`X-Seismik-Timestamp` y `X-Seismik-Signature`. Sólo se aceptan destinos HTTPS
+que resuelvan a direcciones públicas, para impedir SSRF contra la red interna.
+
+El canal actual es **exclusivamente de simulación**. Cada payload declara
+`safety_mode: simulation_only` y prohíbe controlar equipos físicos. Es apto para
+tableros, simulacros, investigación y pruebas de integración; no es una orden
+para ascensores, gas, agua ni electricidad. Una futura automatización de
+infraestructura exige evaluación de seguridad funcional, acuerdos con los
+operadores, interlocks locales y aprobación científica/regulatoria.
 
 ## Backend local
 
@@ -180,6 +342,17 @@ pytest
 ruff check src tests
 mypy src
 ```
+
+Variables del alertamiento en tiempo real (ver `.env.example`):
+
+| Variable | Efecto |
+|---|---|
+| `SEISMIK_ALERT_COOLDOWN_SECONDS` | Enfriamiento por zona entre alertas críticas |
+| `SEISMIK_ALERT_DEDUP_SECONDS` | Ventana en la que un `event_id` no vuelve a alertar |
+| `SEISMIK_ALERT_LEDGER_MAXLEN` | Tamaño de la bitácora consultable por la app |
+| `SEISMIK_ALERT_RECENT_LIMIT` | Alertas devueltas por `GET /v1/alerts/recent` |
+| `SEISMIK_GEOFENCE_RADIUS_KM` | Radio máximo que puede pedir un dispositivo |
+| `SEISMIK_ALERT_SPOOL_DIR` | Cola durable del detector (proceso detector) |
 
 Contrato e integración del Sprint 3:
 
@@ -267,8 +440,7 @@ Ejecute:
 
 ```bash
 flutter run \
-  --dart-define=SEISMIK_API_BASE_URL=https://api.su-dominio.example \
-  --dart-define=SEISMIK_DEVICE_KEY=clave-bootstrap
+  --dart-define=SEISMIK_API_BASE_URL=https://api.su-dominio.example
 ```
 
 En release, la app activa Play Integrity y App Attest con fallback DeviceCheck;
@@ -317,6 +489,139 @@ muestra el canal oficial aplicable (SGC, IGN, NRCan o USGS DYFI) y abre su
 formulario en el navegador. Seismik no lo completa ni lo envía automáticamente.
 Los reportes de daños no sustituyen una llamada a emergencias. Detalles de datos,
 privacidad y extensión de agencias: `docs/REPORTES_CIUDADANOS.md`.
+
+### Umbrales elegidos por la persona
+
+En Configuración se ajustan cuatro filtros que viajan al servidor en el registro
+del dispositivo y los aplica el dispatcher, no la app:
+
+| Ajuste | Efecto |
+|---|---|
+| Alertas tempranas | Recibir o no candidatos multiestación antes del reporte oficial |
+| Actualizaciones oficiales | Recibir o no la revisión publicada por una entidad geológica |
+| Magnitud mínima | Descarta actualizaciones oficiales por debajo del umbral |
+| Umbral de cercanía | Descarta avisos cuyo epicentro esté fuera del radio elegido |
+
+Cambiar cualquiera de ellos vuelve a registrar el dispositivo: sin ese paso el
+filtro nuevo no llegaría al dispatcher. El radio se acota siempre por la geocerca
+de la plataforma, de modo que nadie amplía su alcance más allá de la política.
+
+Un candidato sin epicentro estimado no se filtra por distancia: excluir por una
+posición desconocida silenciaría una alerta real.
+
+### Historial cartográfico y epicentros
+
+El historial es un mapa a pantalla completa con marcadores de eventos oficiales y
+de estaciones. La hoja inferior se arrastra entre tres posiciones fijas —16 %,
+36 % y 86 %— y el mapa permanece operable en todas. Tocar un marcador selecciona
+el evento en la lista y centra la cámara; tocar el mapa deselecciona.
+
+«Abrir epicentro» usa el proveedor elegido en Configuración:
+
+| Preferencia | Orden de intentos |
+|---|---|
+| Según el sistema | Apple Maps y Google Maps en iOS; intent `geo:` en Android; web al final |
+| Google Maps | `comgooglemaps://` en iOS, `geo:` en Android, web al final |
+| Apple Maps | Apple Maps en iOS; en Android sólo el respaldo web |
+
+Android 11+ oculta las apps instaladas salvo las declaradas en `<queries>`, e iOS
+sólo permite consultar los esquemas de `LSApplicationQueriesSchemes`. Ambos
+manifiestos los declaran; sin ellos, la acción caería siempre al respaldo web.
+
+### Funcionamiento sin conexión
+
+Un sismo suele dejar a la gente sin datos justo cuando más importa reportar.
+
+- Los reportes de sismo sentido y de daños se guardan en el teléfono cuando el
+  envío falla por red. El cuerpo se conserva tal cual se compuso: `report_id` y
+  `observed_at` no cambian al reintentar, así que la hora registrada sigue siendo
+  la del sismo y el servidor reconoce el reenvío como el mismo reporte.
+- La cola se reenvía al recuperar la red, en orden y deteniéndose ante el primer
+  fallo transitorio para no gastar batería repitiendo el mismo error.
+- Un rechazo definitivo del servidor (4xx de contrato) sale de la cola en lugar
+  de reintentarse indefinidamente; también se descartan los reportes con más de
+  30 días o 12 intentos.
+- Las alertas recibidas mientras el teléfono estuvo sin conexión se recuperan de
+  `GET /v1/alerts/recent` y se incorporan al historial sin duplicar.
+- El historial oficial ya consultado queda en caché local y se muestra cuando la
+  API no responde.
+
+La app indica cuántos reportes esperan conexión y permite reintentar a mano desde
+el historial y desde Configuración.
+
+### Compilación y verificación
+
+```bash
+cd mobile_app
+flutter analyze
+flutter test
+flutter build apk --release \
+  --dart-define=SEISMIK_API_BASE_URL=https://api.su-dominio.example
+```
+
+El APK universal de release incluye `arm64-v8a`, `armeabi-v7a` y `x86_64`. La
+firma exige `SEISMIK_KEYSTORE`, `SEISMIK_KEYSTORE_PASSWORD`, `SEISMIK_KEY_ALIAS`
+y `SEISMIK_KEY_PASSWORD`.
+
+Para verificar sólo que el release compila en una máquina sin acceso al keystore
+de producción:
+
+```bash
+flutter build apk --release -PseismikUnsignedReleaseCheck=true \
+  --dart-define=SEISMIK_API_BASE_URL=https://api.su-dominio.example
+```
+
+Ese APK queda firmado con la clave de depuración y **no es distribuible**: la
+bandera sólo tiene efecto cuando `SEISMIK_KEYSTORE` está ausente, y Gradle lo
+advierte en la salida. El job `android` de CI usa exactamente esta ruta y falla
+si el APK deja de incluir las tres ABIs.
+
+Para la distribución firmada, `tools/build-signed-release.ps1` descifra el blob
+DPAPI de la contraseña en la sesión de Windows que lo creó, se lo pasa a Gradle
+por variables de entorno del proceso y las borra al terminar. La contraseña no se
+imprime ni se escribe en disco; al final publica el SHA-256 del artefacto y la
+huella del certificado firmante como evidencia:
+
+```powershell
+.\tools\build-signed-release.ps1 `
+  -Keystore ..\..\work\secrets\seismik-upload.jks `
+  -PasswordFile ..\..\work\secrets\seismik-upload-password.dpapi `
+  -Alias seismik-upload `
+  -ApiBaseUrl https://api.seismik.org
+```
+
+El blob DPAPI sólo puede descifrarlo la cuenta de Windows que lo generó, así que
+este paso no puede automatizarse en CI ni ejecutarlo otra persona.
+
+### Preparación iOS
+
+iOS sólo puede compilarse y firmarse en macOS con Xcode. El repositorio deja
+lista la configuración:
+
+- `Runner.entitlements` declara `com.apple.developer.usernotifications.critical-alerts`.
+- `Info.plist` declara `LSApplicationQueriesSchemes` con `comgooglemaps` y `maps`.
+- `Flutter/Debug.xcconfig` y `Flutter/Release.xcconfig` incluyen de forma opcional
+  un `Seismik.xcconfig` local, ignorado por Git.
+
+```bash
+cp ios/Flutter/Seismik.xcconfig.example ios/Flutter/Seismik.xcconfig
+# completar SEISMIK_GOOGLE_MAPS_API_KEY y DEVELOPMENT_TEAM
+cd ios && pod install && cd ..
+flutter build ios --release \
+  --dart-define=SEISMIK_API_BASE_URL=https://api.su-dominio.example
+```
+
+`GoogleService-Info.plist` se agrega mediante Xcode y no se versiona. Sin la
+aprobación de Apple para el entitlement de alertas críticas, iOS degrada la
+alerta a una notificación normal.
+
+Como Xcode no existe fuera de macOS, la compilación iOS se verifica en CI: el job
+`ios` corre en `macos-latest`, instala los Pods y ejecuta
+`flutter build ios --release --no-codesign`, que valida el proyecto Xcode y el
+AOT de Dart sin necesidad de certificados. Después comprueba que el bundle
+resultante conserve `LSApplicationQueriesSchemes` y el entitlement de alertas
+críticas. `pytest tests/test_ios_configuration.py` valida los plists desde
+cualquier sistema operativo.
 
 ## Proyecto abierto
 

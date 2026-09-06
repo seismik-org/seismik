@@ -1,10 +1,12 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
 
+import '../../services/map_launcher.dart';
 import '../../state/mobile_settings.dart';
 import '../../state/seismik_state.dart';
 
@@ -14,6 +16,7 @@ class SettingsScreen extends StatelessWidget {
   final bool dynamicColorAvailable;
 
   static const Map<String, String> _historySources = <String, String>{
+    'seismik_seedlink_preliminary': 'Seismik / SeedLink · Preliminar',
     'sgc_colombia': 'SGC · Colombia',
     'usgs_global': 'USGS · Global',
     'igp_peru': 'IGP · Perú',
@@ -96,6 +99,42 @@ class SettingsScreen extends StatelessWidget {
                 ),
               ),
               _NotificationMagnitudeSlider(settings: settings),
+              _AlertRadiusSelector(settings: settings),
+            ],
+          ),
+          const SizedBox(height: 12),
+          _Section(
+            title: 'Mapas y sincronización',
+            icon: Icons.map_outlined,
+            children: <Widget>[
+              ListTile(
+                title: const Text('Abrir epicentros con'),
+                subtitle: const Text(
+                  'Se usa al tocar «Abrir epicentro» en un sismo. Si la app '
+                  'elegida no está instalada, se abre la versión web.',
+                ),
+                trailing: DropdownButton<MapProvider>(
+                  value: settings.mapProvider,
+                  onChanged: (value) => unawaited(
+                    settings.setMapProvider(value ?? MapProvider.system),
+                  ),
+                  items: MapProvider.values
+                      .where(
+                        (provider) =>
+                            provider != MapProvider.apple ||
+                            Platform.isIOS ||
+                            Platform.isMacOS,
+                      )
+                      .map(
+                        (provider) => DropdownMenuItem<MapProvider>(
+                          value: provider,
+                          child: Text(provider.label),
+                        ),
+                      )
+                      .toList(growable: false),
+                ),
+              ),
+              const _PendingReportsTile(),
             ],
           ),
           const SizedBox(height: 12),
@@ -229,7 +268,7 @@ class SettingsScreen extends StatelessWidget {
               const Padding(
                 padding: EdgeInsets.fromLTRB(16, 8, 16, 4),
                 child: Text(
-                  'Fuentes oficiales',
+                  'Fuentes del historial',
                   style: TextStyle(fontWeight: FontWeight.w800),
                 ),
               ),
@@ -239,9 +278,15 @@ class SettingsScreen extends StatelessWidget {
                   dense: true,
                   value: settings.historySources.contains(source.key),
                   title: Text(source.value),
-                  subtitle: source.key == 'usgs_global'
-                      ? const Text('Cobertura mundial de respaldo')
-                      : null,
+                  subtitle: switch (source.key) {
+                    'usgs_global' => const Text(
+                      'Cobertura mundial de respaldo',
+                    ),
+                    'seismik_seedlink_preliminary' => const Text(
+                      'Detección automática STA/LTA multiestación. No es un reporte oficial ni asigna magnitud sin cálculo confiable.',
+                    ),
+                    _ => null,
+                  },
                   onChanged: (selected) => unawaited(
                     settings.setHistorySource(source.key, selected ?? false),
                   ),
@@ -314,7 +359,7 @@ class _Header extends StatelessWidget {
                   'Seismik',
                   style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900),
                 ),
-                Text('Beta experimental 0.6.4'),
+                Text('Beta experimental 0.6.6'),
               ],
             ),
           ),
@@ -417,4 +462,65 @@ class _MagnitudeSliderState extends State<_MagnitudeSlider> {
           unawaited(widget.settings.setMinimumHistoryMagnitude(value)),
     ),
   );
+}
+
+/// Umbral de cercanía: sólo llegan avisos cuyo epicentro esté dentro del radio.
+class _AlertRadiusSelector extends StatelessWidget {
+  const _AlertRadiusSelector({required this.settings});
+
+  final MobileSettings settings;
+
+  @override
+  Widget build(BuildContext context) => ListTile(
+    title: const Text('Umbral de cercanía'),
+    subtitle: Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 4,
+        children: MobileSettings.alertRadiusOptions
+            .map(
+              (radius) => ChoiceChip(
+                label: Text('${radius.toStringAsFixed(0)} km'),
+                selected: settings.alertRadiusKm == radius,
+                onSelected: (selected) {
+                  if (selected) unawaited(settings.setAlertRadiusKm(radius));
+                },
+              ),
+            )
+            .toList(growable: false),
+      ),
+    ),
+    isThreeLine: true,
+  );
+}
+
+/// Estado de la cola de reportes creados sin conexión.
+class _PendingReportsTile extends StatelessWidget {
+  const _PendingReportsTile();
+
+  @override
+  Widget build(BuildContext context) {
+    final SeismikState state = context.watch<SeismikState>();
+    final int pending = state.pendingReportCount;
+    return ListTile(
+      leading: Icon(
+        pending > 0 ? Icons.cloud_upload_outlined : Icons.cloud_done_outlined,
+      ),
+      title: const Text('Reportes sin enviar'),
+      subtitle: Text(
+        pending == 0
+            ? state.syncMessage ?? 'No hay reportes pendientes.'
+            : (pending == 1
+                  ? '1 reporte guardado se enviará al recuperar la conexión.'
+                  : '$pending reportes guardados se enviarán al recuperar la conexión.'),
+      ),
+      trailing: pending == 0
+          ? null
+          : TextButton(
+              onPressed: () => unawaited(state.flushPendingReports()),
+              child: const Text('Enviar ahora'),
+            ),
+    );
+  }
 }

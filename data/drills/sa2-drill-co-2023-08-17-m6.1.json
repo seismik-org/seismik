@@ -1,0 +1,71 @@
+{
+  "schema_version": 1,
+  "executed_at": "2026-08-31T02:49:37Z",
+  "source": {
+    "kind": "replay",
+    "case": "co-2023-08-17-m6.1"
+  },
+  "candidate_event_id": "31bc9af545ee16f8df48884f",
+  "official_event_id": null,
+  "devices": [
+    {
+      "device_id": "drill-device-cerca",
+      "expectation": "recibe la alerta temprana y la actualización oficial"
+    },
+    {
+      "device_id": "drill-device-lejos",
+      "expectation": "queda fuera del radio elegido"
+    },
+    {
+      "device_id": "drill-device-umbral-alto",
+      "expectation": "recibe la alerta temprana pero no la oficial"
+    },
+    {
+      "device_id": "drill-device-silenciado",
+      "expectation": "desactivó las alertas tempranas"
+    }
+  ],
+  "ingest": {
+    "candidate_accepted": {
+      "accepted": true,
+      "duplicate": false,
+      "stream_id": "1788144576708-0"
+    },
+    "candidate_repeated": {
+      "accepted": true,
+      "duplicate": true,
+      "stream_id": null
+    },
+    "official_accepted": null
+  },
+  "push_attempts": [
+    {
+      "event_id": "31bc9af545ee16f8df48884f",
+      "critical": true,
+      "targets": [
+        "drill-device-cerca",
+        "drill-device-umbral-alto"
+      ],
+      "dry_run": true
+    }
+  ],
+  "alert_ledger_by_device": {
+    "drill-device-cerca": [
+      "31bc9af545ee16f8df48884f"
+    ],
+    "drill-device-lejos": [],
+    "drill-device-umbral-alto": [
+      "31bc9af545ee16f8df48884f"
+    ],
+    "drill-device-silenciado": []
+  },
+  "timings_ms": {
+    "candidate_ingest_ms": 16.38,
+    "dispatch_ms": 10.22
+  },
+  "limitations": [
+    "Redis se sustituye por fakeredis: el simulacro no mide durabilidad real.",
+    "El push queda en dry_run; ningún teléfono recibió una notificación.",
+    "No reemplaza el simulacro con testers y dispositivos reales."
+  ]
+}

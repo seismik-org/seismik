@@ -4,6 +4,7 @@ import asyncio
 import json
 import logging
 import signal
+from datetime import datetime, timezone
 from typing import Any, cast
 
 from redis.asyncio import Redis
@@ -11,6 +12,7 @@ from redis.exceptions import ResponseError
 
 from api.config import AppSettings, get_settings
 from api.devices_store import DeviceRepository
+from dispatcher.policy import AlertPolicy
 from dispatcher.push import PushDispatcher, PushResult, notification_content
 from runtime_health import start_health_server
 
@@ -24,11 +26,13 @@ class StreamConsumer:
         settings: AppSettings,
         devices: DeviceRepository,
         push: PushDispatcher,
+        policy: AlertPolicy | None = None,
     ):
         self.redis = redis
         self.settings = settings
         self.devices = devices
         self.push = push
+        self.policy = policy or AlertPolicy(redis, settings)
         self.streams = (settings.candidate_stream, settings.official_stream)
         self._stop = asyncio.Event()
 
@@ -93,53 +97,127 @@ class StreamConsumer:
         await self.redis.set(
             f"seismik:event-zone:{event['event_id']}", mapping, ex=self.settings.event_zone_ttl_seconds
         )
-        cooldown_key = f"seismik:alert:cooldown:{zone_id}"
-        if await self.redis.exists(cooldown_key):
-            LOGGER.info("Critical alert suppressed by cooldown zone=%s", zone_id)
+        # La reclamación ocurre antes del envío: dos dispatchers en paralelo no
+        # pueden alertar la misma zona, y el cooldown ya no depende de que el
+        # push termine sin fallar.
+        decision = await self.policy.claim_candidate(event)
+        if decision.suppressed:
+            LOGGER.info(
+                "Critical alert suppressed reason=%s zone=%s event_id=%s",
+                decision.reason, zone_id, event["event_id"],
+            )
             return
-        targets = await self.devices.recipients(
-            zone_id=zone_id,
-            latitude=latitude,
-            longitude=longitude,
-            radius_km=self.settings.geofence_radius_km,
-        )
-        targets = [target for target in targets if target.receive_early_alerts]
-        result = await self.push.send(event, targets, critical=True)
-        await self._record_dry_run(event, result, critical=True)
-        await self._remove_invalid(result.invalid_device_ids)
-        await self.redis.set(cooldown_key, event["event_id"], ex=self.settings.alert_cooldown_seconds)
+        await self._enqueue_integration_event(event)
+        try:
+            targets = await self.devices.recipients(
+                zone_id=zone_id,
+                latitude=latitude,
+                longitude=longitude,
+                radius_km=self.settings.geofence_radius_km,
+            )
+            targets = self.policy.filter_critical(
+                targets, latitude=latitude, longitude=longitude
+            )
+            result = await self.push.send(event, targets, critical=True)
+            await self._record_dry_run(event, result, critical=True)
+            await self._record_ledger(event, critical=True, delivered=result.attempted)
+            await self._remove_invalid(result.invalid_device_ids)
+        except Exception:
+            await self.policy.release(decision)
+            raise
         LOGGER.info(
             "Critical push event_id=%s attempted=%d succeeded=%d",
             event["event_id"], result.attempted, result.succeeded,
         )
 
     async def _handle_official(self, event: dict[str, Any]) -> None:
-        sent_key = f"seismik:push:sent:{event['event_id']}"
-        if await self.redis.exists(sent_key):
+        decision = await self.policy.claim_official(event)
+        if decision.suppressed:
+            LOGGER.info(
+                "Official update suppressed reason=%s event_id=%s",
+                decision.reason, event["event_id"],
+            )
             return
+        await self._enqueue_integration_event(event)
         report = event["preferred_report"]
         mapping_raw = await self.redis.get(f"seismik:event-zone:{event['candidate_event_id']}")
         mapping = json.loads(mapping_raw) if mapping_raw else {}
-        targets = await self.devices.recipients(
-            zone_id=mapping.get("zone_id"),
-            latitude=report.get("latitude", mapping.get("latitude")),
-            longitude=report.get("longitude", mapping.get("longitude")),
-            radius_km=self.settings.geofence_radius_km,
-        )
-        magnitude = report.get("magnitude")
-        targets = [
-            target
-            for target in targets
-            if target.receive_official_updates
-            and (magnitude is None or float(magnitude) >= target.minimum_notification_magnitude)
-        ]
-        result = await self.push.send(event, targets, critical=False)
-        await self._record_dry_run(event, result, critical=False)
-        await self._remove_invalid(result.invalid_device_ids)
-        await self.redis.set(sent_key, "1", ex=self.settings.push_idempotency_seconds)
+        latitude = report.get("latitude", mapping.get("latitude"))
+        longitude = report.get("longitude", mapping.get("longitude"))
+        try:
+            targets = await self.devices.recipients(
+                zone_id=mapping.get("zone_id"),
+                latitude=latitude,
+                longitude=longitude,
+                radius_km=self.settings.geofence_radius_km,
+            )
+            targets = self.policy.filter_official(
+                targets,
+                magnitude=report.get("magnitude"),
+                latitude=latitude,
+                longitude=longitude,
+            )
+            result = await self.push.send(event, targets, critical=False)
+            await self._record_dry_run(event, result, critical=False)
+            await self._record_ledger(event, critical=False, delivered=result.attempted)
+            await self._remove_invalid(result.invalid_device_ids)
+        except Exception:
+            await self.policy.release(decision)
+            raise
         LOGGER.info(
             "Official push event_id=%s attempted=%d succeeded=%d",
             event["event_id"], result.attempted, result.succeeded,
+        )
+
+    async def _enqueue_integration_event(self, event: dict[str, Any]) -> None:
+        """Desacopla el push móvil de las salidas de terceros.
+
+        Los receptores de organizaciones se procesan en otro consumer: una
+        URL lenta o caída no puede retrasar la alerta de las personas.
+        """
+
+        await self.redis.xadd(
+            self.settings.integration_stream,
+            {"event_id": str(event["event_id"]), "payload": json.dumps(event, separators=(",", ":"))},
+            maxlen=self.settings.stream_maxlen,
+            approximate=True,
+        )
+
+    async def _record_ledger(
+        self, event: dict[str, Any], *, critical: bool, delivered: int
+    ) -> None:
+        """Guarda la alerta emitida para que una app sin conexión la recupere."""
+
+        report = event.get("preferred_report") or {}
+        entry = {
+            "event_id": str(event["event_id"]),
+            "type": str(event["type"]),
+            "critical": "true" if critical else "false",
+            "emitted_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            "delivered": str(delivered),
+            "payload": json.dumps(
+                {
+                    "event_id": event["event_id"],
+                    "type": event["type"],
+                    "zone_id": event.get("zone_id"),
+                    "latitude": report.get("latitude", event.get("estimated_latitude")),
+                    "longitude": report.get("longitude", event.get("estimated_longitude")),
+                    "magnitude": report.get("magnitude"),
+                    "depth_km": report.get("depth_km"),
+                    "place": report.get("place"),
+                    "agency": report.get("agency"),
+                    "official_url": report.get("official_url"),
+                },
+                ensure_ascii=False,
+                separators=(",", ":"),
+                default=str,
+            ),
+        }
+        await self.redis.xadd(
+            self.settings.alert_ledger_stream,
+            cast(dict[Any, Any], entry),
+            maxlen=self.settings.alert_ledger_maxlen,
+            approximate=True,
         )
 
     async def _remove_invalid(self, device_ids: tuple[str, ...]) -> None:

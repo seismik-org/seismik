@@ -20,6 +20,8 @@ mobile_app/ios/Flutter/Generated.xcconfig
 mobile_app/ios/Flutter/flutter_export_environment.sh
 mobile_app/ios/Pods/
 mobile_app/ios/Runner/GoogleService-Info.plist
+# Configuracion local de iOS (clave de mapas y equipo de firma).
+mobile_app/ios/Flutter/Seismik.xcconfig
 *.jks
 *.keystore
 *.p8

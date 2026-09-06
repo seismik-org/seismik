@@ -13,8 +13,8 @@ from api.dependencies import (
     ApiPrincipal,
     get_app_settings,
     get_redis,
-    require_events_read,
-    require_stations_read,
+    require_mobile_events_read,
+    require_mobile_stations_read,
 )
 
 router = APIRouter(prefix="/v1", tags=["public-monitor"])
@@ -47,7 +47,7 @@ def _load_stations(catalog_path: str) -> tuple[dict[str, Any], ...]:
 @router.get("/network/stations")
 async def network_stations(
     settings: AppSettings = Depends(get_app_settings),
-    _authorized: ApiPrincipal = Depends(require_stations_read),
+    _authorized: ApiPrincipal = Depends(require_mobile_stations_read),
 ) -> dict[str, list[dict[str, Any]]]:
     try:
         stations = _load_stations(settings.station_catalog_path)
@@ -60,7 +60,7 @@ async def network_stations(
 async def recent_events(
     settings: AppSettings = Depends(get_app_settings),
     redis: Redis = Depends(get_redis),
-    _authorized: ApiPrincipal = Depends(require_events_read),
+    _authorized: ApiPrincipal = Depends(require_mobile_events_read),
 ) -> dict[str, list[dict[str, Any]]]:
     raw = cast(
         list[tuple[str, dict[str, str]]],

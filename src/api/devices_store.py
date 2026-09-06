@@ -49,6 +49,7 @@ class DeviceRepository:
             "receive_early_alerts": "1" if registration.receive_early_alerts else "0",
             "receive_official_updates": "1" if registration.receive_official_updates else "0",
             "minimum_notification_magnitude": str(registration.minimum_notification_magnitude),
+            "alert_radius_km": str(registration.alert_radius_km),
             "locale": registration.locale,
             "updated_at": datetime.now(timezone.utc).isoformat(),
         }
@@ -116,10 +117,35 @@ class DeviceRepository:
                     receive_early_alerts=record.get("receive_early_alerts", "1") == "1",
                     receive_official_updates=record.get("receive_official_updates", "1") == "1",
                     minimum_notification_magnitude=float(record.get("minimum_notification_magnitude", "4.0")),
+                    alert_radius_km=_as_float(record.get("alert_radius_km")) or 250.0,
+                    latitude=_as_float(record.get("latitude")),
+                    longitude=_as_float(record.get("longitude")),
                     locale=record.get("locale") or "es",
                 )
             )
         return result
+
+    async def resolve(self, device_id: str) -> DeviceTarget | None:
+        """Devuelve el dispositivo registrado para filtrar su bitácora de alertas."""
+
+        record = cast(dict[str, str], await self.redis.hgetall(self._device_key(device_id)))
+        if not record or not record.get("token"):
+            return None
+        return DeviceTarget(
+            device_id=device_id,
+            platform=Platform(record["platform"]),
+            token=record["token"],
+            critical_alerts_authorized=record.get("critical_alerts_authorized") == "1",
+            receive_early_alerts=record.get("receive_early_alerts", "1") == "1",
+            receive_official_updates=record.get("receive_official_updates", "1") == "1",
+            minimum_notification_magnitude=float(
+                record.get("minimum_notification_magnitude", "4.0")
+            ),
+            alert_radius_km=_as_float(record.get("alert_radius_km")) or 250.0,
+            latitude=_as_float(record.get("latitude")),
+            longitude=_as_float(record.get("longitude")),
+            locale=record.get("locale") or "es",
+        )
 
     async def _remove_indexes(self, device_id: str, record: Mapping[str, str]) -> None:
         pipe = self.redis.pipeline(transaction=True)
@@ -129,3 +155,14 @@ class DeviceRepository:
             pipe.delete(self._token_key(record["platform"], record["token"]))
         pipe.zrem(self.GEO_KEY, device_id)
         await pipe.execute()
+
+
+def _as_float(value: str | None) -> float | None:
+    """Los hashes de Redis guardan cadenas; una coordenada ausente queda vacía."""
+
+    if value is None or value == "":
+        return None
+    try:
+        return float(value)
+    except ValueError:
+        return None

@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Seismik Platform API",
-    "version": "0.3.0"
+    "version": "0.4.0"
   },
   "paths": {
     "/v1/events/candidate": {
@@ -611,33 +611,15 @@
         ],
         "summary": "Register Device",
         "operationId": "register_device_v1_devices_register_post",
-        "parameters": [
-          {
-            "name": "X-Seismik-Device-Key",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Seismik-Device-Key"
-            }
-          }
-        ],
         "requestBody": {
-          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/DeviceRegistration"
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "200": {
@@ -672,7 +654,7 @@
         "operationId": "unregister_device_v1_devices_unregister_post",
         "parameters": [
           {
-            "name": "X-Seismik-Device-Key",
+            "name": "X-Seismik-Device-Session",
             "in": "header",
             "required": false,
             "schema": {
@@ -684,7 +666,7 @@
                   "type": "null"
                 }
               ],
-              "title": "X-Seismik-Device-Key"
+              "title": "X-Seismik-Device-Session"
             }
           }
         ],
@@ -712,6 +694,797 @@
                 }
               }
             }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/alerts/recent": {
+      "get": {
+        "tags": [
+          "alerts"
+        ],
+        "summary": "Recent Alerts",
+        "operationId": "recent_alerts_v1_alerts_recent_get",
+        "parameters": [
+          {
+            "name": "device_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 8,
+              "maxLength": 128,
+              "pattern": "^[A-Za-z0-9._:-]+$",
+              "title": "Device Id"
+            }
+          },
+          {
+            "name": "since",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 64,
+                  "pattern": "^\\d+-\\d+$"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Cursor devuelto por una consulta anterior",
+              "title": "Since"
+            },
+            "description": "Cursor devuelto por una consulta anterior"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "maximum": 200,
+                  "minimum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "X-Seismik-Device-Session",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Seismik-Device-Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlertLedgerPage"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/developer/config": {
+      "get": {
+        "tags": [
+          "developer-platform"
+        ],
+        "summary": "Portal Config",
+        "operationId": "portal_config_v1_developer_config_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PortalConfigResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/developer/keys": {
+      "get": {
+        "tags": [
+          "developer-platform"
+        ],
+        "summary": "List Keys",
+        "operationId": "list_keys_v1_developer_keys_get",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "seismik_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Seismik Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KeyListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "developer-platform"
+        ],
+        "summary": "Create Key",
+        "operationId": "create_key_v1_developer_keys_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "seismik_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Seismik Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/KeyCreateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KeySecretResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/developer/keys/{key_id}/rotate": {
+      "post": {
+        "tags": [
+          "developer-platform"
+        ],
+        "summary": "Rotate Key",
+        "operationId": "rotate_key_v1_developer_keys__key_id__rotate_post",
+        "parameters": [
+          {
+            "name": "key_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Key Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "seismik_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Seismik Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/KeyCreateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KeySecretResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/developer/keys/{key_id}": {
+      "delete": {
+        "tags": [
+          "developer-platform"
+        ],
+        "summary": "Revoke Key",
+        "operationId": "revoke_key_v1_developer_keys__key_id__delete",
+        "parameters": [
+          {
+            "name": "key_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Key Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "seismik_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Seismik Session"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/developer/webhooks": {
+      "get": {
+        "tags": [
+          "organization-webhooks"
+        ],
+        "summary": "List Webhooks",
+        "operationId": "list_webhooks_v1_developer_webhooks_get",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "seismik_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Seismik Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebhookListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "organization-webhooks"
+        ],
+        "summary": "Create Webhook",
+        "operationId": "create_webhook_v1_developer_webhooks_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "seismik_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Seismik Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WebhookCreateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebhookSecretResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/developer/webhooks/{webhook_id}": {
+      "delete": {
+        "tags": [
+          "organization-webhooks"
+        ],
+        "summary": "Disable Webhook",
+        "operationId": "disable_webhook_v1_developer_webhooks__webhook_id__delete",
+        "parameters": [
+          {
+            "name": "webhook_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Webhook Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "seismik_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Seismik Session"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/oauth/google/start": {
+      "get": {
+        "tags": [
+          "oauth"
+        ],
+        "summary": "Google Start",
+        "operationId": "google_start_v1_oauth_google_start_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/oauth/google/callback": {
+      "get": {
+        "tags": [
+          "oauth"
+        ],
+        "summary": "Google Callback",
+        "operationId": "google_callback_v1_oauth_google_callback_get",
+        "parameters": [
+          {
+            "name": "code",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Code"
+            }
+          },
+          {
+            "name": "state",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "State"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/oauth/session": {
+      "get": {
+        "tags": [
+          "oauth"
+        ],
+        "summary": "Current Session",
+        "operationId": "current_session_v1_oauth_session_get",
+        "parameters": [
+          {
+            "name": "seismik_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Seismik Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Current Session V1 Oauth Session Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/oauth/logout": {
+      "post": {
+        "tags": [
+          "oauth"
+        ],
+        "summary": "Logout",
+        "operationId": "logout_v1_oauth_logout_post",
+        "parameters": [
+          {
+            "name": "seismik_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Seismik Session"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
           },
           "422": {
             "description": "Validation Error",
@@ -851,21 +1624,65 @@
         ],
         "summary": "Network Stations",
         "operationId": "network_stations_v1_network_stations_get",
+        "parameters": [
+          {
+            "name": "X-Seismik-Device-Session",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Seismik-Device-Session"
+            }
+          },
+          {
+            "name": "X-Seismik-API-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Seismik-Api-Key"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": {
-                    "items": {
-                      "additionalProperties": true,
-                      "type": "object"
-                    },
-                    "type": "array"
-                  },
                   "type": "object",
+                  "additionalProperties": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": true
+                    }
+                  },
                   "title": "Response Network Stations V1 Network Stations Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -880,21 +1697,65 @@
         ],
         "summary": "Recent Events",
         "operationId": "recent_events_v1_events_recent_get",
+        "parameters": [
+          {
+            "name": "X-Seismik-Device-Session",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Seismik-Device-Session"
+            }
+          },
+          {
+            "name": "X-Seismik-API-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Seismik-Api-Key"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": {
-                    "items": {
-                      "additionalProperties": true,
-                      "type": "object"
-                    },
-                    "type": "array"
-                  },
                   "type": "object",
+                  "additionalProperties": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": true
+                    }
+                  },
                   "title": "Response Recent Events V1 Events Recent Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -955,6 +1816,38 @@
               "minimum": 1,
               "default": 200,
               "title": "Limit"
+            }
+          },
+          {
+            "name": "X-Seismik-Device-Session",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Seismik-Device-Session"
+            }
+          },
+          {
+            "name": "X-Seismik-API-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Seismik-Api-Key"
             }
           }
         ],
@@ -1316,6 +2209,157 @@
         "title": "AgencyRoute",
         "x-product": "Seismik"
       },
+      "AlertLedgerEntry": {
+        "properties": {
+          "event_id": {
+            "type": "string",
+            "title": "Event Id"
+          },
+          "type": {
+            "type": "string",
+            "title": "Type"
+          },
+          "critical": {
+            "type": "boolean",
+            "title": "Critical"
+          },
+          "emitted_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Emitted At"
+          },
+          "zone_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Zone Id"
+          },
+          "latitude": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 90.0,
+                "minimum": -90.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latitude"
+          },
+          "longitude": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 180.0,
+                "minimum": -180.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Longitude"
+          },
+          "magnitude": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Magnitude"
+          },
+          "depth_km": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Depth Km"
+          },
+          "place": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Place"
+          },
+          "agency": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agency"
+          },
+          "official_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Official Url"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "event_id",
+          "type",
+          "critical",
+          "emitted_at"
+        ],
+        "title": "AlertLedgerEntry",
+        "description": "Alerta ya emitida, recuperable por una app que estuvo sin conexión.",
+        "x-product": "Seismik"
+      },
+      "AlertLedgerPage": {
+        "properties": {
+          "alerts": {
+            "items": {
+              "$ref": "#/components/schemas/AlertLedgerEntry"
+            },
+            "type": "array",
+            "title": "Alerts",
+            "default": []
+          },
+          "cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cursor"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "AlertLedgerPage",
+        "x-product": "Seismik"
+      },
       "DeviceRegistration": {
         "properties": {
           "device_id": {
@@ -1411,6 +2455,31 @@
             "title": "Critical Alerts Authorized",
             "default": false
           },
+          "receive_early_alerts": {
+            "type": "boolean",
+            "title": "Receive Early Alerts",
+            "default": true
+          },
+          "receive_official_updates": {
+            "type": "boolean",
+            "title": "Receive Official Updates",
+            "default": true
+          },
+          "minimum_notification_magnitude": {
+            "type": "number",
+            "maximum": 10.0,
+            "minimum": 0.0,
+            "title": "Minimum Notification Magnitude",
+            "default": 4.0
+          },
+          "alert_radius_km": {
+            "type": "number",
+            "maximum": 2000.0,
+            "minimum": 10.0,
+            "title": "Alert Radius Km",
+            "description": "Radio máximo, elegido por la persona, para recibir avisos",
+            "default": 250.0
+          },
           "locale": {
             "type": "string",
             "maxLength": 16,
@@ -1469,6 +2538,10 @@
           "crowd_token": {
             "type": "string",
             "title": "Crowd Token"
+          },
+          "device_session_token": {
+            "type": "string",
+            "title": "Device Session Token"
           }
         },
         "additionalProperties": false,
@@ -1476,7 +2549,8 @@
         "required": [
           "device_id",
           "registered",
-          "crowd_token"
+          "crowd_token",
+          "device_session_token"
         ],
         "title": "DeviceRegistrationResponse",
         "x-product": "Seismik"
@@ -1498,6 +2572,34 @@
         "title": "DeviceUnregister",
         "x-product": "Seismik"
       },
+      "FirebaseWebConfig": {
+        "properties": {
+          "api_key": {
+            "type": "string",
+            "title": "Api Key"
+          },
+          "auth_domain": {
+            "type": "string",
+            "title": "Auth Domain"
+          },
+          "project_id": {
+            "type": "string",
+            "title": "Project Id"
+          },
+          "app_id": {
+            "type": "string",
+            "title": "App Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "api_key",
+          "auth_domain",
+          "project_id",
+          "app_id"
+        ],
+        "title": "FirebaseWebConfig"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -1510,6 +2612,226 @@
         },
         "type": "object",
         "title": "HTTPValidationError"
+      },
+      "KeyCreateRequest": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 60,
+            "minLength": 3,
+            "title": "Name"
+          },
+          "scopes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "uniqueItems": true,
+            "title": "Scopes"
+          },
+          "accepted_terms_version": {
+            "type": "string",
+            "title": "Accepted Terms Version"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "accepted_terms_version"
+        ],
+        "title": "KeyCreateRequest"
+      },
+      "KeyListResponse": {
+        "properties": {
+          "keys": {
+            "items": {
+              "$ref": "#/components/schemas/KeySummary"
+            },
+            "type": "array",
+            "title": "Keys"
+          },
+          "active_count": {
+            "type": "integer",
+            "title": "Active Count"
+          },
+          "active_limit": {
+            "type": "integer",
+            "title": "Active Limit"
+          }
+        },
+        "type": "object",
+        "required": [
+          "keys",
+          "active_count",
+          "active_limit"
+        ],
+        "title": "KeyListResponse"
+      },
+      "KeySecretResponse": {
+        "properties": {
+          "key_id": {
+            "type": "string",
+            "title": "Key Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "prefix": {
+            "type": "string",
+            "title": "Prefix"
+          },
+          "plan": {
+            "type": "string",
+            "const": "free",
+            "title": "Plan",
+            "default": "free"
+          },
+          "scopes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Scopes"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "revoked"
+            ],
+            "title": "Status"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          },
+          "last_used_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Used At"
+          },
+          "revoked_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revoked At"
+          },
+          "requests_today": {
+            "type": "integer",
+            "title": "Requests Today",
+            "default": 0
+          },
+          "key": {
+            "type": "string",
+            "title": "Key"
+          },
+          "warning": {
+            "type": "string",
+            "title": "Warning",
+            "default": "Guárdala ahora: no volverá a mostrarse."
+          }
+        },
+        "type": "object",
+        "required": [
+          "key_id",
+          "name",
+          "prefix",
+          "scopes",
+          "status",
+          "created_at",
+          "key"
+        ],
+        "title": "KeySecretResponse"
+      },
+      "KeySummary": {
+        "properties": {
+          "key_id": {
+            "type": "string",
+            "title": "Key Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "prefix": {
+            "type": "string",
+            "title": "Prefix"
+          },
+          "plan": {
+            "type": "string",
+            "const": "free",
+            "title": "Plan",
+            "default": "free"
+          },
+          "scopes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Scopes"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "revoked"
+            ],
+            "title": "Status"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          },
+          "last_used_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Used At"
+          },
+          "revoked_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revoked At"
+          },
+          "requests_today": {
+            "type": "integer",
+            "title": "Requests Today",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "key_id",
+          "name",
+          "prefix",
+          "scopes",
+          "status",
+          "created_at"
+        ],
+        "title": "KeySummary"
       },
       "LocationPrecision": {
         "type": "string",
@@ -1526,6 +2848,53 @@
           "android"
         ],
         "title": "Platform"
+      },
+      "PortalConfigResponse": {
+        "properties": {
+          "firebase_enabled": {
+            "type": "boolean",
+            "title": "Firebase Enabled"
+          },
+          "firebase": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FirebaseWebConfig"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "terms_version": {
+            "type": "string",
+            "title": "Terms Version"
+          },
+          "plans": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Plans"
+          },
+          "products": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Products"
+          }
+        },
+        "type": "object",
+        "required": [
+          "firebase_enabled",
+          "firebase",
+          "terms_version",
+          "plans",
+          "products"
+        ],
+        "title": "PortalConfigResponse"
       },
       "ReportAccepted": {
         "properties": {
@@ -1665,6 +3034,220 @@
           "type"
         ],
         "title": "ValidationError"
+      },
+      "WebhookCreateRequest": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 60,
+            "minLength": 3,
+            "title": "Name"
+          },
+          "endpoint": {
+            "type": "string",
+            "maxLength": 2083,
+            "minLength": 1,
+            "format": "uri",
+            "title": "Endpoint"
+          },
+          "event_types": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "uniqueItems": true,
+            "title": "Event Types"
+          },
+          "mode": {
+            "type": "string",
+            "const": "simulation_only",
+            "title": "Mode",
+            "default": "simulation_only"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "endpoint"
+        ],
+        "title": "WebhookCreateRequest"
+      },
+      "WebhookListResponse": {
+        "properties": {
+          "webhooks": {
+            "items": {
+              "$ref": "#/components/schemas/WebhookSummary"
+            },
+            "type": "array",
+            "title": "Webhooks"
+          },
+          "safety_notice": {
+            "type": "string",
+            "title": "Safety Notice",
+            "default": "Integración de simulación: nunca conecta ni autoriza controles físicos de IoT."
+          }
+        },
+        "type": "object",
+        "required": [
+          "webhooks"
+        ],
+        "title": "WebhookListResponse"
+      },
+      "WebhookSecretResponse": {
+        "properties": {
+          "webhook_id": {
+            "type": "string",
+            "title": "Webhook Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "endpoint": {
+            "type": "string",
+            "title": "Endpoint"
+          },
+          "event_types": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Event Types"
+          },
+          "mode": {
+            "type": "string",
+            "const": "simulation_only",
+            "title": "Mode"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "disabled"
+            ],
+            "title": "Status"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          },
+          "last_delivered_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Delivered At"
+          },
+          "last_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Error"
+          },
+          "signing_secret": {
+            "type": "string",
+            "title": "Signing Secret"
+          },
+          "warning": {
+            "type": "string",
+            "title": "Warning",
+            "default": "Guárdalo ahora: Seismik no volverá a mostrar este secreto."
+          }
+        },
+        "type": "object",
+        "required": [
+          "webhook_id",
+          "name",
+          "endpoint",
+          "event_types",
+          "mode",
+          "status",
+          "created_at",
+          "signing_secret"
+        ],
+        "title": "WebhookSecretResponse"
+      },
+      "WebhookSummary": {
+        "properties": {
+          "webhook_id": {
+            "type": "string",
+            "title": "Webhook Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "endpoint": {
+            "type": "string",
+            "title": "Endpoint"
+          },
+          "event_types": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Event Types"
+          },
+          "mode": {
+            "type": "string",
+            "const": "simulation_only",
+            "title": "Mode"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "disabled"
+            ],
+            "title": "Status"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          },
+          "last_delivered_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Delivered At"
+          },
+          "last_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Error"
+          }
+        },
+        "type": "object",
+        "required": [
+          "webhook_id",
+          "name",
+          "endpoint",
+          "event_types",
+          "mode",
+          "status",
+          "created_at"
+        ],
+        "title": "WebhookSummary"
       }
     }
   }

@@ -1,0 +1,13 @@
+// Configuración local de Seismik para iOS. Copia este archivo como
+// `Seismik.xcconfig` (ignorado por Git) y completa los valores del equipo.
+//
+//   cp Flutter/Seismik.xcconfig.example Flutter/Seismik.xcconfig
+//
+// La clave de Google Maps se lee desde Info.plist y la entrega
+// AppDelegate.swift a GMSServices. Si se deja vacía, la app arranca sin mapas
+// nativos de Google en iOS en lugar de fallar.
+SEISMIK_GOOGLE_MAPS_API_KEY =
+
+// Equipo de firma para las Critical Alerts y APNs. Debe coincidir con el
+// perfil aprobado por Apple para el entitlement de alertas críticas.
+DEVELOPMENT_TEAM =

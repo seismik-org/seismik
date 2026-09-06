@@ -29,6 +29,7 @@ dependencies = [
 seismik-detector = "eew.main:main"
 seismik-api = "api.app:main"
 seismik-dispatcher = "dispatcher.consumer:main"
+seismik-integrations = "dispatcher.integrations:main"
 seismik-replay = "eew.replay:main"
 
 [tool.setuptools.packages.find]

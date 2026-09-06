@@ -91,7 +91,9 @@ El proyecto está en el **Sprint 4 — Aplicación Android y reporte offline mí
 Los Sprints 1, 2 y 3 tienen cierre técnico; Sprint 4 está avanzado, pero aún no
 cumple todos sus criterios de cierre porque faltan la sincronización offline
 completa, la validación en dos teléfonos y la estabilización del entorno beta.
-Los Sprints Añadidos 1 y 2 quedan planificados y no se consideran iniciados.
+El Sprint Añadido 1 quedó desplegado y el Sprint Añadido 2 está implementado;
+ambos conservan puertas de control abiertas y ninguno autoriza alertas
+públicas certificadas.
 
 ## 7. Sprint 0 — Línea base, alcance y gobierno
 
@@ -302,4 +304,4 @@ temprana operativa requieren aprobaciones externas y una decisión Go/No-Go apar
 | Rol | Decisión | Fecha | Observaciones |
 |---|---|---|---|
 | Product Owner | Pendiente | Pendiente | Aprobar el horizonte ampliado de diez sprints y responsabilidades |
-| Responsable técnico | Actualizado | 2026-08-30 | Sprint 4 en curso; Sprints Añadidos 1 y 2 aún no iniciados |
+| Responsable técnico | Actualizado | 2026-08-30 | Sprint 4 en curso; Sprint Añadido 1 desplegado; Sprint Añadido 2 implementado con simulacro multiplataforma y revisión científica pendientes |

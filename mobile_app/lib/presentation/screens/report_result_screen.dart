@@ -1,17 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../data/models/citizen_report.dart';
+import '../../services/in_app_browser.dart';
 
 class ReportResultScreen extends StatelessWidget {
   const ReportResultScreen({required this.result, super.key});
   final ReportResult result;
 
   Future<void> _open(BuildContext context, String url) async {
-    final bool opened = await launchUrl(
-      Uri.parse(url),
-      mode: LaunchMode.externalApplication,
-    );
+    final bool opened = await openWebLink(Uri.parse(url));
     if (!opened && context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -21,30 +18,48 @@ class ReportResultScreen extends StatelessWidget {
     }
   }
 
+  IconData get _statusIcon {
+    if (result.queuedOffline) return Icons.cloud_off_rounded;
+    return result.accepted || result.duplicate
+        ? Icons.check_circle
+        : Icons.error;
+  }
+
+  String get _statusTitle {
+    if (result.queuedOffline) return 'Reporte guardado en el teléfono';
+    return result.duplicate
+        ? 'Este reporte ya estaba registrado'
+        : 'Gracias por reportar';
+  }
+
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Reporte recibido')),
+    appBar: AppBar(
+      title: Text(
+        result.queuedOffline ? 'Reporte guardado' : 'Reporte recibido',
+      ),
+    ),
     body: ListView(
       padding: const EdgeInsets.all(20),
       children: <Widget>[
         Icon(
-          result.accepted || result.duplicate
-              ? Icons.check_circle
-              : Icons.error,
+          _statusIcon,
           size: 72,
-          color: const Color(0xFF1ECB7B),
+          color: result.queuedOffline
+              ? Theme.of(context).colorScheme.tertiary
+              : const Color(0xFF1ECB7B),
         ),
         const SizedBox(height: 12),
         Text(
-          result.duplicate
-              ? 'Este reporte ya estaba registrado'
-              : 'Gracias por reportar',
+          _statusTitle,
           textAlign: TextAlign.center,
           style: Theme.of(context).textTheme.headlineSmall,
         ),
         const SizedBox(height: 12),
         Text(
-          'Seismik guardó el reporte con ubicación ${result.locationPrecision == 'precise' ? 'precisa' : 'aproximada'}.',
+          result.queuedOffline
+              ? result.notice
+              : 'Seismik guardó el reporte con ubicación ${result.locationPrecision == 'precise' ? 'precisa' : 'aproximada'}.',
           textAlign: TextAlign.center,
         ),
         if (result.emergencyActionRecommended) ...<Widget>[

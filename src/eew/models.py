@@ -19,6 +19,11 @@ class StationTrigger:
     trigger_time: str
     received_at: str
     sta_lta_ratio: float
+    # Las amplitudes llegan en cuentas del digitalizador. Se conservan para
+    # auditoría y para una futura calibración por respuesta instrumental; no
+    # se convierten en magnitud sin esa calibración.
+    peak_amplitude_counts: float | None = None
+    noise_rms_counts: float | None = None
     latitude: float | None = None
     longitude: float | None = None
     packet_lag_seconds: float | None = None
@@ -42,6 +47,9 @@ class EarthquakeCandidate:
     stations: tuple[StationTrigger, ...]
     estimated_latitude: float | None = None
     estimated_longitude: float | None = None
+    wave_strength_index: float | None = None
+    magnitude_estimate: float | None = None
+    magnitude_estimate_status: str = "pending_station_calibration"
 
     def to_dict(self) -> dict[str, Any]:
         result = asdict(self)

@@ -35,14 +35,23 @@ www.seismik.org {
 
 seismik.org {
 	import seismik_security_headers
+	@legacy_privacy path /privacy.html
+	redir @legacy_privacy /terms-of-privacy permanent
+	@legacy_api_terms path /api-terms.html
+	redir @legacy_api_terms /terms-of-service#api permanent
 	header Content-Security-Policy "default-src 'self'; style-src 'self'; img-src 'self' data:; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"
 	root * /srv
 	@developers path /developers /developers/
-	rewrite @developers /developers-public.html
+	redir @developers https://devs.seismik.org/ permanent
 	file_server
 }
 
 devs.seismik.org {
+	# OAuth/API endpoints for the developer portal are served by FastAPI.
+	handle /v1/* {
+		reverse_proxy api:8000
+	}
+
 	@portal not path /__/auth/*
 	header @portal {
 		-Server
@@ -62,6 +71,9 @@ devs.seismik.org {
 			header_up Host seismik-15bbb.firebaseapp.com
 		}
 	}
+
+	@legacy_api_terms path /api-terms.html
+	redir @legacy_api_terms https://seismik.org/terms-of-service#api permanent
 
 	root * /srv
 	@home path /

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../data/models/citizen_report.dart';
+import '../../data/models/pending_report.dart';
 import '../../data/models/seismic_event.dart';
 import '../../state/mobile_settings.dart';
 import '../../state/seismik_state.dart';
@@ -86,7 +87,7 @@ class _DamageReportScreenState extends State<DamageReportScreen> {
       final ({double latitude, double longitude})? coordinates = await state
           .currentCoordinates();
       if (coordinates == null) throw Exception('No hay ubicación disponible');
-      final ReportResult result = await state.api.submitDamageReport(
+      final Map<String, dynamic> payload = await state.api.buildDamageReport(
         latitude: coordinates.latitude,
         longitude: coordinates.longitude,
         countryCode: _country.text,
@@ -102,6 +103,12 @@ class _DamageReportScreenState extends State<DamageReportScreen> {
         officialEventId: widget.event?.officialEventId,
         buildingType: _building.text,
         comment: _comment.text,
+      );
+      final ReportResult result = await state.submitReport(
+        kind: PendingReportKind.damage,
+        payload: payload,
+        preciseLocation: _precise,
+        emergencyActionRecommended: _urgent,
       );
       if (!mounted) return;
       await Navigator.of(context).pushReplacement(

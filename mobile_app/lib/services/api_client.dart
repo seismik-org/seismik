@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
@@ -10,6 +11,7 @@ import 'package:uuid/uuid.dart';
 import '../core/constants.dart';
 import '../core/security.dart';
 import '../data/models/citizen_report.dart';
+import '../data/models/pending_report.dart';
 import '../data/models/seismic_event.dart';
 import '../data/models/station.dart';
 
@@ -17,6 +19,14 @@ class SeismikApiException implements Exception {
   const SeismikApiException(this.message, this.statusCode);
   final String message;
   final int? statusCode;
+
+  /// El servidor rechazó el contenido: reintentarlo repetiría el mismo error.
+  /// 408 y 429 sí son transitorios y vuelven a la cola.
+  bool get isPermanent {
+    final int? code = statusCode;
+    if (code == null) return false;
+    return code >= 400 && code < 500 && code != 408 && code != 429;
+  }
 
   @override
   String toString() => 'SeismikApiException($statusCode): $message';
@@ -27,8 +37,11 @@ class ApiClient {
 
   static const String _deviceIdKey = 'seismik.device_id';
   static const String _crowdTokenKey = 'seismik.crowd_token';
+  static const String _deviceSessionKey = 'seismik.device_session';
   static const String _eventCacheKey = 'seismik.official_event_cache';
+  static const String _alertCursorKey = 'seismik.alert_cursor';
   final http.Client _http;
+  static const FlutterSecureStorage _secureStorage = FlutterSecureStorage();
 
   Future<String> ensureDeviceId() async {
     final SharedPreferences preferences = await SharedPreferences.getInstance();
@@ -46,6 +59,7 @@ class ApiClient {
     bool receiveEarlyAlerts = true,
     bool receiveOfficialUpdates = true,
     double minimumNotificationMagnitude = 4.0,
+    double alertRadiusKm = 250.0,
   }) async {
     final String deviceId = await ensureDeviceId();
     String? integrityToken;
@@ -84,6 +98,7 @@ class ApiClient {
       'receive_early_alerts': receiveEarlyAlerts,
       'receive_official_updates': receiveOfficialUpdates,
       'minimum_notification_magnitude': minimumNotificationMagnitude,
+      'alert_radius_km': alertRadiusKm,
       'locale': Platform.localeName,
       'country_code': _localeCountryCode(),
       'app_attest_token': Platform.isIOS ? integrityToken : null,
@@ -92,20 +107,21 @@ class ApiClient {
     final http.Response response = await _http
         .post(
           _uri('/v1/devices/register'),
-          headers: _jsonHeaders(deviceKey: true),
+          headers: _jsonHeaders(),
           body: jsonEncode(payload),
         )
         .timeout(const Duration(seconds: 8));
     final Map<String, dynamic> decoded = _decode(response);
     final String? crowdToken = decoded['crowd_token']?.toString();
-    if (crowdToken == null || crowdToken.isEmpty) {
+    final String? deviceSession = decoded['device_session_token']?.toString();
+    if (crowdToken == null || crowdToken.isEmpty || deviceSession == null || deviceSession.isEmpty) {
       throw SeismikApiException(
-        'Registration omitted crowd token',
+        'Registration omitted device credentials',
         response.statusCode,
       );
     }
-    final SharedPreferences preferences = await SharedPreferences.getInstance();
-    await preferences.setString(_crowdTokenKey, crowdToken);
+    await _secureStorage.write(key: _crowdTokenKey, value: crowdToken);
+    await _secureStorage.write(key: _deviceSessionKey, value: deviceSession);
   }
 
   Future<void> sendShake({
@@ -114,8 +130,7 @@ class ApiClient {
     required double pgaG,
     required int timestampMilliseconds,
   }) async {
-    final SharedPreferences preferences = await SharedPreferences.getInstance();
-    final String? token = preferences.getString(_crowdTokenKey);
+    final String? token = await _crowdToken();
     if (token == null) {
       throw const SeismikApiException('Device is not registered', null);
     }
@@ -148,6 +163,98 @@ class ApiClient {
     _decode(response);
   }
 
+  /// Compone el cuerpo del reporte sin enviarlo.
+  ///
+  /// La app necesita el cuerpo listo antes de saber si hay red: si el envío
+  /// falla, ese mismo cuerpo se guarda en la cola offline y se reintenta sin
+  /// cambiar `report_id` ni `observed_at`.
+  Future<Map<String, dynamic>> buildFeltReport({
+    required double latitude,
+    required double longitude,
+    required String countryCode,
+    required bool preciseLocation,
+    required bool shareWithOfficialAgencies,
+    required Set<String> selectedAgencyIds,
+    required bool felt,
+    required int? intensityMmi,
+    required String? earthquakeEventId,
+    required String? officialEventId,
+    bool? indoors,
+    int? floor,
+    bool? wokeUp,
+    bool? difficultyStanding,
+    bool? objectsMoved,
+    bool? objectsFell,
+    bool? visibleDamage,
+    String? comment,
+  }) async =>
+      await _reportBase(
+        latitude: latitude,
+        longitude: longitude,
+        countryCode: countryCode,
+        preciseLocation: preciseLocation,
+        shareWithOfficialAgencies: shareWithOfficialAgencies,
+        selectedAgencyIds: selectedAgencyIds,
+        earthquakeEventId: earthquakeEventId,
+        officialEventId: officialEventId,
+        comment: comment,
+      )..addAll(<String, dynamic>{
+        'type': 'seismik_felt_report',
+        'felt': felt,
+        'intensity_mmi': felt ? intensityMmi : null,
+        'indoors': indoors,
+        'floor': floor,
+        'woke_up': wokeUp,
+        'difficulty_standing': difficultyStanding,
+        'objects_moved': objectsMoved,
+        'objects_fell': objectsFell,
+        'visible_damage': visibleDamage,
+      });
+
+  Future<Map<String, dynamic>> buildDamageReport({
+    required double latitude,
+    required double longitude,
+    required String countryCode,
+    required bool preciseLocation,
+    required bool shareWithOfficialAgencies,
+    required String severity,
+    required List<String> hazards,
+    required bool peopleTrapped,
+    required bool injuriesObserved,
+    required bool emergencyServicesContacted,
+    required bool? safeToRemain,
+    required String? earthquakeEventId,
+    required String? officialEventId,
+    String? buildingType,
+    String? comment,
+  }) async =>
+      await _reportBase(
+        latitude: latitude,
+        longitude: longitude,
+        countryCode: countryCode,
+        preciseLocation: preciseLocation,
+        shareWithOfficialAgencies: shareWithOfficialAgencies,
+        selectedAgencyIds: const <String>{},
+        earthquakeEventId: earthquakeEventId,
+        officialEventId: officialEventId,
+        comment: comment,
+      )..addAll(<String, dynamic>{
+        'type': 'seismik_damage_report',
+        'severity': severity,
+        'hazards': hazards,
+        'building_type': _nullIfBlank(buildingType),
+        'people_trapped': peopleTrapped,
+        'injuries_observed': injuriesObserved,
+        'emergency_services_contacted': emergencyServicesContacted,
+        'safe_to_remain': safeToRemain,
+      });
+
+  /// Envía un cuerpo ya compuesto (recién creado o recuperado de la cola).
+  Future<ReportResult> sendReport(
+    String path,
+    Map<String, dynamic> payload,
+  ) async => ReportResult.fromMap(await _postSigned(path, payload));
+
   Future<ReportResult> submitFeltReport({
     required double latitude,
     required double longitude,
@@ -168,31 +275,27 @@ class ApiClient {
     bool? visibleDamage,
     String? comment,
   }) async {
-    final Map<String, dynamic> payload =
-        await _reportBase(
-            latitude: latitude,
-            longitude: longitude,
-            countryCode: countryCode,
-            preciseLocation: preciseLocation,
-            shareWithOfficialAgencies: shareWithOfficialAgencies,
-            selectedAgencyIds: selectedAgencyIds,
-            earthquakeEventId: earthquakeEventId,
-            officialEventId: officialEventId,
-            comment: comment,
-          )
-          ..addAll(<String, dynamic>{
-            'type': 'seismik_felt_report',
-            'felt': felt,
-            'intensity_mmi': felt ? intensityMmi : null,
-            'indoors': indoors,
-            'floor': floor,
-            'woke_up': wokeUp,
-            'difficulty_standing': difficultyStanding,
-            'objects_moved': objectsMoved,
-            'objects_fell': objectsFell,
-            'visible_damage': visibleDamage,
-          });
-    return ReportResult.fromMap(await _postSigned('/v1/reports/felt', payload));
+    final Map<String, dynamic> payload = await buildFeltReport(
+      latitude: latitude,
+      longitude: longitude,
+      countryCode: countryCode,
+      preciseLocation: preciseLocation,
+      shareWithOfficialAgencies: shareWithOfficialAgencies,
+      selectedAgencyIds: selectedAgencyIds,
+      felt: felt,
+      intensityMmi: intensityMmi,
+      earthquakeEventId: earthquakeEventId,
+      officialEventId: officialEventId,
+      indoors: indoors,
+      floor: floor,
+      wokeUp: wokeUp,
+      difficultyStanding: difficultyStanding,
+      objectsMoved: objectsMoved,
+      objectsFell: objectsFell,
+      visibleDamage: visibleDamage,
+      comment: comment,
+    );
+    return sendReport(PendingReportKind.felt.path, payload);
   }
 
   Future<ReportResult> submitDamageReport({
@@ -212,31 +315,24 @@ class ApiClient {
     String? buildingType,
     String? comment,
   }) async {
-    final Map<String, dynamic> payload =
-        await _reportBase(
-            latitude: latitude,
-            longitude: longitude,
-            countryCode: countryCode,
-            preciseLocation: preciseLocation,
-            shareWithOfficialAgencies: shareWithOfficialAgencies,
-            selectedAgencyIds: const <String>{},
-            earthquakeEventId: earthquakeEventId,
-            officialEventId: officialEventId,
-            comment: comment,
-          )
-          ..addAll(<String, dynamic>{
-            'type': 'seismik_damage_report',
-            'severity': severity,
-            'hazards': hazards,
-            'building_type': _nullIfBlank(buildingType),
-            'people_trapped': peopleTrapped,
-            'injuries_observed': injuriesObserved,
-            'emergency_services_contacted': emergencyServicesContacted,
-            'safe_to_remain': safeToRemain,
-          });
-    return ReportResult.fromMap(
-      await _postSigned('/v1/reports/damage', payload),
+    final Map<String, dynamic> payload = await buildDamageReport(
+      latitude: latitude,
+      longitude: longitude,
+      countryCode: countryCode,
+      preciseLocation: preciseLocation,
+      shareWithOfficialAgencies: shareWithOfficialAgencies,
+      severity: severity,
+      hazards: hazards,
+      peopleTrapped: peopleTrapped,
+      injuriesObserved: injuriesObserved,
+      emergencyServicesContacted: emergencyServicesContacted,
+      safeToRemain: safeToRemain,
+      earthquakeEventId: earthquakeEventId,
+      officialEventId: officialEventId,
+      buildingType: buildingType,
+      comment: comment,
     );
+    return sendReport(PendingReportKind.damage.path, payload);
   }
 
   Future<Map<String, dynamic>> _reportBase({
@@ -270,8 +366,7 @@ class ApiClient {
     String path,
     Map<String, dynamic> payload,
   ) async {
-    final SharedPreferences preferences = await SharedPreferences.getInstance();
-    final String? token = preferences.getString(_crowdTokenKey);
+    final String? token = await _crowdToken();
     if (token == null) {
       throw const SeismikApiException(
         'El dispositivo no está registrado',
@@ -313,7 +408,7 @@ class ApiClient {
 
   Future<List<SeismicStation>> fetchStations() async {
     final http.Response response = await _http
-        .get(_uri('/v1/network/stations'), headers: _jsonHeaders())
+        .get(_uri('/v1/network/stations'), headers: await _mobileHeaders())
         .timeout(const Duration(seconds: 8));
     final Map<String, dynamic> decoded = _decode(response);
     return (decoded['stations'] as List<dynamic>? ?? <dynamic>[])
@@ -369,7 +464,7 @@ class ApiClient {
         },
       );
       final http.Response response = await _http
-          .get(historyUri, headers: _jsonHeaders())
+          .get(historyUri, headers: await _mobileHeaders())
           .timeout(const Duration(seconds: 15));
       if (response.statusCode == 404) {
         return await _fetchLegacyRecentEvents();
@@ -391,9 +486,44 @@ class ApiClient {
     }
   }
 
+  /// Recupera las alertas emitidas mientras el teléfono estuvo sin conexión.
+  ///
+  /// El cursor se guarda en el dispositivo para no volver a mostrar avisos ya
+  /// vistos; una respuesta 404 significa que el registro se perdió (por ejemplo,
+  /// tras reinstalar) y el próximo registro del dispositivo lo restablece.
+  Future<List<SeismicEvent>> fetchMissedAlerts() async {
+    final SharedPreferences preferences = await SharedPreferences.getInstance();
+    final String deviceId = await ensureDeviceId();
+    final String? cursor = preferences.getString(_alertCursorKey);
+    final Uri uri = _uri('/v1/alerts/recent').replace(
+      queryParameters: <String, String>{
+        'device_id': deviceId,
+        if (cursor != null && cursor.isNotEmpty) 'since': cursor,
+      },
+    );
+    final http.Response response = await _http
+        .get(uri, headers: await _mobileHeaders())
+        .timeout(const Duration(seconds: 8));
+    if (response.statusCode == 404) return <SeismicEvent>[];
+    final Map<String, dynamic> decoded = _decode(response);
+    final String? nextCursor = decoded['cursor']?.toString();
+    if (nextCursor != null && nextCursor.isNotEmpty) {
+      await preferences.setString(_alertCursorKey, nextCursor);
+    }
+    return (decoded['alerts'] as List<dynamic>? ?? <dynamic>[])
+        .whereType<Map<String, dynamic>>()
+        .map(
+          (alert) => SeismicEvent.fromMap(<String, dynamic>{
+            ...alert,
+            'detected_at': alert['emitted_at'],
+          }),
+        )
+        .toList(growable: false);
+  }
+
   Future<List<SeismicEvent>> _fetchLegacyRecentEvents() async {
     final http.Response response = await _http
-        .get(_uri('/v1/events/recent'), headers: _jsonHeaders())
+        .get(_uri('/v1/events/recent'), headers: await _mobileHeaders())
         .timeout(const Duration(seconds: 8));
     return _eventsFromPayload(_decode(response));
   }
@@ -426,13 +556,24 @@ class ApiClient {
 
   Uri _uri(String path) => Uri.parse('${SeismikConstants.apiBaseUrl}$path');
 
-  // Mobile reads use the device bootstrap key as the app-client credential;
-  // partner integrations use X-Seismik-API-Key instead.
-  Map<String, String> _jsonHeaders({bool deviceKey = true}) => <String, String>{
+  Map<String, String> _jsonHeaders() => <String, String>{
     'Accept': 'application/json',
     'Content-Type': 'application/json',
-    if (deviceKey) 'X-Seismik-Device-Key': SeismikConstants.deviceApiKey,
   };
+
+  Future<String?> _crowdToken() async =>
+      await _secureStorage.read(key: _crowdTokenKey);
+
+  Future<Map<String, String>> _mobileHeaders() async {
+    final String? session = await _secureStorage.read(key: _deviceSessionKey);
+    if (session == null || session.isEmpty) {
+      throw const SeismikApiException('Device is not registered', null);
+    }
+    return <String, String>{
+      ..._jsonHeaders(),
+      'X-Seismik-Device-Session': session,
+    };
+  }
 
   Map<String, dynamic> _decode(http.Response response) {
     final Object? decoded = response.body.isEmpty

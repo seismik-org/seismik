@@ -66,7 +66,30 @@ class ReportResult {
     required this.emergencyActionRecommended,
     required this.agencyRoutes,
     required this.notice,
+    this.queuedOffline = false,
   });
+
+  /// Reporte guardado en el dispositivo porque no había conexión.
+  ///
+  /// Se conserva el `report_id` para que, al reenviarlo, el servidor lo
+  /// reconozca como el mismo reporte y no lo duplique.
+  factory ReportResult.queued({
+    required String reportId,
+    required String locationPrecision,
+    required bool emergencyActionRecommended,
+    List<AgencyRoute> agencyRoutes = const <AgencyRoute>[],
+  }) => ReportResult(
+    accepted: false,
+    duplicate: false,
+    reportId: reportId,
+    locationPrecision: locationPrecision,
+    emergencyActionRecommended: emergencyActionRecommended,
+    agencyRoutes: agencyRoutes,
+    notice:
+        'Sin conexión: el reporte quedó guardado en el teléfono y se enviará '
+        'automáticamente cuando vuelva la red.',
+    queuedOffline: true,
+  );
 
   factory ReportResult.fromMap(Map<String, dynamic> map) => ReportResult(
     accepted: map['accepted'] == true,
@@ -89,4 +112,5 @@ class ReportResult {
   final bool emergencyActionRecommended;
   final List<AgencyRoute> agencyRoutes;
   final String notice;
+  final bool queuedOffline;
 }

@@ -8,12 +8,14 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from redis.asyncio import Redis
 
+from api.alerts import router as alerts_router
 from api.bus import RedisEventBus
 from api.config import AppSettings, get_settings
 from api.developer_keys import router as developer_keys_router
 from api.devices import router as devices_router
 from api.devices_store import DeviceRepository
 from api.history import router as history_router
+from api.integrations import router as integrations_router
 from api.integrity import DeviceIntegrityVerifier
 from api.oauth import router as oauth_router
 from api.public import router as public_router
@@ -58,7 +60,9 @@ def create_app(settings: AppSettings | None = None) -> FastAPI:
     )
     app.include_router(webhooks_router)
     app.include_router(devices_router)
+    app.include_router(alerts_router)
     app.include_router(developer_keys_router)
+    app.include_router(integrations_router)
     app.include_router(oauth_router)
     app.include_router(crowd_router)
     app.include_router(public_router)

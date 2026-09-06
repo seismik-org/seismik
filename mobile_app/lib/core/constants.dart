@@ -6,9 +6,6 @@ abstract final class SeismikConstants {
     'SEISMIK_API_BASE_URL',
     defaultValue: 'https://api.seismik.org',
   );
-  static const String deviceApiKey = String.fromEnvironment(
-    'SEISMIK_DEVICE_KEY',
-  );
   static const bool integrityRequired = bool.fromEnvironment(
     'SEISMIK_INTEGRITY_REQUIRED',
     defaultValue: false,
@@ -22,9 +19,9 @@ abstract final class SeismikConstants {
   static const int dspMaximumSamples = 160;
   static const double userMotionVarianceThreshold = 0.12;
   static void validateBuildConfiguration() {
-    if (kReleaseMode && deviceApiKey.isEmpty) {
+    if (kReleaseMode && apiBaseUrl.isEmpty) {
       throw StateError(
-        'Release requires SEISMIK_API_BASE_URL and SEISMIK_DEVICE_KEY.',
+        'Release requires SEISMIK_API_BASE_URL.',
       );
     }
   }

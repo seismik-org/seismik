@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../data/models/citizen_report.dart';
+import '../../data/models/pending_report.dart';
 import '../../data/models/seismic_event.dart';
 import '../../services/agency_preference_store.dart';
 import '../../state/mobile_settings.dart';
@@ -93,7 +94,7 @@ class _FeltReportScreenState extends State<FeltReportScreen> {
       final ({double latitude, double longitude})? coordinates = await state
           .currentCoordinates();
       if (coordinates == null) throw Exception('No hay ubicación disponible');
-      final ReportResult result = await state.api.submitFeltReport(
+      final Map<String, dynamic> payload = await state.api.buildFeltReport(
         latitude: coordinates.latitude,
         longitude: coordinates.longitude,
         countryCode: _country.text,
@@ -111,6 +112,11 @@ class _FeltReportScreenState extends State<FeltReportScreen> {
         objectsFell: _objectsFell,
         visibleDamage: _visibleDamage,
         comment: _comment.text,
+      );
+      final ReportResult result = await state.submitReport(
+        kind: PendingReportKind.felt,
+        payload: payload,
+        preciseLocation: _precise,
       );
       if (!mounted) return;
       await Navigator.of(context).pushReplacement(

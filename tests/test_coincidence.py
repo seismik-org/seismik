@@ -109,3 +109,21 @@ def test_requires_minimum_geographic_aperture() -> None:
     event = detector.add(far)
     assert event is not None
     assert event.station_count == 3
+
+
+def test_candidate_exposes_signal_index_without_claiming_magnitude() -> None:
+    from dataclasses import replace
+
+    detector = CoincidenceDetector(
+        CoincidenceSettings(minimum_stations=2, window_seconds=10, alert_cooldown_seconds=0)
+    )
+    assert detector.add(
+        replace(trigger("A", 1), peak_amplitude_counts=100.0, noise_rms_counts=10.0)
+    ) is None
+    event = detector.add(
+        replace(trigger("B", 2), peak_amplitude_counts=1000.0, noise_rms_counts=10.0)
+    )
+    assert event is not None
+    assert event.wave_strength_index == 1.5
+    assert event.magnitude_estimate is None
+    assert event.magnitude_estimate_status == "pending_station_calibration"

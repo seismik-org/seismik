@@ -1,4 +1,5 @@
-const API = "https://api.seismik.org";
+// Same-origin proxy keeps the Seismik session cookie available to the portal.
+const API = window.location.origin;
 const elements = Object.fromEntries([...document.querySelectorAll("[id]")].map((item) => [item.id, item]));
 let currentUser = null;
 let portalConfig = null;
@@ -63,6 +64,59 @@ async function loadKeys() {
   } catch (error) { toast(error.message, true); }
 }
 
+function webhookMarkup(webhook) {
+  const types = webhook.event_types.map((item) => item === "earthquake_candidate" ? "candidato" : "oficial").join(" · ");
+  return `<article class="key-row" data-webhook-id="${escapeHtml(webhook.webhook_id)}">
+    <div class="key-name"><strong>${escapeHtml(webhook.name)}</strong><small>${escapeHtml(webhook.endpoint)}</small></div>
+    <div class="key-meta"><code>${escapeHtml(types)}</code><br><small>Última entrega: ${formatDate(webhook.last_delivered_at)}${webhook.last_error ? ` · ${escapeHtml(webhook.last_error)}` : ""}</small></div>
+    <span class="key-status ${webhook.status}">${webhook.status === "active" ? "Activa" : "Desactivada"}</span>
+    <div class="key-actions">${webhook.status === "active" ? '<button class="text-button danger-button disable-webhook" type="button">Desactivar</button>' : ""}</div>
+  </article>`;
+}
+
+async function loadWebhooks() {
+  try {
+    const result = await api("/v1/developer/webhooks");
+    elements["webhooks-empty"].hidden = result.webhooks.length > 0;
+    elements["webhooks-list"].innerHTML = result.webhooks.map(webhookMarkup).join("");
+  } catch (error) { toast(error.message, true); }
+}
+
+function webhookEventTypes() {
+  return [...document.querySelectorAll('input[name="webhook-event"]:checked')].map((input) => input.value);
+}
+
+async function createWebhook(event) {
+  event.preventDefault();
+  try {
+    const result = await api("/v1/developer/webhooks", {
+      method: "POST",
+      body: JSON.stringify({
+        name: elements["webhook-name"].value.trim(),
+        endpoint: elements["webhook-endpoint"].value.trim(),
+        event_types: webhookEventTypes(),
+        mode: "simulation_only",
+      }),
+    });
+    elements["webhook-secret-value"].textContent = result.signing_secret;
+    elements["webhook-secret-dialog"].showModal();
+    event.target.reset();
+    document.querySelector('input[name="webhook-event"][value="official_report_update"]').checked = true;
+    await loadWebhooks();
+  } catch (error) { toast(error.message, true); }
+}
+
+async function webhookAction(event) {
+  const row = event.target.closest("[data-webhook-id]");
+  if (!row || !event.target.classList.contains("disable-webhook")) return;
+  if (!window.confirm("¿Desactivar este webhook? Dejará de recibir entregas.")) return;
+  try {
+    await api(`/v1/developer/webhooks/${row.dataset.webhookId}`, { method: "DELETE" });
+    toast("Webhook desactivado.");
+    await loadWebhooks();
+  } catch (error) { toast(error.message, true); }
+}
+
 function selectedScopes() {
   return [...document.querySelectorAll('input[name="scope"]:checked')].map((input) => input.value);
 }
@@ -124,7 +178,10 @@ function updateSession(user) {
   elements["logout-button"].hidden = !signedIn;
   elements["user-label"].hidden = !signedIn;
   elements["user-label"].textContent = user?.email || "";
-  if (signedIn) loadKeys();
+  if (signedIn) {
+    loadKeys();
+    loadWebhooks();
+  }
 }
 
 async function boot() {
@@ -152,6 +209,10 @@ elements["logout-button"].addEventListener("click", async () => {
 elements["key-form"].addEventListener("submit", createKey);
 elements["refresh-button"].addEventListener("click", loadKeys);
 elements["keys-list"].addEventListener("click", keyAction);
+elements["webhook-form"].addEventListener("submit", createWebhook);
+elements["webhooks-list"].addEventListener("click", webhookAction);
+elements["refresh-webhooks-button"].addEventListener("click", loadWebhooks);
 elements["copy-secret"].addEventListener("click", () => copyText(elements["secret-value"].textContent));
+elements["copy-webhook-secret"].addEventListener("click", () => copyText(elements["webhook-secret-value"].textContent));
 elements["copy-example"].addEventListener("click", () => copyText(elements["curl-example"].textContent));
 boot();

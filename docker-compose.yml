@@ -23,14 +23,23 @@ services:
       PORT: 8000
       SEISMIK_ENVIRONMENT: ${SEISMIK_ENVIRONMENT:-development}
       SEISMIK_REDIS_URL: redis://redis:6379/0
+      SEISMIK_OAUTH_GOOGLE_CLIENT_ID: ${SEISMIK_OAUTH_GOOGLE_CLIENT_ID:-}
+      SEISMIK_OAUTH_GOOGLE_CLIENT_SECRET: ${SEISMIK_OAUTH_GOOGLE_CLIENT_SECRET:-}
+      SEISMIK_OAUTH_GOOGLE_REDIRECT_URI: ${SEISMIK_OAUTH_GOOGLE_REDIRECT_URI:-https://devs.seismik.org/v1/oauth/google/callback}
       SEISMIK_WEBHOOK_HMAC_SECRET: ${SEISMIK_WEBHOOK_HMAC_SECRET:-local-webhook-secret-change-me}
-      SEISMIK_DEVICE_API_KEY: ${SEISMIK_DEVICE_API_KEY:-local-device-key-change-me}
+      SEISMIK_DEVICE_SESSION_TTL_SECONDS: ${SEISMIK_DEVICE_SESSION_TTL_SECONDS:-2592000}
       SEISMIK_CONSUMER_API_KEY: ${SEISMIK_CONSUMER_API_KEY:-}
       SEISMIK_CROWD_MASTER_SECRET: ${SEISMIK_CROWD_MASTER_SECRET:-local-crowd-secret-change-me}
+      SEISMIK_INTEGRATION_WEBHOOK_MASTER_SECRET: ${SEISMIK_INTEGRATION_WEBHOOK_MASTER_SECRET:-local-integration-secret-change-me}
       SEISMIK_PUSH_ENABLED: ${SEISMIK_PUSH_ENABLED:-false}
       SEISMIK_PUSH_MODE: ${SEISMIK_PUSH_MODE:-dry_run}
       SEISMIK_PUSH_TEST_DEVICE_IDS: ${SEISMIK_PUSH_TEST_DEVICE_IDS:-[]}
       SEISMIK_INTEGRITY_VERIFICATION_ENABLED: ${SEISMIK_INTEGRITY_VERIFICATION_ENABLED:-false}
+      SEISMIK_ALERT_COOLDOWN_SECONDS: ${SEISMIK_ALERT_COOLDOWN_SECONDS:-60}
+      SEISMIK_ALERT_DEDUP_SECONDS: ${SEISMIK_ALERT_DEDUP_SECONDS:-1800}
+      SEISMIK_ALERT_LEDGER_MAXLEN: ${SEISMIK_ALERT_LEDGER_MAXLEN:-10000}
+      SEISMIK_ALERT_RECENT_LIMIT: ${SEISMIK_ALERT_RECENT_LIMIT:-50}
+      SEISMIK_GEOFENCE_RADIUS_KM: ${SEISMIK_GEOFENCE_RADIUS_KM:-250}
       SEISMIK_APNS_KEY_PATH: ${SEISMIK_APNS_KEY_PATH:-}
       SEISMIK_APNS_KEY_ID: ${SEISMIK_APNS_KEY_ID:-}
       SEISMIK_APNS_TEAM_ID: ${SEISMIK_APNS_TEAM_ID:-}
@@ -69,6 +78,18 @@ services:
         condition: service_healthy
     networks: [seismik-internal]
 
+  integrations:
+    build:
+      context: .
+      dockerfile: Dockerfile.dispatcher
+    command: ["python", "-m", "dispatcher.integrations"]
+    restart: unless-stopped
+    environment: *seismik-environment
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks: [seismik-internal]
+
   detector:
     profiles: ["detector"]
     build:
@@ -78,7 +99,12 @@ services:
     environment:
       WEBHOOK_BASE_URL: http://api:8000
       WEBHOOK_HMAC_SECRET: ${SEISMIK_WEBHOOK_HMAC_SECRET:-local-webhook-secret-change-me}
+      # Cola durable del enlace detector -> API: ningun candidato se pierde
+      # mientras la API se reinicia.
+      SEISMIK_ALERT_SPOOL_DIR: /var/lib/seismik/spool
       LOG_LEVEL: INFO
+    volumes:
+      - detector-spool:/var/lib/seismik/spool
     depends_on:
       api:
         condition: service_healthy
@@ -86,6 +112,7 @@ services:
 
 volumes:
   redis-data:
+  detector-spool:
 
 networks:
   seismik-internal:

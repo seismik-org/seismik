@@ -92,6 +92,12 @@ class AlertSettings:
     webhook_hmac_secret: str | None = None
     webhook_timeout_seconds: float = 3.0
     webhook_retries: int = 2
+    # Cola durable del enlace detector → API. Sin directorio el detector
+    # conserva el comportamiento en memoria del Sprint 1.
+    spool_directory: str | None = None
+    spool_max_entries: int = 500
+    spool_max_age_seconds: float = 900.0
+    retry_interval_seconds: float = 5.0
 
 
 @dataclass(frozen=True)
@@ -216,6 +222,9 @@ class Settings:
             alert_raw = {**alert_raw, "webhook_base_url": webhook_base_from_env}
         if webhook_secret_from_env:
             alert_raw = {**alert_raw, "webhook_hmac_secret": webhook_secret_from_env}
+        spool_from_env = os.getenv("SEISMIK_ALERT_SPOOL_DIR")
+        if spool_from_env:
+            alert_raw = {**alert_raw, "spool_directory": spool_from_env}
 
         official_raw = raw.get("official_reports", {})
         intervals = official_raw.get("poll_intervals_seconds")
@@ -284,6 +293,10 @@ class Settings:
             raise ValueError("Use webhook_url o webhook_base_url, no ambos")
         if (self.alert.webhook_url or self.alert.webhook_base_url) and not self.alert.webhook_hmac_secret:
             raise ValueError("Un webhook configurado requiere webhook_hmac_secret")
+        if self.alert.spool_max_entries < 1:
+            raise ValueError("spool_max_entries debe ser positivo")
+        if self.alert.spool_max_age_seconds <= 0 or self.alert.retry_interval_seconds <= 0:
+            raise ValueError("Los tiempos del spool de alertas deben ser positivos")
         stations_by_zone: dict[str, set[str]] = {}
         for provider in enabled_providers:
             for station in provider.stations:

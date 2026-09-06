@@ -5,3 +5,6 @@ pytest-asyncio>=1.2,<2
 fakeredis>=2.37,<3
 ruff>=0.12,<1
 mypy>=1.15,<2
+# Las pruebas leen .github/workflows/ci.yml; no dependas de que
+# otra libreria arrastre PyYAML de forma transitiva.
+pyyaml>=6,<7

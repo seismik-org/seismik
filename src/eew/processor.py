@@ -141,6 +141,19 @@ class StationProcessor:
             peak_index = recent_start + peak_offset
             buffer_start = self._end_time - (self._data.size - 1) / sampling_rate
             trigger_time = buffer_start + peak_index / sampling_rate
+            # No se deconvoluciona aquí la respuesta instrumental. Estos dos
+            # valores permanecen en cuentas para que cualquier futura
+            # estimación de magnitud pueda ser reproducible y calibrada por
+            # estación, en lugar de convertir arbitrariamente una señal cruda
+            # en una "M".
+            signal_start = max(0, peak_index - nsta)
+            signal_end = min(processed.data.size, peak_index + nsta + 1)
+            signal = np.asarray(processed.data[signal_start:signal_end], dtype=np.float64)
+            peak_amplitude = float(np.max(np.abs(signal))) if signal.size else None
+            noise_end = max(0, signal_start)
+            noise_start = max(0, noise_end - nlta)
+            noise = np.asarray(processed.data[noise_start:noise_end], dtype=np.float64)
+            noise_rms = float(np.sqrt(np.mean(np.square(noise)))) if noise.size else None
             station_trigger = StationTrigger(
                 provider_id=self.provider_id,
                 country_code=self.country_code,
@@ -150,6 +163,8 @@ class StationProcessor:
                 trigger_time=trigger_time.strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
                 received_at=received_iso,
                 sta_lta_ratio=round(peak_ratio, 4),
+                peak_amplitude_counts=(round(peak_amplitude, 6) if peak_amplitude is not None else None),
+                noise_rms_counts=(round(noise_rms, 6) if noise_rms is not None else None),
                 latitude=self.subscription.latitude,
                 longitude=self.subscription.longitude,
                 packet_lag_seconds=round(packet_lag, 3),

@@ -1,0 +1,110 @@
+name: iOS TestFlight
+
+on:
+  workflow_dispatch:
+    inputs:
+      upload_to_testflight:
+        description: "Subir el IPA firmado a TestFlight"
+        required: true
+        default: false
+        type: boolean
+      critical_alerts_approved:
+        description: "El provisioning profile ya contiene Critical Alerts aprobado por Apple"
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+jobs:
+  signed-ios:
+    runs-on: macos-latest
+    environment: ios-production
+    defaults:
+      run:
+        working-directory: mobile_app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.47.1"
+          channel: stable
+          cache: true
+      - name: Import distribution certificate and provisioning profile
+        env:
+          IOS_CERTIFICATE_BASE64: ${{ secrets.IOS_CERTIFICATE_BASE64 }}
+          IOS_CERTIFICATE_PASSWORD: ${{ secrets.IOS_CERTIFICATE_PASSWORD }}
+          IOS_PROVISIONING_PROFILE_BASE64: ${{ secrets.IOS_PROVISIONING_PROFILE_BASE64 }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: |
+          set -euo pipefail
+          test -n "$IOS_CERTIFICATE_BASE64"
+          test -n "$IOS_CERTIFICATE_PASSWORD"
+          test -n "$IOS_PROVISIONING_PROFILE_BASE64"
+          test -n "$KEYCHAIN_PASSWORD"
+          certificate_path="$RUNNER_TEMP/seismik-distribution.p12"
+          profile_path="$RUNNER_TEMP/seismik.mobileprovision"
+          keychain_path="$RUNNER_TEMP/seismik-signing.keychain-db"
+          echo "$IOS_CERTIFICATE_BASE64" | base64 --decode > "$certificate_path"
+          echo "$IOS_PROVISIONING_PROFILE_BASE64" | base64 --decode > "$profile_path"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$keychain_path"
+          security set-keychain-settings -lut 21600 "$keychain_path"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$keychain_path"
+          security import "$certificate_path" -P "$IOS_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$keychain_path"
+          security list-keychain -d user -s "$keychain_path"
+          mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
+          profile_uuid=$(security cms -D -i "$profile_path" | plutil -extract UUID raw -)
+          cp "$profile_path" "$HOME/Library/MobileDevice/Provisioning Profiles/$profile_uuid.mobileprovision"
+      - name: Build signed IPA
+        env:
+          APPLE_TEAM_ID: ${{ vars.APPLE_TEAM_ID }}
+          SEISMIK_GOOGLE_MAPS_API_KEY: ${{ secrets.SEISMIK_GOOGLE_MAPS_API_KEY }}
+        run: |
+          set -euo pipefail
+          test -n "$APPLE_TEAM_ID"
+          cp ios/Flutter/Seismik.xcconfig.example ios/Flutter/Seismik.xcconfig
+          printf '\nDEVELOPMENT_TEAM = %s\nSEISMIK_GOOGLE_MAPS_API_KEY = %s\n' "$APPLE_TEAM_ID" "$SEISMIK_GOOGLE_MAPS_API_KEY" >> ios/Flutter/Seismik.xcconfig
+          if [[ "${{ inputs.critical_alerts_approved }}" != "true" ]]; then
+            printf '\nSEISMIK_ENTITLEMENTS_FILE = Runner.basic.entitlements\n' >> ios/Flutter/Seismik.xcconfig
+          fi
+          sed "s/__APPLE_TEAM_ID__/$APPLE_TEAM_ID/g" ios/ExportOptions.plist.template > ios/ExportOptions.plist
+          flutter pub get
+          cd ios && pod install --repo-update && cd ..
+          flutter build ipa --release --export-options-plist=ios/ExportOptions.plist --dart-define=SEISMIK_API_BASE_URL=https://api.seismik.org --dart-define=SEISMIK_INTEGRITY_REQUIRED=true
+      - name: Verify signed entitlements
+        run: |
+          set -euo pipefail
+          app=build/ios/archive/Runner.xcarchive/Products/Applications/Runner.app
+          codesign -d --entitlements :- "$app" 2> "$RUNNER_TEMP/entitlements.plist"
+          plutil -p "$RUNNER_TEMP/entitlements.plist" | grep -q 'aps-environment'
+          if [[ "${{ inputs.critical_alerts_approved }}" == "true" ]]; then
+            plutil -p "$RUNNER_TEMP/entitlements.plist" | grep -q 'usernotifications.critical-alerts'
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: seismik-ios-ipa
+          path: mobile_app/build/ios/ipa/*.ipa
+          if-no-files-found: error
+      - name: Upload to TestFlight
+        if: ${{ inputs.upload_to_testflight }}
+        env:
+          APP_STORE_CONNECT_KEY_ID: ${{ vars.APP_STORE_CONNECT_KEY_ID }}
+          APP_STORE_CONNECT_ISSUER_ID: ${{ vars.APP_STORE_CONNECT_ISSUER_ID }}
+          APP_STORE_CONNECT_PRIVATE_KEY_BASE64: ${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY_BASE64 }}
+          SEISMIK_IPA_PATH: build/ios/ipa/Runner.ipa
+        run: |
+          set -euo pipefail
+          test -n "$APP_STORE_CONNECT_KEY_ID"
+          test -n "$APP_STORE_CONNECT_ISSUER_ID"
+          test -n "$APP_STORE_CONNECT_PRIVATE_KEY_BASE64"
+          key_path="$RUNNER_TEMP/AuthKey_$APP_STORE_CONNECT_KEY_ID.p8"
+          api_path="$RUNNER_TEMP/app-store-connect-api-key.json"
+          echo "$APP_STORE_CONNECT_PRIVATE_KEY_BASE64" | base64 --decode > "$key_path"
+          python3 - <<'PY'
+          import json, os
+          with open(os.environ['RUNNER_TEMP'] + '/app-store-connect-api-key.json', 'w') as stream:
+              json.dump({'key_id': os.environ['APP_STORE_CONNECT_KEY_ID'], 'issuer_id': os.environ['APP_STORE_CONNECT_ISSUER_ID'], 'key': open(os.environ['RUNNER_TEMP'] + '/AuthKey_' + os.environ['APP_STORE_CONNECT_KEY_ID'] + '.p8').read(), 'in_house': False}, stream)
+          PY
+          gem install fastlane --no-document
+          APP_STORE_CONNECT_API_KEY_PATH="$api_path" bundle exec fastlane ios upload_testflight || APP_STORE_CONNECT_API_KEY_PATH="$api_path" fastlane ios upload_testflight

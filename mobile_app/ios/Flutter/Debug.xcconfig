@@ -1,1 +1,4 @@
 #include "Generated.xcconfig"
+#include? "Seismik.xcconfig"
+APS_ENVIRONMENT = development
+SEISMIK_ENTITLEMENTS_FILE = Runner.entitlements

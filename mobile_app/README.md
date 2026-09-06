@@ -45,7 +45,6 @@ flutter pub get
 flutter analyze
 flutter test
 flutter run --dart-define=SEISMIK_API_BASE_URL=https://api.example.org \
-  --dart-define=SEISMIK_DEVICE_KEY=bootstrap-de-desarrollo
 ```
 
 La URL predeterminada es `https://api.seismik.org`; la clave de dispositivo

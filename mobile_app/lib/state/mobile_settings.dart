@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../services/map_launcher.dart';
+
 class MobileSettings extends ChangeNotifier {
   static const String _themeKey = 'settings.theme_mode';
   static const String _dynamicColorKey = 'settings.dynamic_color';
@@ -9,10 +11,24 @@ class MobileSettings extends ChangeNotifier {
   static const String _minimumMagnitudeKey = 'settings.minimum_magnitude';
   static const String _historyDaysKey = 'settings.history_days';
   static const String _historySourcesKey = 'settings.history_sources';
+  static const String _preliminaryHistoryMigratedKey =
+      'settings.preliminary_history_migrated';
   static const String _earlyAlertsKey = 'settings.early_alerts';
   static const String _officialUpdatesKey = 'settings.official_updates';
   static const String _notificationMagnitudeKey =
       'settings.notification_magnitude';
+  static const String _alertRadiusKey = 'settings.alert_radius_km';
+  static const String _mapProviderKey = 'settings.map_provider';
+
+  /// Radios ofrecidos para el umbral de cercanía de las alertas.
+  static const List<double> alertRadiusOptions = <double>[
+    50,
+    100,
+    150,
+    250,
+    400,
+    600,
+  ];
 
   ThemeMode themeMode = ThemeMode.system;
   bool useDynamicColor = true;
@@ -20,10 +36,16 @@ class MobileSettings extends ChangeNotifier {
   bool preciseLocationByDefault = false;
   double minimumHistoryMagnitude = 2.5;
   int historyDays = 7;
-  Set<String> historySources = <String>{'sgc_colombia', 'usgs_global'};
+  Set<String> historySources = <String>{
+    'sgc_colombia',
+    'usgs_global',
+    'seismik_seedlink_preliminary',
+  };
   bool receiveEarlyAlerts = true;
   bool receiveOfficialUpdates = true;
   double minimumNotificationMagnitude = 4.0;
+  double alertRadiusKm = 250.0;
+  MapProvider mapProvider = MapProvider.system;
 
   Future<void> load() async {
     final SharedPreferences preferences = await SharedPreferences.getInstance();
@@ -42,11 +64,26 @@ class MobileSettings extends ChangeNotifier {
     final List<String>? sources = preferences.getStringList(_historySourcesKey);
     if (sources != null && sources.isNotEmpty) {
       historySources = sources.toSet();
+      // Se incorpora una sola vez a instalaciones existentes. Luego la
+      // persona conserva el control: al desactivarla no reaparece al reiniciar.
+      if (!(preferences.getBool(_preliminaryHistoryMigratedKey) ?? false)) {
+        historySources.add('seismik_seedlink_preliminary');
+        await preferences.setBool(_preliminaryHistoryMigratedKey, true);
+      }
     }
     receiveEarlyAlerts = preferences.getBool(_earlyAlertsKey) ?? true;
     receiveOfficialUpdates = preferences.getBool(_officialUpdatesKey) ?? true;
     minimumNotificationMagnitude =
         preferences.getDouble(_notificationMagnitudeKey) ?? 4.0;
+    alertRadiusKm = _normalizeRadius(preferences.getDouble(_alertRadiusKey));
+    mapProvider = MapProvider.fromName(preferences.getString(_mapProviderKey));
+  }
+
+  /// Los umbrales fuera de rango del servidor se ajustan al valor admitido más
+  /// cercano en lugar de rechazar el registro del dispositivo.
+  static double _normalizeRadius(double? value) {
+    if (value == null) return 250.0;
+    return value.clamp(10, 2000).toDouble();
   }
 
   Future<void> setThemeMode(ThemeMode value) async {
@@ -138,5 +175,23 @@ class MobileSettings extends ChangeNotifier {
       _notificationMagnitudeKey,
       minimumNotificationMagnitude,
     );
+  }
+
+  /// Umbral de cercanía: sólo llegan avisos con epicentro dentro de este radio.
+  Future<void> setAlertRadiusKm(double value) async {
+    final double normalized = _normalizeRadius(value);
+    if (alertRadiusKm == normalized) return;
+    alertRadiusKm = normalized;
+    notifyListeners();
+    final SharedPreferences preferences = await SharedPreferences.getInstance();
+    await preferences.setDouble(_alertRadiusKey, normalized);
+  }
+
+  Future<void> setMapProvider(MapProvider value) async {
+    if (mapProvider == value) return;
+    mapProvider = value;
+    notifyListeners();
+    final SharedPreferences preferences = await SharedPreferences.getInstance();
+    await preferences.setString(_mapProviderKey, value.name);
   }
 }

@@ -14,6 +14,8 @@ from pydantic import BaseModel, Field, field_validator
 
 router = APIRouter(prefix="/v1/developer", tags=["developer-platform"])
 
+# La gestión de webhooks exige iniciar sesión en el portal; no se concede con
+# una API key filtrada. Los scopes siguen siendo sólo de lectura de datos.
 ALLOWED_SCOPES = frozenset({"events:read", "stations:read"})
 
 
@@ -133,6 +135,20 @@ async def _request_identity(
     if seismik_session:
         return await _identity(request, authorization, seismik_session)
     return await _identity(request, authorization)
+
+
+async def get_developer_identity(
+    request: Request,
+    authorization: str | None = None,
+    seismik_session: str | None = None,
+) -> dict[str, Any]:
+    """Dependencia pública para recursos que sólo administra su propietario.
+
+    Una clave de consumo nunca puede crear ni redirigir webhooks de otra
+    organización: la operación requiere una sesión OAuth del portal.
+    """
+
+    return await _request_identity(request, authorization, seismik_session)
 
 
 def _record_to_summary(record: dict[str, str], requests_today: int = 0) -> KeySummary:

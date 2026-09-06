@@ -24,7 +24,12 @@ def parse_args() -> argparse.Namespace:
 
 
 def main() -> None:
-    health_server = start_health_server()
+    # La sonda debe responder antes de abrir SeedLink; el enlace hacia la API
+    # se publica en cuanto el despachador existe.
+    link: dict[str, AlertDispatcher] = {}
+    health_server = start_health_server(
+        lambda: link["dispatcher"].health() if "dispatcher" in link else {"pending": 0}
+    )
     args = parse_args()
     logging.basicConfig(
         level=os.getenv("LOG_LEVEL", "INFO").upper(),
@@ -35,6 +40,7 @@ def main() -> None:
     config_path = Path(args.config)
     settings = Settings.load(config_path)
     dispatcher = AlertDispatcher(settings.alert)
+    link["dispatcher"] = dispatcher
     official_reports = OfficialReportService(settings.official_reports, dispatcher.submit)
     service = SeedLinkDetectionService(settings, dispatcher, official_reports.submit)
 

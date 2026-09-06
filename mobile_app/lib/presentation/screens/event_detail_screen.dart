@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../data/models/seismic_event.dart';
+import '../../services/in_app_browser.dart';
+import '../widgets/open_in_maps_button.dart';
 import 'felt_report_screen.dart';
 import 'damage_report_screen.dart';
 
@@ -20,11 +21,35 @@ class EventDetailScreen extends StatelessWidget {
         leading: onClose == null
             ? null
             : IconButton(icon: const Icon(Icons.close), onPressed: onClose),
-        title: const Text('Reporte oficial'),
+        title: Text(
+          event.isPreliminary ? 'Reporte preliminar' : 'Reporte oficial',
+        ),
       ),
       body: ListView(
         padding: const EdgeInsets.all(18),
         children: <Widget>[
+          if (event.isPreliminary) ...<Widget>[
+            Card(
+              color: Colors.deepPurple.withValues(alpha: 0.16),
+              child: const Padding(
+                padding: EdgeInsets.all(14),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Icon(Icons.science_outlined, color: Colors.deepPurple),
+                    SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'SEISMIK / SEEDLINK · PRELIMINAR\n'
+                        'Detección automática multiestación. No es una confirmación oficial. Las ondas se miden en cada estación, pero una magnitud solo se mostrará tras calibrar su respuesta instrumental y validarla científicamente.',
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
@@ -61,8 +86,10 @@ class EventDetailScreen extends StatelessWidget {
             children: <Widget>[
               _Metric(
                 icon: Icons.vertical_align_bottom,
-                label: '${event.depthKm?.toStringAsFixed(1) ?? '—'} km',
-                caption: 'Profundidad',
+                label: event.isPreliminary
+                    ? '${event.stationCount ?? event.stations.length} estaciones'
+                    : '${event.depthKm?.toStringAsFixed(1) ?? '—'} km',
+                caption: event.isPreliminary ? 'Coincidencia' : 'Profundidad',
               ),
               if (event.reviewStatus != null)
                 _Metric(
@@ -72,16 +99,88 @@ class EventDetailScreen extends StatelessWidget {
                 ),
               _Metric(
                 icon: Icons.public,
-                label: event.agency ?? '—',
-                caption: 'Entidad emisora',
+                label: event.isPreliminary
+                    ? 'Seismik / SeedLink'
+                    : event.agency ?? '—',
+                caption: event.isPreliminary ? 'Proveedor' : 'Entidad emisora',
               ),
               _Metric(
                 icon: Icons.schedule,
                 label: _time(event.detectedAt),
                 caption: 'Hora UTC',
               ),
+              if (event.isPreliminary && event.coincidenceWindowSeconds != null)
+                _Metric(
+                  icon: Icons.timer_outlined,
+                  label:
+                      '${event.coincidenceWindowSeconds!.toStringAsFixed(1)} s',
+                  caption: 'Ventana de coincidencia',
+                ),
+              if (event.isPreliminary && event.waveStrengthIndex != null)
+                _Metric(
+                  icon: Icons.graphic_eq_rounded,
+                  label: event.waveStrengthIndex!.toStringAsFixed(2),
+                  caption: 'Índice de onda (S/R)',
+                ),
             ],
           ),
+          if (event.isPreliminary) ...<Widget>[
+            const SizedBox(height: 16),
+            Text(
+              event.algorithm ?? 'STA/LTA con coincidencia multiestación',
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+            ),
+            if (event.zoneId != null || event.countryCodes.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Text(
+                  <String>[
+                    if (event.zoneId != null) 'Zona: ${event.zoneId}',
+                    if (event.countryCodes.isNotEmpty)
+                      'Países: ${event.countryCodes.join(', ')}',
+                  ].join(' · '),
+                ),
+              ),
+            if (event.magnitudeEstimateStatus == 'pending_station_calibration')
+              const Padding(
+                padding: EdgeInsets.only(top: 8),
+                child: Text(
+                  'Magnitud aproximada: pendiente de calibración por estación. '
+                  'Mostrar un número sin esa calibración sería engañoso.',
+                ),
+              ),
+            if (event.magnitudeEstimateStatus == 'validated_preliminary' &&
+                event.magnitude != null)
+              const Padding(
+                padding: EdgeInsets.only(top: 8),
+                child: Text(
+                  'M~ es una estimación de red calibrada; puede cambiar cuando llegue el informe oficial.',
+                ),
+              ),
+            const SizedBox(height: 8),
+            ...event.stations.map(
+              (station) => ListTile(
+                dense: true,
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.sensors_outlined),
+                title: Text(station.stationId),
+                subtitle: Text(
+                  '${station.providerId}${station.countryCode == null ? '' : ' · ${station.countryCode}'} · '
+                  '${_time(station.triggerTime)} UTC',
+                ),
+                trailing: Text(
+                  <String>[
+                    'STA/LTA ${station.staLtaRatio.toStringAsFixed(1)}',
+                    if (station.peakAmplitudeCounts != null)
+                      'Pico ${station.peakAmplitudeCounts!.toStringAsFixed(1)} c',
+                  ].join('\n'),
+                  textAlign: TextAlign.end,
+                ),
+              ),
+            ),
+          ],
           const SizedBox(height: 22),
           if (event.latitude != null && event.longitude != null)
             SizedBox(
@@ -102,7 +201,9 @@ class EventDetailScreen extends StatelessWidget {
                         snippet: event.agency,
                       ),
                       icon: BitmapDescriptor.defaultMarkerWithHue(
-                        BitmapDescriptor.hueRed,
+                        event.isPreliminary
+                            ? BitmapDescriptor.hueViolet
+                            : BitmapDescriptor.hueRed,
                       ),
                     ),
                   },
@@ -111,7 +212,9 @@ class EventDetailScreen extends StatelessWidget {
                 ),
               ),
             ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 12),
+          OpenInMapsButton(event: event),
+          const SizedBox(height: 6),
           if (event.tsunami == true) ...<Widget>[
             Card(
               color: colors.errorContainer,
@@ -130,10 +233,7 @@ class EventDetailScreen extends StatelessWidget {
           ],
           if (event.officialUrl != null)
             OutlinedButton.icon(
-              onPressed: () => launchUrl(
-                Uri.parse(event.officialUrl!),
-                mode: LaunchMode.externalApplication,
-              ),
+              onPressed: () => openWebLink(Uri.parse(event.officialUrl!)),
               icon: const Icon(Icons.open_in_new_rounded),
               label: Text(
                 'Abrir fuente oficial${event.attribution == null ? '' : ' · ${event.attribution}'}',

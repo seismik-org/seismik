@@ -1,0 +1,75 @@
+{
+	admin off
+}
+
+(seismik_security_headers) {
+	header {
+		-Server
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "no-referrer"
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		Cache-Control "no-store"
+	}
+}
+
+api.seismik.org {
+	import seismik_security_headers
+	encode zstd gzip
+
+	request_body {
+		max_size 64KB
+	}
+
+	reverse_proxy api:8000 {
+		health_uri /health/live
+		health_interval 30s
+		health_timeout 3s
+	}
+}
+
+www.seismik.org {
+	redir https://seismik.org{uri} permanent
+}
+
+seismik.org {
+	import seismik_security_headers
+	header Content-Security-Policy "default-src 'self'; style-src 'self'; img-src 'self' data:; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"
+	root * /srv
+	@developers path /developers /developers/
+	redir @developers https://devs.seismik.org/ permanent
+	file_server
+}
+
+devs.seismik.org {
+	# OAuth/API endpoints for the developer portal are served by FastAPI.
+	handle /v1/* {
+		reverse_proxy api:8000
+	}
+
+	@portal not path /__/auth/*
+	header @portal {
+		-Server
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "no-referrer"
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		Cache-Control "no-store"
+		Content-Security-Policy "default-src 'self'; script-src 'self' https://www.gstatic.com; style-src 'self'; img-src 'self' data: https://lh3.googleusercontent.com; connect-src 'self' https://api.seismik.org https://identitytoolkit.googleapis.com https://securetoken.googleapis.com; frame-src 'self' https://accounts.google.com https://seismik-15bbb.firebaseapp.com; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"
+	}
+
+	# Firebase Auth helpers are proxied under the portal domain so OAuth works
+	# in browsers that partition or block third-party storage.
+	handle /__/auth/* {
+		reverse_proxy https://seismik-15bbb.firebaseapp.com {
+			header_up Host seismik-15bbb.firebaseapp.com
+		}
+	}
+
+	root * /srv
+	@home path /
+	rewrite @home /developers.html
+	file_server
+}

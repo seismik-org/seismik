@@ -26,6 +26,8 @@ class StationTrigger(StrictModel):
     trigger_time: AwareDatetime
     received_at: AwareDatetime
     sta_lta_ratio: float = Field(gt=0)
+    peak_amplitude_counts: float | None = Field(default=None, gt=0)
+    noise_rms_counts: float | None = Field(default=None, gt=0)
     latitude: Latitude | None = None
     longitude: Longitude | None = None
     packet_lag_seconds: float | None = Field(default=None, ge=0)
@@ -45,6 +47,13 @@ class EarthquakeCandidate(StrictModel):
     stations: tuple[StationTrigger, ...] = Field(min_length=2)
     estimated_latitude: Latitude | None = None
     estimated_longitude: Longitude | None = None
+    wave_strength_index: float | None = Field(default=None, ge=0)
+    # Solo puede poblarse tras una calibración instrumental validada. La API
+    # conserva el campo para permitir esa evolución sin inventar una magnitud.
+    magnitude_estimate: float | None = Field(default=None, ge=-2, le=12)
+    magnitude_estimate_status: str = Field(
+        default="pending_station_calibration", min_length=1, max_length=128
+    )
 
     @model_validator(mode="after")
     def validate_counts(self) -> "EarthquakeCandidate":
@@ -131,6 +140,12 @@ class DeviceRegistration(StrictModel):
     receive_early_alerts: bool = True
     receive_official_updates: bool = True
     minimum_notification_magnitude: float = Field(default=4.0, ge=0, le=10)
+    alert_radius_km: float = Field(
+        default=250.0,
+        ge=10,
+        le=2_000,
+        description="Radio máximo, elegido por la persona, para recibir avisos",
+    )
     locale: str = Field(default="es", min_length=2, max_length=16)
     app_attest_token: str | None = Field(
         default=None,
@@ -178,6 +193,7 @@ class DeviceRegistrationResponse(StrictModel):
     device_id: str
     registered: bool
     crowd_token: str
+    device_session_token: str
 
 
 class DeviceUnregister(StrictModel):
@@ -198,7 +214,32 @@ class DeviceTarget(StrictModel):
     receive_early_alerts: bool = True
     receive_official_updates: bool = True
     minimum_notification_magnitude: float = 4.0
+    alert_radius_km: float = 250.0
+    latitude: Latitude | None = None
+    longitude: Longitude | None = None
     locale: str = "es"
+
+
+class AlertLedgerEntry(StrictModel):
+    """Alerta ya emitida, recuperable por una app que estuvo sin conexión."""
+
+    event_id: str
+    type: str
+    critical: bool
+    emitted_at: AwareDatetime
+    zone_id: str | None = None
+    latitude: Latitude | None = None
+    longitude: Longitude | None = None
+    magnitude: float | None = None
+    depth_km: float | None = None
+    place: str | None = None
+    agency: str | None = None
+    official_url: str | None = None
+
+
+class AlertLedgerPage(StrictModel):
+    alerts: tuple[AlertLedgerEntry, ...] = ()
+    cursor: str | None = None
 
 
 class ShakePing(StrictModel):

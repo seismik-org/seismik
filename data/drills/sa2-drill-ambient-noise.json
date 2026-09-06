@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "executed_at": "2026-08-31T02:51:34Z",
+  "source": {
+    "kind": "replay",
+    "case": "co-2026-08-24-ambient"
+  },
+  "candidate_event_id": null,
+  "official_event_id": null,
+  "outcome": "silence",
+  "note": "La grabación no superó la coincidencia multiestación: ninguna alerta salió, que es el resultado esperado para ruido ambiental.",
+  "push_attempts": [],
+  "alert_ledger_by_device": {},
+  "timings_ms": {},
+  "limitations": [
+    "Un solo caso grabado no caracteriza la tasa de falsos disparos."
+  ]
+}
