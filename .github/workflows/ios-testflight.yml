@@ -85,7 +85,7 @@ jobs:
         run: |
           set -euo pipefail
           app=build/ios/archive/Runner.xcarchive/Products/Applications/Runner.app
-          codesign -d --entitlements :- "$app" 2> "$RUNNER_TEMP/entitlements.plist"
+          codesign -d --entitlements :- "$app" > "$RUNNER_TEMP/entitlements.plist" 2> "$RUNNER_TEMP/codesign.log"
           plutil -p "$RUNNER_TEMP/entitlements.plist" | grep -q 'aps-environment'
           if [[ "${{ inputs.critical_alerts_approved }}" == "true" ]]; then
             plutil -p "$RUNNER_TEMP/entitlements.plist" | grep -q 'usernotifications.critical-alerts'
