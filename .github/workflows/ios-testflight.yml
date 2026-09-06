@@ -67,9 +67,16 @@ jobs:
         env:
           APPLE_TEAM_ID: ${{ vars.APPLE_TEAM_ID }}
           SEISMIK_GOOGLE_MAPS_API_KEY: ${{ secrets.SEISMIK_GOOGLE_MAPS_API_KEY }}
+          IOS_GOOGLE_SERVICE_INFO_BASE64: ${{ secrets.IOS_GOOGLE_SERVICE_INFO_BASE64 }}
         run: |
           set -euo pipefail
           test -n "$APPLE_TEAM_ID"
+          # Firebase must be configured in the signed iOS bundle.  This file
+          # contains a public Firebase app identifier but is kept as a GitHub
+          # secret so its API configuration never becomes a repository file.
+          test -n "$IOS_GOOGLE_SERVICE_INFO_BASE64"
+          echo "$IOS_GOOGLE_SERVICE_INFO_BASE64" | base64 --decode > ios/Runner/GoogleService-Info.plist
+          plutil -lint ios/Runner/GoogleService-Info.plist
           cp ios/Flutter/Seismik.xcconfig.example ios/Flutter/Seismik.xcconfig
           printf '\nDEVELOPMENT_TEAM = %s\nSEISMIK_GOOGLE_MAPS_API_KEY = %s\n' "$APPLE_TEAM_ID" "$SEISMIK_GOOGLE_MAPS_API_KEY" >> ios/Flutter/Seismik.xcconfig
           # Use the imported App Store distribution profile instead of Xcode's automatic (development) signing.
