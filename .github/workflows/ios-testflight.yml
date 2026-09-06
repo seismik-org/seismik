@@ -51,8 +51,9 @@ jobs:
               raw = os.environ[env_name]
               # GitHub secret pastes may contain wrapping whitespace; ignore it safely.
               clean = re.sub(r"[^A-Za-z0-9+/=]", "", raw)
+              clean += "=" * (-len(clean) % 4)
               with open(os.environ[out_name], "wb") as stream:
-                  stream.write(base64.b64decode(clean, validate=True))
+                  stream.write(base64.b64decode(clean, validate=False))
           PY
           security create-keychain -p "$KEYCHAIN_PASSWORD" "$keychain_path"
           security set-keychain-settings -lut 21600 "$keychain_path"
