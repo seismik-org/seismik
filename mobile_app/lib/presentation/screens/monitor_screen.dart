@@ -150,6 +150,8 @@ class _MonitorScreenState extends State<MonitorScreen> {
                           onOpenDetail: () => _openDetail(event),
                         ),
                       ),
+                    if (state.recentEvents.any((event) => event.isPreliminary))
+                      const _CalibrationStatusCard(),
                     const SizedBox(height: 8),
                     Text(
                       'Arrastra esta barra para explorar los sismos; mueve y '
@@ -235,6 +237,37 @@ class _SheetHandle extends StatelessWidget {
       ),
     ),
   );
+}
+
+class _CalibrationStatusCard extends StatelessWidget {
+  const _CalibrationStatusCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final ColorScheme colors = Theme.of(context).colorScheme;
+    return Card(
+      color: colors.tertiaryContainer,
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Icon(Icons.science_outlined, color: colors.onTertiaryContainer),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'Calibración de magnitud en curso\n'
+                'Seismik conserva pico, ruido y coincidencias para contrastarlos '
+                'con SGC/USGS. Una M~ sólo aparecerá cuando el modelo regional '
+                'esté validado; los candidatos actuales no son una magnitud oficial.',
+                style: TextStyle(color: colors.onTertiaryContainer),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _SyncBanner extends StatelessWidget {

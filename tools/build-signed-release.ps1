@@ -91,6 +91,13 @@ $keySecret = if ($keyPasswordPath -eq $passwordPath) {
 
 Push-Location $mobileRoot
 try {
+    # La clave se incorpora sólo en el manifest de Android durante esta
+    # compilación. No vive en Git ni se imprime en la consola. Debe estar
+    # restringida por paquete y SHA-1/SHA-256 en Google Cloud.
+    if ([string]::IsNullOrWhiteSpace($env:SEISMIK_GOOGLE_MAPS_API_KEY)) {
+        throw ('Falta SEISMIK_GOOGLE_MAPS_API_KEY. Establécela sólo para esta ' +
+               'sesión antes de compilar; no la agregues a archivos del repositorio.')
+    }
     if (-not $SkipTests) {
         Write-Host 'Analizando y probando la app antes de firmar...'
         & flutter analyze
