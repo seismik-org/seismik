@@ -78,8 +78,8 @@ def test_xcode_project_wires_the_entitlements_file() -> None:
 
 def test_podfile_platform_matches_the_project_deployment_target() -> None:
     podfile = (IOS / "Podfile").read_text(encoding="utf-8")
-    assert "platform :ios, '14.0'" in podfile
-    assert "IPHONEOS_DEPLOYMENT_TARGET'] = '14.0'" in podfile
+    assert "platform :ios, '15.0'" in podfile
+    assert "IPHONEOS_DEPLOYMENT_TARGET'] = '15.0'" in podfile
 
 
 def test_ci_builds_ios_on_macos_since_it_cannot_run_elsewhere() -> None:
