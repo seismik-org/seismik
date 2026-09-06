@@ -7,18 +7,22 @@ import Combine
 public final class SeismikState: ObservableObject {
     public static let shared = SeismikState()
 
-    @Published public var events: [SeismicEvent] = []
+    @Published public var events: [SeismicEvent] = SeismicEvent.sampleEvents
     @Published public var stations: [SeismicStation] = []
     @Published public var selectedEvent: SeismicEvent?
     @Published public var activeAlert: SeismicEvent?
     @Published public var isRefreshing: Bool = false
     @Published public var isOnline: Bool = true
     @Published public var lastUpdated: Date?
+    @Published public var isRegistered: Bool = false
+    @Published public var pendingReportCount: Int = 0
 
     // Preferencias de filtrado y monitoreo
-    @AppStorage("seismik.history_days") public var historyDays: Int = 15
-    @AppStorage("seismik.min_magnitude") public var minMagnitude: Double = 3.0
-    @AppStorage("seismik.alert_radius_km") public var alertRadiusKm: Double = 300.0
+    @AppStorage("seismik.history_days") public var historyDays: Int = 7
+    @AppStorage("seismik.min_magnitude") public var minMagnitude: Double = 2.5
+    @AppStorage("seismik.alert_radius_km") public var alertRadiusKm: Double = 250.0
+    @AppStorage("seismik.min_notification_magnitude") public var minimumNotificationMagnitude: Double = 4.0
+    @AppStorage("seismik.include_preliminary") public var includePreliminaryEvents: Bool = true
     @AppStorage("seismik.receive_early_alerts") public var receiveEarlyAlerts: Bool = true
     @AppStorage("seismik.receive_official_updates") public var receiveOfficialUpdates: Bool = true
 
@@ -26,10 +30,32 @@ public final class SeismikState: ObservableObject {
     private let locationManager = LocationManager.shared
 
     public init() {
+        self.isRegistered = apiClient.isRegistered
         Task {
-            await refreshData()
             locationManager.requestPermission()
             locationManager.startUpdating()
+            await updateRegistration()
+            await refreshData()
+        }
+    }
+
+    /// Sincroniza el registro de este dispositivo y las preferencias con el servidor.
+    public func updateRegistration() async {
+        let lat = locationManager.userCoordinate?.latitude ?? 4.65
+        let lon = locationManager.userCoordinate?.longitude ?? -74.05
+        do {
+            let registered = try await apiClient.registerDevice(
+                latitude: lat,
+                longitude: lon,
+                countryCode: "CO",
+                receiveEarlyAlerts: receiveEarlyAlerts,
+                receiveOfficialUpdates: receiveOfficialUpdates,
+                minimumNotificationMagnitude: minimumNotificationMagnitude,
+                alertRadiusKm: alertRadiusKm
+            )
+            self.isRegistered = registered
+        } catch {
+            self.isRegistered = apiClient.isRegistered
         }
     }
 
@@ -46,9 +72,15 @@ public final class SeismikState: ObservableObject {
             async let fetchedStations = apiClient.fetchStations()
 
             let (newEvents, newStations) = try await (fetchedEvents, fetchedStations)
-            self.events = newEvents.sorted { ($0.detectedAt ?? Date.distantPast) > ($1.detectedAt ?? Date.distantPast) }
-            self.stations = newStations
+            let filtered = includePreliminaryEvents ? newEvents : newEvents.filter { !$0.isPreliminary }
+            if !filtered.isEmpty {
+                self.events = filtered.sorted { ($0.detectedAt ?? Date.distantPast) > ($1.detectedAt ?? Date.distantPast) }
+            }
+            if !newStations.isEmpty {
+                self.stations = newStations
+            }
             self.isOnline = true
+            self.isRegistered = apiClient.isRegistered
             self.lastUpdated = Date()
             HapticManager.selection()
         } catch {

@@ -3,6 +3,7 @@ import SwiftUI
 /// Formulario nativo de reporte ciudadano de sismo sentido (DYFI).
 public struct FeltReportView: View {
     public let preselectedEvent: SeismicEvent?
+    public let showsCloseButton: Bool
     @Environment(\.dismiss) private var dismiss
 
     @State private var felt: Bool = true
@@ -16,6 +17,13 @@ public struct FeltReportView: View {
 
     @State private var isSubmitting: Bool = false
     @State private var showSuccessAlert: Bool = false
+    @State private var submissionMessage: String = ""
+    @State private var showErrorAlert: Bool = false
+
+    public init(preselectedEvent: SeismicEvent?, showsCloseButton: Bool = true) {
+        self.preselectedEvent = preselectedEvent
+        self.showsCloseButton = showsCloseButton
+    }
 
     private let intensities: [(mmi: Int, label: String, desc: String)] = [
         (1, "I · Instrumental", "Casi imperceptible."),
@@ -113,16 +121,25 @@ public struct FeltReportView: View {
             .navigationTitle("¿Sentiste el Sismo?")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Cancelar") {
-                        dismiss()
+                if showsCloseButton {
+                    ToolbarItem(placement: .navigationBarLeading) {
+                        Button("Cancelar") {
+                            dismiss()
+                        }
                     }
                 }
             }
             .alert("Reporte Recibido", isPresented: $showSuccessAlert) {
-                Button("Entendido") { dismiss() }
+                Button("Entendido") {
+                    if showsCloseButton { dismiss() }
+                }
             } message: {
-                Text("Gracias por tu colaboración. Tu aporte fortalece el mapa de intensidad sísmica comunitaria.")
+                Text(submissionMessage)
+            }
+            .alert("No se pudo guardar el reporte", isPresented: $showErrorAlert) {
+                Button("Aceptar", role: .cancel) {}
+            } message: {
+                Text(submissionMessage)
             }
         }
     }

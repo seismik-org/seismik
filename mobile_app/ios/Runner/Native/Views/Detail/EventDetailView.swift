@@ -5,6 +5,7 @@ import MapKit
 public struct EventDetailView: View {
     public let event: SeismicEvent
     @Environment(\.dismiss) private var dismiss
+    @AppStorage("seismik.map_provider") private var mapProvider = "apple"
 
     public var body: some View {
         CompatibleNavigationStack {
@@ -71,7 +72,7 @@ public struct EventDetailView: View {
                     LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
                         MetricCard(
                             title: "PROFUNDIDAD",
-                            value: event.depthKm.map { "\(Int($0)) km" } ?? "Superficial",
+                            value: event.depthKm.map { "\(Int($0)) km" } ?? "No disponible",
                             icon: "arrow.down.to.line.compact"
                         )
                         MetricCard(
@@ -109,17 +110,14 @@ public struct EventDetailView: View {
                                     .strokeBorder(Color.white.opacity(0.3), lineWidth: 0.8)
                             }
 
-                            // Botón de Apertura en Apple Maps
+                            // El proveedor se elige en Ajustes; el mapa principal siempre usa MapKit.
                             Button {
                                 HapticManager.light()
-                                let placemark = MKPlacemark(coordinate: coord)
-                                let mapItem = MKMapItem(placemark: placemark)
-                                mapItem.name = "Epicentro: \(event.place ?? "Sismo")"
-                                mapItem.openInMaps()
+                                openEpicenter(coord)
                             } label: {
                                 HStack {
                                     Image(systemName: "map.fill")
-                                    Text("Abrir en Apple Maps")
+                                    Text(mapProvider == "google" ? "Abrir en Google Maps" : "Abrir en Apple Maps")
                                         .font(.system(size: 15, weight: .semibold))
                                 }
                                 .frame(maxWidth: .infinity)
@@ -167,6 +165,26 @@ public struct EventDetailView: View {
             }
         }
         .modalSheetPresentation()
+    }
+
+    private func openEpicenter(_ coordinate: CLLocationCoordinate2D) {
+        if mapProvider == "google" {
+            let query = "\(coordinate.latitude),\(coordinate.longitude)"
+            if let appURL = URL(string: "comgooglemaps://?q=\(query)&center=\(query)"),
+               UIApplication.shared.canOpenURL(appURL) {
+                UIApplication.shared.open(appURL)
+                return
+            }
+            if let webURL = URL(string: "https://www.google.com/maps/search/?api=1&query=\(query)") {
+                UIApplication.shared.open(webURL)
+            }
+            return
+        }
+
+        let placemark = MKPlacemark(coordinate: coordinate)
+        let item = MKMapItem(placemark: placemark)
+        item.name = "Epicentro: \(event.place ?? "Sismo")"
+        item.openInMaps()
     }
 }
 
@@ -247,4 +265,3 @@ private struct EpicenterMapView: UIViewRepresentable {
 
     func updateUIView(_ uiView: MKMapView, context: Context) {}
 }
-

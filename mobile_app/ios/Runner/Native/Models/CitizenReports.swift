@@ -2,13 +2,17 @@ import Foundation
 
 /// Reporte ciudadano de sismo sentido (Did You Feel It / DYFI).
 public struct FeltReportPayload: Codable {
+    public let reportId: String
     public let deviceId: String
+    public let type: String
     public let earthquakeEventId: String?
     public let officialEventId: String?
     public let observedAt: String
     public let latitude: Double
     public let longitude: Double
+    public let locationPrecision: String
     public let countryCode: String
+    public let consentVersion: String
     public let felt: Bool
     public let intensityMmi: Int?
     public let indoors: Bool?
@@ -20,14 +24,63 @@ public struct FeltReportPayload: Codable {
     public let visibleDamage: Bool?
     public let comment: String?
 
+    public init(
+        reportId: String = UUID().uuidString,
+        deviceId: String,
+        earthquakeEventId: String?,
+        officialEventId: String?,
+        observedAt: String = ISO8601DateFormatter().string(from: Date()),
+        latitude: Double,
+        longitude: Double,
+        locationPrecision: String = "precise",
+        countryCode: String,
+        consentVersion: String = "2026-08",
+        felt: Bool,
+        intensityMmi: Int?,
+        indoors: Bool?,
+        floor: Int?,
+        wokeUp: Bool?,
+        difficultyStanding: Bool?,
+        objectsMoved: Bool? = nil,
+        objectsFell: Bool? = nil,
+        visibleDamage: Bool? = nil,
+        comment: String? = nil
+    ) {
+        self.reportId = reportId
+        self.deviceId = deviceId
+        self.type = "seismik_felt_report"
+        self.earthquakeEventId = earthquakeEventId
+        self.officialEventId = officialEventId
+        self.observedAt = observedAt
+        self.latitude = latitude
+        self.longitude = longitude
+        self.locationPrecision = locationPrecision
+        self.countryCode = countryCode
+        self.consentVersion = consentVersion
+        self.felt = felt
+        self.intensityMmi = felt ? intensityMmi : nil
+        self.indoors = indoors
+        self.floor = floor
+        self.wokeUp = wokeUp
+        self.difficultyStanding = difficultyStanding
+        self.objectsMoved = objectsMoved
+        self.objectsFell = objectsFell
+        self.visibleDamage = visibleDamage
+        self.comment = comment
+    }
+
     enum CodingKeys: String, CodingKey {
+        case reportId = "report_id"
         case deviceId = "device_id"
+        case type
         case earthquakeEventId = "earthquake_event_id"
         case officialEventId = "official_event_id"
         case observedAt = "observed_at"
         case latitude
         case longitude
+        case locationPrecision = "location_precision"
         case countryCode = "country_code"
+        case consentVersion = "consent_version"
         case felt
         case intensityMmi = "intensity_mmi"
         case indoors
@@ -43,13 +96,17 @@ public struct FeltReportPayload: Codable {
 
 /// Reporte ciudadano de daños estructurales y emergencias.
 public struct DamageReportPayload: Codable {
+    public let reportId: String
     public let deviceId: String
+    public let type: String
     public let earthquakeEventId: String?
     public let officialEventId: String?
     public let observedAt: String
     public let latitude: Double
     public let longitude: Double
+    public let locationPrecision: String
     public let countryCode: String
+    public let consentVersion: String
     public let severity: String
     public let hazards: [String]
     public let buildingType: String?
@@ -59,14 +116,59 @@ public struct DamageReportPayload: Codable {
     public let safeToRemain: Bool?
     public let comment: String?
 
+    public init(
+        reportId: String = UUID().uuidString,
+        deviceId: String,
+        earthquakeEventId: String?,
+        officialEventId: String?,
+        observedAt: String = ISO8601DateFormatter().string(from: Date()),
+        latitude: Double,
+        longitude: Double,
+        locationPrecision: String = "precise",
+        countryCode: String,
+        consentVersion: String = "2026-08",
+        severity: String,
+        hazards: [String] = [],
+        buildingType: String? = nil,
+        peopleTrapped: Bool = false,
+        injuriesObserved: Bool = false,
+        emergencyServicesContacted: Bool = false,
+        safeToRemain: Bool? = nil,
+        comment: String? = nil
+    ) {
+        self.reportId = reportId
+        self.deviceId = deviceId
+        self.type = "seismik_damage_report"
+        self.earthquakeEventId = earthquakeEventId
+        self.officialEventId = officialEventId
+        self.observedAt = observedAt
+        self.latitude = latitude
+        self.longitude = longitude
+        self.locationPrecision = locationPrecision
+        self.countryCode = countryCode
+        self.consentVersion = consentVersion
+        self.severity = severity
+        self.hazards = hazards
+        self.buildingType = buildingType
+        self.peopleTrapped = peopleTrapped
+        self.injuriesObserved = injuriesObserved
+        self.emergencyServicesContacted = emergencyServicesContacted
+        self.safeToRemain = safeToRemain
+        self.comment = comment
+    }
+
     enum CodingKeys: String, CodingKey {
+        case reportId = "report_id"
         case deviceId = "device_id"
+        case type
         case earthquakeEventId = "earthquake_event_id"
         case officialEventId = "official_event_id"
         case observedAt = "observed_at"
         case latitude
         case longitude
+        case locationPrecision = "location_precision"
         case countryCode = "country_code"
+        case consentVersion = "consent_version"
         case severity
         case hazards
         case buildingType = "building_type"
@@ -78,23 +180,24 @@ public struct DamageReportPayload: Codable {
     }
 }
 
-/// Nivel de severidad de daños para el selector visual nativo.
+/// Nivel de severidad de daños para el selector visual nativo (compatible con backend).
 public enum DamageSeverity: String, CaseIterable, Identifiable {
     case none = "none"
-    case light = "light"
+    case minor = "minor"
     case moderate = "moderate"
     case severe = "severe"
-    case totalCollapse = "total_collapse"
+    case collapse = "collapse"
 
     public var id: String { rawValue }
 
     public var title: String {
         switch self {
         case .none: return "Sin daños evidentes"
-        case .light: return "Daños leves (grietas finas)"
+        case .minor: return "Daños leves (grietas finas)"
         case .moderate: return "Daños moderados (fisuras, caída de mampostería)"
         case .severe: return "Daños graves (muros comprometidos)"
-        case .totalCollapse: return "Colapso parcial o total"
+        case .collapse: return "Colapso parcial o total"
         }
     }
 }
+
