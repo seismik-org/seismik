@@ -72,6 +72,8 @@ jobs:
           test -n "$APPLE_TEAM_ID"
           cp ios/Flutter/Seismik.xcconfig.example ios/Flutter/Seismik.xcconfig
           printf '\nDEVELOPMENT_TEAM = %s\nSEISMIK_GOOGLE_MAPS_API_KEY = %s\n' "$APPLE_TEAM_ID" "$SEISMIK_GOOGLE_MAPS_API_KEY" >> ios/Flutter/Seismik.xcconfig
+          # Use the imported App Store distribution profile instead of Xcode's automatic (development) signing.
+          printf '\nCODE_SIGN_STYLE = Manual\nCODE_SIGN_IDENTITY = Apple Distribution\nPROVISIONING_PROFILE_SPECIFIER = Seismik App Store Connect\n' >> ios/Flutter/Seismik.xcconfig
           if [[ "${{ inputs.critical_alerts_approved }}" != "true" ]]; then
             printf '\nSEISMIK_ENTITLEMENTS_FILE = Runner.basic.entitlements\n' >> ios/Flutter/Seismik.xcconfig
           fi
