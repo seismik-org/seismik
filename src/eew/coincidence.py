@@ -10,11 +10,11 @@ from collections.abc import Callable
 from obspy import UTCDateTime  # type: ignore[import-untyped]
 
 from eew.config import CoincidenceSettings
-from eew.magnitude import estimate_preliminary_magnitude
+from eew.magnitude import MagnitudeCalibration, estimate_preliminary_magnitude
 from eew.models import EarthquakeCandidate, StationTrigger, utc_now_iso
 
 # Solo se llena tras calibración retrospectiva y validada con informes oficiales.
-VALIDATED_MAGNITUDE_CALIBRATIONS = {}
+VALIDATED_MAGNITUDE_CALIBRATIONS: dict[str, MagnitudeCalibration] = {}
 
 
 class CoincidenceDetector:

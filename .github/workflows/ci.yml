@@ -63,7 +63,7 @@ jobs:
       - name: Build universal release APK (compile check only)
         run: |
           flutter build apk --release \
-            -PseismikUnsignedReleaseCheck=true \
+            --android-project-arg=seismikUnsignedReleaseCheck=true \
             --dart-define=SEISMIK_API_BASE_URL=https://api.example.invalid
       - name: Verify the APK is universal
         run: |
