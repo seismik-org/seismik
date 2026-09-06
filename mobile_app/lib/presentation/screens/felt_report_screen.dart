@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/platform.dart';
+import '../widgets/adaptive.dart';
 import '../../data/models/citizen_report.dart';
 import '../../data/models/pending_report.dart';
 import '../../data/models/seismic_event.dart';
@@ -69,18 +71,16 @@ class _FeltReportScreenState extends State<FeltReportScreen> {
 
   Future<void> _submit() async {
     if (_country.text.trim().length != 2) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Usa un código de país de dos letras, por ejemplo CO.'),
-        ),
+      await showAdaptiveNotice(
+        context,
+        message: 'Usa un código de país de dos letras, por ejemplo CO.',
       );
       return;
     }
     if (_official && _selectedAgencyIds.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Selecciona al menos una organización geológica.'),
-        ),
+      await showAdaptiveNotice(
+        context,
+        message: 'Selecciona al menos una organización geológica.',
       );
       return;
     }
@@ -120,15 +120,14 @@ class _FeltReportScreenState extends State<FeltReportScreen> {
       );
       if (!mounted) return;
       await Navigator.of(context).pushReplacement(
-        MaterialPageRoute<void>(
-          builder: (_) => ReportResultScreen(result: result),
+        adaptiveRoute<void>(
+          (_) => ReportResultScreen(result: result),
+          title: 'Reporte',
         ),
       );
     } catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('No se pudo enviar: $error')));
+        await showAdaptiveNotice(context, message: 'No se pudo enviar: $error');
       }
     } finally {
       if (mounted) setState(() => _submitting = false);
@@ -179,9 +178,9 @@ class _FeltReportScreenState extends State<FeltReportScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('¿Sentiste el sismo?')),
-    body: ListView(
+  Widget build(BuildContext context) => AdaptiveScreen(
+    title: '¿Sentiste el sismo?',
+    child: ListView(
       padding: const EdgeInsets.fromLTRB(18, 18, 18, 28),
       children: <Widget>[
         SwitchListTile.adaptive(
@@ -198,7 +197,7 @@ class _FeltReportScreenState extends State<FeltReportScreen> {
             'Intensidad percibida: ${_intensity.round()} / 10',
             style: Theme.of(context).textTheme.titleMedium,
           ),
-          Slider(
+          Slider.adaptive(
             value: _intensity,
             min: 1,
             max: 10,
@@ -241,28 +240,32 @@ class _FeltReportScreenState extends State<FeltReportScreen> {
         const SizedBox(height: 10),
         _privacyControls(),
         const SizedBox(height: 18),
-        FilledButton.icon(
+        AdaptiveButton(
           onPressed: _submitting ? null : _submit,
-          icon: _submitting
-              ? const SizedBox.square(
-                  dimension: 18,
-                  child: CircularProgressIndicator(),
-                )
-              : const Icon(Icons.send),
-          label: const Text('Enviar a Seismik'),
+          icon: Icons.send,
+          label: _submitting ? 'Enviando…' : 'Enviar a Seismik',
         ),
         const SizedBox(height: 24),
       ],
     ),
   );
 
+  /// iOS no usa casillas dentro de formularios: usa interruptores. Mantener el
+  /// checkbox allí es una de las señales más visibles de una app no nativa.
   Widget _check(String label, bool value, ValueChanged<bool> update) =>
-      CheckboxListTile(
-        dense: true,
-        value: value,
-        onChanged: (next) => setState(() => update(next ?? false)),
-        title: Text(label),
-      );
+      usesCupertino
+      ? SwitchListTile.adaptive(
+          dense: true,
+          value: value,
+          onChanged: (next) => setState(() => update(next)),
+          title: Text(label),
+        )
+      : CheckboxListTile(
+          dense: true,
+          value: value,
+          onChanged: (next) => setState(() => update(next ?? false)),
+          title: Text(label),
+        );
 
   Widget _privacyControls() => Card(
     child: Padding(

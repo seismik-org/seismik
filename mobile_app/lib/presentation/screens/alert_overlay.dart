@@ -118,10 +118,16 @@ class _AlertOverlayState extends State<AlertOverlay>
                 ),
                 child: OpenInMapsButton(event: widget.event, compact: true),
               ),
-              FilledButton.tonalIcon(
-                onPressed: widget.onDismiss,
-                icon: const Icon(Icons.check_circle_outline),
-                label: const Text('ESTOY A SALVO · CERRAR'),
+              // La acción de cierre conserva su forma en ambas plataformas: es
+              // la única salida de una pantalla que aparece en una emergencia y
+              // no debe depender de reconocer un control nuevo.
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.tonalIcon(
+                  onPressed: widget.onDismiss,
+                  icon: const Icon(Icons.check_circle_outline),
+                  label: const Text('ESTOY A SALVO · CERRAR'),
+                ),
               ),
             ],
           ),
