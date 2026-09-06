@@ -214,3 +214,148 @@ class LiquidGlassCard extends StatelessWidget {
     child: child,
   );
 }
+
+/// Celda translúcida de cristal para listas en iOS con biselado de luz.
+///
+/// Diseñada para vivir dentro de la hoja de LiquidGlass sin crear pasadas de
+/// desenfoque redundantes ni cajas opacas que tapen el mapa.
+class GlassTile extends StatelessWidget {
+  const GlassTile({
+    required this.title,
+    this.leading,
+    this.subtitle,
+    this.trailing,
+    this.onTap,
+    this.padding = const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+    this.borderRadius = 18,
+    super.key,
+  });
+
+  final Widget? leading;
+  final Widget title;
+  final Widget? subtitle;
+  final Widget? trailing;
+  final VoidCallback? onTap;
+  final EdgeInsetsGeometry padding;
+  final double borderRadius;
+
+  @override
+  Widget build(BuildContext context) {
+    final Brightness brightness = CupertinoTheme.brightnessOf(context);
+    final bool dark = brightness == Brightness.dark;
+
+    final Widget row = Padding(
+      padding: padding,
+      child: Row(
+        children: <Widget>[
+          if (leading != null) ...<Widget>[
+            leading!,
+            const SizedBox(width: 14),
+          ],
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                title,
+                if (subtitle != null) ...<Widget>[
+                  const SizedBox(height: 3),
+                  subtitle!,
+                ],
+              ],
+            ),
+          ),
+          if (trailing != null) ...<Widget>[
+            const SizedBox(width: 10),
+            trailing!,
+          ],
+        ],
+      ),
+    );
+
+    final Widget body = DecoratedBox(
+      decoration: BoxDecoration(
+        color: dark
+            ? CupertinoColors.systemGrey6.darkColor.withValues(alpha: 0.55)
+            : CupertinoColors.white.withValues(alpha: 0.65),
+        borderRadius: BorderRadius.circular(borderRadius),
+        border: Border.all(
+          color: dark
+              ? CupertinoColors.white.withValues(alpha: 0.12)
+              : CupertinoColors.white.withValues(alpha: 0.85),
+          width: 0.8,
+        ),
+      ),
+      child: row,
+    );
+
+    if (onTap == null) return body;
+
+    return CupertinoButton(
+      padding: EdgeInsets.zero,
+      minimumSize: Size.zero,
+      onPressed: onTap,
+      child: body,
+    );
+  }
+}
+
+/// Pastilla o cápsula de cristal con tinte semántico para magnitudes y estados.
+class GlassBadge extends StatelessWidget {
+  const GlassBadge({
+    required this.text,
+    this.gradient,
+    this.backgroundColor,
+    this.textColor = CupertinoColors.white,
+    this.fontSize = 14,
+    this.isBold = true,
+    this.padding = const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+    super.key,
+  });
+
+  final String text;
+  final Gradient? gradient;
+  final Color? backgroundColor;
+  final Color textColor;
+  final double fontSize;
+  final bool isBold;
+  final EdgeInsetsGeometry padding;
+
+  @override
+  Widget build(BuildContext context) {
+    final Brightness brightness = CupertinoTheme.brightnessOf(context);
+    final bool dark = brightness == Brightness.dark;
+
+    return Container(
+      padding: padding,
+      decoration: BoxDecoration(
+        gradient: gradient,
+        color: gradient == null ? (backgroundColor ?? CupertinoColors.activeBlue) : null,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: dark
+              ? CupertinoColors.white.withValues(alpha: 0.25)
+              : CupertinoColors.white.withValues(alpha: 0.70),
+          width: 0.8,
+        ),
+        boxShadow: <BoxShadow>[
+          BoxShadow(
+            color: CupertinoColors.black.withValues(alpha: 0.12),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          color: textColor,
+          fontSize: fontSize,
+          fontWeight: isBold ? FontWeight.w700 : FontWeight.w500,
+          letterSpacing: -0.2,
+        ),
+      ),
+    );
+  }
+}
+
