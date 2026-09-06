@@ -7,7 +7,7 @@ public struct EventDetailView: View {
     @Environment(\.dismiss) private var dismiss
 
     public var body: some View {
-        NavigationStack {
+        CompatibleNavigationStack {
             ScrollView {
                 VStack(spacing: 20) {
                     // Hero de Magnitud Monumental
@@ -101,15 +101,7 @@ public struct EventDetailView: View {
                                 .foregroundColor(.secondary)
                                 .padding(.horizontal, 4)
 
-                            Map(initialPosition: .region(
-                                MKCoordinateRegion(
-                                    center: coord,
-                                    span: MKCoordinateSpan(latitudeDelta: 1.2, longitudeDelta: 1.2)
-                                )
-                            )) {
-                                Marker(event.place ?? "Epicentro", coordinate: coord)
-                                    .tint(SeismikColors.severityColor(for: event.magnitude))
-                            }
+                            EpicenterMapView(coordinate: coord, title: event.place)
                             .frame(height: 180)
                             .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
                             .overlay {
@@ -161,7 +153,7 @@ public struct EventDetailView: View {
             .navigationTitle("Detalle del Sismo")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItem(placement: .navigationBarTrailing) {
                     Button {
                         HapticManager.selection()
                         dismiss()
@@ -174,7 +166,7 @@ public struct EventDetailView: View {
                 }
             }
         }
-        .presentationDetents([.medium, .large])
+        .modalSheetPresentation()
     }
 }
 
@@ -231,3 +223,28 @@ private struct SafetyStepCard: View {
         .liquidGlass(cornerRadius: 16)
     }
 }
+
+// MARK: - Mini Mapa del Epicentro Compatible (iOS 15+)
+private struct EpicenterMapView: UIViewRepresentable {
+    let coordinate: CLLocationCoordinate2D
+    let title: String?
+
+    func makeUIView(context: Context) -> MKMapView {
+        let map = MKMapView()
+        map.isScrollEnabled = false
+        map.isZoomEnabled = false
+        let region = MKCoordinateRegion(
+            center: coordinate,
+            span: MKCoordinateSpan(latitudeDelta: 1.2, longitudeDelta: 1.2)
+        )
+        map.setRegion(region, animated: false)
+        let pin = MKPointAnnotation()
+        pin.coordinate = coordinate
+        pin.title = title
+        map.addAnnotation(pin)
+        return map
+    }
+
+    func updateUIView(_ uiView: MKMapView, context: Context) {}
+}
+

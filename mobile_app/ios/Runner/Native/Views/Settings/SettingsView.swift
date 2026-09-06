@@ -6,7 +6,7 @@ public struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
 
     public var body: some View {
-        NavigationStack {
+        CompatibleNavigationStack {
             Form {
                 Section(header: Text("ALERTAS SÍSMICAS")) {
                     Toggle("Alertas tempranas", isOn: $state.receiveEarlyAlerts)
@@ -75,7 +75,7 @@ public struct SettingsView: View {
                     HStack {
                         Text("Versión")
                         Spacer()
-                        Text("1.0.0 (25) · Apple Native")
+                        Text("1.0.0 (26) · Apple Native")
                             .foregroundColor(.secondary)
                     }
                     HStack {
@@ -89,7 +89,7 @@ public struct SettingsView: View {
             .navigationTitle("Configuración")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Cerrar") {
                         dismiss()
                     }

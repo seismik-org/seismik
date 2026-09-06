@@ -107,4 +107,56 @@ extension View {
             .padding(.vertical, 8)
             .liquidGlass(cornerRadius: 30, tint: tint, showShadow: showShadow)
     }
+
+    /// Presentación de hoja sísmica con detents elásticos en iOS 16+ y soporte transparente en iOS 15+.
+    @ViewBuilder
+    public func seismicSheetPresentation() -> some View {
+        if #available(iOS 16.4, *) {
+            self
+                .presentationDetents([.fraction(0.18), .medium, .large])
+                .presentationDragIndicator(.visible)
+                .presentationBackgroundInteraction(.enabled(upThrough: .medium))
+        } else if #available(iOS 16.0, *) {
+            self
+                .presentationDetents([.fraction(0.18), .medium, .large])
+                .presentationDragIndicator(.visible)
+        } else {
+            self
+        }
+    }
+
+    /// Presentación de hoja modal estándar con detents en iOS 16+ y soporte transparente en iOS 15+.
+    @ViewBuilder
+    public func modalSheetPresentation() -> some View {
+        if #available(iOS 16.0, *) {
+            self
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+        } else {
+            self
+        }
+    }
 }
+
+// MARK: - Contenedor de Navegación Compatible (iOS 15 - iOS 18+)
+public struct CompatibleNavigationStack<Content: View>: View {
+    @ViewBuilder private let content: () -> Content
+
+    public init(@ViewBuilder content: @escaping () -> Content) {
+        self.content = content
+    }
+
+    public var body: some View {
+        if #available(iOS 16.0, *) {
+            NavigationStack {
+                content()
+            }
+        } else {
+            NavigationView {
+                content()
+            }
+            .navigationViewStyle(.stack)
+        }
+    }
+}
+
