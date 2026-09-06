@@ -2,7 +2,13 @@ plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("dev.flutter.flutter-gradle-plugin")
-    id("com.google.gms.google-services")
+}
+
+// El archivo de Firebase se mantiene fuera de Git porque contiene la
+// configuración del proyecto. En desarrollo y releases firmados existe y se
+// aplica el plugin; en CI se valida el APK sin copiar credenciales al runner.
+if (file("google-services.json").isFile) {
+    apply(plugin = "com.google.gms.google-services")
 }
 
 android {
