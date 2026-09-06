@@ -25,6 +25,11 @@ public final class SeismikState: ObservableObject {
     @AppStorage("seismik.include_preliminary") public var includePreliminaryEvents: Bool = true
     @AppStorage("seismik.receive_early_alerts") public var receiveEarlyAlerts: Bool = true
     @AppStorage("seismik.receive_official_updates") public var receiveOfficialUpdates: Bool = true
+    @AppStorage("seismik.map_provider") public var mapProvider: String = "system"
+    @AppStorage("seismik.app_map_type") public var appMapType: String = "standard"
+    @AppStorage("seismik.crowdsourcing_enabled") public var crowdsourcingEnabled: Bool = true
+    @AppStorage("seismik.precise_location") public var preciseLocationByDefault: Bool = false
+    @AppStorage("seismik.history_sources") public var historySourcesRaw: String = "sgc_colombia,usgs_global,seismik_seedlink_preliminary"
 
     private let apiClient = SeismikAPIClient.shared
     private let locationManager = LocationManager.shared
@@ -129,4 +134,39 @@ public final class SeismikState: ObservableObject {
         }
         HapticManager.heavy()
     }
+
+    /// Identificador único persistente de este dispositivo.
+    public var deviceId: String {
+        apiClient.deviceId
+    }
+
+    /// Verifica si una fuente geológica está activa en los filtros.
+    public func isSourceActive(_ sourceKey: String) -> Bool {
+        let items = historySourcesRaw.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
+        return items.contains(sourceKey)
+    }
+
+    /// Alterna la inclusión de una fuente geológica en el historial.
+    public func toggleSource(_ sourceKey: String) {
+        var items = historySourcesRaw.split(separator: ",").map { String($0.trimmingCharacters(in: .whitespaces)) }
+        if let idx = items.firstIndex(of: sourceKey) {
+            items.remove(at: idx)
+        } else {
+            items.append(sourceKey)
+        }
+        historySourcesRaw = items.joined(separator: ",")
+        HapticManager.selection()
+        Task { await refreshData() }
+    }
+
+    /// Alterna cíclicamente el estilo del mapa nativo entre Estándar, Satélite e Híbrido.
+    public func cycleMapType() {
+        switch appMapType {
+        case "standard": appMapType = "satellite"
+        case "satellite": appMapType = "hybrid"
+        default: appMapType = "standard"
+        }
+        HapticManager.selection()
+    }
 }
+

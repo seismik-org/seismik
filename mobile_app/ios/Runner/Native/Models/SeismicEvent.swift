@@ -1,6 +1,33 @@
 import Foundation
 import CoreLocation
 
+/// Registro de disparo de estación sismológica para coincidencia multiestación.
+public struct StationTrigger: Identifiable, Codable, Hashable {
+    public var id: String { stationId }
+    public let stationId: String
+    public let providerId: String
+    public let countryCode: String?
+    public let triggerTime: Date?
+    public let staLtaRatio: Double
+    public let peakAmplitudeCounts: Double?
+
+    public init(
+        stationId: String,
+        providerId: String,
+        countryCode: String? = nil,
+        triggerTime: Date? = nil,
+        staLtaRatio: Double,
+        peakAmplitudeCounts: Double? = nil
+    ) {
+        self.stationId = stationId
+        self.providerId = providerId
+        self.countryCode = countryCode
+        self.triggerTime = triggerTime
+        self.staLtaRatio = staLtaRatio
+        self.peakAmplitudeCounts = peakAmplitudeCounts
+    }
+}
+
 /// Modelo de datos para un evento sísmico detectado o reportado.
 public struct SeismicEvent: Identifiable, Codable, Hashable {
     public let id: String
@@ -15,6 +42,17 @@ public struct SeismicEvent: Identifiable, Codable, Hashable {
     public let isPreliminary: Bool
     public let intensityMmi: Int?
     public let tsunamiWarning: Bool
+    public let magnitudeType: String?
+    public let reviewStatus: String?
+    public let stationCount: Int?
+    public let coincidenceWindowSeconds: Double?
+    public let waveStrengthIndex: Double?
+    public let officialUrl: String?
+    public let zoneId: String?
+    public let countryCodes: [String]
+    public let algorithm: String?
+    public let magnitudeEstimateStatus: String?
+    public let stations: [StationTrigger]
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -35,6 +73,17 @@ public struct SeismicEvent: Identifiable, Codable, Hashable {
         case intensityMmi = "intensity_mmi"
         case tsunamiWarning = "tsunami_warning"
         case tsunami
+        case magnitudeType = "magnitude_type"
+        case reviewStatus = "review_status"
+        case stationCount = "station_count"
+        case coincidenceWindowSeconds = "coincidence_window_seconds"
+        case waveStrengthIndex = "wave_strength_index"
+        case officialUrl = "official_url"
+        case zoneId = "zone_id"
+        case countryCodes = "country_codes"
+        case algorithm
+        case magnitudeEstimateStatus = "magnitude_estimate_status"
+        case stations
     }
 
     public init(
@@ -49,7 +98,18 @@ public struct SeismicEvent: Identifiable, Codable, Hashable {
         agency: String? = nil,
         isPreliminary: Bool = false,
         intensityMmi: Int? = nil,
-        tsunamiWarning: Bool = false
+        tsunamiWarning: Bool = false,
+        magnitudeType: String? = nil,
+        reviewStatus: String? = nil,
+        stationCount: Int? = nil,
+        coincidenceWindowSeconds: Double? = nil,
+        waveStrengthIndex: Double? = nil,
+        officialUrl: String? = nil,
+        zoneId: String? = nil,
+        countryCodes: [String] = [],
+        algorithm: String? = nil,
+        magnitudeEstimateStatus: String? = nil,
+        stations: [StationTrigger] = []
     ) {
         self.id = id
         self.place = place
@@ -63,6 +123,17 @@ public struct SeismicEvent: Identifiable, Codable, Hashable {
         self.isPreliminary = isPreliminary
         self.intensityMmi = intensityMmi
         self.tsunamiWarning = tsunamiWarning
+        self.magnitudeType = magnitudeType
+        self.reviewStatus = reviewStatus
+        self.stationCount = stationCount
+        self.coincidenceWindowSeconds = coincidenceWindowSeconds
+        self.waveStrengthIndex = waveStrengthIndex
+        self.officialUrl = officialUrl
+        self.zoneId = zoneId
+        self.countryCodes = countryCodes
+        self.algorithm = algorithm
+        self.magnitudeEstimateStatus = magnitudeEstimateStatus
+        self.stations = stations
     }
 
     public init(from decoder: Decoder) throws {
@@ -95,6 +166,18 @@ public struct SeismicEvent: Identifiable, Codable, Hashable {
             ?? (try? container.decodeIfPresent(Bool.self, forKey: .tsunami))
             ?? false
         tsunamiWarning = tsuBool
+
+        magnitudeType = try container.decodeIfPresent(String.self, forKey: .magnitudeType)
+        reviewStatus = try container.decodeIfPresent(String.self, forKey: .reviewStatus)
+        stationCount = try container.decodeIfPresent(Int.self, forKey: .stationCount)
+        coincidenceWindowSeconds = try container.decodeIfPresent(Double.self, forKey: .coincidenceWindowSeconds)
+        waveStrengthIndex = try container.decodeIfPresent(Double.self, forKey: .waveStrengthIndex)
+        officialUrl = try container.decodeIfPresent(String.self, forKey: .officialUrl)
+        zoneId = try container.decodeIfPresent(String.self, forKey: .zoneId)
+        countryCodes = (try? container.decodeIfPresent([String].self, forKey: .countryCodes)) ?? []
+        algorithm = try container.decodeIfPresent(String.self, forKey: .algorithm)
+        magnitudeEstimateStatus = try container.decodeIfPresent(String.self, forKey: .magnitudeEstimateStatus)
+        stations = (try? container.decodeIfPresent([StationTrigger].self, forKey: .stations)) ?? []
 
         // Manejo flexible de fechas ISO8601 o timestamps
         if let dateString = (try? container.decodeIfPresent(String.self, forKey: .detectedAt))
@@ -129,6 +212,25 @@ public struct SeismicEvent: Identifiable, Codable, Hashable {
         try container.encode(isPreliminary, forKey: .isPreliminary)
         try container.encodeIfPresent(intensityMmi, forKey: .intensityMmi)
         try container.encode(tsunamiWarning, forKey: .tsunamiWarning)
+        try container.encodeIfPresent(magnitudeType, forKey: .magnitudeType)
+        try container.encodeIfPresent(reviewStatus, forKey: .reviewStatus)
+        try container.encodeIfPresent(stationCount, forKey: .stationCount)
+        try container.encodeIfPresent(coincidenceWindowSeconds, forKey: .coincidenceWindowSeconds)
+        try container.encodeIfPresent(waveStrengthIndex, forKey: .waveStrengthIndex)
+        try container.encodeIfPresent(officialUrl, forKey: .officialUrl)
+        try container.encodeIfPresent(zoneId, forKey: .zoneId)
+        try container.encode(countryCodes, forKey: .countryCodes)
+        try container.encodeIfPresent(algorithm, forKey: .algorithm)
+        try container.encodeIfPresent(magnitudeEstimateStatus, forKey: .magnitudeEstimateStatus)
+        try container.encode(stations, forKey: .stations)
+    }
+
+    public var utcTimeFormatted: String {
+        guard let date = detectedAt else { return "—" }
+        let formatter = DateFormatter()
+        formatter.dateFormat = "HH:mm:ss"
+        formatter.timeZone = TimeZone(identifier: "UTC")
+        return formatter.string(from: date)
     }
 
     public var coordinate: CLLocationCoordinate2D? {
@@ -174,6 +276,72 @@ public struct SeismicEvent: Identifiable, Codable, Hashable {
 extension SeismicEvent {
     public static let sampleEvents: [SeismicEvent] = [
         SeismicEvent(
+            id: "usgs:ak026bldz704",
+            place: "48 km SSE of Nelchina, Alaska",
+            magnitude: 2.6,
+            depthKm: 13.9,
+            latitude: 61.59,
+            longitude: -146.59,
+            detectedAt: Date().addingTimeInterval(-2400),
+            sourceId: "usgs_global",
+            agency: "United States Geological Survey (USGS)",
+            isPreliminary: false,
+            intensityMmi: 2,
+            tsunamiWarning: false,
+            magnitudeType: "Mml",
+            reviewStatus: "automatic",
+            officialUrl: "https://earthquake.usgs.gov"
+        ),
+        SeismicEvent(
+            id: "seedlink:20260906-co-01",
+            place: "Zona técnica CO",
+            magnitude: nil,
+            depthKm: nil,
+            latitude: 10.45,
+            longitude: -73.25,
+            detectedAt: Date().addingTimeInterval(-900),
+            sourceId: "seismik_seedlink_preliminary",
+            agency: "Seismik / SeedLink",
+            isPreliminary: true,
+            intensityMmi: nil,
+            tsunamiWarning: false,
+            magnitudeType: nil,
+            reviewStatus: "preliminar - sin revisión humana",
+            stationCount: 3,
+            coincidenceWindowSeconds: 10.0,
+            waveStrengthIndex: 0.94,
+            zoneId: "CO",
+            countryCodes: ["CO"],
+            algorithm: "STA/LTA con coincidencia multiestación",
+            magnitudeEstimateStatus: "pending_station_calibration",
+            stations: [
+                StationTrigger(
+                    stationId: "CM.ARGC",
+                    providerId: "earthscope_colombia",
+                    countryCode: "CC",
+                    triggerTime: Date().addingTimeInterval(-915),
+                    staLtaRatio: 7.9,
+                    peakAmplitudeCounts: 499.4
+                ),
+                StationTrigger(
+                    stationId: "CM.OCA",
+                    providerId: "earthscope_colombia",
+                    countryCode: "CC",
+                    triggerTime: Date().addingTimeInterval(-908),
+                    staLtaRatio: 7.9,
+                    peakAmplitudeCounts: 17245.7
+                ),
+                StationTrigger(
+                    stationId: "CM.CRJC",
+                    providerId: "earthscope_colombia",
+                    countryCode: "CC",
+                    triggerTime: Date().addingTimeInterval(-901),
+                    staLtaRatio: 16.8,
+                    peakAmplitudeCounts: 677.0
+                )
+            ]
+        ),
+        SeismicEvent(
             id: "sgc_colombia:2026-09-06-001",
             place: "59 km al SO de Los Santos, Santander",
             magnitude: 4.1,
@@ -182,10 +350,13 @@ extension SeismicEvent {
             longitude: -73.12,
             detectedAt: Date().addingTimeInterval(-7200),
             sourceId: "sgc_colombia",
-            agency: "SGC · Colombia",
+            agency: "Servicio Geológico Colombiano (SGC)",
             isPreliminary: false,
             intensityMmi: 4,
-            tsunamiWarning: false
+            tsunamiWarning: false,
+            magnitudeType: "Mw",
+            reviewStatus: "manual",
+            officialUrl: "https://www.sgc.gov.co"
         ),
         SeismicEvent(
             id: "sgc_colombia:2026-09-06-002",
@@ -196,52 +367,12 @@ extension SeismicEvent {
             longitude: -74.04,
             detectedAt: Date().addingTimeInterval(-18000),
             sourceId: "sgc_colombia",
-            agency: "SGC · Colombia",
+            agency: "Servicio Geológico Colombiano (SGC)",
             isPreliminary: false,
             intensityMmi: 3,
-            tsunamiWarning: false
-        ),
-        SeismicEvent(
-            id: "usgs_global:2026-09-06-003",
-            place: "Costa Rica - Frontera con Panamá",
-            magnitude: 5.2,
-            depthKm: 25.0,
-            latitude: 8.24,
-            longitude: -82.90,
-            detectedAt: Date().addingTimeInterval(-36000),
-            sourceId: "usgs_global",
-            agency: "USGS · Global",
-            isPreliminary: false,
-            intensityMmi: 5,
-            tsunamiWarning: false
-        ),
-        SeismicEvent(
-            id: "sgc_colombia:2026-09-06-004",
-            place: "Zapatoca, Santander",
-            magnitude: 2.8,
-            depthKm: 130.0,
-            latitude: 6.82,
-            longitude: -73.27,
-            detectedAt: Date().addingTimeInterval(-54000),
-            sourceId: "sgc_colombia",
-            agency: "SGC · Colombia",
-            isPreliminary: false,
-            intensityMmi: 2,
-            tsunamiWarning: false
-        ),
-        SeismicEvent(
-            id: "sgc_colombia:2026-09-06-005",
-            place: "El Calvario, Meta",
-            magnitude: 3.1,
-            depthKm: 10.0,
-            latitude: 4.45,
-            longitude: -73.71,
-            detectedAt: Date().addingTimeInterval(-86400),
-            sourceId: "sgc_colombia",
-            agency: "SGC · Colombia",
-            isPreliminary: false,
-            intensityMmi: 3,
-            tsunamiWarning: false
+            tsunamiWarning: false,
+            magnitudeType: "Ml",
+            reviewStatus: "manual"
         )
     ]
 }
