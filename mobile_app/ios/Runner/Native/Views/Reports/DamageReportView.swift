@@ -3,9 +3,10 @@ import SwiftUI
 /// Formulario nativo de reporte de daños estructurales e incidentes post-sismo.
 public struct DamageReportView: View {
     public let preselectedEvent: SeismicEvent?
+    public let showsCloseButton: Bool
     @Environment(\.dismiss) private var dismiss
 
-    @State private var selectedSeverity: DamageSeverity = .light
+    @State private var selectedSeverity: DamageSeverity = .minor
     @State private var gasLeak = false
     @State private var electricalHazard = false
     @State private var peopleTrapped = false
@@ -15,6 +16,13 @@ public struct DamageReportView: View {
 
     @State private var isSubmitting = false
     @State private var showSuccessAlert = false
+    @State private var submissionMessage = ""
+    @State private var showErrorAlert = false
+
+    public init(preselectedEvent: SeismicEvent?, showsCloseButton: Bool = true) {
+        self.preselectedEvent = preselectedEvent
+        self.showsCloseButton = showsCloseButton
+    }
 
     public var body: some View {
         CompatibleNavigationStack {
@@ -84,16 +92,25 @@ public struct DamageReportView: View {
             .navigationTitle("Reporte de Daños")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Cancelar") {
-                        dismiss()
+                if showsCloseButton {
+                    ToolbarItem(placement: .navigationBarLeading) {
+                        Button("Cancelar") {
+                            dismiss()
+                        }
                     }
                 }
             }
             .alert("Reporte Transmitido", isPresented: $showSuccessAlert) {
-                Button("Entendido") { dismiss() }
+                Button("Entendido") {
+                    if showsCloseButton { dismiss() }
+                }
             } message: {
-                Text("La información ha sido canalizada. Si hay vidas en peligro inminente, llama al número local de emergencias (123).")
+                Text(submissionMessage)
+            }
+            .alert("No se pudo guardar el reporte", isPresented: $showErrorAlert) {
+                Button("Aceptar", role: .cancel) {}
+            } message: {
+                Text(submissionMessage)
             }
         }
     }

@@ -10,67 +10,90 @@ public struct MonitorView: View {
     @State private var showSettings = false
     @State private var showFeltReport = false
     @State private var showDamageReport = false
-    @State private var isSheetPresented = true
+    @State private var drawerPosition: DrawerPosition = .peek
+    @State private var drawerTranslation: CGFloat = 0
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     public init() {}
 
     public var body: some View {
-        ZStack(alignment: .top) {
-            // Mapa nativo de Apple a pantalla completa
-            NativeMapView(
-                state: state,
-                targetRegion: $targetRegion
-            ) { selectedEvent in
-                state.selectEvent(selectedEvent)
-            }
-            .ignoresSafeArea()
-
-            // Cápsula Flotante de Identidad y Estado de Red
-            FloatingHeaderView(state: state, showSettings: $showSettings)
-                .safeAreaInset(edge: .top) { Color.clear.frame(height: 0) }
-
-            // Botón flotante para recentrar en la ubicación del usuario
-            VStack {
-                Spacer()
-                HStack {
-                    Spacer()
-                    Button {
-                        HapticManager.light()
-                        if let userCoord = locationManager.userCoordinate {
-                            targetRegion = MKCoordinateRegion(
-                                center: userCoord,
-                                span: MKCoordinateSpan(latitudeDelta: 3.5, longitudeDelta: 3.5)
-                            )
-                        } else {
-                            locationManager.requestPermission()
-                        }
-                    } label: {
-                        Image(systemName: "location.fill")
-                            .font(.system(size: 16, weight: .semibold))
-                            .foregroundColor(SeismikColors.systemBlue)
-                            .frame(width: 44, height: 44)
-                            .background(.ultraThinMaterial, in: Circle())
-                            .overlay {
-                                Circle().strokeBorder(Color.white.opacity(0.6), lineWidth: 0.8)
-                            }
-                            .shadow(color: Color.black.opacity(0.15), radius: 8, x: 0, y: 4)
-                    }
-                    .buttonStyle(.plain)
-                    .padding(.trailing, 18)
-                    .padding(.bottom, 160) // Evita solaparse con la hoja colapsada
-                }
-            }
-        }
-        // Hoja nativa interactiva con detents de resortes
-        .sheet(isPresented: $isSheetPresented) {
-            SeismicSheetView(
-                state: state,
-                locationManager: locationManager,
-                showFeltReport: $showFeltReport,
-                showDamageReport: $showDamageReport
+        GeometryReader { geometry in
+            let expandedHeight = max(geometry.size.height - geometry.safeAreaInsets.top - 12, 420)
+            let visibleHeight = drawerPosition.height(in: geometry.size.height)
+            let baseOffset = expandedHeight - visibleHeight
+            let drawerOffset = min(
+                max(baseOffset + drawerTranslation, 0),
+                expandedHeight - DrawerPosition.peek.height(in: geometry.size.height)
             )
-            .seismicSheetPresentation()
-            .interactiveDismissDisabled()
+
+            ZStack(alignment: .top) {
+                NativeMapView(
+                    state: state,
+                    targetRegion: $targetRegion,
+                    coveredBottomInset: visibleHeight
+                ) { selectedEvent in
+                    state.selectEvent(selectedEvent)
+                }
+                .ignoresSafeArea()
+
+                FloatingHeaderView(state: state, showSettings: $showSettings)
+                    .padding(.top, max(8, geometry.safeAreaInsets.top + 4))
+
+                VStack {
+                    Spacer()
+                    HStack {
+                        Spacer()
+                        Button {
+                            HapticManager.light()
+                            if let userCoord = locationManager.userCoordinate {
+                                targetRegion = MKCoordinateRegion(
+                                    center: userCoord,
+                                    span: MKCoordinateSpan(latitudeDelta: 3.5, longitudeDelta: 3.5)
+                                )
+                            } else {
+                                locationManager.requestPermission()
+                            }
+                        } label: {
+                            Image(systemName: "location.fill")
+                                .font(.system(size: 16, weight: .semibold))
+                                .foregroundColor(SeismikColors.systemBlue)
+                                .frame(width: 44, height: 44)
+                                .background(.ultraThinMaterial, in: Circle())
+                                .overlay {
+                                    Circle().strokeBorder(Color.white.opacity(0.6), lineWidth: 0.8)
+                                }
+                                .shadow(color: Color.black.opacity(0.15), radius: 8, x: 0, y: 4)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Centrar mapa en mi ubicación")
+                        .padding(.trailing, 18)
+                        .padding(.bottom, DrawerPosition.peek.height(in: geometry.size.height) + 16)
+                    }
+                }
+
+                SeismicSheetView(
+                    state: state,
+                    locationManager: locationManager,
+                    showFeltReport: $showFeltReport,
+                    showDamageReport: $showDamageReport,
+                    onDrawerDragChanged: { drawerTranslation = $0 },
+                    onDrawerDragEnded: { projectedTranslation in
+                        settleDrawer(
+                            projectedTranslation: projectedTranslation,
+                            expandedHeight: expandedHeight,
+                            screenHeight: geometry.size.height
+                        )
+                    },
+                    onDrawerHandleTapped: cycleDrawer
+                )
+                .frame(height: expandedHeight)
+                .offset(y: drawerOffset)
+                .frame(maxHeight: .infinity, alignment: .bottom)
+                .animation(
+                    reduceMotion ? .easeOut(duration: 0.18) : .spring(response: 0.35, dampingFraction: 0.86),
+                    value: drawerPosition
+                )
+            }
         }
         // Hoja de Detalle de Sismo Seleccionado
         .sheet(item: $state.selectedEvent) { event in
@@ -98,12 +121,61 @@ public struct MonitorView: View {
             }
         }
     }
+
+    private func settleDrawer(
+        projectedTranslation: CGFloat,
+        expandedHeight: CGFloat,
+        screenHeight: CGFloat
+    ) {
+        let projectedOffset = expandedHeight
+            - drawerPosition.height(in: screenHeight)
+            + projectedTranslation
+        let next = DrawerPosition.allCases.min {
+            abs(expandedHeight - $0.height(in: screenHeight) - projectedOffset)
+                < abs(expandedHeight - $1.height(in: screenHeight) - projectedOffset)
+        } ?? .medium
+        withAnimation(drawerAnimation) {
+            drawerTranslation = 0
+            drawerPosition = next
+        }
+        HapticManager.selection()
+    }
+
+    private func cycleDrawer() {
+        withAnimation(drawerAnimation) {
+            switch drawerPosition {
+            case .peek: drawerPosition = .medium
+            case .medium: drawerPosition = .expanded
+            case .expanded: drawerPosition = .peek
+            }
+        }
+        HapticManager.selection()
+    }
+
+    private var drawerAnimation: Animation {
+        reduceMotion ? .easeOut(duration: 0.18) : .spring(response: 0.35, dampingFraction: 0.86)
+    }
+}
+
+private enum DrawerPosition: CaseIterable {
+    case peek
+    case medium
+    case expanded
+
+    func height(in screenHeight: CGFloat) -> CGFloat {
+        switch self {
+        case .peek: return 138
+        case .medium: return max(310, screenHeight * 0.45)
+        case .expanded: return max(420, screenHeight * 0.85)
+        }
+    }
 }
 
 // MARK: - Mapa Nativo de Apple Compatible (iOS 15 - iOS 18+)
 private struct NativeMapView: UIViewRepresentable {
     @ObservedObject var state: SeismikState
     @Binding var targetRegion: MKCoordinateRegion?
+    let coveredBottomInset: CGFloat
     let onSelectEvent: (SeismicEvent) -> Void
 
     func makeCoordinator() -> Coordinator {
@@ -116,6 +188,7 @@ private struct NativeMapView: UIViewRepresentable {
         mapView.showsUserLocation = true
         mapView.showsCompass = true
         mapView.showsScale = true
+        mapView.pointOfInterestFilter = .excludingAll
 
         let defaultRegion = MKCoordinateRegion(
             center: CLLocationCoordinate2D(latitude: 4.65, longitude: -74.05),
@@ -127,6 +200,12 @@ private struct NativeMapView: UIViewRepresentable {
     }
 
     func updateUIView(_ mapView: MKMapView, context: Context) {
+        mapView.layoutMargins = UIEdgeInsets(
+            top: 96,
+            left: 12,
+            bottom: max(coveredBottomInset + 10, 148),
+            right: 12
+        )
         if let target = targetRegion {
             mapView.setRegion(target, animated: true)
             DispatchQueue.main.async {
@@ -139,20 +218,24 @@ private struct NativeMapView: UIViewRepresentable {
 
     class Coordinator: NSObject, MKMapViewDelegate {
         var parent: NativeMapView
-        private var lastEventIds: [String] = []
-        private var lastStationIds: [String] = []
+        private var lastEventSnapshots: [String] = []
+        private var lastStationSnapshots: [String] = []
 
         init(_ parent: NativeMapView) {
             self.parent = parent
         }
 
         func syncAnnotations(mapView: MKMapView, events: [SeismicEvent], stations: [SeismicStation]) {
-            let eventIds = events.map(\.id)
-            let stationIds = stations.map(\.id)
+            let eventSnapshots = events.map {
+                "\($0.id)|\($0.magnitude ?? -1)|\($0.latitude ?? 999)|\($0.longitude ?? 999)|\($0.isPreliminary)"
+            }
+            let stationSnapshots = stations.map {
+                "\($0.id)|\($0.latitude)|\($0.longitude)"
+            }
 
-            guard eventIds != lastEventIds || stationIds != lastStationIds else { return }
-            lastEventIds = eventIds
-            lastStationIds = stationIds
+            guard eventSnapshots != lastEventSnapshots || stationSnapshots != lastStationSnapshots else { return }
+            lastEventSnapshots = eventSnapshots
+            lastStationSnapshots = stationSnapshots
 
             let current = mapView.annotations.filter { !($0 is MKUserLocation) }
             mapView.removeAnnotations(current)
@@ -179,18 +262,30 @@ private struct NativeMapView: UIViewRepresentable {
 
             if let seismic = annotation as? SeismicPointAnnotation {
                 let identifier = "SeismicBadgeAnnotation"
-                var annotationView = mapView.dequeueReusableAnnotationView(withIdentifier: identifier)
-                if annotationView == nil {
-                    annotationView = MKAnnotationView(annotation: annotation, reuseIdentifier: identifier)
-                    annotationView?.canShowCallout = false
-                } else {
-                    annotationView?.annotation = annotation
-                }
-
-                if let aView = annotationView {
-                    configureBadgeView(annotationView: aView, event: seismic.event)
-                }
+                let annotationView = mapView.dequeueReusableAnnotationView(
+                    withIdentifier: identifier
+                ) as? MagnitudeAnnotationView
+                    ?? MagnitudeAnnotationView(annotation: annotation, reuseIdentifier: identifier)
+                annotationView.annotation = annotation
+                annotationView.configure(with: seismic.event)
+                annotationView.clusteringIdentifier = "seismik-events"
                 return annotationView
+            }
+
+            if let cluster = annotation as? MKClusterAnnotation {
+                let identifier = "SeismicClusterAnnotation"
+                let marker = mapView.dequeueReusableAnnotationView(
+                    withIdentifier: identifier
+                ) as? MKMarkerAnnotationView
+                    ?? MKMarkerAnnotationView(annotation: cluster, reuseIdentifier: identifier)
+                marker.annotation = cluster
+                marker.markerTintColor = UIColor.systemIndigo
+                marker.glyphText = "\(cluster.memberAnnotations.count)"
+                marker.titleVisibility = .hidden
+                marker.subtitleVisibility = .hidden
+                marker.displayPriority = .defaultHigh
+                marker.accessibilityLabel = "\(cluster.memberAnnotations.count) sismos agrupados"
+                return marker
             }
 
             if annotation is StationPointAnnotation {
@@ -215,35 +310,101 @@ private struct NativeMapView: UIViewRepresentable {
             return nil
         }
 
-        private func configureBadgeView(annotationView: MKAnnotationView, event: SeismicEvent) {
-            annotationView.subviews.forEach { $0.removeFromSuperview() }
-
-            let badge = MagnitudeBadge(
-                magnitude: event.magnitude,
-                isPreliminary: event.isPreliminary,
-                fontSize: 13
-            )
-            let hostingController = UIHostingController(rootView: badge)
-            guard let badgeView = hostingController.view else { return }
-            badgeView.backgroundColor = .clear
-            badgeView.translatesAutoresizingMaskIntoConstraints = false
-            badgeView.isUserInteractionEnabled = false
-
-            annotationView.addSubview(badgeView)
-            NSLayoutConstraint.activate([
-                badgeView.centerXAnchor.constraint(equalTo: annotationView.centerXAnchor),
-                badgeView.centerYAnchor.constraint(equalTo: annotationView.centerYAnchor),
-            ])
-            annotationView.frame = CGRect(x: 0, y: 0, width: 44, height: 36)
-        }
-
         func mapView(_ mapView: MKMapView, didSelect view: MKAnnotationView) {
             if let seismic = view.annotation as? SeismicPointAnnotation {
                 HapticManager.light()
                 parent.onSelectEvent(seismic.event)
-                mapView.deselectAnnotation(seismic, animated: false)
             }
         }
+    }
+}
+
+private final class MagnitudeAnnotationView: MKAnnotationView {
+    private let magnitudeLabel = UILabel()
+
+    override init(annotation: MKAnnotation?, reuseIdentifier: String?) {
+        super.init(annotation: annotation, reuseIdentifier: reuseIdentifier)
+        bounds = CGRect(x: 0, y: 0, width: 48, height: 32)
+        centerOffset = CGPoint(x: 0, y: -18)
+        canShowCallout = false
+        collisionMode = .rectangle
+        displayPriority = .required
+        layer.cornerRadius = 12
+        layer.cornerCurve = .continuous
+        layer.borderWidth = 1
+        layer.borderColor = UIColor.white.withAlphaComponent(0.8).cgColor
+        layer.shadowColor = UIColor.black.cgColor
+        layer.shadowOpacity = 0.22
+        layer.shadowRadius = 4
+        layer.shadowOffset = CGSize(width: 0, height: 2)
+
+        magnitudeLabel.translatesAutoresizingMaskIntoConstraints = false
+        magnitudeLabel.textAlignment = .center
+        magnitudeLabel.textColor = .white
+        magnitudeLabel.font = .rounded(ofSize: 14, weight: .bold)
+        magnitudeLabel.adjustsFontSizeToFitWidth = true
+        magnitudeLabel.minimumScaleFactor = 0.8
+        addSubview(magnitudeLabel)
+        NSLayoutConstraint.activate([
+            magnitudeLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 4),
+            magnitudeLabel.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -4),
+            magnitudeLabel.topAnchor.constraint(equalTo: topAnchor),
+            magnitudeLabel.bottomAnchor.constraint(equalTo: bottomAnchor)
+        ])
+        isAccessibilityElement = true
+        accessibilityTraits = .button
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    func configure(with event: SeismicEvent) {
+        if event.isPreliminary && event.magnitude == nil {
+            magnitudeLabel.text = "P"
+            backgroundColor = UIColor.systemPurple
+            accessibilityLabel = "Sismo preliminar, magnitud pendiente"
+            return
+        }
+        let magnitude = event.magnitude
+        magnitudeLabel.text = magnitude.map { String(format: "%.1f", $0) } ?? "—"
+        switch magnitude ?? 0 {
+        case ..<3.0: backgroundColor = UIColor.systemGreen
+        case ..<5.0: backgroundColor = UIColor(red: 0.78, green: 0.47, blue: 0.03, alpha: 1)
+        case ..<6.5: backgroundColor = UIColor.systemOrange
+        default: backgroundColor = UIColor.systemRed
+        }
+        accessibilityLabel = magnitude.map { "Sismo de magnitud \(String(format: "%.1f", $0))" }
+            ?? "Sismo con magnitud pendiente"
+        accessibilityHint = "Abre el detalle del sismo"
+    }
+
+    override func setSelected(_ selected: Bool, animated: Bool) {
+        super.setSelected(selected, animated: animated)
+        let changes = {
+            self.transform = selected ? CGAffineTransform(scaleX: 1.18, y: 1.18) : .identity
+            self.layer.borderWidth = selected ? 2.5 : 1
+        }
+        if animated {
+            UIView.animate(withDuration: 0.18, animations: changes)
+        } else {
+            changes()
+        }
+        accessibilityTraits = selected ? [.button, .selected] : .button
+    }
+
+    override func prepareForReuse() {
+        super.prepareForReuse()
+        transform = .identity
+        layer.borderWidth = 1
+    }
+}
+
+private extension UIFont {
+    static func rounded(ofSize size: CGFloat, weight: UIFont.Weight) -> UIFont {
+        let base = UIFont.systemFont(ofSize: size, weight: weight)
+        guard let descriptor = base.fontDescriptor.withDesign(.rounded) else { return base }
+        return UIFont(descriptor: descriptor, size: size)
     }
 }
 
@@ -273,4 +434,3 @@ private class StationPointAnnotation: NSObject, MKAnnotation {
 
     var title: String? { "Estación \(station.id)" }
 }
-

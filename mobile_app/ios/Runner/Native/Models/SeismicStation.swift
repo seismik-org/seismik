@@ -10,15 +10,46 @@ public struct SeismicStation: Identifiable, Codable, Hashable {
     public let longitude: Double
     public let elevation: Double?
 
+    public init(
+        network: String = "CM",
+        stationCode: String,
+        latitude: Double,
+        longitude: Double,
+        elevation: Double? = nil
+    ) {
+        self.network = network
+        self.stationCode = stationCode
+        self.latitude = latitude
+        self.longitude = longitude
+        self.elevation = elevation
+    }
+
     enum CodingKeys: String, CodingKey {
         case network
-        case stationCode = "id"
+        case stationId = "station_id"
+        case id
         case latitude
         case longitude
         case elevation
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.network = (try? container.decode(String.self, forKey: .network)) ?? "CM"
+        if let sId = try? container.decode(String.self, forKey: .stationId) {
+            self.stationCode = sId
+        } else if let idVal = try? container.decode(String.self, forKey: .id) {
+            self.stationCode = idVal
+        } else {
+            self.stationCode = "STA"
+        }
+        self.latitude = try container.decode(Double.self, forKey: .latitude)
+        self.longitude = try container.decode(Double.self, forKey: .longitude)
+        self.elevation = try? container.decodeIfPresent(Double.self, forKey: .elevation)
     }
 
     public var coordinate: CLLocationCoordinate2D {
         CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
     }
 }
+

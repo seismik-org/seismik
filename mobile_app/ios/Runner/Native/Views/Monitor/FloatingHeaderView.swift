@@ -11,9 +11,12 @@ public struct FloatingHeaderView: View {
         HStack(spacing: 12) {
             // Logotipo e Identidad
             HStack(spacing: 8) {
-                Image(systemName: "waveform.path.ecg")
-                    .font(.system(size: 17, weight: .bold))
-                    .foregroundColor(SeismikColors.crimson)
+                Image("AppLogo")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 30, height: 30)
+                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    .accessibilityHidden(true)
 
                 Text("SEISMIK")
                     .font(.system(size: 15, weight: .black, design: .rounded))
@@ -59,6 +62,7 @@ public struct FloatingHeaderView: View {
                     .background(.ultraThinMaterial, in: Circle())
             }
             .buttonStyle(.plain)
+            .accessibilityLabel("Actualizar sismos")
 
             // Botón de Configuración
             Button {
@@ -72,6 +76,7 @@ public struct FloatingHeaderView: View {
                     .background(.ultraThinMaterial, in: Circle())
             }
             .buttonStyle(.plain)
+            .accessibilityLabel("Abrir ajustes")
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)

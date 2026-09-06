@@ -5,9 +5,7 @@ public struct EmergencyAlertView: View {
     public let event: SeismicEvent
     public let onDismiss: () -> Void
 
-    @State private var countdownSeconds: Int = 18
     @State private var isPulsing: Bool = false
-    private let timer = Timer.publish(every: 1.0, on: .main, in: .common).autoconnect()
 
     public var body: some View {
         ZStack {
@@ -48,17 +46,22 @@ public struct EmergencyAlertView: View {
                         .padding(.horizontal, 24)
                 }
 
-                // Cápsula de Conteo Regresivo de Onda S
-                VStack(spacing: 4) {
-                    Text("\(countdownSeconds)")
-                        .font(.system(size: 64, weight: .bold, design: .rounded))
-                        .monospacedDigit()
+                // Se evita una cuenta regresiva inventada: solo se muestra tiempo si el
+                // backend llega a calcularlo con coordenadas y velocidades verificadas.
+                VStack(spacing: 6) {
+                    Text("PROTÉGETE AHORA")
+                        .font(.system(size: 28, weight: .black, design: .rounded))
                         .foregroundColor(.white)
 
-                    Text("SEGUNDOS ESTIMADOS PARA EL IMPACTO")
-                        .font(.system(size: 10, weight: .bold, design: .rounded))
-                        .tracking(1.4)
-                        .foregroundColor(.white.opacity(0.8))
+                    if let magnitude = event.magnitude {
+                        Text("Magnitud estimada \(String(format: "%.1f", magnitude))")
+                            .font(.system(size: 15, weight: .semibold, design: .rounded))
+                            .foregroundColor(.white.opacity(0.9))
+                    } else {
+                        Text("Movimiento sísmico detectado")
+                            .font(.system(size: 15, weight: .semibold, design: .rounded))
+                            .foregroundColor(.white.opacity(0.9))
+                    }
                 }
                 .padding(.horizontal, 28)
                 .padding(.vertical, 16)
@@ -94,14 +97,6 @@ public struct EmergencyAlertView: View {
         .onAppear {
             isPulsing = true
             HapticManager.heavy()
-        }
-        .onReceive(timer) { _ in
-            if countdownSeconds > 0 {
-                countdownSeconds -= 1
-                if countdownSeconds % 2 == 0 {
-                    HapticManager.light()
-                }
-            }
         }
     }
 }

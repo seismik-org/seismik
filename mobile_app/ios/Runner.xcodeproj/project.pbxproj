@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		79861CC95D267E9C9ACA5634 /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78861CC95D267E9C9ACA5634 /* KeychainStore.swift */; };
 		7996CC5059B8133F4C379852 /* CitizenReports.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7896CC5059B8133F4C379852 /* CitizenReports.swift */; };
 		798377D27543673B1055607B /* DamageReportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 788377D27543673B1055607B /* DamageReportView.swift */; };
 		79959CBA398BCB982F7D112A /* EmergencyAlertView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78959CBA398BCB982F7D112A /* EmergencyAlertView.swift */; };
@@ -64,6 +65,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		78861CC95D267E9C9ACA5634 /* KeychainStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Native/Services/KeychainStore.swift"; sourceTree = "<group>"; };
 		7896CC5059B8133F4C379852 /* CitizenReports.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Native/Models/CitizenReports.swift"; sourceTree = "<group>"; };
 		788377D27543673B1055607B /* DamageReportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Native/Views/Reports/DamageReportView.swift"; sourceTree = "<group>"; };
 		78959CBA398BCB982F7D112A /* EmergencyAlertView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Native/Views/Alert/EmergencyAlertView.swift"; sourceTree = "<group>"; };
@@ -160,6 +162,7 @@
 		97C146F01CF9000F007C117D /* Runner */ = {
 			isa = PBXGroup;
 			children = (
+				78861CC95D267E9C9ACA5634 /* KeychainStore.swift */,
 				7896CC5059B8133F4C379852 /* CitizenReports.swift */,
 				788377D27543673B1055607B /* DamageReportView.swift */,
 				78959CBA398BCB982F7D112A /* EmergencyAlertView.swift */,
@@ -351,6 +354,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				79861CC95D267E9C9ACA5634 /* KeychainStore.swift in Sources */,
 				7996CC5059B8133F4C379852 /* CitizenReports.swift in Sources */,
 				798377D27543673B1055607B /* DamageReportView.swift in Sources */,
 				79959CBA398BCB982F7D112A /* EmergencyAlertView.swift in Sources */,
