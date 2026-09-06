@@ -7,6 +7,26 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		7996CC5059B8133F4C379852 /* CitizenReports.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7896CC5059B8133F4C379852 /* CitizenReports.swift */; };
+		798377D27543673B1055607B /* DamageReportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 788377D27543673B1055607B /* DamageReportView.swift */; };
+		79959CBA398BCB982F7D112A /* EmergencyAlertView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78959CBA398BCB982F7D112A /* EmergencyAlertView.swift */; };
+		79350A43F42396DE694EAB13 /* EventDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78350A43F42396DE694EAB13 /* EventDetailView.swift */; };
+		796BF0DEE06189B6CB689136 /* EventRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 786BF0DEE06189B6CB689136 /* EventRowView.swift */; };
+		795F71AB77AAD06A8C1F8B55 /* FeltReportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 785F71AB77AAD06A8C1F8B55 /* FeltReportView.swift */; };
+		794F41555AD31109211E98AA /* FloatingHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 784F41555AD31109211E98AA /* FloatingHeaderView.swift */; };
+		796235EC9DC69422759F8804 /* Haptics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 786235EC9DC69422759F8804 /* Haptics.swift */; };
+		794C2ECB6CC83AF62570768B /* LiquidGlass.swift in Sources */ = {isa = PBXBuildFile; fileRef = 784C2ECB6CC83AF62570768B /* LiquidGlass.swift */; };
+		79BEB7AC1767886776AAF2FC /* LocationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78BEB7AC1767886776AAF2FC /* LocationManager.swift */; };
+		79B5CBA5A87B6EDB968C6088 /* MagnitudeBadge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78B5CBA5A87B6EDB968C6088 /* MagnitudeBadge.swift */; };
+		7928E0E69A164BC72F22384B /* MonitorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7828E0E69A164BC72F22384B /* MonitorView.swift */; };
+		79493E7C3163A7D137225791 /* SeismicEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78493E7C3163A7D137225791 /* SeismicEvent.swift */; };
+		791046A32D180CE7E5BD78B1 /* SeismicSheetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 781046A32D180CE7E5BD78B1 /* SeismicSheetView.swift */; };
+		793A7A30C68AE5B5CBD92BF2 /* SeismicStation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 783A7A30C68AE5B5CBD92BF2 /* SeismicStation.swift */; };
+		79A57E1C8907A1C0B99ADBA8 /* SeismikAPIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78A57E1C8907A1C0B99ADBA8 /* SeismikAPIClient.swift */; };
+		794E208418DEE7D77F2C337B /* SeismikColors.swift in Sources */ = {isa = PBXBuildFile; fileRef = 784E208418DEE7D77F2C337B /* SeismikColors.swift */; };
+		799BE4F5E67871622ACBD86E /* SeismikNativeApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 789BE4F5E67871622ACBD86E /* SeismikNativeApp.swift */; };
+		79467A783D53DC5EDED3EB51 /* SeismikState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78467A783D53DC5EDED3EB51 /* SeismikState.swift */; };
+		794385D6A81E58B0548875FC /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 784385D6A81E58B0548875FC /* SettingsView.swift */; };
 		1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */ = {isa = PBXBuildFile; fileRef = 1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */; };
 		331C808B294A63AB00263BE5 /* RunnerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 331C807B294A618700263BE5 /* RunnerTests.swift */; };
 		3B3967161E833CAA004F5970 /* AppFrameworkInfo.plist in Resources */ = {isa = PBXBuildFile; fileRef = 3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */; };
@@ -44,6 +64,26 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		7896CC5059B8133F4C379852 /* CitizenReports.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Native/Models/CitizenReports.swift"; sourceTree = "<group>"; };
+		788377D27543673B1055607B /* DamageReportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Native/Views/Reports/DamageReportView.swift"; sourceTree = "<group>"; };
+		78959CBA398BCB982F7D112A /* EmergencyAlertView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Native/Views/Alert/EmergencyAlertView.swift"; sourceTree = "<group>"; };
+		78350A43F42396DE694EAB13 /* EventDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Native/Views/Detail/EventDetailView.swift"; sourceTree = "<group>"; };
+		786BF0DEE06189B6CB689136 /* EventRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Native/Views/Monitor/Sheet/EventRowView.swift"; sourceTree = "<group>"; };
+		785F71AB77AAD06A8C1F8B55 /* FeltReportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Native/Views/Reports/FeltReportView.swift"; sourceTree = "<group>"; };
+		784F41555AD31109211E98AA /* FloatingHeaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Native/Views/Monitor/FloatingHeaderView.swift"; sourceTree = "<group>"; };
+		786235EC9DC69422759F8804 /* Haptics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Native/DesignSystem/Haptics.swift"; sourceTree = "<group>"; };
+		784C2ECB6CC83AF62570768B /* LiquidGlass.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Native/DesignSystem/LiquidGlass.swift"; sourceTree = "<group>"; };
+		78BEB7AC1767886776AAF2FC /* LocationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Native/Services/LocationManager.swift"; sourceTree = "<group>"; };
+		78B5CBA5A87B6EDB968C6088 /* MagnitudeBadge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Native/DesignSystem/MagnitudeBadge.swift"; sourceTree = "<group>"; };
+		7828E0E69A164BC72F22384B /* MonitorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Native/Views/Monitor/MonitorView.swift"; sourceTree = "<group>"; };
+		78493E7C3163A7D137225791 /* SeismicEvent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Native/Models/SeismicEvent.swift"; sourceTree = "<group>"; };
+		781046A32D180CE7E5BD78B1 /* SeismicSheetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Native/Views/Monitor/Sheet/SeismicSheetView.swift"; sourceTree = "<group>"; };
+		783A7A30C68AE5B5CBD92BF2 /* SeismicStation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Native/Models/SeismicStation.swift"; sourceTree = "<group>"; };
+		78A57E1C8907A1C0B99ADBA8 /* SeismikAPIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Native/Services/SeismikAPIClient.swift"; sourceTree = "<group>"; };
+		784E208418DEE7D77F2C337B /* SeismikColors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Native/DesignSystem/SeismikColors.swift"; sourceTree = "<group>"; };
+		789BE4F5E67871622ACBD86E /* SeismikNativeApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Native/App/SeismikNativeApp.swift"; sourceTree = "<group>"; };
+		78467A783D53DC5EDED3EB51 /* SeismikState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Native/State/SeismikState.swift"; sourceTree = "<group>"; };
+		784385D6A81E58B0548875FC /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Native/Views/Settings/SettingsView.swift"; sourceTree = "<group>"; };
 		1498D2321E8E86230040F4C2 /* GeneratedPluginRegistrant.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = GeneratedPluginRegistrant.h; sourceTree = "<group>"; };
 		1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = GeneratedPluginRegistrant.m; sourceTree = "<group>"; };
 		331C807B294A618700263BE5 /* RunnerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunnerTests.swift; sourceTree = "<group>"; };
@@ -120,6 +160,26 @@
 		97C146F01CF9000F007C117D /* Runner */ = {
 			isa = PBXGroup;
 			children = (
+				7896CC5059B8133F4C379852 /* CitizenReports.swift */,
+				788377D27543673B1055607B /* DamageReportView.swift */,
+				78959CBA398BCB982F7D112A /* EmergencyAlertView.swift */,
+				78350A43F42396DE694EAB13 /* EventDetailView.swift */,
+				786BF0DEE06189B6CB689136 /* EventRowView.swift */,
+				785F71AB77AAD06A8C1F8B55 /* FeltReportView.swift */,
+				784F41555AD31109211E98AA /* FloatingHeaderView.swift */,
+				786235EC9DC69422759F8804 /* Haptics.swift */,
+				784C2ECB6CC83AF62570768B /* LiquidGlass.swift */,
+				78BEB7AC1767886776AAF2FC /* LocationManager.swift */,
+				78B5CBA5A87B6EDB968C6088 /* MagnitudeBadge.swift */,
+				7828E0E69A164BC72F22384B /* MonitorView.swift */,
+				78493E7C3163A7D137225791 /* SeismicEvent.swift */,
+				781046A32D180CE7E5BD78B1 /* SeismicSheetView.swift */,
+				783A7A30C68AE5B5CBD92BF2 /* SeismicStation.swift */,
+				78A57E1C8907A1C0B99ADBA8 /* SeismikAPIClient.swift */,
+				784E208418DEE7D77F2C337B /* SeismikColors.swift */,
+				789BE4F5E67871622ACBD86E /* SeismikNativeApp.swift */,
+				78467A783D53DC5EDED3EB51 /* SeismikState.swift */,
+				784385D6A81E58B0548875FC /* SettingsView.swift */,
 				97C146FA1CF9000F007C117D /* Main.storyboard */,
 				97C146FD1CF9000F007C117D /* Assets.xcassets */,
 				97C146FF1CF9000F007C117D /* LaunchScreen.storyboard */,
@@ -291,6 +351,26 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				7996CC5059B8133F4C379852 /* CitizenReports.swift in Sources */,
+				798377D27543673B1055607B /* DamageReportView.swift in Sources */,
+				79959CBA398BCB982F7D112A /* EmergencyAlertView.swift in Sources */,
+				79350A43F42396DE694EAB13 /* EventDetailView.swift in Sources */,
+				796BF0DEE06189B6CB689136 /* EventRowView.swift in Sources */,
+				795F71AB77AAD06A8C1F8B55 /* FeltReportView.swift in Sources */,
+				794F41555AD31109211E98AA /* FloatingHeaderView.swift in Sources */,
+				796235EC9DC69422759F8804 /* Haptics.swift in Sources */,
+				794C2ECB6CC83AF62570768B /* LiquidGlass.swift in Sources */,
+				79BEB7AC1767886776AAF2FC /* LocationManager.swift in Sources */,
+				79B5CBA5A87B6EDB968C6088 /* MagnitudeBadge.swift in Sources */,
+				7928E0E69A164BC72F22384B /* MonitorView.swift in Sources */,
+				79493E7C3163A7D137225791 /* SeismicEvent.swift in Sources */,
+				791046A32D180CE7E5BD78B1 /* SeismicSheetView.swift in Sources */,
+				793A7A30C68AE5B5CBD92BF2 /* SeismicStation.swift in Sources */,
+				79A57E1C8907A1C0B99ADBA8 /* SeismikAPIClient.swift in Sources */,
+				794E208418DEE7D77F2C337B /* SeismikColors.swift in Sources */,
+				799BE4F5E67871622ACBD86E /* SeismikNativeApp.swift in Sources */,
+				79467A783D53DC5EDED3EB51 /* SeismikState.swift in Sources */,
+				794385D6A81E58B0548875FC /* SettingsView.swift in Sources */,
 				74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */,
 				1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */,
 				7884E8682EC3CC0700C636F2 /* SceneDelegate.swift in Sources */,

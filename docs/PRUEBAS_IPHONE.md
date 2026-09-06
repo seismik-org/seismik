@@ -1,7 +1,6 @@
 # Qué falta probar en un iPhone real
 
-Build de referencia: **1.0.0 (23)**. La 22 quedó superada por los cambios de
-interfaz de este ciclo; sube la 23 antes de repetir el recorrido.
+Build de referencia: **1.0.0 (25)**. Versión nativa en Swift y SwiftUI con Apple MapKit y Liquid Glass real.
 
 Todo lo que aparece aquí necesita un iPhone físico. Ni el simulador ni CI pueden
 cubrirlo: las notificaciones push, el token APNs, App Attest, los mapas nativos y
