@@ -83,10 +83,6 @@ jobs:
           flutter build ipa --release --export-options-plist=ios/ExportOptions.plist --dart-define=SEISMIK_API_BASE_URL=https://api.seismik.org --dart-define=SEISMIK_INTEGRITY_REQUIRED=true
           ipa_file=$(find "$PWD/build/ios" -type f -name '*.ipa' -print -quit)
           test -n "$ipa_file"
-          mkdir -p build/ios/ipa
-          if [[ "$ipa_file" != "$PWD/build/ios/ipa/Seismik.ipa" ]]; then
-            cp "$ipa_file" build/ios/ipa/Seismik.ipa
-          fi
       - name: Verify signed entitlements
         run: |
           set -euo pipefail
@@ -99,7 +95,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: seismik-ios-ipa
-          path: ${{ github.workspace }}/mobile_app/build/ios/ipa/Seismik.ipa
+          path: ${{ github.workspace }}/mobile_app/build/ios/ipa/*.ipa
           if-no-files-found: error
       - name: Upload to TestFlight
         if: ${{ inputs.upload_to_testflight }}
@@ -107,7 +103,7 @@ jobs:
           APP_STORE_CONNECT_KEY_ID: ${{ vars.APP_STORE_CONNECT_KEY_ID }}
           APP_STORE_CONNECT_ISSUER_ID: ${{ vars.APP_STORE_CONNECT_ISSUER_ID }}
           APP_STORE_CONNECT_PRIVATE_KEY_BASE64: ${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY_BASE64 }}
-          SEISMIK_IPA_PATH: build/ios/ipa/Seismik.ipa
+          SEISMIK_IPA_PATH: build/ios/ipa/seismik.ipa
         run: |
           set -euo pipefail
           test -n "$APP_STORE_CONNECT_KEY_ID"
