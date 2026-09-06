@@ -8,6 +8,11 @@
   <string>manual</string>
   <key>teamID</key>
   <string>__APPLE_TEAM_ID__</string>
+  <key>provisioningProfiles</key>
+  <dict>
+    <key>com.seismik.app</key>
+    <string>Seismik App Store Connect</string>
+  </dict>
   <key>uploadSymbols</key>
   <true/>
 </dict>
