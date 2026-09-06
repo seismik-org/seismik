@@ -20,7 +20,6 @@ permissions:
 jobs:
   signed-ios:
     runs-on: macos-latest
-    environment: ios-production
     defaults:
       run:
         working-directory: mobile_app
