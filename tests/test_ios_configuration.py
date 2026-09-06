@@ -98,3 +98,58 @@ def test_ci_verifies_the_android_release_is_universal() -> None:
     for abi in ("arm64-v8a", "armeabi-v7a", "x86_64"):
         assert abi in steps
     assert "seismikUnsignedReleaseCheck=true" in steps
+
+
+def _ios_job_steps() -> list[dict]:
+    workflow = yaml.safe_load(Path(".github/workflows/ci.yml").read_text(encoding="utf-8"))
+    return list(workflow["jobs"]["ios"]["steps"])
+
+
+def test_xcode_copies_the_firebase_configuration_into_the_bundle() -> None:
+    """Sin este recurso la app arranca sin Firebase y no obtiene token APNs."""
+
+    project = (IOS / "Runner.xcodeproj/project.pbxproj").read_text(encoding="utf-8")
+
+    assert "GoogleService-Info.plist in Resources" in project
+
+
+def test_the_real_firebase_configuration_is_never_committed() -> None:
+    assert not (IOS / "Runner/GoogleService-Info.plist").is_file()
+    assert "mobile_app/ios/Runner/GoogleService-Info.plist" in Path(".gitignore").read_text(
+        encoding="utf-8"
+    )
+
+
+def test_ci_supplies_a_placeholder_firebase_plist_before_building() -> None:
+    """El proyecto exige el archivo como recurso: sin él, Xcode falla antes de
+    compilar una sola línea de Dart. El valor real llega desde un secreto sólo
+    en el workflow de TestFlight."""
+
+    steps = _ios_job_steps()
+    names = [str(step.get("name", "")) for step in steps]
+    placeholder = next(
+        (index for index, name in enumerate(names) if "placeholder Firebase" in name),
+        None,
+    )
+    build = next(
+        (index for index, name in enumerate(names) if "without code signing" in name),
+        None,
+    )
+    assert placeholder is not None, "El job iOS debe crear el plist de Firebase"
+    assert build is not None
+    assert placeholder < build, "El plist debe existir antes de compilar"
+
+    script = str(steps[placeholder]["run"])
+    assert "GoogleService-Info.plist" in script
+    assert "plutil -lint" in script
+    # El marcador debe ser evidentemente falso para que nadie lo confunda con
+    # una configuración real de Firebase.
+    assert "placeholder" in script
+
+
+def test_testflight_workflow_uses_the_real_firebase_secret() -> None:
+    workflow = Path(".github/workflows/ios-testflight.yml").read_text(encoding="utf-8")
+
+    assert "IOS_GOOGLE_SERVICE_INFO_BASE64" in workflow
+    assert "ios/Runner/GoogleService-Info.plist" in workflow
+    assert "plutil -lint ios/Runner/GoogleService-Info.plist" in workflow

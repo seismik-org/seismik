@@ -1,10 +1,14 @@
+import 'package:flutter/cupertino.dart'
+    show CupertinoIcons, CupertinoPageRoute, CupertinoPageScaffold;
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/platform.dart';
 import '../../data/models/seismic_event.dart';
 import '../../state/mobile_settings.dart';
 import '../../state/seismik_state.dart';
+import '../widgets/liquid_glass.dart';
 import '../widgets/status_pill.dart';
 import 'event_detail_screen.dart';
 
@@ -33,8 +37,17 @@ class _MonitorScreenState extends State<MonitorScreen> {
   }
 
   void _openDetail(SeismicEvent event) {
+    // La transición también es parte de la paridad: iOS empuja desde el borde
+    // derecho y permite volver arrastrando.
     Navigator.of(context).push(
-      MaterialPageRoute<void>(builder: (_) => EventDetailScreen(event: event)),
+      usesCupertino
+          ? CupertinoPageRoute<void>(
+              title: 'Sismo',
+              builder: (_) => EventDetailScreen(event: event),
+            )
+          : MaterialPageRoute<void>(
+              builder: (_) => EventDetailScreen(event: event),
+            ),
     );
   }
 
@@ -45,31 +58,7 @@ class _MonitorScreenState extends State<MonitorScreen> {
     final LatLng center = state.position == null
         ? const LatLng(4.65, -74.05)
         : LatLng(state.position!.latitude, state.position!.longitude);
-    return Scaffold(
-      appBar: AppBar(
-        title: Row(
-          children: <Widget>[
-            Image.asset(
-              'assets/images/seismik_logo.png',
-              width: 38,
-              height: 38,
-            ),
-            const SizedBox(width: 10),
-            const Text(
-              'SEISMIK',
-              style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 2),
-            ),
-          ],
-        ),
-        actions: <Widget>[
-          IconButton(
-            tooltip: 'Actualizar historial',
-            onPressed: state.refreshNetworkData,
-            icon: const Icon(Icons.refresh),
-          ),
-        ],
-      ),
-      body: Stack(
+    final Widget content = Stack(
         children: <Widget>[
           GoogleMap(
             initialCameraPosition: CameraPosition(target: center, zoom: 5.8),
@@ -92,15 +81,10 @@ class _MonitorScreenState extends State<MonitorScreen> {
             maxChildSize: _expanded,
             snap: true,
             snapSizes: const <double>[_collapsed, _resting, _expanded],
-            builder: (context, controller) => Material(
-              elevation: 14,
-              color: Theme.of(context).colorScheme.surface,
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(28),
-              ),
-              child: RefreshIndicator(
-                onRefresh: state.refreshNetworkData,
-                child: ListView(
+            builder: (context, controller) => _SheetSurface(
+              onRefresh: state.refreshNetworkData,
+              child: Builder(
+                builder: (context) => ListView(
                   controller: controller,
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
                   children: <Widget>[
@@ -165,7 +149,45 @@ class _MonitorScreenState extends State<MonitorScreen> {
             ),
           ),
         ],
+      );
+
+    if (usesCupertino) {
+      // En iPhone el mapa llega hasta los bordes y la identidad flota sobre él,
+      // como en Mapas de Apple, en vez de perder alto con una barra opaca.
+      return CupertinoPageScaffold(
+        child: Stack(
+          children: <Widget>[
+            content,
+            _IosMapHeader(onRefresh: state.refreshNetworkData),
+          ],
+        ),
+      );
+    }
+    return Scaffold(
+      appBar: AppBar(
+        title: Row(
+          children: <Widget>[
+            Image.asset(
+              'assets/images/seismik_logo.png',
+              width: 38,
+              height: 38,
+            ),
+            const SizedBox(width: 10),
+            const Text(
+              'SEISMIK',
+              style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 2),
+            ),
+          ],
+        ),
+        actions: <Widget>[
+          IconButton(
+            tooltip: 'Actualizar historial',
+            onPressed: state.refreshNetworkData,
+            icon: const Icon(Icons.refresh),
+          ),
+        ],
       ),
+      body: content,
     );
   }
 
@@ -221,6 +243,99 @@ class _MonitorScreenState extends State<MonitorScreen> {
   static String _shortAgency(SeismicEvent event) => event.isPreliminary
       ? 'SeedLink · preliminar'
       : _sourceLabel(event.sourceId ?? event.agency ?? 'Oficial');
+}
+
+/// Superficie de la hoja inferior.
+///
+/// En iPhone es vidrio sobre el mapa; en Android conserva la superficie
+/// Material con «pull to refresh», que es el gesto esperado allí. iOS no lo
+/// usa aquí porque la hoja arrastra en vertical y los dos gestos competirían.
+class _SheetSurface extends StatelessWidget {
+  const _SheetSurface({required this.child, required this.onRefresh});
+
+  final Widget child;
+  final Future<void> Function() onRefresh;
+
+  static const BorderRadius _corners = BorderRadius.vertical(
+    top: Radius.circular(30),
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    if (usesCupertino) {
+      return LiquidGlass(
+        borderRadius: 30,
+        borderRadiusGeometry: _corners,
+        blurSigma: 30,
+        child: child,
+      );
+    }
+    return Material(
+      elevation: 14,
+      color: Theme.of(context).colorScheme.surface,
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+      child: RefreshIndicator(onRefresh: onRefresh, child: child),
+    );
+  }
+}
+
+/// Identidad y acción de recarga flotando sobre el mapa en iPhone.
+class _IosMapHeader extends StatelessWidget {
+  const _IosMapHeader({required this.onRefresh});
+
+  final Future<void> Function() onRefresh;
+
+  @override
+  Widget build(BuildContext context) => SafeArea(
+    bottom: false,
+    child: Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      child: Row(
+        children: <Widget>[
+          LiquidGlass(
+            borderRadius: 20,
+            padding: const EdgeInsets.fromLTRB(12, 8, 16, 8),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                Image.asset(
+                  'assets/images/seismik_logo.png',
+                  width: 26,
+                  height: 26,
+                ),
+                const SizedBox(width: 8),
+                const Text(
+                  'SEISMIK',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 1.6,
+                    fontSize: 15,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Spacer(),
+          LiquidGlass(
+            borderRadius: 20,
+            child: Semantics(
+              button: true,
+              label: 'Actualizar historial',
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: onRefresh,
+                child: const SizedBox(
+                  width: 44,
+                  height: 40,
+                  child: Icon(CupertinoIcons.arrow_clockwise, size: 20),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
 }
 
 class _SheetHandle extends StatelessWidget {
