@@ -1,13 +1,17 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import '../../core/platform.dart';
+import '../../core/theme.dart';
 import '../../data/models/seismic_event.dart';
 import '../../services/in_app_browser.dart';
 import '../widgets/adaptive.dart';
+import '../widgets/liquid_glass.dart';
 import '../widgets/open_in_maps_button.dart';
 import 'felt_report_screen.dart';
 import 'damage_report_screen.dart';
+
 
 class EventDetailScreen extends StatelessWidget {
   const EventDetailScreen({required this.event, this.onClose, super.key});
@@ -25,57 +29,140 @@ class EventDetailScreen extends StatelessWidget {
         padding: const EdgeInsets.all(18),
         children: <Widget>[
           if (event.isPreliminary) ...<Widget>[
-            Card(
-              color: Colors.deepPurple.withValues(alpha: 0.16),
-              child: const Padding(
-                padding: EdgeInsets.all(14),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Icon(Icons.science_outlined, color: Colors.deepPurple),
-                    SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        'SEISMIK / SEEDLINK · PRELIMINAR\n'
-                        'Detección automática multiestación. No es una confirmación oficial. Las ondas se miden en cada estación, pero una magnitud solo se mostrará tras calibrar su respuesta instrumental y validarla científicamente.',
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-          ],
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Text(
-                event.magnitude?.toStringAsFixed(1) ?? '—',
-                style: const TextStyle(
-                  fontSize: 82,
-                  fontWeight: FontWeight.w900,
-                  height: 1,
-                ),
-              ),
+            if (usesCupertino)
               Padding(
-                padding: EdgeInsets.only(top: 12, left: 4),
-                child: Text(
-                  event.magnitudeType == null
-                      ? 'M'
-                      : 'M${event.magnitudeType!.toLowerCase()}',
-                  style: TextStyle(
-                    fontSize: 22,
-                    color: colors.onSurfaceVariant,
+                padding: const EdgeInsets.only(bottom: 14),
+                child: LiquidGlassCard(
+                  borderRadius: 18,
+                  padding: const EdgeInsets.all(14),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      const Icon(
+                        CupertinoIcons.lab_flask,
+                        color: SeismikColors.lavender,
+                        size: 24,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          'SEISMIK / SEEDLINK · PRELIMINAR\n'
+                          'Detección automática multiestación. Las ondas se miden en cada estación; la magnitud se mostrará tras calibrar su respuesta instrumental y validarla.',
+                          style: TextStyle(
+                            fontSize: 13,
+                            height: 1.35,
+                            color: CupertinoColors.label.resolveFrom(context),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            else
+              Card(
+                color: Colors.deepPurple.withValues(alpha: 0.16),
+                child: const Padding(
+                  padding: EdgeInsets.all(14),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Icon(Icons.science_outlined, color: Colors.deepPurple),
+                      SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'SEISMIK / SEEDLINK · PRELIMINAR\n'
+                          'Detección automática multiestación. No es una confirmación oficial. Las ondas se miden en cada estación, pero una magnitud solo se mostrará tras calibrar su respuesta instrumental y validarla científicamente.',
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
-            ],
-          ),
-          Text(
-            event.place ?? 'Epicentro en revisión',
-            style: Theme.of(context).textTheme.headlineSmall,
-          ),
-          const SizedBox(height: 16),
+            const SizedBox(height: 12),
+          ],
+          if (usesCupertino) ...<Widget>[
+            LiquidGlassCard(
+              borderRadius: 22,
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.baseline,
+                    textBaseline: TextBaseline.alphabetic,
+                    children: <Widget>[
+                      Text(
+                        event.magnitude?.toStringAsFixed(1) ?? '—',
+                        style: TextStyle(
+                          fontSize: 80,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: -2.0,
+                          color: SeismikColors.severityColor(
+                            event.magnitude,
+                            isPreliminary: event.isPreliminary,
+                          ),
+                          height: 1,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        event.magnitudeType == null
+                            ? 'M'
+                            : 'M${event.magnitudeType!.toLowerCase()}',
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w600,
+                          color: CupertinoColors.secondaryLabel.resolveFrom(context),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    event.place ?? 'Epicentro en revisión',
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: -0.4,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+          ] else ...<Widget>[
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  event.magnitude?.toStringAsFixed(1) ?? '—',
+                  style: const TextStyle(
+                    fontSize: 82,
+                    fontWeight: FontWeight.w900,
+                    height: 1,
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(top: 12, left: 4),
+                  child: Text(
+                    event.magnitudeType == null
+                        ? 'M'
+                        : 'M${event.magnitudeType!.toLowerCase()}',
+                    style: TextStyle(
+                      fontSize: 22,
+                      color: colors.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            Text(
+              event.place ?? 'Epicentro en revisión',
+              style: Theme.of(context).textTheme.headlineSmall,
+            ),
+            const SizedBox(height: 16),
+          ],
           Wrap(
             spacing: 10,
             runSpacing: 10,
@@ -281,6 +368,49 @@ class _Metric extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (usesCupertino) {
+      final Brightness brightness = CupertinoTheme.brightnessOf(context);
+      final bool dark = brightness == Brightness.dark;
+      return Container(
+        width: 155,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: dark
+              ? CupertinoColors.systemGrey6.darkColor.withValues(alpha: 0.55)
+              : CupertinoColors.white.withValues(alpha: 0.65),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(
+            color: dark
+                ? CupertinoColors.white.withValues(alpha: 0.12)
+                : CupertinoColors.white.withValues(alpha: 0.85),
+            width: 0.8,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Icon(icon, color: CupertinoColors.activeBlue.resolveFrom(context), size: 22),
+            const SizedBox(height: 10),
+            Text(
+              label,
+              style: const TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 16.5,
+                letterSpacing: -0.3,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              caption,
+              style: TextStyle(
+                color: CupertinoColors.secondaryLabel.resolveFrom(context),
+                fontSize: 12.5,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
     final ColorScheme colors = Theme.of(context).colorScheme;
     return Container(
       width: 155,
@@ -304,3 +434,4 @@ class _Metric extends StatelessWidget {
     );
   }
 }
+

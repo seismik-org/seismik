@@ -1,16 +1,20 @@
-import 'package:flutter/cupertino.dart'
-    show CupertinoIcons, CupertinoPageRoute, CupertinoPageScaffold;
+import 'dart:async';
+
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/platform.dart';
+import '../../core/theme.dart';
 import '../../data/models/seismic_event.dart';
 import '../../state/mobile_settings.dart';
 import '../../state/seismik_state.dart';
 import '../widgets/liquid_glass.dart';
 import '../widgets/status_pill.dart';
 import 'event_detail_screen.dart';
+
 
 /// Historial de sismos como mapa interactivo con panel inferior deslizable.
 ///
@@ -279,7 +283,7 @@ class _SheetSurface extends StatelessWidget {
   }
 }
 
-/// Identidad y acción de recarga flotando sobre el mapa en iPhone.
+/// Identidad y acción de recarga flotando sobre el mapa en iPhone con diseño de cápsula de cristal.
 class _IosMapHeader extends StatelessWidget {
   const _IosMapHeader({required this.onRefresh});
 
@@ -289,50 +293,42 @@ class _IosMapHeader extends StatelessWidget {
   Widget build(BuildContext context) => SafeArea(
     bottom: false,
     child: Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-      child: Row(
-        children: <Widget>[
-          LiquidGlass(
-            borderRadius: 20,
-            padding: const EdgeInsets.fromLTRB(12, 8, 16, 8),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: <Widget>[
-                Image.asset(
-                  'assets/images/seismik_logo.png',
-                  width: 26,
-                  height: 26,
-                ),
-                const SizedBox(width: 8),
-                const Text(
-                  'SEISMIK',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 1.6,
-                    fontSize: 15,
-                  ),
-                ),
-              ],
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+      child: LiquidGlass(
+        borderRadius: 24,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        child: Row(
+          children: <Widget>[
+            Image.asset(
+              'assets/images/seismik_logo.png',
+              width: 26,
+              height: 26,
             ),
-          ),
-          const Spacer(),
-          LiquidGlass(
-            borderRadius: 20,
-            child: Semantics(
-              button: true,
-              label: 'Actualizar historial',
-              child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: onRefresh,
-                child: const SizedBox(
-                  width: 44,
-                  height: 40,
-                  child: Icon(CupertinoIcons.arrow_clockwise, size: 20),
-                ),
+            const SizedBox(width: 10),
+            const Text(
+              'SEISMIK',
+              style: TextStyle(
+                fontWeight: FontWeight.w800,
+                letterSpacing: 2.0,
+                fontSize: 15,
               ),
             ),
-          ),
-        ],
+            const Spacer(),
+            CupertinoButton(
+              padding: EdgeInsets.zero,
+              minimumSize: const Size.square(36),
+              onPressed: () {
+                unawaited(HapticFeedback.lightImpact());
+                unawaited(onRefresh());
+              },
+              child: const Icon(
+                CupertinoIcons.arrow_clockwise,
+                size: 19,
+                color: CupertinoColors.label,
+              ),
+            ),
+          ],
+        ),
       ),
     ),
   );
@@ -359,6 +355,39 @@ class _CalibrationStatusCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (usesCupertino) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: LiquidGlassCard(
+          borderRadius: 18,
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              const Icon(
+                CupertinoIcons.lab_flask,
+                color: SeismikColors.lavender,
+                size: 22,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Calibración de magnitud en curso\n'
+                  'Seismik conserva pico, ruido y coincidencias para contrastarlos '
+                  'con SGC/USGS. Una M~ sólo aparecerá cuando el modelo regional '
+                  'esté validado.',
+                  style: TextStyle(
+                    fontSize: 13,
+                    height: 1.35,
+                    color: CupertinoColors.label.resolveFrom(context),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
     final ColorScheme colors = Theme.of(context).colorScheme;
     return Card(
       color: colors.tertiaryContainer,
@@ -398,6 +427,49 @@ class _SyncBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (usesCupertino) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        child: LiquidGlassCard(
+          borderRadius: 18,
+          padding: const EdgeInsets.fromLTRB(14, 10, 10, 10),
+          child: Row(
+            children: <Widget>[
+              Icon(
+                pending > 0
+                    ? CupertinoIcons.cloud_upload
+                    : CupertinoIcons.cloud_download,
+                color: SeismikColors.systemBlue,
+                size: 22,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  message ??
+                      (pending == 1
+                          ? '1 reporte espera conexión.'
+                          : '$pending reportes esperan conexión.'),
+                  style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w500),
+                ),
+              ),
+              if (pending > 0)
+                CupertinoButton(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  minimumSize: Size.zero,
+                  onPressed: () {
+                    unawaited(HapticFeedback.lightImpact());
+                    unawaited(onRetry());
+                  },
+                  child: const Text(
+                    'Reintentar',
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      );
+    }
     final ColorScheme colors = Theme.of(context).colorScheme;
     return Card(
       color: colors.secondaryContainer,
@@ -441,6 +513,54 @@ class _EventTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (usesCupertino) {
+      final String magText = event.isPreliminary
+          ? 'P'
+          : (event.magnitude?.toStringAsFixed(1) ?? '—');
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 8),
+        child: GlassTile(
+          onTap: () {
+            unawaited(HapticFeedback.selectionClick());
+            onOpenDetail();
+          },
+          leading: GlassBadge(
+            text: magText,
+            fontSize: 15,
+            isBold: true,
+            padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
+            gradient: SeismikColors.severityGradient(
+              event.magnitude,
+              isPreliminary: event.isPreliminary,
+            ),
+          ),
+          title: Text(
+            event.place ?? 'Evento sísmico',
+            style: const TextStyle(
+              fontSize: 15.5,
+              fontWeight: FontWeight.w600,
+              letterSpacing: -0.2,
+            ),
+          ),
+          subtitle: Text(
+            <String>[
+              _agencyLabel(event),
+              _formatTime(event.detectedAt),
+              '${event.depthKm?.toStringAsFixed(0) ?? '—'} km',
+            ].join(' · '),
+            style: TextStyle(
+              fontSize: 12.5,
+              color: CupertinoColors.secondaryLabel.resolveFrom(context),
+            ),
+          ),
+          trailing: const Icon(
+            CupertinoIcons.chevron_right,
+            size: 16,
+            color: CupertinoColors.tertiaryLabel,
+          ),
+        ),
+      );
+    }
     final ColorScheme colors = Theme.of(context).colorScheme;
     return Card(
       child: ListTile(
@@ -470,6 +590,7 @@ class _EventTile extends StatelessWidget {
       ),
     );
   }
+
 
   static String _agencyLabel(SeismicEvent event) => switch (event.sourceId) {
     'seismik_seedlink_preliminary' => 'Seismik / SeedLink · PRELIMINAR',

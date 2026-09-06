@@ -1,10 +1,13 @@
 import 'dart:async';
 
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/platform.dart';
 import '../widgets/adaptive.dart';
+
 import '../../data/models/citizen_report.dart';
 import '../../data/models/pending_report.dart';
 import '../../data/models/seismic_event.dart';
@@ -178,178 +181,364 @@ class _FeltReportScreenState extends State<FeltReportScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => AdaptiveScreen(
-    title: '¿Sentiste el sismo?',
-    child: ListView(
-      padding: const EdgeInsets.fromLTRB(18, 18, 18, 28),
-      children: <Widget>[
-        SwitchListTile.adaptive(
-          value: _felt,
-          onChanged: (value) => setState(() => _felt = value),
-          title: Text(_felt ? 'Sí, lo sentí' : 'No lo sentí'),
-          subtitle: const Text(
-            'Los reportes negativos también ayudan a estimar la intensidad.',
-          ),
-        ),
-        if (_felt) ...<Widget>[
-          const SizedBox(height: 10),
-          Text(
-            'Intensidad percibida: ${_intensity.round()} / 10',
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-          Slider.adaptive(
-            value: _intensity,
-            min: 1,
-            max: 10,
-            divisions: 9,
-            label: _intensity.round().toString(),
-            onChanged: (value) => setState(() => _intensity = value),
-          ),
-          Text(
-            _intensityDescription(_intensity.round()),
-            style: TextStyle(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
+  Widget build(BuildContext context) {
+    if (usesCupertino) {
+      return AdaptiveScreen(
+        title: '¿Sentiste el sismo?',
+        child: ListView(
+          padding: const EdgeInsets.only(bottom: 32),
+          children: <Widget>[
+            CupertinoListSection.insetGrouped(
+              header: const Text('EXPERIENCIA'),
+              children: <Widget>[
+                CupertinoFormRow(
+                  prefix: const Text('¿Lo sentiste?', style: TextStyle(fontWeight: FontWeight.w500)),
+                  child: CupertinoSwitch(
+                    value: _felt,
+                    onChanged: (value) {
+                      unawaited(HapticFeedback.lightImpact());
+                      setState(() => _felt = value);
+                    },
+                  ),
+                ),
+                if (_felt) ...<Widget>[
+                  CupertinoFormRow(
+                    prefix: Text(
+                      'Intensidad (${_intensity.round()}/10)',
+                      style: const TextStyle(fontWeight: FontWeight.w500),
+                    ),
+                    helper: Text(_intensityDescription(_intensity.round())),
+                    child: SizedBox(
+                      width: 170,
+                      child: CupertinoSlider(
+                        value: _intensity,
+                        min: 1,
+                        max: 10,
+                        divisions: 9,
+                        onChanged: (value) {
+                          if (value.round() != _intensity.round()) {
+                            unawaited(HapticFeedback.selectionClick());
+                          }
+                          setState(() => _intensity = value);
+                        },
+                      ),
+                    ),
+                  ),
+                ],
+              ],
             ),
-          ),
-          const SizedBox(height: 16),
-          _check('Estaba en interiores', _indoors, (v) => _indoors = v),
-          _check('Me despertó', _wokeUp, (v) => _wokeUp = v),
-          _check(
-            'Fue difícil permanecer de pie',
-            _difficultyStanding,
-            (v) => _difficultyStanding = v,
-          ),
-          _check(
-            'Se movieron objetos',
-            _objectsMoved,
-            (v) => _objectsMoved = v,
-          ),
-          _check('Cayeron objetos', _objectsFell, (v) => _objectsFell = v),
-          _check('Vi daños', _visibleDamage, (v) => _visibleDamage = v),
-        ],
-        const SizedBox(height: 12),
-        TextField(
-          controller: _comment,
-          maxLength: 1000,
-          maxLines: 3,
-          decoration: const InputDecoration(
-            labelText: 'Comentario opcional',
-            border: OutlineInputBorder(),
-          ),
+            if (_felt) ...<Widget>[
+              CupertinoListSection.insetGrouped(
+                header: const Text('EFECTOS PERCIBIDOS'),
+                children: <Widget>[
+                  _check('Estaba en interiores', _indoors, (v) => _indoors = v),
+                  _check('Me despertó', _wokeUp, (v) => _wokeUp = v),
+                  _check(
+                    'Fue difícil permanecer de pie',
+                    _difficultyStanding,
+                    (v) => _difficultyStanding = v,
+                  ),
+                  _check(
+                    'Se movieron objetos',
+                    _objectsMoved,
+                    (v) => _objectsMoved = v,
+                  ),
+                  _check('Cayeron objetos', _objectsFell, (v) => _objectsFell = v),
+                  _check('Vi daños', _visibleDamage, (v) => _visibleDamage = v),
+                ],
+              ),
+            ],
+            CupertinoListSection.insetGrouped(
+              header: const Text('DESCRIPCIÓN ADICIONAL'),
+              children: <Widget>[
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  child: CupertinoTextField(
+                    controller: _comment,
+                    maxLength: 1000,
+                    maxLines: 3,
+                    placeholder: 'Comentario opcional…',
+                    decoration: null,
+                  ),
+                ),
+              ],
+            ),
+            _privacyControls(),
+            const SizedBox(height: 20),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 18),
+              child: AdaptiveButton(
+                onPressed: _submitting ? null : _submit,
+                icon: Icons.send,
+                label: _submitting ? 'Enviando…' : 'Enviar a Seismik',
+              ),
+            ),
+          ],
         ),
-        const SizedBox(height: 10),
-        _privacyControls(),
-        const SizedBox(height: 18),
-        AdaptiveButton(
-          onPressed: _submitting ? null : _submit,
-          icon: Icons.send,
-          label: _submitting ? 'Enviando…' : 'Enviar a Seismik',
-        ),
-        const SizedBox(height: 24),
-      ],
-    ),
-  );
+      );
+    }
 
-  /// iOS no usa casillas dentro de formularios: usa interruptores. Mantener el
-  /// checkbox allí es una de las señales más visibles de una app no nativa.
-  Widget _check(String label, bool value, ValueChanged<bool> update) =>
-      usesCupertino
-      ? SwitchListTile.adaptive(
-          dense: true,
-          value: value,
-          onChanged: (next) => setState(() => update(next)),
-          title: Text(label),
-        )
-      : CheckboxListTile(
-          dense: true,
-          value: value,
-          onChanged: (next) => setState(() => update(next ?? false)),
-          title: Text(label),
-        );
-
-  Widget _privacyControls() => Card(
-    child: Padding(
-      padding: const EdgeInsets.all(12),
-      child: Column(
+    return AdaptiveScreen(
+      title: '¿Sentiste el sismo?',
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(18, 18, 18, 28),
         children: <Widget>[
-          TextField(
-            controller: _country,
-            maxLength: 2,
-            textCapitalization: TextCapitalization.characters,
-            decoration: const InputDecoration(labelText: 'País (ISO, ej. CO)'),
-            onSubmitted: (_) => _loadAgencies(),
-          ),
           SwitchListTile.adaptive(
-            value: _precise,
-            onChanged: (value) => setState(() => _precise = value),
-            title: const Text('Compartir ubicación precisa'),
+            value: _felt,
+            onChanged: (value) => setState(() => _felt = value),
+            title: Text(_felt ? 'Sí, lo sentí' : 'No lo sentí'),
             subtitle: const Text(
-              'Desactivado: Seismik reduce la precisión antes de guardar.',
+              'Los reportes negativos también ayudan a estimar la intensidad.',
             ),
           ),
-          SwitchListTile.adaptive(
-            value: _official,
-            onChanged: (value) => setState(() => _official = value),
-            title: const Text('Reportar también a una entidad oficial'),
-            subtitle: const Text(
-              'Tú eliges la organización. Su formulario se abre aparte.',
+          if (_felt) ...<Widget>[
+            const SizedBox(height: 10),
+            Text(
+              'Intensidad percibida: ${_intensity.round()} / 10',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            Slider.adaptive(
+              value: _intensity,
+              min: 1,
+              max: 10,
+              divisions: 9,
+              label: _intensity.round().toString(),
+              onChanged: (value) => setState(() => _intensity = value),
+            ),
+            Text(
+              _intensityDescription(_intensity.round()),
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 16),
+            _check('Estaba en interiores', _indoors, (v) => _indoors = v),
+            _check('Me despertó', _wokeUp, (v) => _wokeUp = v),
+            _check(
+              'Fue difícil permanecer de pie',
+              _difficultyStanding,
+              (v) => _difficultyStanding = v,
+            ),
+            _check(
+              'Se movieron objetos',
+              _objectsMoved,
+              (v) => _objectsMoved = v,
+            ),
+            _check('Cayeron objetos', _objectsFell, (v) => _objectsFell = v),
+            _check('Vi daños', _visibleDamage, (v) => _visibleDamage = v),
+          ],
+          const SizedBox(height: 12),
+          TextField(
+            controller: _comment,
+            maxLength: 1000,
+            maxLines: 3,
+            decoration: const InputDecoration(
+              labelText: 'Comentario opcional',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          const SizedBox(height: 10),
+          _privacyControls(),
+          const SizedBox(height: 18),
+          AdaptiveButton(
+            onPressed: _submitting ? null : _submit,
+            icon: Icons.send,
+            label: _submitting ? 'Enviando…' : 'Enviar a Seismik',
+          ),
+          const SizedBox(height: 24),
+        ],
+      ),
+    );
+  }
+
+  Widget _check(String label, bool value, ValueChanged<bool> update) {
+    if (usesCupertino) {
+      return CupertinoListTile(
+        title: Text(label),
+        trailing: Icon(
+          value
+              ? CupertinoIcons.checkmark_circle_fill
+              : CupertinoIcons.circle,
+          color: value ? CupertinoColors.activeBlue : CupertinoColors.tertiaryLabel,
+          size: 22,
+        ),
+        onTap: () {
+          unawaited(HapticFeedback.selectionClick());
+          setState(() => update(!value));
+        },
+      );
+    }
+    return CheckboxListTile(
+      dense: true,
+      value: value,
+      onChanged: (next) => setState(() => update(next ?? false)),
+      title: Text(label),
+    );
+  }
+
+  Widget _privacyControls() {
+    if (usesCupertino) {
+      return CupertinoListSection.insetGrouped(
+        header: const Text('PRIVACIDAD Y DESTINO'),
+        footer: const Text(
+          'Seismik no suplanta a la entidad oficial. Tras guardar tu reporte se abrirá el formulario elegido.',
+        ),
+        children: <Widget>[
+          CupertinoFormRow(
+            prefix: const Text('País (código ISO)'),
+            child: SizedBox(
+              width: 70,
+              child: CupertinoTextField(
+                controller: _country,
+                maxLength: 2,
+                textAlign: TextAlign.end,
+                textCapitalization: TextCapitalization.characters,
+                placeholder: 'CO',
+                decoration: null,
+                onSubmitted: (_) => _loadAgencies(),
+              ),
+            ),
+          ),
+          CupertinoFormRow(
+            prefix: const Text('Ubicación precisa'),
+            helper: const Text('Desactivado: precisión reducida'),
+            child: CupertinoSwitch(
+              value: _precise,
+              onChanged: (value) => setState(() => _precise = value),
+            ),
+          ),
+          CupertinoFormRow(
+            prefix: const Text('Reportar a entidad oficial'),
+            child: CupertinoSwitch(
+              value: _official,
+              onChanged: (value) => setState(() => _official = value),
             ),
           ),
           if (_official) ...<Widget>[
-            const Divider(),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                'Organización geológica para este sismo',
-                style: Theme.of(context).textTheme.titleSmall,
-              ),
-            ),
-            const SizedBox(height: 8),
             if (_loadingAgencies)
-              const LinearProgressIndicator()
+              const Padding(
+                padding: EdgeInsets.all(14),
+                child: Center(child: CupertinoActivityIndicator()),
+              )
             else
               for (final AgencyRoute agency in _agencies)
-                CheckboxListTile(
-                  contentPadding: EdgeInsets.zero,
-                  value: _selectedAgencyIds.contains(agency.agencyId),
-                  onChanged: (bool? selected) {
-                    setState(() {
-                      if (selected ?? false) {
-                        _selectedAgencyIds.add(agency.agencyId);
-                      } else {
-                        _selectedAgencyIds.remove(agency.agencyId);
-                      }
-                    });
-                  },
+                CupertinoListTile(
                   title: Text(agency.agencyName),
                   subtitle: Text(
                     agency.countryCode == null
                         ? 'Cobertura internacional'
                         : 'Entidad de ${agency.countryCode}',
                   ),
-                ),
-            if (_agencyLoadWarning != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 6),
-                child: Text(
-                  _agencyLoadWarning!,
-                  style: TextStyle(
-                    color: Theme.of(context).colorScheme.tertiary,
+                  trailing: Icon(
+                    _selectedAgencyIds.contains(agency.agencyId)
+                        ? CupertinoIcons.checkmark_circle_fill
+                        : CupertinoIcons.circle,
+                    color: _selectedAgencyIds.contains(agency.agencyId)
+                        ? CupertinoColors.activeBlue
+                        : CupertinoColors.tertiaryLabel,
+                    size: 22,
                   ),
+                  onTap: () {
+                    unawaited(HapticFeedback.selectionClick());
+                    setState(() {
+                      if (_selectedAgencyIds.contains(agency.agencyId)) {
+                        _selectedAgencyIds.remove(agency.agencyId);
+                      } else {
+                        _selectedAgencyIds.add(agency.agencyId);
+                      }
+                    });
+                  },
                 ),
-              ),
-            const Padding(
-              padding: EdgeInsets.only(top: 8),
-              child: Text(
-                'Seismik no suplanta ni envía automáticamente a la entidad. '
-                'Tras guardar tu reporte abrirá el formulario oficial elegido.',
-              ),
-            ),
           ],
         ],
+      );
+    }
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          children: <Widget>[
+            TextField(
+              controller: _country,
+              maxLength: 2,
+              textCapitalization: TextCapitalization.characters,
+              decoration: const InputDecoration(labelText: 'País (ISO, ej. CO)'),
+              onSubmitted: (_) => _loadAgencies(),
+            ),
+            SwitchListTile.adaptive(
+              value: _precise,
+              onChanged: (value) => setState(() => _precise = value),
+              title: const Text('Compartir ubicación precisa'),
+              subtitle: const Text(
+                'Desactivado: Seismik reduce la precisión antes de guardar.',
+              ),
+            ),
+            SwitchListTile.adaptive(
+              value: _official,
+              onChanged: (value) => setState(() => _official = value),
+              title: const Text('Reportar también a una entidad oficial'),
+              subtitle: const Text(
+                'Tú eliges la organización. Su formulario se abre aparte.',
+              ),
+            ),
+            if (_official) ...<Widget>[
+              const Divider(),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'Organización geológica para este sismo',
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+              ),
+              const SizedBox(height: 8),
+              if (_loadingAgencies)
+                const LinearProgressIndicator()
+              else
+                for (final AgencyRoute agency in _agencies)
+                  CheckboxListTile(
+                    contentPadding: EdgeInsets.zero,
+                    value: _selectedAgencyIds.contains(agency.agencyId),
+                    onChanged: (bool? selected) {
+                      setState(() {
+                        if (selected ?? false) {
+                          _selectedAgencyIds.add(agency.agencyId);
+                        } else {
+                          _selectedAgencyIds.remove(agency.agencyId);
+                        }
+                      });
+                    },
+                    title: Text(agency.agencyName),
+                    subtitle: Text(
+                      agency.countryCode == null
+                          ? 'Cobertura internacional'
+                          : 'Entidad de ${agency.countryCode}',
+                    ),
+                  ),
+              if (_agencyLoadWarning != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: Text(
+                    _agencyLoadWarning!,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.tertiary,
+                    ),
+                  ),
+                ),
+              const Padding(
+                padding: EdgeInsets.only(top: 8),
+                child: Text(
+                  'Seismik no suplanta ni envía automáticamente a la entidad. '
+                  'Tras guardar tu reporte abrirá el formulario oficial elegido.',
+                ),
+              ),
+            ],
+          ],
+        ),
       ),
-    ),
-  );
+    );
+  }
+
 
   static String _intensityDescription(int value) => switch (value) {
     <= 2 => 'Muy débil: pocas personas lo perciben.',

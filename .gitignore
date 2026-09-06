@@ -37,3 +37,5 @@ deploy/artifacts/
 # Temporary Office lock and recovery files
 ~$*.docx
 *.tmp
+*.log
+*.log.err
