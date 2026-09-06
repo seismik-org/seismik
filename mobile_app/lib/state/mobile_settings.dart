@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -76,7 +78,12 @@ class MobileSettings extends ChangeNotifier {
     minimumNotificationMagnitude =
         preferences.getDouble(_notificationMagnitudeKey) ?? 4.0;
     alertRadiusKm = _normalizeRadius(preferences.getDouble(_alertRadiusKey));
-    mapProvider = MapProvider.fromName(preferences.getString(_mapProviderKey));
+    final String? savedMapProvider = preferences.getString(_mapProviderKey);
+    // Apple Maps is a real native choice on a fresh iPhone installation.  It
+    // must not inherit Android's generic browser/system fallback.
+    mapProvider = savedMapProvider == null && Platform.isIOS
+        ? MapProvider.apple
+        : MapProvider.fromName(savedMapProvider);
   }
 
   /// Los umbrales fuera de rango del servidor se ajustan al valor admitido más

@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:io';
 
+import 'package:flutter/cupertino.dart';
 import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -7,10 +9,12 @@ import 'package:provider/provider.dart';
 
 import 'core/constants.dart';
 import 'core/theme.dart';
+import 'data/models/seismic_event.dart';
 import 'presentation/screens/alert_overlay.dart';
 import 'presentation/screens/damage_report_screen.dart';
 import 'presentation/screens/event_detail_screen.dart';
 import 'presentation/screens/felt_report_screen.dart';
+import 'presentation/screens/ios_settings_screen.dart';
 import 'presentation/screens/monitor_screen.dart';
 import 'presentation/screens/settings_screen.dart';
 import 'state/mobile_settings.dart';
@@ -104,6 +108,11 @@ class _SeismikShellState extends State<_SeismikShell> {
 
   @override
   Widget build(BuildContext context) {
+    if (Platform.isIOS) {
+      return _IosSeismikShell(
+        dynamicColorAvailable: widget.dynamicColorAvailable,
+      );
+    }
     final SeismikState state = context.watch<SeismikState>();
     final Widget base;
     if (state.officialEvent != null) {
@@ -148,6 +157,74 @@ class _SeismikShellState extends State<_SeismikShell> {
       fit: StackFit.expand,
       children: <Widget>[
         base,
+        Material(
+          child: AlertOverlay(
+            event: state.activeAlert!,
+            onDismiss: state.dismissAlert,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// iPhone uses the native tab bar and navigation rhythm rather than the
+/// floating Material navigation used by Android.  The feature state is shared;
+/// only the platform presentation changes.
+class _IosSeismikShell extends StatelessWidget {
+  const _IosSeismikShell({required this.dynamicColorAvailable});
+
+  final bool dynamicColorAvailable;
+
+  @override
+  Widget build(BuildContext context) {
+    final SeismikState state = context.watch<SeismikState>();
+    if (state.officialEvent != null) {
+      return EventDetailScreen(
+        event: state.officialEvent!,
+        onClose: state.clearOfficialEvent,
+      );
+    }
+    final SeismicEvent? event = state.recentEvents.isEmpty
+        ? null
+        : state.recentEvents.first;
+    final Widget tabs = CupertinoTabScaffold(
+      tabBar: CupertinoTabBar(
+        items: <BottomNavigationBarItem>[
+          BottomNavigationBarItem(
+            icon: Icon(CupertinoIcons.clock),
+            label: 'Historial',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(CupertinoIcons.waveform_path_ecg),
+            label: 'Sismo sentido',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(CupertinoIcons.house_alt),
+            label: 'Daños',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(CupertinoIcons.gear_alt),
+            label: 'Configuración',
+          ),
+        ],
+      ),
+      tabBuilder: (context, index) => CupertinoTabView(
+        builder: (_) => switch (index) {
+          0 => const MonitorScreen(),
+          1 => FeltReportScreen(event: event),
+          2 => DamageReportScreen(event: event),
+          _ => IosSettingsScreen(
+            dynamicColorAvailable: dynamicColorAvailable,
+          ),
+        },
+      ),
+    );
+    if (state.activeAlert == null) return tabs;
+    return Stack(
+      fit: StackFit.expand,
+      children: <Widget>[
+        tabs,
         Material(
           child: AlertOverlay(
             event: state.activeAlert!,
