@@ -16,6 +16,7 @@
     <key>UIMainStoryboardFile</key><string>Main</string>
     <key>UISupportedInterfaceOrientations</key>
     <array><string>UIInterfaceOrientationPortrait</string></array>
+    <key>UIRequiresFullScreen</key><true/>
     <key>NSLocationWhenInUseUsageDescription</key>
     <string>Seismik usa tu ubicación para alertas geocercadas y para agrupar señales sísmicas cercanas.</string>
     <key>NSMotionUsageDescription</key>
