@@ -17,7 +17,7 @@ public struct DamageReportView: View {
     @State private var showSuccessAlert = false
 
     public var body: some View {
-        NavigationStack {
+        CompatibleNavigationStack {
             Form {
                 Section(header: Text("SEVERIDAD DE DAÑOS")) {
                     ForEach(DamageSeverity.allCases) { severity in
@@ -53,8 +53,13 @@ public struct DamageReportView: View {
                 }
 
                 Section(header: Text("OBSERVACIONES Y UBICACIÓN EXACTA")) {
-                    TextField("Detalles del inmueble o situación de riesgo...", text: $comment, axis: .vertical)
-                        .lineLimit(3...5)
+                    if #available(iOS 16.0, *) {
+                        TextField("Detalles del inmueble o situación de riesgo...", text: $comment, axis: .vertical)
+                            .lineLimit(3...5)
+                    } else {
+                        TextEditor(text: $comment)
+                            .frame(minHeight: 80)
+                    }
                 }
 
                 Section {
@@ -79,7 +84,7 @@ public struct DamageReportView: View {
             .navigationTitle("Reporte de Daños")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
+                ToolbarItem(placement: .navigationBarLeading) {
                     Button("Cancelar") {
                         dismiss()
                     }

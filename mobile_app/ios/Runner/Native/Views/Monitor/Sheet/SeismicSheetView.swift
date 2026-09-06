@@ -9,7 +9,7 @@ public struct SeismicSheetView: View {
     @Binding var showDamageReport: Bool
 
     public var body: some View {
-        NavigationStack {
+        CompatibleNavigationStack {
             VStack(spacing: 0) {
                 // Barra de Acciones Rápidas Comunitarias
                 HStack(spacing: 12) {
@@ -83,14 +83,13 @@ public struct SeismicSheetView: View {
             .navigationTitle("Sismos Recientes")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
+                ToolbarItem(placement: .navigationBarLeading) {
                     Text("\(state.events.count) eventos")
                         .font(.system(size: 13, weight: .medium, design: .rounded))
                         .foregroundColor(.secondary)
                 }
             }
         }
-        .scrollContentBackground(.hidden)
         .background(.ultraThinMaterial)
     }
 }

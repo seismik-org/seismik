@@ -31,7 +31,7 @@ public struct FeltReportView: View {
     ]
 
     public var body: some View {
-        NavigationStack {
+        CompatibleNavigationStack {
             Form {
                 Section(header: Text("PERCEPCIÓN")) {
                     Toggle("¿Sentiste el movimiento?", isOn: $felt)
@@ -82,8 +82,13 @@ public struct FeltReportView: View {
                     }
 
                     Section(header: Text("COMENTARIOS ADICIONALES")) {
-                        TextField("Describe brevemente lo que observaste...", text: $comment, axis: .vertical)
-                            .lineLimit(3...5)
+                        if #available(iOS 16.0, *) {
+                            TextField("Describe brevemente lo que observaste...", text: $comment, axis: .vertical)
+                                .lineLimit(3...5)
+                        } else {
+                            TextEditor(text: $comment)
+                                .frame(minHeight: 80)
+                        }
                     }
                 }
 
@@ -108,7 +113,7 @@ public struct FeltReportView: View {
             .navigationTitle("¿Sentiste el Sismo?")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
+                ToolbarItem(placement: .navigationBarLeading) {
                     Button("Cancelar") {
                         dismiss()
                     }
