@@ -1,6 +1,7 @@
 import Flutter
 import GoogleMaps
 import UIKit
+import SwiftUI
 
 @main
 @objc class AppDelegate: FlutterAppDelegate {
@@ -14,6 +15,16 @@ import UIKit
       GMSServices.provideAPIKey(mapsKey)
     }
     GeneratedPluginRegistrant.register(with: self)
-    return super.application(application, didFinishLaunchingWithOptions: launchOptions)
+    let launched = super.application(application, didFinishLaunchingWithOptions: launchOptions)
+
+    // Despliega la experiencia nativa de Apple en SwiftUI y Liquid Glass
+    let nativeWindow = UIWindow(frame: UIScreen.main.bounds)
+    let hostingController = UIHostingController(rootView: SeismikNativeAppRoot())
+    nativeWindow.rootViewController = hostingController
+    self.window = nativeWindow
+    nativeWindow.makeKeyAndVisible()
+
+    return launched
   }
 }
+
