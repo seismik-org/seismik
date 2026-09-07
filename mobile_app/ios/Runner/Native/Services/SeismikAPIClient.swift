@@ -1,6 +1,46 @@
 import Foundation
 import CryptoKit
 
+/// Errores del cliente que la interfaz necesita distinguir.
+public enum SeismikAPIError: LocalizedError {
+    /// APNs todavía no entregó el token del dispositivo.
+    case pushTokenUnavailable
+    /// El servidor rechazó la petición.
+    case rejected(status: Int, message: String)
+    case malformedResponse
+
+    /// 408 y 429 son transitorios; el resto de los 4xx indica un contrato
+    /// inválido y reintentarlo sólo repetiría el rechazo.
+    public var isPermanent: Bool {
+        switch self {
+        case .pushTokenUnavailable:
+            return false
+        case .malformedResponse:
+            return true
+        case let .rejected(status, _):
+            return (400..<500).contains(status) && status != 408 && status != 429
+        }
+    }
+
+    public var errorDescription: String? {
+        switch self {
+        case .pushTokenUnavailable:
+            return "El token de notificaciones todavía no está disponible."
+        case let .rejected(status, message):
+            return "El servidor respondió \(status): \(message)"
+        case .malformedResponse:
+            return "La respuesta del servidor no tiene el formato esperado."
+        }
+    }
+}
+
+/// Resultado de enviar un reporte ciudadano.
+public enum ReportSubmission: Equatable {
+    case sent(duplicate: Bool)
+    /// Sin red: quedó guardado y se reenviará solo.
+    case queued
+}
+
 /// Cliente de red nativo en Swift con async/await para la API de Seismik.
 /// Maneja autenticación segura de sesión en Keychain, registro de dispositivo,
 /// firma criptográfica HMAC de reportes y persistencia local de contingencia.
@@ -10,10 +50,13 @@ public final class SeismikAPIClient {
     private let baseURL: URL
     private let session: URLSession
     private let keychain = KeychainStore.shared
+    private let queue = OfflineReportQueue.shared
+    private let encoder = JSONEncoder()
 
     private static let sessionTokenKey = "seismik.device_session_token"
     private static let crowdTokenKey = "seismik.crowd_token"
     private static let eventCacheKey = "seismik.cached_events_json"
+    private static let alertCursorKey = "seismik.alert_cursor"
 
     private init() {
         self.baseURL = URL(string: "https://api.seismik.org")!
@@ -55,13 +98,15 @@ public final class SeismikAPIClient {
         return true
     }
 
-    /// Token APNs del dispositivo para recepción de alertas en segundo plano.
-    public var apnsToken: String {
-        let key = "seismik.apns_device_token"
-        if let token = UserDefaults.standard.string(forKey: key), !token.isEmpty {
-            return token
-        }
-        return "0000000000000000000000000000000000000000000000000000000000000000"
+    /// Token APNs del dispositivo, o `nil` mientras Apple no lo entrega.
+    ///
+    /// Antes se devolvía una cadena de ceros cuando faltaba. Eso registraba el
+    /// dispositivo con un destino inexistente: el alta parecía correcta y las
+    /// alertas nunca llegaban, sin ningún síntoma visible.
+    public var apnsToken: String? {
+        let stored = UserDefaults.standard.string(forKey: "seismik.apns_device_token")
+        guard let token = stored, !token.isEmpty else { return nil }
+        return token
     }
 
     // MARK: - Registro del Dispositivo
@@ -77,6 +122,9 @@ public final class SeismikAPIClient {
         minimumNotificationMagnitude: Double = 4.0,
         alertRadiusKm: Double = 250.0
     ) async throws -> Bool {
+        guard let pushToken = apnsToken else {
+            throw SeismikAPIError.pushTokenUnavailable
+        }
         let url = baseURL.appendingPathComponent("v1/devices/register")
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
@@ -84,7 +132,7 @@ public final class SeismikAPIClient {
         let registrationPayload: [String: Any] = [
             "device_id": deviceId,
             "platform": "ios",
-            "apns_token": apnsToken,
+            "apns_token": pushToken,
             "country_code": countryCode.uppercased(),
             "latitude": latitude,
             "longitude": longitude,
@@ -189,7 +237,7 @@ public final class SeismikAPIClient {
         do {
             let (data, response) = try await session.data(for: request)
             guard let httpResponse = response as? HTTPURLResponse, (200...299).contains(httpResponse.statusCode) else {
-                return defaultStations()
+                return []
             }
 
             struct StationsResponse: Decodable {
@@ -199,66 +247,174 @@ public final class SeismikAPIClient {
             if let decoded = try? JSONDecoder().decode(StationsResponse.self, from: data) {
                 return decoded.stations
             }
-            return defaultStations()
+            return []
         } catch {
-            return defaultStations()
+            return []
         }
     }
 
     // MARK: - Reportes Ciudadanos con Firma Criptográfica HMAC
 
-    /// Envía un reporte de sismo sentido (DYFI) firmado con el secreto del dispositivo.
-    public func submitFeltReport(_ report: FeltReportPayload) async throws -> Bool {
-        if !isRegistered {
-            _ = try? await registerDevice()
-        }
+    public var pendingReportCount: Int { queue.pendingCount }
 
-        let url = baseURL.appendingPathComponent("v1/reports/felt")
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        let body = try JSONEncoder().encode(report)
-        request.httpBody = body
-
-        if let secret = crowdToken {
-            let timestamp = String(format: "%.3f", Date().timeIntervalSince1970)
-            let signature = hmacSha256Hex(secret: secret, timestamp: timestamp, body: body)
-            request.setValue(timestamp, forHTTPHeaderField: "X-Seismik-Timestamp")
-            request.setValue(signature, forHTTPHeaderField: "X-Seismik-Signature")
-        }
-        if let session = deviceSessionToken {
-            request.setValue(session, forHTTPHeaderField: "X-Seismik-Device-Session")
-        }
-
-        let (_, response) = try await session.data(for: request)
-        guard let httpResponse = response as? HTTPURLResponse else { return false }
-        return (200...299).contains(httpResponse.statusCode)
+    /// Envía un reporte de sismo sentido; si no hay red, lo guarda para después.
+    public func submitFeltReport(_ report: FeltReportPayload) async throws -> ReportSubmission {
+        let body = try encoder.encode(report)
+        return try await submit(kind: .felt, reportId: report.reportId, body: body)
     }
 
-    /// Envía un reporte de daños estructurales firmado con el secreto del dispositivo.
-    public func submitDamageReport(_ report: DamageReportPayload) async throws -> Bool {
-        if !isRegistered {
-            _ = try? await registerDevice()
-        }
+    /// Envía un reporte de daños; si no hay red, lo guarda para después.
+    public func submitDamageReport(_ report: DamageReportPayload) async throws -> ReportSubmission {
+        let body = try encoder.encode(report)
+        return try await submit(kind: .damage, reportId: report.reportId, body: body)
+    }
 
-        let url = baseURL.appendingPathComponent("v1/reports/damage")
+    /// Reenvía los reportes que quedaron guardados sin conexión.
+    @discardableResult
+    public func flushPendingReports() async -> QueueFlushResult {
+        await queue.flush { [weak self] pending in
+            guard let self else { return }
+            _ = try await self.deliver(kind: pending.kind, body: pending.body)
+        }
+    }
+
+    private func submit(
+        kind: PendingReportKind,
+        reportId: String,
+        body: Data
+    ) async throws -> ReportSubmission {
+        if !isRegistered { _ = try? await registerDevice() }
+        do {
+            let duplicate = try await deliver(kind: kind, body: body)
+            // Aprovecha que hay red para vaciar lo que quedó de intentos previos.
+            await flushPendingReports()
+            return .sent(duplicate: duplicate)
+        } catch let error as SeismikAPIError where error.isPermanent {
+            throw error
+        } catch {
+            // Se guarda el cuerpo exacto: el `report_id` y la hora de
+            // observación no cambian, así que el reenvío no crea un duplicado.
+            queue.enqueue(PendingReport(reportId: reportId, kind: kind, body: body))
+            return .queued
+        }
+    }
+
+    /// Publica el cuerpo exacto en la API y devuelve si el servidor lo consideró
+    /// duplicado. Lanza `SeismikAPIError.rejected` para que la cola distinga un
+    /// rechazo definitivo de una caída de red.
+    @discardableResult
+    private func deliver(kind: PendingReportKind, body: Data) async throws -> Bool {
+        let url = baseURL.appendingPathComponent(kind.path)
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
-        let body = try JSONEncoder().encode(report)
         request.httpBody = body
 
         if let secret = crowdToken {
             let timestamp = String(format: "%.3f", Date().timeIntervalSince1970)
-            let signature = hmacSha256Hex(secret: secret, timestamp: timestamp, body: body)
             request.setValue(timestamp, forHTTPHeaderField: "X-Seismik-Timestamp")
-            request.setValue(signature, forHTTPHeaderField: "X-Seismik-Signature")
+            request.setValue(
+                hmacSha256Hex(secret: secret, timestamp: timestamp, body: body),
+                forHTTPHeaderField: "X-Seismik-Signature"
+            )
         }
-        if let session = deviceSessionToken {
-            request.setValue(session, forHTTPHeaderField: "X-Seismik-Device-Session")
+        if let sessionToken = deviceSessionToken {
+            request.setValue(sessionToken, forHTTPHeaderField: "X-Seismik-Device-Session")
         }
 
-        let (_, response) = try await session.data(for: request)
-        guard let httpResponse = response as? HTTPURLResponse else { return false }
-        return (200...299).contains(httpResponse.statusCode)
+        let (data, response) = try await session.data(for: request)
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw SeismikAPIError.malformedResponse
+        }
+        guard (200...299).contains(httpResponse.statusCode) else {
+            let message = String(data: data, encoding: .utf8) ?? ""
+            throw SeismikAPIError.rejected(status: httpResponse.statusCode, message: message)
+        }
+        struct Accepted: Decodable { let duplicate: Bool? }
+        return (try? JSONDecoder().decode(Accepted.self, from: data))?.duplicate ?? false
+    }
+
+    // MARK: - Alertas recibidas sin conexión
+
+    /// Recupera del servidor las alertas emitidas mientras el teléfono no tuvo
+    /// red, con el mismo cursor que usa la app de Android para no repetirlas.
+    public func fetchMissedAlerts() async -> [SeismicEvent] {
+        guard let sessionToken = deviceSessionToken else { return [] }
+        var components = URLComponents(
+            url: baseURL.appendingPathComponent("v1/alerts/recent"),
+            resolvingAgainstBaseURL: true
+        )
+        var items = [URLQueryItem(name: "device_id", value: deviceId)]
+        if let cursor = UserDefaults.standard.string(forKey: Self.alertCursorKey), !cursor.isEmpty {
+            items.append(URLQueryItem(name: "since", value: cursor))
+        }
+        components?.queryItems = items
+        guard let url = components?.url else { return [] }
+
+        var request = URLRequest(url: url)
+        request.setValue(sessionToken, forHTTPHeaderField: "X-Seismik-Device-Session")
+
+        struct LedgerPage: Decodable {
+            let alerts: [SeismicEvent]
+            let cursor: String?
+        }
+
+        do {
+            let (data, response) = try await session.data(for: request)
+            guard let http = response as? HTTPURLResponse,
+                  (200...299).contains(http.statusCode) else {
+                // Un 404 significa que el registro se perdió; el próximo alta lo
+                // restablece y no hay nada que recuperar entretanto.
+                return []
+            }
+            guard let page = try? JSONDecoder().decode(LedgerPage.self, from: data) else {
+                return []
+            }
+            if let next = page.cursor, !next.isEmpty {
+                UserDefaults.standard.set(next, forKey: Self.alertCursorKey)
+            }
+            return page.alerts
+        } catch {
+            return []
+        }
+    }
+
+    // MARK: - Detección colaborativa
+
+    /// Envía un ping de aceleración firmado. Devuelve si el servidor lo aceptó.
+    @discardableResult
+    public func sendShake(
+        latitude: Double,
+        longitude: Double,
+        pgaG: Double,
+        at moment: Date
+    ) async -> Bool {
+        guard let secret = crowdToken else { return false }
+        let milliseconds = Int(moment.timeIntervalSince1970 * 1000)
+        let payload: [String: Any] = [
+            "device_id": deviceId,
+            "lat": latitude,
+            "lon": longitude,
+            "pga": pgaG,
+            "timestamp": milliseconds
+        ]
+        guard let body = try? JSONSerialization.data(withJSONObject: payload) else { return false }
+
+        var request = URLRequest(url: baseURL.appendingPathComponent("v1/crowd/shake"))
+        request.httpMethod = "POST"
+        request.httpBody = body
+        let timestamp = String(format: "%.3f", Double(milliseconds) / 1000)
+        request.setValue(timestamp, forHTTPHeaderField: "X-Seismik-Timestamp")
+        request.setValue(
+            hmacSha256Hex(secret: secret, timestamp: timestamp, body: body),
+            forHTTPHeaderField: "X-Seismik-Signature"
+        )
+        if let sessionToken = deviceSessionToken {
+            request.setValue(sessionToken, forHTTPHeaderField: "X-Seismik-Device-Session")
+        }
+
+        guard let (_, response) = try? await session.data(for: request),
+              let http = response as? HTTPURLResponse else { return false }
+        return (200...299).contains(http.statusCode)
     }
 
     // MARK: - Auxiliares Criptográficos y de Caché
@@ -291,29 +447,26 @@ public final class SeismikAPIClient {
         return loadCachedEvents()
     }
 
+    /// Historial guardado de la última sincronización correcta.
+    ///
+    /// Sin caché devuelve una lista vacía. Nunca datos de ejemplo: en una app de
+    /// alerta sísmica, mostrar sismos inventados con el sello de una agencia
+    /// oficial es peor que no mostrar nada.
     private func loadCachedEvents() -> [SeismicEvent] {
-        if let cachedData = UserDefaults.standard.data(forKey: Self.eventCacheKey) {
-            struct EventsResponse: Decodable {
-                let events: [SeismicEvent]
-            }
-            if let decoded = try? JSONDecoder().decode(EventsResponse.self, from: cachedData), !decoded.events.isEmpty {
-                return decoded.events
-            }
-            if let raw = try? JSONDecoder().decode([SeismicEvent].self, from: cachedData), !raw.isEmpty {
-                return raw
-            }
+        guard let cachedData = UserDefaults.standard.data(forKey: Self.eventCacheKey) else {
+            return []
         }
-        return SeismicEvent.sampleEvents
+        struct EventsResponse: Decodable {
+            let events: [SeismicEvent]
+        }
+        if let decoded = try? JSONDecoder().decode(EventsResponse.self, from: cachedData) {
+            return decoded.events
+        }
+        if let raw = try? JSONDecoder().decode([SeismicEvent].self, from: cachedData) {
+            return raw
+        }
+        return []
     }
 
-    private func defaultStations() -> [SeismicStation] {
-        [
-            SeismicStation(network: "CM", stationCode: "ROSC", latitude: 4.83, longitude: -74.02),
-            SeismicStation(network: "CM", stationCode: "PRA", latitude: 5.06, longitude: -73.34),
-            SeismicStation(network: "CM", stationCode: "CAP2", latitude: 4.43, longitude: -73.74),
-            SeismicStation(network: "CM", stationCode: "BAR2", latitude: 6.64, longitude: -73.23),
-            SeismicStation(network: "CM", stationCode: "SGC1", latitude: 4.64, longitude: -74.08)
-        ]
-    }
 }
 
