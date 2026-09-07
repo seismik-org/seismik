@@ -19,12 +19,17 @@ permissions:
 
 jobs:
   signed-ios:
-    runs-on: macos-latest
+    # Xcode 26 es obligatorio para que los controles adopten Liquid Glass.
+    runs-on: macos-26
     defaults:
       run:
         working-directory: mobile_app
     steps:
       - uses: actions/checkout@v4
+      - name: Verify Xcode 26 SDK
+        run: |
+          xcodebuild -version
+          xcodebuild -version | grep -Eq '^Xcode 26\.'
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: "3.47.1"

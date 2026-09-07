@@ -84,24 +84,9 @@ public struct DamageReportView: View {
                     }
                 }
 
-                Section {
-                    Button {
-                        submitReport()
-                    } label: {
-                        HStack {
-                            Spacer()
-                            if isSubmitting {
-                                ProgressView()
-                            } else {
-                                Text("Enviar Reporte de Daños")
-                                    .font(.system(size: 16, weight: .bold))
-                                    .foregroundColor(SeismikColors.crimson)
-                            }
-                            Spacer()
-                        }
-                    }
-                    .disabled(isSubmitting)
-                }
+            }
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                reportButton
             }
             .navigationTitle("Reporte de Daños")
             .navigationBarTitleDisplayMode(.inline)
@@ -127,6 +112,24 @@ public struct DamageReportView: View {
                 Text(submissionMessage)
             }
         }
+    }
+
+    private var reportButton: some View {
+        Button(action: submitReport) {
+            HStack(spacing: 10) {
+                if isSubmitting { ProgressView() }
+                Text(isSubmitting ? "Enviando…" : "Enviar reporte de daños")
+                    .font(.headline)
+            }
+            .frame(maxWidth: .infinity, minHeight: 50)
+        }
+        .buttonStyle(.borderedProminent)
+        .tint(.red)
+        .disabled(isSubmitting)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .background(.bar)
+        .accessibilityHint("Envía este reporte a Seismik")
     }
 
     private func submitReport() {

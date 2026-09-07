@@ -253,3 +253,30 @@ def test_the_test_target_can_resolve_the_pods_the_app_imports() -> None:
     # Debe estar anidado dentro del target Runner para heredar sus pods.
     runner_block = podfile[podfile.index("target 'Runner' do") :]
     assert runner_block.index("target 'RunnerTests' do") < runner_block.index("\nend")
+
+
+def test_ios_builds_with_the_xcode_26_sdk_required_by_liquid_glass() -> None:
+    workflows = [
+        Path(".github/workflows/ci.yml").read_text(encoding="utf-8"),
+        Path(".github/workflows/ios-testflight.yml").read_text(encoding="utf-8"),
+    ]
+    assert all("runs-on: macos-26" in workflow for workflow in workflows)
+    assert all("^Xcode 26\\." in workflow for workflow in workflows)
+
+
+def test_liquid_glass_is_native_and_has_a_legacy_fallback() -> None:
+    source = (IOS / "Runner/Native/DesignSystem/LiquidGlass.swift").read_text(
+        encoding="utf-8"
+    )
+    assert "#available(iOS 26.0, *)" in source
+    assert ".glassEffect(.regular.interactive()" in source
+    assert ".background(.ultraThinMaterial" in source
+    assert "LinearGradient" not in source
+
+
+def test_report_actions_remain_above_the_tab_bar() -> None:
+    reports = IOS / "Runner/Native/Views/Reports"
+    for name in ("FeltReportView.swift", "DamageReportView.swift"):
+        source = (reports / name).read_text(encoding="utf-8")
+        assert ".safeAreaInset(edge: .bottom" in source
+        assert ".buttonStyle(.borderedProminent)" in source

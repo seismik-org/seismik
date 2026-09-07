@@ -12,13 +12,13 @@ public struct SeismikNativeAppRoot: View {
         TabView(selection: $selectedTab) {
             MonitorView()
                 .tabItem {
-                    Label("Mapa", systemImage: "map.fill")
+                    Label("Historial", systemImage: "clock.arrow.circlepath")
                 }
                 .tag(0)
 
             FeltReportView(preselectedEvent: state.events.first, showsCloseButton: false)
                 .tabItem {
-                    Label("Sentido", systemImage: "waveform.path.ecg")
+                    Label("Sismo sentido", systemImage: "waveform.path.ecg")
                 }
                 .tag(1)
 
@@ -30,11 +30,10 @@ public struct SeismikNativeAppRoot: View {
 
             SettingsView(state: state, showsCloseButton: false)
                 .tabItem {
-                    Label("Ajustes", systemImage: "gearshape.fill")
+                    Label("Configuración", systemImage: "slider.horizontal.3")
                 }
                 .tag(3)
         }
-        .tint(SeismikColors.systemBlue)
         .onOpenURL { url in
             guard url.scheme == "seismik" else { return }
             switch url.host {
