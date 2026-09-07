@@ -194,7 +194,7 @@ public struct EventDetailView: View {
 
                 DetailedMetricCard(
                     icon: "globe",
-                    value: event.providerDisplayName,
+                    value: event.agencyDisplayName,
                     label: "Proveedor"
                 )
 
@@ -444,16 +444,18 @@ public struct EventDetailView: View {
         if let raw = event.officialUrl, let url = URL(string: raw) {
             return url
         }
-        if event.agency.uppercased() == "USGS" {
+        // `agency` es opcional: un candidato preliminar todavía no tiene
+        // entidad emisora, y entonces no hay página oficial que abrir.
+        switch event.agency?.uppercased() {
+        case "USGS":
             return URL(string: "https://earthquake.usgs.gov/earthquakes/eventpage/\(event.id)")
-        }
-        if event.agency.uppercased() == "SGC" {
+        case "SGC":
             return URL(string: "https://www.sgc.gov.co")
-        }
-        if event.agency.uppercased() == "EMSC" {
+        case "EMSC":
             return URL(string: "https://www.emsc-csem.org")
+        default:
+            return nil
         }
-        return nil
     }
 
     private func openEpicenter(_ coordinate: CLLocationCoordinate2D) {

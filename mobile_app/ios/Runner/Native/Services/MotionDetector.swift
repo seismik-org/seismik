@@ -122,7 +122,9 @@ public final class MotionDetector {
         else { return }
 
         isSending = true
-        Task { [weak self] in
+        // El estado de esta clase sólo se toca en el hilo principal, que es
+        // donde CoreMotion entrega las muestras.
+        Task { @MainActor [weak self] in
             guard let self else { return }
             defer { self.isSending = false }
             let delivered = await self.api.sendShake(
