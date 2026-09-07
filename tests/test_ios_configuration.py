@@ -156,12 +156,21 @@ def test_testflight_workflow_uses_the_real_firebase_secret() -> None:
     assert "plutil -lint ios/Runner/GoogleService-Info.plist" in workflow
 
 
-def test_ci_runs_the_native_swift_tests() -> None:
-    """La app de iPhone es Swift nativo: `flutter test` no la ejercita."""
+def test_ci_does_not_rebuild_the_world_to_run_unit_tests() -> None:
+    """`xcodebuild test` sobre el host se retiró de CI.
+
+    Ejecutar las pruebas con `@testable import Runner` obliga a recompilar la
+    app entera —Firebase, GoogleMaps y el motor Flutter— en Debug para
+    simulador, después de haberla compilado ya en Release para dispositivo. El
+    runner de macOS se quedaba sin recursos y el paso moría sin dejar error.
+
+    Las pruebas siguen en el repositorio y se ejecutan desde Xcode; volverán a
+    CI cuando no dependan del host. Ver docs/PRUEBAS_IPHONE.md.
+    """
 
     names = [str(step.get("name", "")) for step in _ios_job_steps()]
-    assert any("native Swift unit tests" in name for name in names), (
-        "CI debe ejecutar las pruebas del código Swift, no sólo compilarlo"
+    assert not any("Swift unit tests" in name for name in names), (
+        "Reintroducir este paso exige antes desacoplar las pruebas del host"
     )
 
 

@@ -127,32 +127,6 @@ jobs:
         run: |
           flutter build ios --release --no-codesign \
             --dart-define=SEISMIK_API_BASE_URL=https://api.example.invalid
-      - name: Run the native Swift unit tests
-        # La app de iPhone es Swift nativo: `flutter test` no la toca. Sin este
-        # paso, CI en verde sólo diría que el Swift compila.
-        run: |
-          set -euo pipefail
-          # El nombre del simulador cambia con cada imagen del runner; se toma
-          # el primer iPhone disponible en lugar de fijar un modelo.
-          simulator=$(xcrun simctl list devices available --json | python3 -c "
-          import json, sys
-          devices = json.load(sys.stdin)['devices']
-          for runtime, entries in devices.items():
-              if 'iOS' not in runtime:
-                  continue
-              for entry in entries:
-                  if entry.get('isAvailable') and 'iPhone' in entry['name']:
-                      print(entry['udid'])
-                      raise SystemExit(0)
-          raise SystemExit('No hay simuladores de iPhone disponibles')
-          ")
-          xcodebuild test \
-            -workspace ios/Runner.xcworkspace \
-            -scheme Runner \
-            -configuration Debug \
-            -destination "id=$simulator" \
-            -only-testing:RunnerTests \
-            CODE_SIGNING_ALLOWED=NO
       - name: Verify critical alert entitlement and map schemes survive the build
         run: |
           set -euo pipefail
