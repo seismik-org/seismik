@@ -7,7 +7,9 @@ import Combine
 public final class SeismikState: ObservableObject {
     public static let shared = SeismikState()
 
-    @Published public var events: [SeismicEvent] = SeismicEvent.sampleEvents
+    /// Arranca vacío a propósito: mostrar sismos de ejemplo con el sello de
+    /// una agencia oficial sería peor que no mostrar nada.
+    @Published public var events: [SeismicEvent] = []
     @Published public var stations: [SeismicStation] = []
     @Published public var selectedEvent: SeismicEvent?
     @Published public var activeAlert: SeismicEvent?
@@ -16,6 +18,10 @@ public final class SeismikState: ObservableObject {
     @Published public var lastUpdated: Date?
     @Published public var isRegistered: Bool = false
     @Published public var pendingReportCount: Int = 0
+    /// Mensaje de sincronización para la interfaz (reportes o alertas).
+    @Published public var syncMessage: String?
+    /// Motivo por el que el alta no pudo completarse, si aplica.
+    @Published public var registrationIssue: String?
 
     // Preferencias de filtrado y monitoreo
     @AppStorage("seismik.history_days") public var historyDays: Int = 7
@@ -33,18 +39,27 @@ public final class SeismikState: ObservableObject {
 
     private let apiClient = SeismikAPIClient.shared
     private let locationManager = LocationManager.shared
+    private let motion = MotionDetector.shared
 
     public init() {
         self.isRegistered = apiClient.isRegistered
+        self.pendingReportCount = apiClient.pendingReportCount
         Task {
             locationManager.requestPermission()
             locationManager.startUpdating()
             await updateRegistration()
             await refreshData()
+            await flushPendingReports()
+            await syncMissedAlerts()
+            syncCrowdsourcing()
         }
     }
 
     /// Sincroniza el registro de este dispositivo y las preferencias con el servidor.
+    ///
+    /// El umbral de magnitud y el radio viven en el servidor: sin volver a
+    /// registrar el dispositivo, un cambio de preferencia no llegaría al
+    /// despachador y la persona seguiría recibiendo lo mismo que antes.
     public func updateRegistration() async {
         let lat = locationManager.userCoordinate?.latitude ?? 4.65
         let lon = locationManager.userCoordinate?.longitude ?? -74.05
@@ -59,9 +74,62 @@ public final class SeismikState: ObservableObject {
                 alertRadiusKm: alertRadiusKm
             )
             self.isRegistered = registered
+            self.registrationIssue = registered ? nil : "El servidor no aceptó el registro."
+        } catch let error as SeismikAPIError {
+            self.isRegistered = apiClient.isRegistered
+            // Al arrancar es normal: APNs entrega el token unos instantes
+            // después y AppDelegate vuelve a llamar aquí.
+            self.registrationIssue = error.errorDescription
         } catch {
             self.isRegistered = apiClient.isRegistered
+            self.registrationIssue = error.localizedDescription
         }
+    }
+
+    /// Reenvía los reportes guardados sin conexión.
+    public func flushPendingReports() async {
+        let result = await apiClient.flushPendingReports()
+        pendingReportCount = result.remaining
+        if result.sent > 0 {
+            syncMessage = result.sent == 1
+                ? "Se envió 1 reporte guardado sin conexión."
+                : "Se enviaron \(result.sent) reportes guardados sin conexión."
+        } else if result.remaining > 0 {
+            syncMessage = result.remaining == 1
+                ? "1 reporte espera conexión para enviarse."
+                : "\(result.remaining) reportes esperan conexión para enviarse."
+        } else if result.changed {
+            syncMessage = nil
+        }
+    }
+
+    /// Recupera las alertas emitidas mientras el teléfono estuvo sin conexión.
+    public func syncMissedAlerts() async {
+        let missed = await apiClient.fetchMissedAlerts()
+        guard !missed.isEmpty else { return }
+        let known = Set(events.map(\.id))
+        let added = missed.filter { !known.contains($0.id) }
+        guard !added.isEmpty else { return }
+        events = (added + events)
+            .sorted { ($0.detectedAt ?? .distantPast) > ($1.detectedAt ?? .distantPast) }
+        syncMessage = added.count == 1
+            ? "Se recuperó 1 alerta recibida sin conexión."
+            : "Se recuperaron \(added.count) alertas recibidas sin conexión."
+    }
+
+    /// Arranca o detiene la detección colaborativa según la preferencia.
+    public func syncCrowdsourcing() {
+        guard crowdsourcingEnabled, isRegistered else {
+            motion.stop()
+            return
+        }
+        motion.start()
+    }
+
+    /// Aplica un cambio de preferencias de alerta: lo persiste en el servidor.
+    public func applyAlertPreferences() async {
+        await updateRegistration()
+        syncCrowdsourcing()
     }
 
     /// Actualiza el catálogo de sismos y estaciones desde la red.
@@ -78,8 +146,10 @@ public final class SeismikState: ObservableObject {
 
             let (newEvents, newStations) = try await (fetchedEvents, fetchedStations)
             let filtered = includePreliminaryEvents ? newEvents : newEvents.filter { !$0.isPreliminary }
-            if !filtered.isEmpty {
-                self.events = filtered.sorted { ($0.detectedAt ?? Date.distantPast) > ($1.detectedAt ?? Date.distantPast) }
+            // Se asigna aunque venga vacío: si el filtro actual no deja ningún
+            // sismo, la lista debe quedar vacía en vez de conservar la anterior.
+            self.events = filtered.sorted {
+                ($0.detectedAt ?? Date.distantPast) > ($1.detectedAt ?? Date.distantPast)
             }
             if !newStations.isEmpty {
                 self.stations = newStations
@@ -93,6 +163,8 @@ public final class SeismikState: ObservableObject {
         }
 
         isRefreshing = false
+        await flushPendingReports()
+        await syncMissedAlerts()
     }
 
     /// Selecciona un sismo para desplegar su vista de detalle.

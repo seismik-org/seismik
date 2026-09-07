@@ -281,6 +281,11 @@ public struct SettingsView: View {
                         }
                     }
                     .tint(SeismikColors.systemBlue)
+                    // Sin esto el interruptor sólo guardaba una preferencia: el
+                    // acelerómetro seguía como estuviera.
+                    .onChange(of: state.crowdsourcingEnabled) { _ in
+                        state.syncCrowdsourcing()
+                    }
 
                     Toggle(isOn: $state.preciseLocationByDefault) {
                         VStack(alignment: .leading, spacing: 2) {
@@ -382,8 +387,12 @@ public struct SettingsView: View {
         return "\(version) (\(build))"
     }
 
+    /// Persiste las preferencias en el servidor y aplica las locales.
+    ///
+    /// El umbral de magnitud y el radio los evalúa el despachador, no la app:
+    /// sin volver a registrar el dispositivo el cambio no tendría efecto.
     private func synchronizePreferences() {
-        Task { await state.updateRegistration() }
+        Task { await state.applyAlertPreferences() }
     }
 
     private func refreshHistory() {
