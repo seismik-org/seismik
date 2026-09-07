@@ -42,6 +42,9 @@ public final class SeismikState: ObservableObject {
     private let locationManager = LocationManager.shared
     private let motion = MotionDetector.shared
     private var locationRegistration: AnyCancellable?
+    /// App Check no admite dos obtenciones simultáneas durante el arranque.
+    /// Centralizar el alta evita `ParallelWaitError` y registros intermitentes.
+    private var registrationInProgress = false
 
     public init() {
         self.isRegistered = apiClient.isRegistered
@@ -72,6 +75,9 @@ public final class SeismikState: ObservableObject {
     /// registrar el dispositivo, un cambio de preferencia no llegaría al
     /// despachador y la persona seguiría recibiendo lo mismo que antes.
     public func updateRegistration() async {
+        guard !registrationInProgress else { return }
+        registrationInProgress = true
+        defer { registrationInProgress = false }
         let coordinate = locationManager.userCoordinate
         // El despachador decide con este dato si el aviso puede sonar como
         // alerta crítica; enviarlo fijo en falso lo desactivaba siempre.
@@ -151,6 +157,15 @@ public final class SeismikState: ObservableObject {
     public func refreshData() async {
         isRefreshing = true
         HapticManager.light()
+
+        if !apiClient.isRegistered {
+            await updateRegistration()
+            guard apiClient.isRegistered else {
+                isOnline = false
+                isRefreshing = false
+                return
+            }
+        }
 
         do {
             async let fetchedEvents = apiClient.fetchRecentEvents(

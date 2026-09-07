@@ -64,16 +64,14 @@ public struct SeismicSheetView: View {
                         showFeltReport = true
                     } label: {
                         HStack(spacing: 6) {
-                            Image(systemName: "hand.tap.fill")
+                            Image(systemName: "hand.tap")
                                 .font(.system(size: 13, weight: .semibold))
                             Text("¿Lo sentiste?")
                                 .font(.system(size: 13, weight: .semibold, design: .rounded))
                         }
-                        .foregroundColor(.primary)
                         .frame(maxWidth: .infinity, minHeight: 44)
-                        .liquidGlass(cornerRadius: 14, showShadow: false)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.bordered)
 
                     Button {
                         HapticManager.selection()
@@ -85,11 +83,9 @@ public struct SeismicSheetView: View {
                             Text("Reportar daños")
                                 .font(.system(size: 13, weight: .semibold, design: .rounded))
                         }
-                        .foregroundColor(.primary)
                         .frame(maxWidth: .infinity, minHeight: 44)
-                        .liquidGlass(cornerRadius: 14, showShadow: false)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.bordered)
                 }
                 .padding(.horizontal, 16)
                 .padding(.bottom, 12)
@@ -105,7 +101,7 @@ public struct SeismicSheetView: View {
                     Image(
                         systemName: state.pendingReportCount > 0
                             ? "arrow.up.circle"
-                            : "checkmark.icloud"
+                            : "checkmark.circle"
                     )
                     .foregroundColor(SeismikColors.systemBlue)
                     Text(state.syncMessage ?? pendingSummary)
@@ -139,7 +135,7 @@ public struct SeismicSheetView: View {
                 } else {
                     ContentUnavailableViewCompat(
                         title: state.isOnline ? "No hay sismos con estos filtros" : "No se pudo conectar",
-                        systemImage: state.isOnline ? "waveform.path.ecg" : "wifi.exclamationmark",
+                        systemImage: state.isOnline ? "waveform.path.ecg" : "wifi.slash",
                         description: state.isOnline
                             ? "Prueba un periodo mayor o una magnitud menor."
                             : "Comprueba tu conexión y vuelve a intentarlo."

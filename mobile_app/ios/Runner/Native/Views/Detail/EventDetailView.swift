@@ -147,7 +147,7 @@ public struct EventDetailView: View {
 
     private var tsunamiWarningBanner: some View {
         HStack(spacing: 12) {
-            Image(systemName: "water.waves.and.arrow.up")
+            Image(systemName: "wave.3.right")
                 .font(.system(size: 22, weight: .bold))
                 .foregroundColor(SeismikColors.crimson)
             VStack(alignment: .leading, spacing: 2) {

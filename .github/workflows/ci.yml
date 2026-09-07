@@ -78,12 +78,17 @@ jobs:
   ios:
     # iOS solo puede compilarse en macOS. Sin certificados no se puede firmar,
     # pero --no-codesign verifica el proyecto Xcode, los Pods y el AOT de Dart.
-    runs-on: macos-latest
+    # Liquid Glass sólo se incorpora al enlazar con el SDK de Xcode 26.
+    runs-on: macos-26
     defaults:
       run:
         working-directory: mobile_app
     steps:
       - uses: actions/checkout@v4
+      - name: Verify Xcode 26 SDK
+        run: |
+          xcodebuild -version
+          xcodebuild -version | grep -Eq '^Xcode 26\.'
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}

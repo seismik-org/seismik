@@ -1,16 +1,11 @@
 import SwiftUI
 
-/// Modificador de vista que otorga la apariencia auténtica de Liquid Glass nativo en iOS.
-///
-/// Combina el material físico del sistema (`.ultraThinMaterial`), la curvatura
-/// continua de Apple (`.continuous` squircle), un bisel especular de luz superior
-/// y sombras ambientales de baja dispersión.
+/// Usa Liquid Glass real en iOS 26 y un material sobrio en versiones anteriores.
+/// No dibuja gradientes ni biseles que compitan con la apariencia del sistema.
 public struct LiquidGlassModifier: ViewModifier {
     public let cornerRadius: CGFloat
     public let tint: Color?
     public let showShadow: Bool
-
-    @Environment(\.colorScheme) private var colorScheme
 
     public init(
         cornerRadius: CGFloat = 20,
@@ -23,60 +18,28 @@ public struct LiquidGlassModifier: ViewModifier {
     }
 
     public func body(content: Content) -> some View {
-        let isDark = colorScheme == .dark
         let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-
-        content
-            .background {
-                ZStack {
-                    // Material físico del sistema con desenfoque de GPU
-                    shape
-                        .fill(.ultraThinMaterial)
-
-                    // Tinte sutil opcional (para severidad, alertas o modo noche)
-                    if let tint = tint {
-                        shape
-                            .fill(tint.opacity(isDark ? 0.22 : 0.14))
+        if #available(iOS 26.0, *) {
+            if let tint {
+                content
+                    .glassEffect(.regular.tint(tint).interactive(), in: shape)
+                    .shadow(color: showShadow ? .black.opacity(0.10) : .clear, radius: 10, y: 4)
+            } else {
+                content
+                    .glassEffect(.regular.interactive(), in: shape)
+                    .shadow(color: showShadow ? .black.opacity(0.10) : .clear, radius: 10, y: 4)
+            }
+        } else {
+            content
+                .background(.ultraThinMaterial, in: shape)
+                .overlay {
+                    if let tint {
+                        shape.fill(tint.opacity(0.10))
                     }
-
-                    // Tinte direccional de iluminación ambiental
-                    shape
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    Color.white.opacity(isDark ? 0.08 : 0.40),
-                                    Color.white.opacity(isDark ? 0.01 : 0.08)
-                                ],
-                                startPoint: .top,
-                                endPoint: .bottom
-                            )
-                        )
                 }
-            }
-            .clipShape(shape)
-            .overlay {
-                // Bisel especular de luz: simula la refracción en el borde del cristal
-                shape
-                    .strokeBorder(
-                        LinearGradient(
-                            colors: [
-                                Color.white.opacity(isDark ? 0.45 : 0.85),
-                                Color.white.opacity(isDark ? 0.08 : 0.20)
-                            ],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        ),
-                        lineWidth: 0.65
-                    )
-            }
-            .shadow(
-                color: showShadow
-                    ? Color.black.opacity(isDark ? 0.35 : 0.09)
-                    : Color.clear,
-                radius: isDark ? 16 : 12,
-                x: 0,
-                y: isDark ? 6 : 4
-            )
+                .clipShape(shape)
+                .shadow(color: showShadow ? .black.opacity(0.10) : .clear, radius: 10, y: 4)
+        }
     }
 }
 
@@ -159,4 +122,3 @@ public struct CompatibleNavigationStack<Content: View>: View {
         }
     }
 }
-
