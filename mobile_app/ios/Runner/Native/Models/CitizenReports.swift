@@ -201,3 +201,31 @@ public enum DamageSeverity: String, CaseIterable, Identifiable {
     }
 }
 
+/// Peligros observables en un reporte de daños.
+///
+/// Los `rawValue` son los identificadores que acepta `ObservedHazard` en el
+/// backend y los mismos que ofrece la app de Android. Un valor inventado aquí
+/// se traduce en un 422 que sólo aparece con el reporte ya escrito.
+public enum ObservedHazard: String, CaseIterable, Identifiable {
+    case fire
+    case gasLeak = "gas_leak"
+    case electrical
+    case waterLeak = "water_leak"
+    case landslide
+    case roadBlocked = "road_blocked"
+    case structuralInstability = "structural_instability"
+
+    public var id: String { rawValue }
+
+    public var title: String {
+        switch self {
+        case .fire: return "Incendio"
+        case .gasLeak: return "Fuga de gas u olor persistente"
+        case .electrical: return "Cables caídos o riesgo eléctrico"
+        case .waterLeak: return "Fuga de agua"
+        case .landslide: return "Deslizamiento"
+        case .roadBlocked: return "Vía bloqueada"
+        case .structuralInstability: return "Estructura inestable"
+        }
+    }
+}

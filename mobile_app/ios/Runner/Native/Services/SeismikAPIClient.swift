@@ -71,6 +71,13 @@ public final class SeismikAPIClient {
         self.session = URLSession(configuration: config)
     }
 
+    /// País del dispositivo en ISO alpha-2. El backend exige dos letras, así
+    /// que una región ausente cae a CO en lugar de romper el registro.
+    public static var deviceCountryCode: String {
+        let region = Locale.current.regionCode ?? "CO"
+        return region.count == 2 ? region.uppercased() : "CO"
+    }
+
     /// Identificador único y persistente de la instalación del dispositivo.
     public var deviceId: String {
         let key = "seismik.device_id"
@@ -116,11 +123,12 @@ public final class SeismikAPIClient {
     public func registerDevice(
         latitude: Double = 4.65,
         longitude: Double = -74.05,
-        countryCode: String = "CO",
+        countryCode: String = SeismikAPIClient.deviceCountryCode,
         receiveEarlyAlerts: Bool = true,
         receiveOfficialUpdates: Bool = true,
         minimumNotificationMagnitude: Double = 4.0,
-        alertRadiusKm: Double = 250.0
+        alertRadiusKm: Double = 250.0,
+        criticalAlertsAuthorized: Bool = false
     ) async throws -> Bool {
         guard let pushToken = apnsToken else {
             throw SeismikAPIError.pushTokenUnavailable
@@ -136,12 +144,12 @@ public final class SeismikAPIClient {
             "country_code": countryCode.uppercased(),
             "latitude": latitude,
             "longitude": longitude,
-            "critical_alerts_authorized": false,
+            "critical_alerts_authorized": criticalAlertsAuthorized,
             "receive_early_alerts": receiveEarlyAlerts,
             "receive_official_updates": receiveOfficialUpdates,
             "minimum_notification_magnitude": minimumNotificationMagnitude,
             "alert_radius_km": alertRadiusKm,
-            "locale": Locale.current.identifier.prefix(16),
+            "locale": String(Locale.current.identifier.prefix(16)),
             "app_attest_token": "seismik-beta-sideload-unverified"
         ]
 

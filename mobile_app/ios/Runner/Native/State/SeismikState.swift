@@ -1,6 +1,7 @@
+import Combine
 import Foundation
 import SwiftUI
-import Combine
+import UserNotifications
 
 /// Estado global reactivo para la aplicación Seismik en iOS.
 @MainActor
@@ -63,15 +64,19 @@ public final class SeismikState: ObservableObject {
     public func updateRegistration() async {
         let lat = locationManager.userCoordinate?.latitude ?? 4.65
         let lon = locationManager.userCoordinate?.longitude ?? -74.05
+        // El despachador decide con este dato si el aviso puede sonar como
+        // alerta crítica; enviarlo fijo en falso lo desactivaba siempre.
+        let settings = await UNUserNotificationCenter.current().notificationSettings()
+        let criticalAllowed = settings.criticalAlertSetting == .enabled
         do {
             let registered = try await apiClient.registerDevice(
                 latitude: lat,
                 longitude: lon,
-                countryCode: "CO",
                 receiveEarlyAlerts: receiveEarlyAlerts,
                 receiveOfficialUpdates: receiveOfficialUpdates,
                 minimumNotificationMagnitude: minimumNotificationMagnitude,
-                alertRadiusKm: alertRadiusKm
+                alertRadiusKm: alertRadiusKm,
+                criticalAlertsAuthorized: criticalAllowed
             )
             self.isRegistered = registered
             self.registrationIssue = registered ? nil : "El servidor no aceptó el registro."

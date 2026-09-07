@@ -160,7 +160,7 @@ public struct FeltReportView: View {
             observedAt: ISO8601DateFormatter().string(from: Date()),
             latitude: LocationManager.shared.userCoordinate?.latitude ?? 4.65,
             longitude: LocationManager.shared.userCoordinate?.longitude ?? -74.05,
-            countryCode: "CO",
+            countryCode: SeismikAPIClient.deviceCountryCode,
             felt: felt,
             intensityMmi: felt ? Int(intensity) : nil,
             indoors: indoors,
