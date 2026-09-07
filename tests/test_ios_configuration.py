@@ -8,6 +8,7 @@ las alertas críticas y la apertura de epicentros.
 from __future__ import annotations
 
 import plistlib
+import sys
 from pathlib import Path
 
 import pytest
@@ -197,3 +198,21 @@ def test_the_native_app_reaches_parity_with_android() -> None:
     assert (native / "Services/MotionDetector.swift").is_file()
     assert "v1/alerts/recent" in client, "Falta recuperar las alertas perdidas"
     assert "v1/crowd/shake" in client, "Falta la detección colaborativa"
+
+
+def test_every_swift_file_closes_what_it_opens() -> None:
+    """Un `}` de más deja el resto del archivo fuera de su tipo.
+
+    Xcode señala la primera línea que ya no entiende, normalmente muy lejos del
+    error real, y sólo lo hace tras minutos de build en macOS. Este chequeo lo
+    detecta en cualquier sistema antes de llegar a CI.
+    """
+
+    sys.path.insert(0, str(Path("tools").resolve()))
+    from check_swift_balance import check
+
+    broken = check()
+
+    assert not broken, "Archivos Swift desbalanceados: " + ", ".join(
+        f"{path.name} ({problems})" for path, problems in broken.items()
+    )
