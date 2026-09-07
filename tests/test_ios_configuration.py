@@ -216,3 +216,14 @@ def test_every_swift_file_closes_what_it_opens() -> None:
     assert not broken, "Archivos Swift desbalanceados: " + ", ".join(
         f"{path.name} ({problems})" for path, problems in broken.items()
     )
+
+
+def test_views_only_use_members_the_models_declare() -> None:
+    """Un miembro inexistente sólo lo revela Xcode, en macOS y de uno en uno."""
+
+    sys.path.insert(0, str(Path("tools").resolve()))
+    from check_swift_model_usage import scan
+
+    findings = scan()
+
+    assert not findings, "Accesos a miembros inexistentes:\n" + "\n".join(findings)
