@@ -138,8 +138,8 @@ public struct SettingsView: View {
             }
             .navigationTitle("Configuración")
             .toolbar {
-                if showsCloseButton {
-                    ToolbarItem(placement: .confirmationAction) {
+                ToolbarItem(placement: .confirmationAction) {
+                    if showsCloseButton {
                         Button("Listo") { dismiss() }
                     }
                 }
