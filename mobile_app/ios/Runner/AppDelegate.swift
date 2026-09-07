@@ -1,6 +1,7 @@
 import Flutter
 import GoogleMaps
 import UIKit
+import UserNotifications
 import SwiftUI
 
 @main
@@ -17,8 +18,20 @@ import SwiftUI
     GeneratedPluginRegistrant.register(with: self)
     let launched = super.application(application, didFinishLaunchingWithOptions: launchOptions)
 
-    // Solicita registro ante APNs de Apple para recepción de alertas sísmicas
-    application.registerForRemoteNotifications()
+    // Sin autorización, iOS descarta el contenido de la alerta aunque APNs
+    // entregue el push: el token llega igual, pero la persona no ve nada. Es
+    // el permiso que hace útil a toda la app, así que se pide al arrancar.
+    UNUserNotificationCenter.current().delegate = SeismikNotificationPresenter.shared
+    UNUserNotificationCenter.current().requestAuthorization(
+      options: [.alert, .sound, .badge]
+    ) { _, _ in
+      // El token de APNs sirve aunque la persona rechace: permite avisos
+      // silenciosos y deja el dispositivo registrado para cuando cambie de
+      // opinión desde Ajustes.
+      DispatchQueue.main.async {
+        application.registerForRemoteNotifications()
+      }
+    }
 
     // La ventana la crea SceneDelegate: en un ciclo de vida basado en escenas,
     // una segunda ventana aquí queda huérfana y monta un segundo árbol SwiftUI.

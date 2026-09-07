@@ -7,8 +7,7 @@ public struct DamageReportView: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var selectedSeverity: DamageSeverity = .minor
-    @State private var gasLeak = false
-    @State private var electricalHazard = false
+    @State private var selectedHazards: Set<ObservedHazard> = []
     @State private var peopleTrapped = false
     @State private var injuriesObserved = false
     @State private var safeToRemain = true
@@ -48,10 +47,25 @@ public struct DamageReportView: View {
                 }
 
                 Section(header: Text("PELIGROS E INTEGRIDAD")) {
-                    Toggle("Fuga de gas o olor persistente", isOn: $gasLeak)
+                    // Los siete peligros que ofrece la app de Android: un
+                    // catálogo más corto en iPhone haría incomparables los
+                    // reportes de una misma emergencia.
+                    ForEach(ObservedHazard.allCases) { hazard in
+                        Toggle(
+                            hazard.title,
+                            isOn: Binding(
+                                get: { selectedHazards.contains(hazard) },
+                                set: { isOn in
+                                    if isOn {
+                                        selectedHazards.insert(hazard)
+                                    } else {
+                                        selectedHazards.remove(hazard)
+                                    }
+                                }
+                            )
+                        )
                         .tint(SeismikColors.amber)
-                    Toggle("Cables caídos o riesgo eléctrico", isOn: $electricalHazard)
-                        .tint(SeismikColors.amber)
+                    }
                     Toggle("Personas atrapadas", isOn: $peopleTrapped)
                         .tint(SeismikColors.crimson)
                     Toggle("Personas lesionadas", isOn: $injuriesObserved)
@@ -119,9 +133,11 @@ public struct DamageReportView: View {
         isSubmitting = true
         HapticManager.light()
 
-        var hazardsList: [String] = []
-        if gasLeak { hazardsList.append("gas_leak") }
-        if electricalHazard { hazardsList.append("electrical_hazard") }
+        // El orden estable evita que dos reportes idénticos difieran sólo en
+        // el orden de esta lista.
+        let hazardsList = ObservedHazard.allCases
+            .filter(selectedHazards.contains)
+            .map(\.rawValue)
 
         let payload = DamageReportPayload(
             deviceId: SeismikAPIClient.shared.deviceId,
@@ -130,7 +146,7 @@ public struct DamageReportView: View {
             observedAt: ISO8601DateFormatter().string(from: Date()),
             latitude: LocationManager.shared.userCoordinate?.latitude ?? 4.65,
             longitude: LocationManager.shared.userCoordinate?.longitude ?? -74.05,
-            countryCode: "CO",
+            countryCode: SeismikAPIClient.deviceCountryCode,
             severity: selectedSeverity.rawValue,
             hazards: hazardsList,
             buildingType: nil,

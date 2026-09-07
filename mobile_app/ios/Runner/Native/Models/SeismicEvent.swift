@@ -89,6 +89,7 @@ public struct SeismicEvent: Identifiable, Codable, Hashable {
         case estimatedLongitude = "estimated_longitude"
         case detectedAt = "detected_at"
         case originTime = "origin_time"
+        case emittedAt = "emitted_at"
         case sourceId = "source_id"
         case agency
         case isPreliminary = "is_preliminary"
@@ -203,8 +204,12 @@ public struct SeismicEvent: Identifiable, Codable, Hashable {
         stations = (try? container.decodeIfPresent([StationTrigger].self, forKey: .stations)) ?? []
 
         // Manejo flexible de fechas ISO8601 o timestamps
+        // `/v1/alerts/recent` fecha cada aviso con `emitted_at`; el historial usa
+        // `detected_at` u `origin_time`. Sin esta tercera clave, las alertas
+        // recuperadas sin conexión llegaban sin hora y se ordenaban al final.
         if let dateString = (try? container.decodeIfPresent(String.self, forKey: .detectedAt))
-            ?? (try? container.decodeIfPresent(String.self, forKey: .originTime)) {
+            ?? (try? container.decodeIfPresent(String.self, forKey: .originTime))
+            ?? (try? container.decodeIfPresent(String.self, forKey: .emittedAt)) {
             let formatter = ISO8601DateFormatter()
             formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
             if let parsed = formatter.date(from: dateString) {

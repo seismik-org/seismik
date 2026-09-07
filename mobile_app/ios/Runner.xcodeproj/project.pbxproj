@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		7934CADE988ADED59AF21E47 /* SeismikNotificationPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7834CADE988ADED59AF21E47 /* SeismikNotificationPresenter.swift */; };
 		7B100001SEISMIKNATIVETESTS /* SeismikNativeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A100001SEISMIKNATIVETESTS /* SeismikNativeTests.swift */; };
 		79EAAB209FAABDFA766D88FE /* MotionDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78EAAB209FAABDFA766D88FE /* MotionDetector.swift */; };
 		79F6729C306449B60D4E2278 /* OfflineReportQueue.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78F6729C306449B60D4E2278 /* OfflineReportQueue.swift */; };
@@ -68,6 +69,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		7834CADE988ADED59AF21E47 /* SeismikNotificationPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Native/Services/SeismikNotificationPresenter.swift"; sourceTree = "<group>"; };
 		7A100001SEISMIKNATIVETESTS /* SeismikNativeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SeismikNativeTests.swift; sourceTree = "<group>"; };
 		78EAAB209FAABDFA766D88FE /* MotionDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Native/Services/MotionDetector.swift"; sourceTree = "<group>"; };
 		78F6729C306449B60D4E2278 /* OfflineReportQueue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Native/Services/OfflineReportQueue.swift"; sourceTree = "<group>"; };
@@ -169,6 +171,7 @@
 		97C146F01CF9000F007C117D /* Runner */ = {
 			isa = PBXGroup;
 			children = (
+				7834CADE988ADED59AF21E47 /* SeismikNotificationPresenter.swift */,
 				78EAAB209FAABDFA766D88FE /* MotionDetector.swift */,
 				78F6729C306449B60D4E2278 /* OfflineReportQueue.swift */,
 				78861CC95D267E9C9ACA5634 /* KeychainStore.swift */,
@@ -364,6 +367,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				7934CADE988ADED59AF21E47 /* SeismikNotificationPresenter.swift in Sources */,
 				79EAAB209FAABDFA766D88FE /* MotionDetector.swift in Sources */,
 				79F6729C306449B60D4E2278 /* OfflineReportQueue.swift in Sources */,
 				79861CC95D267E9C9ACA5634 /* KeychainStore.swift in Sources */,
