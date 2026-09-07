@@ -153,3 +153,47 @@ def test_testflight_workflow_uses_the_real_firebase_secret() -> None:
     assert "IOS_GOOGLE_SERVICE_INFO_BASE64" in workflow
     assert "ios/Runner/GoogleService-Info.plist" in workflow
     assert "plutil -lint ios/Runner/GoogleService-Info.plist" in workflow
+
+
+def test_ci_runs_the_native_swift_tests() -> None:
+    """La app de iPhone es Swift nativo: `flutter test` no la ejercita."""
+
+    names = [str(step.get("name", "")) for step in _ios_job_steps()]
+    assert any("native Swift unit tests" in name for name in names), (
+        "CI debe ejecutar las pruebas del código Swift, no sólo compilarlo"
+    )
+
+
+def test_the_native_test_target_has_real_tests() -> None:
+    tests = IOS / "RunnerTests/SeismikNativeTests.swift"
+    assert tests.is_file()
+    contents = tests.read_text(encoding="utf-8")
+    assert "OfflineReportQueueTests" in contents
+    assert "SeismikDSPTests" in contents
+
+    project = (IOS / "Runner.xcodeproj/project.pbxproj").read_text(encoding="utf-8")
+    assert "SeismikNativeTests.swift in Sources" in project
+
+
+def test_the_native_client_never_invents_seismic_data() -> None:
+    """Mostrar sismos de ejemplo con el sello de una agencia oficial es peor
+    que no mostrar nada."""
+
+    client = (IOS / "Runner/Native/Services/SeismikAPIClient.swift").read_text(
+        encoding="utf-8"
+    )
+
+    assert "sampleEvents" not in client
+    assert "defaultStations" not in client
+
+
+def test_the_native_app_reaches_parity_with_android() -> None:
+    native = IOS / "Runner/Native"
+    client = (native / "Services/SeismikAPIClient.swift").read_text(encoding="utf-8")
+
+    assert (native / "Services/OfflineReportQueue.swift").is_file(), (
+        "Sin cola offline, un reporte sin red se pierde"
+    )
+    assert (native / "Services/MotionDetector.swift").is_file()
+    assert "v1/alerts/recent" in client, "Falta recuperar las alertas perdidas"
+    assert "v1/crowd/shake" in client, "Falta la detección colaborativa"

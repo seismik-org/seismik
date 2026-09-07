@@ -1,6 +1,6 @@
-import os
 import hashlib
 from pathlib import Path
+
 
 def main():
     root = Path(__file__).resolve().parent.parent
