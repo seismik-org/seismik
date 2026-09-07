@@ -12,6 +12,9 @@ public struct SeismicSheetView: View {
     let onDrawerHandleTapped: () -> Void
 
     public var body: some View {
+        // Contenedor de la hoja: la cabecera arrastrable y la lista comparten
+        // el fondo, el recorte y la sombra que se aplican más abajo.
+        VStack(spacing: 0) {
             VStack(spacing: 0) {
                 // Manija táctil de arrastre
                 Capsule()
