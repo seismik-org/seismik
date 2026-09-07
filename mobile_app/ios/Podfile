@@ -20,6 +20,14 @@ target 'Runner' do
   use_frameworks!
   use_modular_headers!
   flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
+
+  # Las pruebas usan `@testable import Runner`, y eso obliga a resolver los
+  # módulos que importa la app: GoogleMaps llega por CocoaPods, no por Swift
+  # Package Manager. `inherit! :search_paths` da al target de pruebas las rutas
+  # de búsqueda sin volver a enlazar los pods, que ya vienen en el host.
+  target 'RunnerTests' do
+    inherit! :search_paths
+  end
 end
 
 post_install do |installer|
