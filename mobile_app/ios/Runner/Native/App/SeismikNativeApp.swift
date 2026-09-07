@@ -4,6 +4,7 @@ import SwiftUI
 public struct SeismikNativeAppRoot: View {
     @StateObject private var state = SeismikState.shared
     @State private var selectedTab = 0
+    @Environment(\.scenePhase) private var scenePhase
 
     public init() {}
 
@@ -11,13 +12,13 @@ public struct SeismikNativeAppRoot: View {
         TabView(selection: $selectedTab) {
             MonitorView()
                 .tabItem {
-                    Label("Historial", systemImage: "clock.arrow.circlepath")
+                    Label("Mapa", systemImage: "map.fill")
                 }
                 .tag(0)
 
             FeltReportView(preselectedEvent: state.events.first, showsCloseButton: false)
                 .tabItem {
-                    Label("Sismo sentido", systemImage: "waveform.path.ecg")
+                    Label("Sentido", systemImage: "waveform.path.ecg")
                 }
                 .tag(1)
 
@@ -29,7 +30,7 @@ public struct SeismikNativeAppRoot: View {
 
             SettingsView(state: state, showsCloseButton: false)
                 .tabItem {
-                    Label("Configuración", systemImage: "slider.horizontal.3")
+                    Label("Ajustes", systemImage: "gearshape.fill")
                 }
                 .tag(3)
         }
@@ -42,6 +43,13 @@ public struct SeismikNativeAppRoot: View {
             case "damage", "danos": selectedTab = 2
             case "settings", "configuracion": selectedTab = 3
             default: selectedTab = 0
+            }
+        }
+        .onChange(of: scenePhase) { phase in
+            guard phase == .active else { return }
+            Task {
+                await state.updateRegistration()
+                await state.refreshData()
             }
         }
     }

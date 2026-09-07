@@ -23,9 +23,19 @@ APP_DELEGATE = Path("mobile_app/ios/Runner/AppDelegate.swift")
 def swift_dictionary_keys(source: str, variable: str) -> set[str]:
     """Claves de un literal `[String: Any]` asignado a `variable`."""
 
-    start = source.index(f"let {variable}: [String: Any] = [")
+    declaration = re.search(
+        rf"(?:let|var)\s+{re.escape(variable)}:\s*\[String:\s*Any\]\s*=\s*\[",
+        source,
+    )
+    if declaration is None:
+        raise AssertionError(f"No se encontró el diccionario Swift {variable}")
+    start = declaration.start()
     body = source[start : source.index("\n        ]", start)]
-    return set(re.findall(r'"([a-z_]+)":', body))
+    keys = set(re.findall(r'"([a-z_]+)":', body))
+    # El registro agrega la ubicación condicionalmente después del literal.
+    tail = source[source.index("\n        ]", start) : source.index("request.httpBody", start)]
+    keys.update(re.findall(rf'{re.escape(variable)}\["([a-z_]+)"\]', tail))
+    return keys
 
 
 def swift_coding_keys(source: str, model: str) -> set[str]:
@@ -114,6 +124,26 @@ def test_the_app_asks_for_notification_permission() -> None:
 
     assert "requestAuthorization" in delegate
     assert "registerForRemoteNotifications" in delegate
+
+
+def test_ios_registration_uses_real_firebase_app_check() -> None:
+    client = CLIENT.read_text(encoding="utf-8")
+    delegate = APP_DELEGATE.read_text(encoding="utf-8")
+
+    assert "AppCheck.appCheck().token" in client
+    assert "DeviceCheckProvider" in delegate
+    assert "sideload-unverified" not in client
+
+
+def test_ios_privacy_manifest_is_bundled() -> None:
+    manifest = Path("mobile_app/ios/Runner/PrivacyInfo.xcprivacy")
+    project = Path("mobile_app/ios/Runner.xcodeproj/project.pbxproj").read_text(
+        encoding="utf-8"
+    )
+
+    assert manifest.exists()
+    assert "NSPrivacyTracking" in manifest.read_text(encoding="utf-8")
+    assert "PrivacyInfo.xcprivacy in Resources" in project
 
 
 def test_recovered_alerts_keep_their_timestamp() -> None:

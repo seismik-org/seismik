@@ -9,12 +9,14 @@ class SceneDelegate: FlutterSceneDelegate {
     options connectionOptions: UIScene.ConnectionOptions
   ) {
     super.scene(scene, willConnectTo: session, options: connectionOptions)
-    if let windowScene = scene as? UIWindowScene {
-      let window = UIWindow(windowScene: windowScene)
-      window.rootViewController = UIHostingController(rootView: SeismikNativeAppRoot())
-      self.window = window
-      window.makeKeyAndVisible()
-    }
+    // `FlutterSceneDelegate` ya conectó la UIWindow del storyboard. Reutilizarla
+    // conserva correctamente el ciclo de vida de la escena y evita una ventana
+    // huérfana superpuesta a la real.
+    guard let windowScene = scene as? UIWindowScene else { return }
+    let appWindow = self.window ?? UIWindow(windowScene: windowScene)
+    appWindow.rootViewController = UIHostingController(rootView: SeismikNativeAppRoot())
+    self.window = appWindow
+    appWindow.makeKeyAndVisible()
   }
 }
 

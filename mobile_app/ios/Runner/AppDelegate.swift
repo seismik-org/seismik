@@ -1,4 +1,6 @@
 import Flutter
+import FirebaseAppCheck
+import FirebaseCore
 import GoogleMaps
 import UIKit
 import UserNotifications
@@ -6,10 +8,20 @@ import SwiftUI
 
 @main
 @objc class AppDelegate: FlutterAppDelegate {
+  private let appCheckProviderFactory = SeismikAppCheckProviderFactory()
+
   override func application(
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
+    // La interfaz es SwiftUI nativa, por lo que no hay un `Firebase.initializeApp`
+    // de Dart que configure App Check por nosotros. El proveedor debe instalarse
+    // antes de crear la app Firebase para que el primer registro sea verificable.
+    AppCheck.setAppCheckProviderFactory(appCheckProviderFactory)
+    if FirebaseApp.app() == nil {
+      FirebaseApp.configure()
+    }
+
     if let mapsKey = Bundle.main.object(forInfoDictionaryKey: "SeismikGoogleMapsAPIKey") as? String,
        !mapsKey.isEmpty,
        !mapsKey.hasPrefix("$(") {
@@ -17,6 +29,12 @@ import SwiftUI
     }
     GeneratedPluginRegistrant.register(with: self)
     let launched = super.application(application, didFinishLaunchingWithOptions: launchOptions)
+
+    if let notification = launchOptions?[.remoteNotification] as? [AnyHashable: Any] {
+      Task { @MainActor in
+        SeismikState.shared.handleRemoteNotification(notification)
+      }
+    }
 
     // Sin autorización, iOS descarta el contenido de la alerta aunque APNs
     // entregue el push: el token llega igual, pero la persona no ve nada. Es
@@ -49,5 +67,25 @@ import SwiftUI
       await SeismikState.shared.updateRegistration()
     }
   }
+
+  override func application(
+    _ application: UIApplication,
+    didReceiveRemoteNotification userInfo: [AnyHashable: Any],
+    fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void
+  ) {
+    Task { @MainActor in
+      SeismikState.shared.handleRemoteNotification(userInfo)
+      await SeismikState.shared.syncMissedAlerts()
+      completionHandler(.newData)
+    }
+  }
 }
 
+/// DeviceCheck funciona desde iOS 11 y no exige una capacidad adicional en el
+/// perfil de distribución. Firebase entrega al backend un token App Check real;
+/// no se envían marcadores de prueba en TestFlight.
+private final class SeismikAppCheckProviderFactory: NSObject, AppCheckProviderFactory {
+  func createProvider(with app: FirebaseApp) -> AppCheckProvider? {
+    DeviceCheckProvider(app: app)
+  }
+}

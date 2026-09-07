@@ -1,5 +1,6 @@
 import Foundation
 import CryptoKit
+import FirebaseAppCheck
 
 /// Errores del cliente que la interfaz necesita distinguir.
 public enum SeismikAPIError: LocalizedError {
@@ -74,8 +75,8 @@ public final class SeismikAPIClient {
     /// País del dispositivo en ISO alpha-2. El backend exige dos letras, así
     /// que una región ausente cae a CO en lugar de romper el registro.
     public static var deviceCountryCode: String {
-        let region = Locale.current.regionCode ?? "CO"
-        return region.count == 2 ? region.uppercased() : "CO"
+        let region = Locale.current.regionCode ?? "ZZ"
+        return region.count == 2 ? region.uppercased() : "ZZ"
     }
 
     /// Identificador único y persistente de la instalación del dispositivo.
@@ -121,8 +122,9 @@ public final class SeismikAPIClient {
     /// Registra la instalación en el backend Seismik y guarda los tokens en Keychain.
     @discardableResult
     public func registerDevice(
-        latitude: Double = 4.65,
-        longitude: Double = -74.05,
+        latitude: Double? = nil,
+        longitude: Double? = nil,
+        zoneId: String? = "global",
         countryCode: String = SeismikAPIClient.deviceCountryCode,
         receiveEarlyAlerts: Bool = true,
         receiveOfficialUpdates: Bool = true,
@@ -133,48 +135,58 @@ public final class SeismikAPIClient {
         guard let pushToken = apnsToken else {
             throw SeismikAPIError.pushTokenUnavailable
         }
+        let integrityToken = try await currentAppCheckToken()
         let url = baseURL.appendingPathComponent("v1/devices/register")
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
 
-        let registrationPayload: [String: Any] = [
+        var registrationPayload: [String: Any] = [
             "device_id": deviceId,
             "platform": "ios",
             "apns_token": pushToken,
             "country_code": countryCode.uppercased(),
-            "latitude": latitude,
-            "longitude": longitude,
             "critical_alerts_authorized": criticalAlertsAuthorized,
             "receive_early_alerts": receiveEarlyAlerts,
             "receive_official_updates": receiveOfficialUpdates,
             "minimum_notification_magnitude": minimumNotificationMagnitude,
             "alert_radius_km": alertRadiusKm,
             "locale": String(Locale.current.identifier.prefix(16)),
-            "app_attest_token": "seismik-beta-sideload-unverified"
+            "app_attest_token": integrityToken
         ]
+        if let latitude, let longitude {
+            registrationPayload["latitude"] = latitude
+            registrationPayload["longitude"] = longitude
+        } else {
+            registrationPayload["zone_id"] = zoneId ?? "global"
+        }
 
         request.httpBody = try JSONSerialization.data(withJSONObject: registrationPayload)
 
-        do {
-            let (data, response) = try await session.data(for: request)
-            guard let httpResponse = response as? HTTPURLResponse, (200...299).contains(httpResponse.statusCode) else {
-                return false
-            }
-
-            struct RegisterResponse: Decodable {
-                let device_id: String
-                let registered: Bool
-                let crowd_token: String
-                let device_session_token: String
-            }
-
-            let decoded = try JSONDecoder().decode(RegisterResponse.self, from: data)
-            try keychain.set(decoded.device_session_token, for: Self.sessionTokenKey)
-            try keychain.set(decoded.crowd_token, for: Self.crowdTokenKey)
-            return true
-        } catch {
-            return false
+        let (data, response) = try await session.data(for: request)
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw SeismikAPIError.malformedResponse
         }
+        guard (200...299).contains(httpResponse.statusCode) else {
+            let message = String(data: data, encoding: .utf8) ?? "Registro rechazado"
+            throw SeismikAPIError.rejected(status: httpResponse.statusCode, message: message)
+        }
+
+        struct RegisterResponse: Decodable {
+            let device_id: String
+            let registered: Bool
+            let crowd_token: String
+            let device_session_token: String
+        }
+
+        let decoded = try JSONDecoder().decode(RegisterResponse.self, from: data)
+        guard decoded.registered,
+              !decoded.crowd_token.isEmpty,
+              !decoded.device_session_token.isEmpty else {
+            throw SeismikAPIError.malformedResponse
+        }
+        try keychain.set(decoded.device_session_token, for: Self.sessionTokenKey)
+        try keychain.set(decoded.crowd_token, for: Self.crowdTokenKey)
+        return true
     }
 
     // MARK: - Eventos Sísmicos
@@ -185,9 +197,7 @@ public final class SeismikAPIClient {
         days: Int = 15,
         minimumMagnitude: Double = 2.5
     ) async throws -> [SeismicEvent] {
-        if !isRegistered {
-            _ = try? await registerDevice()
-        }
+        if !isRegistered { _ = try await registerDevice() }
 
         var components = URLComponents(url: baseURL.appendingPathComponent("v1/events/history"), resolvingAgainstBaseURL: true)
         components?.queryItems = [
@@ -222,13 +232,18 @@ public final class SeismikAPIClient {
                     }
                 }
                 guard (200...299).contains(httpResponse.statusCode) else {
-                    return loadCachedEvents()
+                    let cached = loadCachedEvents()
+                    if !cached.isEmpty { return cached }
+                    let message = String(data: data, encoding: .utf8) ?? ""
+                    throw SeismikAPIError.rejected(status: httpResponse.statusCode, message: message)
                 }
             }
 
             return parseAndCacheEvents(data)
         } catch {
-            return loadCachedEvents()
+            let cached = loadCachedEvents()
+            if !cached.isEmpty { return cached }
+            throw error
         }
     }
 
@@ -236,6 +251,7 @@ public final class SeismikAPIClient {
 
     /// Obtiene el listado de estaciones sismológicas activas de la red.
     public func fetchStations() async throws -> [SeismicStation] {
+        if !isRegistered { _ = try await registerDevice() }
         let url = baseURL.appendingPathComponent("v1/network/stations")
         var request = URLRequest(url: url)
         if let sessionToken = deviceSessionToken {
@@ -244,8 +260,12 @@ public final class SeismikAPIClient {
 
         do {
             let (data, response) = try await session.data(for: request)
-            guard let httpResponse = response as? HTTPURLResponse, (200...299).contains(httpResponse.statusCode) else {
-                return []
+            guard let httpResponse = response as? HTTPURLResponse else {
+                throw SeismikAPIError.malformedResponse
+            }
+            guard (200...299).contains(httpResponse.statusCode) else {
+                let message = String(data: data, encoding: .utf8) ?? ""
+                throw SeismikAPIError.rejected(status: httpResponse.statusCode, message: message)
             }
 
             struct StationsResponse: Decodable {
@@ -255,9 +275,9 @@ public final class SeismikAPIClient {
             if let decoded = try? JSONDecoder().decode(StationsResponse.self, from: data) {
                 return decoded.stations
             }
-            return []
+            throw SeismikAPIError.malformedResponse
         } catch {
-            return []
+            throw error
         }
     }
 
@@ -434,6 +454,24 @@ public final class SeismikAPIClient {
         message.append(body)
         let signature = HMAC<SHA256>.authenticationCode(for: message, using: key)
         return signature.map { String(format: "%02x", $0) }.joined()
+    }
+
+    /// Obtiene un token efímero emitido por Firebase App Check y respaldado
+    /// por DeviceCheck. Nunca se persiste ni se sustituye por texto de prueba.
+    private func currentAppCheckToken() async throws -> String {
+        try await withCheckedThrowingContinuation { continuation in
+            AppCheck.appCheck().token(forcingRefresh: false) { token, error in
+                if let error {
+                    continuation.resume(throwing: error)
+                    return
+                }
+                guard let value = token?.token, !value.isEmpty else {
+                    continuation.resume(throwing: SeismikAPIError.malformedResponse)
+                    return
+                }
+                continuation.resume(returning: value)
+            }
+        }
     }
 
     private func parseAndCacheEvents(_ data: Data) -> [SeismicEvent] {

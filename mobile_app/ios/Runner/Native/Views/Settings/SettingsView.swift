@@ -12,6 +12,7 @@ public struct SettingsView: View {
 
     @State private var notificationStatus: UNAuthorizationStatus = .notDetermined
     @State private var showCopiedAlert = false
+    @State private var browserDestination: BrowserDestination?
 
     public init(state: SeismikState, showsCloseButton: Bool = true) {
         self.state = state
@@ -35,7 +36,7 @@ public struct SettingsView: View {
                                 .font(.system(size: 22, weight: .bold, design: .rounded))
                                 .foregroundColor(.primary)
 
-                            Text("Versión 1.0.0 (Build 28)")
+                            Text("Versión \(versionDescription)")
                                 .font(.system(size: 14, weight: .semibold, design: .rounded))
                                 .foregroundColor(SeismikColors.systemBlue)
 
@@ -143,10 +144,8 @@ public struct SettingsView: View {
                                 .foregroundColor(.secondary)
                             Spacer()
                             Picker("Abrir epicentros con", selection: $state.mapProvider) {
-                                Text("Según el sistema").tag("system")
                                 Text("Apple Maps").tag("apple")
                                 Text("Google Maps").tag("google")
-                                Text("OpenStreetMap").tag("osm")
                             }
                             .pickerStyle(.menu)
                         }
@@ -323,6 +322,27 @@ public struct SettingsView: View {
                     footer: Text("Este identificador permite incluir el teléfono en la lista cerrada de pruebas push. No es un dato personal.")
                 ) {
                     HStack {
+                        Label("Registro de alertas", systemImage: state.isRegistered ? "checkmark.shield.fill" : "exclamationmark.shield")
+                        Spacer()
+                        Text(state.isRegistered ? "Activo" : "Pendiente")
+                            .foregroundColor(state.isRegistered ? SeismikColors.emerald : SeismikColors.amber)
+                    }
+
+                    HStack {
+                        Label("Notificaciones", systemImage: "bell.badge")
+                        Spacer()
+                        Text(notificationStatusLabel)
+                            .foregroundColor(.secondary)
+                    }
+
+                    if let issue = state.registrationIssue, !state.isRegistered {
+                        Text(issue)
+                            .font(.caption)
+                            .foregroundColor(SeismikColors.amber)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+
+                    HStack {
                         VStack(alignment: .leading, spacing: 3) {
                             Text("Identificador de este dispositivo")
                                 .font(.body)
@@ -349,8 +369,12 @@ public struct SettingsView: View {
                 Section(header: Text("Acerca de Seismik")) {
                     SettingsValueRow(title: "Versión", value: versionDescription)
                     SettingsValueRow(title: "Motor de mapa", value: "Apple MapKit")
-                    Link("Privacidad", destination: URL(string: "https://seismik.org/terms-of-privacy")!)
-                    Link("Términos del servicio", destination: URL(string: "https://seismik.org/terms-of-service")!)
+                    Button("Privacidad") {
+                        browserDestination = BrowserDestination(url: URL(string: "https://seismik.org/terms-of-privacy")!)
+                    }
+                    Button("Términos del servicio") {
+                        browserDestination = BrowserDestination(url: URL(string: "https://seismik.org/terms-of-service")!)
+                    }
                 }
 
                 // Nota legal y pie de página idéntico a Android
@@ -378,6 +402,10 @@ public struct SettingsView: View {
             .task {
                 notificationStatus = await UNUserNotificationCenter.current().notificationSettings().authorizationStatus
             }
+            .sheet(item: $browserDestination) { destination in
+                InAppBrowserView(url: destination.url)
+                    .ignoresSafeArea()
+            }
         }
     }
 
@@ -385,6 +413,17 @@ public struct SettingsView: View {
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.6.6"
         let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "27"
         return "\(version) (\(build))"
+    }
+
+    private var notificationStatusLabel: String {
+        switch notificationStatus {
+        case .authorized: return "Permitidas"
+        case .provisional: return "Provisionales"
+        case .ephemeral: return "Temporales"
+        case .denied: return "Desactivadas"
+        case .notDetermined: return "Sin solicitar"
+        @unknown default: return "Desconocido"
+        }
     }
 
     /// Persiste las preferencias en el servidor y aplica las locales.

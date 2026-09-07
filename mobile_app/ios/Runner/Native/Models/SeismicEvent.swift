@@ -61,6 +61,7 @@ public struct SeismicEvent: Identifiable, Codable, Hashable {
     public let longitude: Double?
     public let detectedAt: Date?
     public let sourceId: String?
+    public let officialEventId: String?
     public let agency: String?
     public let isPreliminary: Bool
     public let intensityMmi: Int?
@@ -91,6 +92,7 @@ public struct SeismicEvent: Identifiable, Codable, Hashable {
         case originTime = "origin_time"
         case emittedAt = "emitted_at"
         case sourceId = "source_id"
+        case officialEventId = "official_event_id"
         case agency
         case isPreliminary = "is_preliminary"
         case preliminary
@@ -119,6 +121,7 @@ public struct SeismicEvent: Identifiable, Codable, Hashable {
         longitude: Double?,
         detectedAt: Date?,
         sourceId: String? = nil,
+        officialEventId: String? = nil,
         agency: String? = nil,
         isPreliminary: Bool = false,
         intensityMmi: Int? = nil,
@@ -143,6 +146,7 @@ public struct SeismicEvent: Identifiable, Codable, Hashable {
         self.longitude = longitude
         self.detectedAt = detectedAt
         self.sourceId = sourceId
+        self.officialEventId = officialEventId
         self.agency = agency
         self.isPreliminary = isPreliminary
         self.intensityMmi = intensityMmi
@@ -177,6 +181,7 @@ public struct SeismicEvent: Identifiable, Codable, Hashable {
         longitude = (try? container.decodeIfPresent(Double.self, forKey: .longitude))
             ?? (try? container.decodeIfPresent(Double.self, forKey: .estimatedLongitude))
         sourceId = try container.decodeIfPresent(String.self, forKey: .sourceId)
+        officialEventId = try container.decodeIfPresent(String.self, forKey: .officialEventId)
         agency = try container.decodeIfPresent(String.self, forKey: .agency)
         
         let prelimBool = (try? container.decodeIfPresent(Bool.self, forKey: .isPreliminary))
@@ -236,6 +241,7 @@ public struct SeismicEvent: Identifiable, Codable, Hashable {
             try container.encode(ISO8601DateFormatter().string(from: date), forKey: .detectedAt)
         }
         try container.encodeIfPresent(sourceId, forKey: .sourceId)
+        try container.encodeIfPresent(officialEventId, forKey: .officialEventId)
         try container.encodeIfPresent(agency, forKey: .agency)
         try container.encode(isPreliminary, forKey: .isPreliminary)
         try container.encodeIfPresent(intensityMmi, forKey: .intensityMmi)
@@ -298,6 +304,45 @@ public struct SeismicEvent: Identifiable, Codable, Hashable {
         formatter.timeStyle = .medium
         formatter.locale = Locale(identifier: "es_CO")
         return formatter.string(from: date)
+    }
+
+    /// APNs serializa los campos personalizados como cadenas. Este inicializador
+    /// normaliza esos valores sin depender del decoder JSON del historial.
+    public init?(notificationUserInfo userInfo: [AnyHashable: Any]) {
+        func text(_ key: String) -> String? {
+            guard let value = userInfo[key] else { return nil }
+            let result = String(describing: value)
+            return result.isEmpty ? nil : result
+        }
+        func number(_ key: String) -> Double? {
+            guard let value = text(key), !value.isEmpty else { return nil }
+            return Double(value)
+        }
+
+        guard let eventId = text("event_id") else { return nil }
+        let type = text("type") ?? ""
+        let dateText = text("detected_at") ?? text("origin_time")
+        let parsedDate = dateText.flatMap { value -> Date? in
+            let fractional = ISO8601DateFormatter()
+            fractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            return fractional.date(from: value) ?? ISO8601DateFormatter().date(from: value)
+        }
+        self.init(
+            id: eventId,
+            place: text("place") ?? text("zone_id").map { "Zona \($0)" },
+            magnitude: number("magnitude"),
+            depthKm: number("depth_km"),
+            latitude: number("latitude") ?? number("estimated_latitude"),
+            longitude: number("longitude") ?? number("estimated_longitude"),
+            detectedAt: parsedDate ?? Date(),
+            sourceId: type == "earthquake_candidate" ? "seismik_seedlink_preliminary" : nil,
+            agency: text("agency") ?? (type == "earthquake_candidate" ? "Seismik / SeedLink" : nil),
+            isPreliminary: type == "earthquake_candidate",
+            intensityMmi: nil,
+            tsunamiWarning: false,
+            officialUrl: text("official_url"),
+            zoneId: text("zone_id")
+        )
     }
 }
 

@@ -32,7 +32,7 @@ public final class SeismikState: ObservableObject {
     @AppStorage("seismik.include_preliminary") public var includePreliminaryEvents: Bool = true
     @AppStorage("seismik.receive_early_alerts") public var receiveEarlyAlerts: Bool = true
     @AppStorage("seismik.receive_official_updates") public var receiveOfficialUpdates: Bool = true
-    @AppStorage("seismik.map_provider") public var mapProvider: String = "system"
+    @AppStorage("seismik.map_provider") public var mapProvider: String = "apple"
     @AppStorage("seismik.app_map_type") public var appMapType: String = "standard"
     @AppStorage("seismik.crowdsourcing_enabled") public var crowdsourcingEnabled: Bool = true
     @AppStorage("seismik.precise_location") public var preciseLocationByDefault: Bool = false
@@ -41,10 +41,20 @@ public final class SeismikState: ObservableObject {
     private let apiClient = SeismikAPIClient.shared
     private let locationManager = LocationManager.shared
     private let motion = MotionDetector.shared
+    private var locationRegistration: AnyCancellable?
 
     public init() {
         self.isRegistered = apiClient.isRegistered
         self.pendingReportCount = apiClient.pendingReportCount
+        locationRegistration = locationManager.$userCoordinate
+            .compactMap { $0 }
+            .first()
+            .sink { [weak self] _ in
+                Task { @MainActor in
+                    await self?.updateRegistration()
+                    await self?.refreshData()
+                }
+            }
         Task {
             locationManager.requestPermission()
             locationManager.startUpdating()
@@ -62,16 +72,16 @@ public final class SeismikState: ObservableObject {
     /// registrar el dispositivo, un cambio de preferencia no llegaría al
     /// despachador y la persona seguiría recibiendo lo mismo que antes.
     public func updateRegistration() async {
-        let lat = locationManager.userCoordinate?.latitude ?? 4.65
-        let lon = locationManager.userCoordinate?.longitude ?? -74.05
+        let coordinate = locationManager.userCoordinate
         // El despachador decide con este dato si el aviso puede sonar como
         // alerta crítica; enviarlo fijo en falso lo desactivaba siempre.
         let settings = await UNUserNotificationCenter.current().notificationSettings()
         let criticalAllowed = settings.criticalAlertSetting == .enabled
         do {
             let registered = try await apiClient.registerDevice(
-                latitude: lat,
-                longitude: lon,
+                latitude: coordinate?.latitude,
+                longitude: coordinate?.longitude,
+                zoneId: coordinate == nil ? "global" : nil,
                 receiveEarlyAlerts: receiveEarlyAlerts,
                 receiveOfficialUpdates: receiveOfficialUpdates,
                 minimumNotificationMagnitude: minimumNotificationMagnitude,
@@ -144,6 +154,7 @@ public final class SeismikState: ObservableObject {
 
         do {
             async let fetchedEvents = apiClient.fetchRecentEvents(
+                sources: historySourceIds,
                 days: historyDays,
                 minimumMagnitude: minMagnitude
             )
@@ -190,6 +201,24 @@ public final class SeismikState: ObservableObject {
         HapticManager.light()
     }
 
+    /// Convierte el contenido APNs en estado visible. Las alertas tempranas se
+    /// muestran de inmediato; una actualización oficial se abre como detalle.
+    public func handleRemoteNotification(_ userInfo: [AnyHashable: Any]) {
+        guard let event = SeismicEvent(notificationUserInfo: userInfo) else {
+            Task { await refreshData() }
+            return
+        }
+        if event.isPreliminary {
+            activeAlert = event
+            HapticManager.heavy()
+        } else {
+            selectedEvent = event
+        }
+        if !events.contains(where: { $0.id == event.id }) {
+            events.insert(event, at: 0)
+        }
+    }
+
     /// Dispara una simulación de alerta de emergencia para pruebas del usuario.
     public func runAlertSimulation() {
         let testEvent = SeismicEvent(
@@ -234,6 +263,22 @@ public final class SeismikState: ObservableObject {
         historySourcesRaw = items.joined(separator: ",")
         HapticManager.selection()
         Task { await refreshData() }
+    }
+
+    private var historySourceIds: [String] {
+        var items = historySourcesRaw
+            .split(separator: ",")
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+        if includePreliminaryEvents {
+            if !items.contains("seismik_seedlink_preliminary") {
+                items.append("seismik_seedlink_preliminary")
+            }
+        } else {
+            items.removeAll { $0 == "seismik_seedlink_preliminary" }
+        }
+        if items.isEmpty { return ["sgc_colombia", "usgs_global"] }
+        return Array(Set(items)).sorted()
     }
 
     /// Alterna cíclicamente el estilo del mapa nativo entre Estándar, Satélite e Híbrido.
