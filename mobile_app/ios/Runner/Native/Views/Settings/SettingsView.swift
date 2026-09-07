@@ -48,7 +48,7 @@ public struct SettingsView: View {
                 }
 
                 // Alertas críticas (Pantalla completa, simulacro, magnitudes y radio)
-                Section {
+                Section(header: Text("Alertas críticas")) {
                     Button(action: openSystemSettings) {
                         HStack {
                             VStack(alignment: .leading, spacing: 3) {
@@ -81,7 +81,7 @@ public struct SettingsView: View {
                                 .font(.system(size: 15))
                                 .foregroundColor(.white)
                                 .frame(width: 36, height: 36)
-                                .background(SeismikColors.crimson, in: Circle())
+                                .background(Circle().fill(SeismikColors.crimson))
                         }
                         .buttonStyle(.plain)
                     }
@@ -126,12 +126,10 @@ public struct SettingsView: View {
                     ProximityRadiusChipsView(selectedRadius: $state.alertRadiusKm) {
                         synchronizePreferences()
                     }
-                } header: {
-                    Text("Alertas críticas")
                 }
 
                 // Mapas y sincronización
-                Section {
+                Section(header: Text("Mapas y sincronización")) {
                     VStack(alignment: .leading, spacing: 6) {
                         Text("Abrir epicentros con")
                             .font(.body)
@@ -176,12 +174,10 @@ public struct SettingsView: View {
                         }
                         Spacer()
                     }
-                } header: {
-                    Text("Mapas y sincronización")
                 }
 
                 // Historial sísmico (Slider de magnitud, periodo y fuentes)
-                Section {
+                Section(header: Text("Historial sísmico")) {
                     SliderRow(
                         title: "Magnitud mínima del historial",
                         value: $state.minMagnitude,
@@ -205,7 +201,7 @@ public struct SettingsView: View {
                         .onChange(of: state.includePreliminaryEvents) { _ in refreshHistory() }
 
                     Text("Fuentes del historial")
-                        .font(.subheadline.bold())
+                        .font(.system(size: 15, weight: .bold))
                         .padding(.top, 4)
 
                     HistorySourceRow(
@@ -271,12 +267,10 @@ public struct SettingsView: View {
                     ) {
                         state.toggleSource("jma_japan")
                     }
-                } header: {
-                    Text("Historial sísmico")
                 }
 
                 // Privacidad y sensores
-                Section {
+                Section(header: Text("Privacidad y sensores")) {
                     Toggle(isOn: $state.crowdsourcingEnabled) {
                         VStack(alignment: .leading, spacing: 2) {
                             Text("Detección colaborativa")
@@ -316,18 +310,19 @@ public struct SettingsView: View {
                                 .foregroundColor(.secondary)
                         }
                     }
-                } header: {
-                    Text("Privacidad y sensores")
                 }
 
                 // Diagnóstico de la beta
-                Section {
+                Section(
+                    header: Text("Diagnóstico de la beta"),
+                    footer: Text("Este identificador permite incluir el teléfono en la lista cerrada de pruebas push. No es un dato personal.")
+                ) {
                     HStack {
                         VStack(alignment: .leading, spacing: 3) {
                             Text("Identificador de este dispositivo")
                                 .font(.body)
                             Text(state.deviceId)
-                                .font(.caption.monospaced())
+                                .font(.system(.caption, design: .monospaced))
                                 .foregroundColor(.secondary)
                                 .lineLimit(1)
                         }
@@ -343,10 +338,6 @@ public struct SettingsView: View {
                         }
                         .buttonStyle(.plain)
                     }
-                } header: {
-                    Text("Diagnóstico de la beta")
-                } footer: {
-                    Text("Este identificador permite incluir el teléfono en la lista cerrada de pruebas push. No es un dato personal.")
                 }
 
                 // Acerca de Seismik

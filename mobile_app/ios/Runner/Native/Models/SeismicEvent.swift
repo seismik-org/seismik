@@ -11,6 +11,15 @@ public struct StationTrigger: Identifiable, Codable, Hashable {
     public let staLtaRatio: Double
     public let peakAmplitudeCounts: Double?
 
+    enum CodingKeys: String, CodingKey {
+        case stationId = "station_id"
+        case providerId = "provider_id"
+        case countryCode = "country_code"
+        case triggerTime = "trigger_time"
+        case staLtaRatio = "sta_lta_ratio"
+        case peakAmplitudeCounts = "peak_amplitude_counts"
+    }
+
     public init(
         stationId: String,
         providerId: String,
@@ -26,7 +35,21 @@ public struct StationTrigger: Identifiable, Codable, Hashable {
         self.staLtaRatio = staLtaRatio
         self.peakAmplitudeCounts = peakAmplitudeCounts
     }
+
+    public var triggerTimeFormatted: String {
+        guard let date = triggerTime else { return "—" }
+        let formatter = DateFormatter()
+        formatter.dateFormat = "HH:mm:ss 'UTC'"
+        formatter.timeZone = TimeZone(secondsFromGMT: 0)
+        return formatter.string(from: date)
+    }
+
+    public var peakAmplitudeFormatted: String {
+        guard let peak = peakAmplitudeCounts else { return "—" }
+        return String(format: "Pico %.1f c", peak)
+    }
 }
+
 
 /// Modelo de datos para un evento sísmico detectado o reportado.
 public struct SeismicEvent: Identifiable, Codable, Hashable {

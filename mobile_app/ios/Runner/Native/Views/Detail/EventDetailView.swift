@@ -276,7 +276,7 @@ public struct EventDetailView: View {
                         Text(st.stationId)
                             .font(.system(size: 14, weight: .bold))
                             .foregroundColor(.primary)
-                        Text("\(st.providerId) · \(st.countryCode) · \(st.triggerTime)")
+                        Text("\(st.providerId) · \(st.countryCode ?? "—") · \(st.triggerTimeFormatted)")
                             .font(.system(size: 11))
                             .foregroundColor(.secondary)
                     }
@@ -287,7 +287,7 @@ public struct EventDetailView: View {
                         Text(String(format: "STA/LTA %.1f", st.staLtaRatio))
                             .font(.system(size: 12, weight: .semibold, design: .monospaced))
                             .foregroundColor(.primary)
-                        Text(String(format: "Pico %.1f c", st.peakAmplitudeCounts))
+                        Text(st.peakAmplitudeFormatted)
                             .font(.system(size: 11, design: .monospaced))
                             .foregroundColor(.secondary)
                     }
