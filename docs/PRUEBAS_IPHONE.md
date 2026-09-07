@@ -23,13 +23,32 @@ mismo producto, y esa es la primera cosa que hay que tener presente al probar:
 | El proyecto copia `GoogleService-Info.plist` como recurso | `pytest tests/test_ios_configuration.py` | Configuración |
 | Backend completo | `pytest`, `ruff`, `mypy` | API, política de alertas, simulacros |
 | App **Android** | `flutter analyze`, `flutter test` (66 pruebas) | Sólo Android |
-| Lógica **iPhone**: cola offline y acelerómetro | `xcodebuild test` en CI | Sólo lógica, no interfaz |
+| Estructura de los Swift (llaves, miembros inexistentes) | `pytest tests/test_ios_configuration.py` | Errores que Xcode revela de uno en uno |
 
-El código Swift ya tiene pruebas propias: `ios/RunnerTests/SeismikNativeTests.swift`
-cubre la cola offline (persistencia, deduplicación, corte ante fallo de red,
-rechazo definitivo, vencimiento) y el disparo del acelerómetro. CI las ejecuta en
-un simulador con `xcodebuild test`. Lo que sigue depende de un dispositivo real
-porque push, APNs, MapKit y el rendimiento del material no existen en CI.
+El código Swift tiene pruebas propias en `ios/RunnerTests/SeismikNativeTests.swift`:
+cubren la cola offline (persistencia, deduplicación, corte ante fallo de red,
+rechazo definitivo, vencimiento) y el disparo del acelerómetro. **CI no las
+ejecuta**; se corren desde Xcode en un Mac:
+
+```bash
+cd mobile_app && flutter build ios --config-only
+open ios/Runner.xcworkspace   # Cmd+U
+```
+
+Se intentó automatizarlas con `xcodebuild test`, pero `@testable import Runner`
+obliga a recompilar la app entera —Firebase, GoogleMaps y el motor Flutter— en
+Debug para simulador, además del Release para dispositivo que ya hace el job. El
+runner de macOS se quedaba sin recursos y el paso moría a los siete minutos sin
+dejar mensaje de error.
+
+Para devolverlas a CI hay que desacoplarlas del host: separar `SeismikDSP` y
+`SeismikAPIError` a archivos propios, compilarlos junto a `OfflineReportQueue`
+dentro del bundle de pruebas y retirar el `TEST_HOST` del target. Entonces el
+bundle compila cuatro archivos que sólo dependen de Foundation, en segundos.
+Ese cambio toca el `pbxproj` y conviene validarlo en un Mac antes de subirlo.
+
+Lo que sigue depende de un dispositivo real: push, APNs, MapKit y el rendimiento
+del material no existen en CI.
 
 ## Paridad con la app Android
 
