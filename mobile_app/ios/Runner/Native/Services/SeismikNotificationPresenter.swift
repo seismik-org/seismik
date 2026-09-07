@@ -23,6 +23,11 @@ public final class SeismikNotificationPresenter: NSObject, UNUserNotificationCen
         willPresent notification: UNNotification,
         withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
     ) {
+        Task { @MainActor in
+            SeismikState.shared.handleRemoteNotification(
+                notification.request.content.userInfo
+            )
+        }
         completionHandler([.banner, .list, .sound])
     }
 
@@ -34,6 +39,9 @@ public final class SeismikNotificationPresenter: NSObject, UNUserNotificationCen
         // Al tocar el aviso, la app sincroniza para mostrar el sismo que lo
         // originó incluso si el push llegó mientras estaba cerrada.
         Task { @MainActor in
+            SeismikState.shared.handleRemoteNotification(
+                response.notification.request.content.userInfo
+            )
             await SeismikState.shared.syncMissedAlerts()
             await SeismikState.shared.refreshData()
             completionHandler()

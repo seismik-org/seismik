@@ -150,16 +150,23 @@ public struct FeltReportView: View {
     }
 
     private func submitReport() {
+        guard let coordinate = LocationManager.shared.userCoordinate else {
+            submissionMessage = "Se necesita tu ubicación para asociar el reporte al lugar correcto. Activa la ubicación de Seismik en Ajustes e inténtalo de nuevo."
+            HapticManager.error()
+            showErrorAlert = true
+            return
+        }
         isSubmitting = true
         HapticManager.light()
 
         let payload = FeltReportPayload(
             deviceId: SeismikAPIClient.shared.deviceId,
             earthquakeEventId: preselectedEvent?.id,
-            officialEventId: preselectedEvent?.id,
+            officialEventId: preselectedEvent?.officialEventId,
             observedAt: ISO8601DateFormatter().string(from: Date()),
-            latitude: LocationManager.shared.userCoordinate?.latitude ?? 4.65,
-            longitude: LocationManager.shared.userCoordinate?.longitude ?? -74.05,
+            latitude: coordinate.latitude,
+            longitude: coordinate.longitude,
+            locationPrecision: SeismikState.shared.preciseLocationByDefault ? "precise" : "approximate",
             countryCode: SeismikAPIClient.deviceCountryCode,
             felt: felt,
             intensityMmi: felt ? Int(intensity) : nil,

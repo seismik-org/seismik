@@ -22,6 +22,10 @@ public struct SeismicSheetView: View {
                     .frame(width: 38, height: 5)
                     .frame(maxWidth: .infinity, minHeight: 24)
                     .contentShape(Rectangle())
+                    .gesture(drawerDragGesture)
+                    .onTapGesture(perform: onDrawerHandleTapped)
+                    .accessibilityLabel("Cambiar altura del panel")
+                    .accessibilityHint("Toca para alternar o desliza hacia arriba y abajo")
 
                 // Estado de sincronización / red exactamente como en Android
                 HStack(spacing: 6) {
@@ -89,19 +93,6 @@ public struct SeismicSheetView: View {
                 }
                 .padding(.horizontal, 16)
                 .padding(.bottom, 12)
-            }
-            .contentShape(Rectangle())
-            .simultaneousGesture(
-                DragGesture(minimumDistance: 4)
-                    .onChanged { value in
-                        onDrawerDragChanged(value.translation.height)
-                    }
-                    .onEnded { value in
-                        onDrawerDragEnded(value.predictedEndTranslation.height)
-                    }
-            )
-            .onTapGesture {
-                onDrawerHandleTapped()
             }
 
             Divider()
@@ -186,6 +177,16 @@ public struct SeismicSheetView: View {
         state.pendingReportCount == 1
             ? "1 reporte espera conexión para enviarse."
             : "\(state.pendingReportCount) reportes esperan conexión para enviarse."
+    }
+
+    private var drawerDragGesture: some Gesture {
+        DragGesture(minimumDistance: 4)
+            .onChanged { value in
+                onDrawerDragChanged(value.translation.height)
+            }
+            .onEnded { value in
+                onDrawerDragEnded(value.predictedEndTranslation.height)
+            }
     }
 }
 

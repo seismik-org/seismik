@@ -5,10 +5,11 @@ import MapKit
 public struct EventDetailView: View {
     public let event: SeismicEvent
     @Environment(\.dismiss) private var dismiss
-    @AppStorage("seismik.map_provider") private var mapProvider = "system"
+    @AppStorage("seismik.map_provider") private var mapProvider = "apple"
 
     @State private var showFeltReport = false
     @State private var showDamageReport = false
+    @State private var browserDestination: BrowserDestination?
 
     public init(event: SeismicEvent) {
         self.event = event
@@ -57,27 +58,10 @@ public struct EventDetailView: View {
             .navigationTitle(event.isPreliminary ? "Reporte preliminar" : "Reporte oficial")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button {
-                        HapticManager.selection()
-                        dismiss()
-                    } label: {
-                        HStack(spacing: 4) {
-                            Image(systemName: "chevron.left")
-                                .font(.system(size: 15, weight: .semibold))
-                        }
-                        .foregroundColor(.primary)
-                    }
-                }
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button {
+                    Button("Listo") {
                         HapticManager.selection()
                         dismiss()
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 22))
-                            .symbolRenderingMode(.hierarchical)
-                            .foregroundColor(.secondary)
                     }
                 }
             }
@@ -86,6 +70,10 @@ public struct EventDetailView: View {
             }
             .sheet(isPresented: $showDamageReport) {
                 DamageReportView(preselectedEvent: event)
+            }
+            .sheet(item: $browserDestination) { destination in
+                InAppBrowserView(url: destination.url)
+                    .ignoresSafeArea()
             }
         }
         .modalSheetPresentation()
@@ -346,7 +334,7 @@ public struct EventDetailView: View {
             if let targetUrl = resolveOfficialURL() {
                 Button {
                     HapticManager.light()
-                    UIApplication.shared.open(targetUrl)
+                    browserDestination = BrowserDestination(url: targetUrl)
                 } label: {
                     HStack(spacing: 10) {
                         Image(systemName: "arrow.up.right.square")
@@ -606,4 +594,3 @@ private struct EpicenterMapView: UIViewRepresentable {
         }
     }
 }
-
