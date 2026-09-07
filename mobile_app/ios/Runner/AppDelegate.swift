@@ -37,7 +37,7 @@ import SwiftUI
     super.application(application, didRegisterForRemoteNotificationsWithDeviceToken: deviceToken)
     let tokenHex = deviceToken.map { String(format: "%02.2hhx", $0) }.joined()
     UserDefaults.standard.set(tokenHex, forKey: "seismik.apns_device_token")
-    Task {
+    Task { @MainActor in
       await SeismikState.shared.updateRegistration()
     }
   }
