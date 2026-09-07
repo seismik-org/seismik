@@ -227,3 +227,20 @@ def test_views_only_use_members_the_models_declare() -> None:
     findings = scan()
 
     assert not findings, "Accesos a miembros inexistentes:\n" + "\n".join(findings)
+
+
+def test_the_test_target_can_resolve_the_pods_the_app_imports() -> None:
+    """`@testable import Runner` arrastra los módulos que importa la app.
+
+    GoogleMaps llega por CocoaPods, no por Swift Package Manager. Sin declarar
+    el target de pruebas en el Podfile, Xcode falla con «Unable to resolve
+    module dependency: 'GoogleMaps'» al compilar RunnerTests.
+    """
+
+    podfile = (IOS / "Podfile").read_text(encoding="utf-8")
+
+    assert "target 'RunnerTests' do" in podfile
+    assert "inherit! :search_paths" in podfile
+    # Debe estar anidado dentro del target Runner para heredar sus pods.
+    runner_block = podfile[podfile.index("target 'Runner' do") :]
+    assert runner_block.index("target 'RunnerTests' do") < runner_block.index("\nend")
