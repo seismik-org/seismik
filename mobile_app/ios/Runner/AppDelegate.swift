@@ -20,13 +20,8 @@ import SwiftUI
     // Solicita registro ante APNs de Apple para recepción de alertas sísmicas
     application.registerForRemoteNotifications()
 
-    // Despliega la experiencia nativa de Apple en SwiftUI y Liquid Glass
-    let nativeWindow = UIWindow(frame: UIScreen.main.bounds)
-    let hostingController = UIHostingController(rootView: SeismikNativeAppRoot())
-    nativeWindow.rootViewController = hostingController
-    self.window = nativeWindow
-    nativeWindow.makeKeyAndVisible()
-
+    // La ventana la crea SceneDelegate: en un ciclo de vida basado en escenas,
+    // una segunda ventana aquí queda huérfana y monta un segundo árbol SwiftUI.
     return launched
   }
 

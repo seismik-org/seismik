@@ -174,10 +174,38 @@ public struct FeltReportView: View {
         )
 
         Task {
-            _ = try? await SeismikAPIClient.shared.submitFeltReport(payload)
-            isSubmitting = false
-            HapticManager.success()
-            showSuccessAlert = true
+            await deliver { try await SeismikAPIClient.shared.submitFeltReport(payload) }
         }
     }
+
+    /// Traduce el resultado del envío a lo que ve la persona.
+    ///
+    /// Antes se descartaba con `try?` y siempre se mostraba «recibido», incluso
+    /// cuando el servidor había rechazado el reporte o no había red. Quien
+    /// reporta daños necesita saber cuál de las tres cosas ocurrió.
+    @MainActor
+    private func deliver(_ send: () async throws -> ReportSubmission) async {
+        defer { isSubmitting = false }
+        do {
+            switch try await send() {
+            case let .sent(duplicate):
+                submissionMessage = duplicate
+                    ? "Este reporte ya estaba registrado. Gracias de todos modos."
+                    : "Gracias por reportar. Tu información ayuda a estimar la intensidad real."
+                HapticManager.success()
+                showSuccessAlert = true
+            case .queued:
+                submissionMessage = "Sin conexión: el reporte quedó guardado en el iPhone "
+                    + "y se enviará automáticamente cuando vuelva la red."
+                HapticManager.success()
+                showSuccessAlert = true
+            }
+            await SeismikState.shared.flushPendingReports()
+        } catch {
+            submissionMessage = error.localizedDescription
+            HapticManager.error()
+            showErrorAlert = true
+        }
+    }
+
 }

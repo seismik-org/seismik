@@ -1,6 +1,6 @@
 # Qué falta probar en un iPhone real
 
-Build de referencia: **1.0.0 (28)**.
+Build de referencia: **1.0.0 (29)**.
 
 ## Qué corre realmente en el iPhone
 
@@ -23,29 +23,45 @@ mismo producto, y esa es la primera cosa que hay que tener presente al probar:
 | El proyecto copia `GoogleService-Info.plist` como recurso | `pytest tests/test_ios_configuration.py` | Configuración |
 | Backend completo | `pytest`, `ruff`, `mypy` | API, política de alertas, simulacros |
 | App **Android** | `flutter analyze`, `flutter test` (66 pruebas) | Sólo Android |
+| Lógica **iPhone**: cola offline y acelerómetro | `xcodebuild test` en CI | Sólo lógica, no interfaz |
 
-**No hay ninguna prueba automatizada del código Swift.** `ios/RunnerTests` sigue
-siendo el archivo plantilla de 12 líneas. Que CI esté en verde significa que el
-Swift compila, nada más: ni una sola línea de la app de iPhone está ejercitada.
-Por eso todo lo que sigue depende de un dispositivo.
+El código Swift ya tiene pruebas propias: `ios/RunnerTests/SeismikNativeTests.swift`
+cubre la cola offline (persistencia, deduplicación, corte ante fallo de red,
+rechazo definitivo, vencimiento) y el disparo del acelerómetro. CI las ejecuta en
+un simulador con `xcodebuild test`. Lo que sigue depende de un dispositivo real
+porque push, APNs, MapKit y el rendimiento del material no existen en CI.
 
-## Diferencias conocidas frente a la app Android
+## Paridad con la app Android
 
-Estas no son fallos por descubrir: son huecos verificados al leer el código
-nativo. Convienen anotarse antes de probar para no reportarlos como sorpresas.
+Las funciones que faltaban en el cliente nativo ya están portadas. La tabla
+recoge cómo lo hace cada plataforma, porque el comportamiento es el mismo pero
+la implementación no:
 
 | Función | Android (Flutter) | iPhone (Swift) |
 |---|---|---|
-| Cola de reportes sin conexión | Persiste y reenvía con el mismo `report_id` | **No existe**: un reporte sin red se pierde |
-| Recuperar alertas perdidas (`/v1/alerts/recent`) | Sí | **No existe** |
-| Detección colaborativa por acelerómetro | Sí | **No existe** |
-| Caché del historial para leer sin red | Sí | Sí (`UserDefaults`) |
-| Integridad del dispositivo | App Check real | Cadena fija `seismik-beta-sideload-unverified` |
-| Push | FCM | APNs directo; `FirebaseApp.configure()` no se llama |
+| Cola de reportes sin conexión | `OfflineReportQueue` en `SharedPreferences` | `OfflineReportQueue` en `UserDefaults` |
+| Recuperar alertas perdidas | `GET /v1/alerts/recent` con cursor | Igual, mismo cursor |
+| Detección colaborativa | `sensors_plus` + `battery_plus` | CoreMotion + `UIDevice` |
+| Umbral del acelerómetro | 0.04 g, ventana 2.5 s, varianza 0.12 | Idénticos (`SeismikDSP`) |
+| Firma de reportes | HMAC-SHA256 sobre el cuerpo | Igual, con `CryptoKit` |
+| Caché del historial | `SharedPreferences` | `UserDefaults` |
+| Push | FCM | APNs directo |
 
-Sobre las dos últimas filas: el backend acepta `apns_token`, así que el push
-directo es viable, pero con `integrity_verification_enabled` activo en
-producción un token de integridad fijo será rechazado en el registro.
+Tres detalles que conviene tener presentes al probar:
+
+- La cola guarda el **cuerpo ya codificado**, no el modelo. La firma HMAC cubre
+  esos bytes exactos, así que recodificar al reintentar podría cambiar el orden
+  de las claves y producir una firma que el servidor rechaza.
+- El `report_id` y la hora de observación no cambian entre intentos: el servidor
+  reconoce el reenvío como el mismo reporte, no como uno nuevo.
+- Cambiar la magnitud mínima o el radio vuelve a registrar el dispositivo. Esos
+  filtros los evalúa el despachador, no la app.
+
+### Sigue pendiente
+
+- **Integridad del dispositivo**: `app_attest_token` es todavía la cadena fija
+  `seismik-beta-sideload-unverified`. Con `integrity_verification_enabled`
+  activo en producción, el alta será rechazada.
 
 ## Bloque 1 — Arranque y registro del dispositivo
 
@@ -93,12 +109,12 @@ silencio o No Molestar la alerta llegará como notificación normal. No declares
 ## Bloque 4 — Sin conexión
 
 16. Activa modo avión y abre el historial: debe mostrar la caché local.
-17. Con modo avión, **envía un reporte**. Documenta exactamente qué ocurre. Hoy
-    no hay cola de reenvío en iOS, así que lo esperable es un error y la pérdida
-    del reporte. Si el producto exige la paridad con Android, esto es trabajo
-    pendiente, no un defecto de esta build.
-18. Con la app cerrada durante un simulacro, ábrela después: en iOS **no** se
-    recuperan las alertas perdidas.
+17. Con modo avión, **envía un reporte**. Debe aparecer «Sin conexión: el
+    reporte quedó guardado en el iPhone». Restaura la red y confirma que se
+    envía solo y que el contador de pendientes vuelve a cero.
+18. Con la app cerrada durante un simulacro, ábrela después: la alerta perdida
+    debe aparecer en el historial una sola vez, aunque abras y cierres varias
+    veces.
 
 ## Bloque 5 — Android
 
@@ -108,8 +124,7 @@ silencio o No Molestar la alerta llegará como notificación normal. No declares
 ## Qué no se puede cerrar en este ciclo
 
 - **Alertas críticas de Apple**: dependen de una aprobación externa.
-- **Comportamiento del código Swift**: sin pruebas automatizadas ni dispositivo,
-  no hay ninguna evidencia más allá de que compila.
-- **Paridad offline en iPhone**: falta portar la cola de reportes, la
-  recuperación de alertas y el crowdsourcing.
-- **Integridad en producción**: el token de App Attest es un marcador fijo.
+- **Interfaz y rendimiento en iPhone**: las pruebas cubren la lógica, no cómo
+  se ve ni cuánto cuesta dibujarlo.
+- **Integridad en producción**: el token de App Attest sigue siendo un marcador
+  fijo; hay que emitir uno real antes de activar la verificación.

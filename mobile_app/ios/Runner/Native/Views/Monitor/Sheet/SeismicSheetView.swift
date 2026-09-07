@@ -103,6 +103,34 @@ public struct SeismicSheetView: View {
 
             Divider()
 
+            // Reportes que esperan red y alertas recuperadas: la misma señal
+            // que muestra la app de Android, para que nadie crea que un reporte
+            // se perdió cuando en realidad está en cola.
+            if state.pendingReportCount > 0 || state.syncMessage != nil {
+                HStack(spacing: 10) {
+                    Image(
+                        systemName: state.pendingReportCount > 0
+                            ? "arrow.up.circle"
+                            : "checkmark.icloud"
+                    )
+                    .foregroundColor(SeismikColors.systemBlue)
+                    Text(state.syncMessage ?? pendingSummary)
+                        .font(.system(size: 13))
+                        .foregroundColor(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Spacer(minLength: 0)
+                    if state.pendingReportCount > 0 {
+                        Button("Reintentar") {
+                            Task { await state.flushPendingReports() }
+                        }
+                        .font(.system(size: 13, weight: .semibold))
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+                Divider()
+            }
+
             // Listado equivalente a los puntos del mapa, útil también con VoiceOver.
             if state.events.isEmpty {
                 if state.isRefreshing {
@@ -149,6 +177,12 @@ public struct SeismicSheetView: View {
         .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
         .shadow(color: Color.black.opacity(0.16), radius: 18, x: 0, y: -4)
         .accessibilityElement(children: .contain)
+    }
+
+    private var pendingSummary: String {
+        state.pendingReportCount == 1
+            ? "1 reporte espera conexión para enviarse."
+            : "\(state.pendingReportCount) reportes esperan conexión para enviarse."
     }
 }
 
