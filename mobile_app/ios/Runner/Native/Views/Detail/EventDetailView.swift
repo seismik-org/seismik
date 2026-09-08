@@ -85,29 +85,24 @@ public struct EventDetailView: View {
         HStack(alignment: .top, spacing: 12) {
             Image(systemName: "exclamationmark.triangle")
                 .font(.system(size: 18, weight: .bold))
-                .foregroundColor(Color(red: 0.78, green: 0.58, blue: 1.0))
+                .foregroundColor(SeismikColors.lavender)
                 .padding(.top, 2)
 
             VStack(alignment: .leading, spacing: 5) {
                 Text("SEISMIK / SEEDLINK · PRELIMINAR")
                     .font(.system(size: 11, weight: .bold, design: .rounded))
                     .tracking(0.6)
-                    .foregroundColor(Color(red: 0.88, green: 0.72, blue: 1.0))
+                    .foregroundColor(SeismikColors.lavender)
 
                 Text("Detección automática multiestación. No es una confirmación oficial. Las ondas se miden en cada estación, pero una magnitud solo se mostrará tras calibrar su respuesta instrumental y validarla científicamente.")
                     .font(.system(size: 12.5))
-                    .foregroundColor(.white.opacity(0.88))
+                    .foregroundColor(.primary.opacity(0.88))
                     .lineSpacing(2.5)
             }
         }
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(red: 0.22, green: 0.14, blue: 0.33).opacity(0.85))
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .strokeBorder(Color(red: 0.58, green: 0.38, blue: 0.85).opacity(0.4), lineWidth: 0.8)
-        )
+        .liquidGlass(cornerRadius: 16, tint: SeismikColors.lavender)
     }
 
     private var magnitudeHeaderSection: some View {
@@ -258,7 +253,7 @@ public struct EventDetailView: View {
                 HStack(spacing: 12) {
                     Image(systemName: "antenna.radiowaves.left.and.right")
                         .font(.system(size: 16))
-                        .foregroundColor(Color(red: 0.78, green: 0.58, blue: 1.0))
+                        .foregroundColor(SeismikColors.lavender)
 
                     VStack(alignment: .leading, spacing: 3) {
                         Text(st.stationId)
@@ -281,19 +276,14 @@ public struct EventDetailView: View {
                     }
                 }
                 .padding(12)
-                .background(Color(white: 0.15).opacity(0.4))
-                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .strokeBorder(Color.white.opacity(0.08), lineWidth: 0.8)
-                )
+                .liquidGlass(cornerRadius: 14, showShadow: false)
             }
         }
         .padding(.top, 6)
     }
 
     private func epicenterMapSection(_ coord: CLLocationCoordinate2D) -> some View {
-        EpicenterMapView(coordinate: coord, title: event.place, isPreliminary: event.isPreliminary)
+        EpicenterMapView(coordinate: coord, title: event.place, magnitude: event.magnitude, isPreliminary: event.isPreliminary)
             .frame(height: 220)
             .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
             .overlay {
@@ -321,12 +311,7 @@ public struct EventDetailView: View {
                 .foregroundColor(.primary)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 14)
-                .background(Color(white: 0.16).opacity(0.75))
-                .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 22, style: .continuous)
-                        .strokeBorder(Color.white.opacity(0.16), lineWidth: 0.9)
-                )
+                .liquidGlass(cornerRadius: 22)
             }
             .buttonStyle(.plain)
 
@@ -346,12 +331,7 @@ public struct EventDetailView: View {
                     .foregroundColor(.primary)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 14)
-                    .background(Color(white: 0.16).opacity(0.75))
-                    .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 22, style: .continuous)
-                            .strokeBorder(Color.white.opacity(0.16), lineWidth: 0.9)
-                    )
+                    .liquidGlass(cornerRadius: 22)
                 }
                 .buttonStyle(.plain)
             }
@@ -370,12 +350,7 @@ public struct EventDetailView: View {
                 .foregroundColor(.primary)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 14)
-                .background(Color(red: 0.28, green: 0.20, blue: 0.17).opacity(0.85))
-                .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 22, style: .continuous)
-                        .strokeBorder(Color.orange.opacity(0.35), lineWidth: 0.9)
-                )
+                .liquidGlass(cornerRadius: 22)
             }
             .buttonStyle(.plain)
 
@@ -393,8 +368,9 @@ public struct EventDetailView: View {
                 .foregroundColor(.white)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 14)
-                .background(Color(red: 0.85, green: 0.20, blue: 0.20))
+                .background(SeismikColors.crimson)
                 .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+                .shadow(color: SeismikColors.crimson.opacity(0.35), radius: 8, y: 3)
             }
             .buttonStyle(.plain)
         }
@@ -544,6 +520,7 @@ private struct SafetyStepCard: View {
 private struct EpicenterMapView: UIViewRepresentable {
     let coordinate: CLLocationCoordinate2D
     let title: String?
+    let magnitude: Double?
     let isPreliminary: Bool
 
     func makeUIView(context: Context) -> MKMapView {
@@ -566,12 +543,17 @@ private struct EpicenterMapView: UIViewRepresentable {
     func updateUIView(_ uiView: MKMapView, context: Context) {}
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(isPreliminary: isPreliminary)
+        Coordinator(magnitude: magnitude, isPreliminary: isPreliminary)
     }
 
     class Coordinator: NSObject, MKMapViewDelegate {
+        let magnitude: Double?
         let isPreliminary: Bool
-        init(isPreliminary: Bool) { self.isPreliminary = isPreliminary }
+
+        init(magnitude: Double?, isPreliminary: Bool) {
+            self.magnitude = magnitude
+            self.isPreliminary = isPreliminary
+        }
 
         func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
             guard !annotation.isKind(of: MKUserLocation.self) else { return nil }
@@ -584,10 +566,10 @@ private struct EpicenterMapView: UIViewRepresentable {
                 view?.annotation = annotation
             }
             if isPreliminary {
-                view?.markerTintColor = UIColor(red: 0.58, green: 0.35, blue: 0.95, alpha: 1.0)
+                view?.markerTintColor = SeismikColors.severityUIColor(for: nil, isPreliminary: true)
                 view?.glyphImage = UIImage(systemName: "waveform.path")
             } else {
-                view?.markerTintColor = UIColor(red: 0.88, green: 0.22, blue: 0.22, alpha: 1.0)
+                view?.markerTintColor = SeismikColors.severityUIColor(for: magnitude, isPreliminary: false)
                 view?.glyphImage = UIImage(systemName: "exclamationmark")
             }
             return view

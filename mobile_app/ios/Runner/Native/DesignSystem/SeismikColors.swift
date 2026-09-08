@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 /// Paleta de color semántica alineada con Apple Human Interface Guidelines (HIG).
 public enum SeismikColors {
@@ -17,7 +18,7 @@ public enum SeismikColors {
 
     /// Color representativo de acuerdo con la magnitud del sismo.
     public static func severityColor(for magnitude: Double?, isPreliminary: Bool = false) -> Color {
-        if isPreliminary { return glacier }
+        if isPreliminary { return lavender }
         guard let mag = magnitude else { return Color.secondary }
         switch mag {
         case ..<3.5:
@@ -28,6 +29,24 @@ public enum SeismikColors {
             return amber
         default:
             return crimson
+        }
+    }
+
+    /// Color representativo para UIKit de acuerdo con la magnitud del sismo.
+    public static func severityUIColor(for magnitude: Double?, isPreliminary: Bool = false) -> UIColor {
+        if isPreliminary {
+            return UIColor(red: 0.749, green: 0.353, blue: 0.949, alpha: 1.0)
+        }
+        guard let mag = magnitude else { return UIColor.secondaryLabel }
+        switch mag {
+        case ..<3.5:
+            return UIColor(red: 0.188, green: 0.820, blue: 0.345, alpha: 1.0)
+        case 3.5..<4.8:
+            return UIColor(red: 0.196, green: 0.678, blue: 0.902, alpha: 1.0)
+        case 4.8..<6.0:
+            return UIColor(red: 1.0, green: 0.624, blue: 0.039, alpha: 1.0)
+        default:
+            return UIColor(red: 1.0, green: 0.271, blue: 0.227, alpha: 1.0)
         }
     }
 

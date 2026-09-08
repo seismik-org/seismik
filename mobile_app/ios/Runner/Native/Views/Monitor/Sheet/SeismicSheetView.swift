@@ -67,7 +67,7 @@ public struct SeismicSheetView: View {
                         showFeltReport = true
                     } label: {
                         HStack(spacing: 6) {
-                            Image(systemName: "hand.tap.fill")
+                            Image(systemName: "hand.point.up.left.fill")
                                 .font(.system(size: 13, weight: .semibold))
                             Text("¿Lo sentiste?")
                                 .font(.system(size: 13, weight: .semibold, design: .rounded))

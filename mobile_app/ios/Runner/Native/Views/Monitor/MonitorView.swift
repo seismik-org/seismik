@@ -50,7 +50,7 @@ public struct MonitorView: View {
                                     state.cycleMapType()
                                 }
                             } label: {
-                                Image(systemName: state.appMapType == "satellite" ? "globe.americas.fill" : (state.appMapType == "hybrid" ? "square.3.layers.3d.down.right" : "map.fill"))
+                                Image(systemName: state.appMapType == "satellite" ? "globe.americas" : (state.appMapType == "hybrid" ? "square.3.layers.3d" : "map.fill"))
                                     .font(.system(size: 16, weight: .semibold))
                                     .foregroundColor(SeismikColors.systemBlue)
                                     .frame(width: 44, height: 44)
@@ -387,18 +387,13 @@ private final class MagnitudeAnnotationView: MKAnnotationView {
     func configure(with event: SeismicEvent) {
         if event.isPreliminary && event.magnitude == nil {
             magnitudeLabel.text = "P"
-            backgroundColor = UIColor.systemPurple
+            backgroundColor = SeismikColors.severityUIColor(for: nil, isPreliminary: true)
             accessibilityLabel = "Sismo preliminar, magnitud pendiente"
             return
         }
         let magnitude = event.magnitude
         magnitudeLabel.text = magnitude.map { String(format: "%.1f", $0) } ?? "—"
-        switch magnitude ?? 0 {
-        case ..<3.0: backgroundColor = UIColor.systemGreen
-        case ..<5.0: backgroundColor = UIColor(red: 0.78, green: 0.47, blue: 0.03, alpha: 1)
-        case ..<6.5: backgroundColor = UIColor.systemOrange
-        default: backgroundColor = UIColor.systemRed
-        }
+        backgroundColor = SeismikColors.severityUIColor(for: magnitude, isPreliminary: event.isPreliminary)
         accessibilityLabel = magnitude.map { "Sismo de magnitud \(String(format: "%.1f", $0))" }
             ?? "Sismo con magnitud pendiente"
         accessibilityHint = "Abre el detalle del sismo"
