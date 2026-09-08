@@ -16,46 +16,49 @@ public struct SeismicSheetView: View {
         // el fondo, el recorte y la sombra que se aplican más abajo.
         VStack(spacing: 0) {
             VStack(spacing: 0) {
-                // Manija táctil de arrastre
-                Capsule()
-                    .fill(Color.secondary.opacity(0.38))
-                    .frame(width: 38, height: 5)
-                    .frame(maxWidth: .infinity, minHeight: 24)
-                    .contentShape(Rectangle())
-                    .gesture(drawerDragGesture)
-                    .onTapGesture(perform: onDrawerHandleTapped)
-                    .accessibilityLabel("Cambiar altura del panel")
-                    .accessibilityHint("Toca para alternar o desliza hacia arriba y abajo")
+                // Cabecera táctil y arrastrable de la hoja (Manija, estado y título)
+                VStack(spacing: 0) {
+                    // Manija táctil de arrastre
+                    Capsule()
+                        .fill(Color.secondary.opacity(0.38))
+                        .frame(width: 38, height: 5)
+                        .frame(maxWidth: .infinity, minHeight: 24)
 
-                // Estado de sincronización / red exactamente como en Android
-                HStack(spacing: 6) {
-                    Circle()
-                        .fill(state.isOnline ? SeismikColors.emerald : SeismikColors.amber)
-                        .frame(width: 8, height: 8)
-                    Text(state.isOnline ? "En línea" : "Reconectando con Seismik")
-                        .font(.system(size: 12.5, weight: .medium, design: .rounded))
-                        .foregroundColor(state.isOnline ? .secondary : SeismikColors.amber)
-                    Spacer()
-                    Text("\(state.events.count) eventos")
-                        .font(.system(size: 12, weight: .medium, design: .rounded))
-                        .foregroundColor(.secondary)
+                    // Estado de sincronización / red exactamente como en Android
+                    HStack(spacing: 6) {
+                        Circle()
+                            .fill(state.isOnline ? SeismikColors.emerald : SeismikColors.amber)
+                            .frame(width: 8, height: 8)
+                        Text(state.isOnline ? "En línea" : "Reconectando con Seismik")
+                            .font(.system(size: 12.5, weight: .medium, design: .rounded))
+                            .foregroundColor(state.isOnline ? .secondary : SeismikColors.amber)
+                        Spacer()
+                        Text("\(state.events.count) eventos")
+                            .font(.system(size: 12, weight: .medium, design: .rounded))
+                            .foregroundColor(.secondary)
+                    }
+                    .padding(.horizontal, 18)
+                    .padding(.bottom, 2)
+
+                    // Título y subtítulo con paridad total con Android
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Historial de sismos")
+                            .font(.system(size: 22, weight: .bold, design: .rounded))
+                            .foregroundColor(.primary)
+
+                        Text("\(state.historyDays) días · M ≥ \(String(format: "%.1f", state.minMagnitude)) · SGC + USGS")
+                            .font(.system(size: 13, weight: .regular, design: .rounded))
+                            .foregroundColor(.secondary)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 18)
+                    .padding(.bottom, 10)
                 }
-                .padding(.horizontal, 18)
-                .padding(.bottom, 2)
-
-                // Título y subtítulo con paridad total con Android
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Historial de sismos")
-                        .font(.system(size: 22, weight: .bold, design: .rounded))
-                        .foregroundColor(.primary)
-
-                    Text("\(state.historyDays) días · M ≥ \(String(format: "%.1f", state.minMagnitude)) · SGC + USGS")
-                        .font(.system(size: 13, weight: .regular, design: .rounded))
-                        .foregroundColor(.secondary)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 18)
-                .padding(.bottom, 10)
+                .contentShape(Rectangle())
+                .gesture(drawerDragGesture)
+                .onTapGesture(perform: onDrawerHandleTapped)
+                .accessibilityLabel("Cambiar altura del panel")
+                .accessibilityHint("Toca para alternar o desliza hacia arriba y abajo")
 
                 // Barra de Acciones Rápidas Comunitarias
                 HStack(spacing: 12) {
@@ -64,14 +67,16 @@ public struct SeismicSheetView: View {
                         showFeltReport = true
                     } label: {
                         HStack(spacing: 6) {
-                            Image(systemName: "hand.tap")
+                            Image(systemName: "hand.tap.fill")
                                 .font(.system(size: 13, weight: .semibold))
                             Text("¿Lo sentiste?")
                                 .font(.system(size: 13, weight: .semibold, design: .rounded))
                         }
+                        .foregroundColor(.primary)
                         .frame(maxWidth: .infinity, minHeight: 44)
+                        .liquidGlass(cornerRadius: 14, showShadow: false)
                     }
-                    .buttonStyle(.bordered)
+                    .buttonStyle(.plain)
 
                     Button {
                         HapticManager.selection()
@@ -83,9 +88,11 @@ public struct SeismicSheetView: View {
                             Text("Reportar daños")
                                 .font(.system(size: 13, weight: .semibold, design: .rounded))
                         }
+                        .foregroundColor(.primary)
                         .frame(maxWidth: .infinity, minHeight: 44)
+                        .liquidGlass(cornerRadius: 14, showShadow: false)
                     }
-                    .buttonStyle(.bordered)
+                    .buttonStyle(.plain)
                 }
                 .padding(.horizontal, 16)
                 .padding(.bottom, 12)
