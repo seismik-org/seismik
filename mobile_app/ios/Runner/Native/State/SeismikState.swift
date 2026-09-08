@@ -32,7 +32,7 @@ public final class SeismikState: ObservableObject {
     @AppStorage("seismik.include_preliminary") public var includePreliminaryEvents: Bool = true
     @AppStorage("seismik.receive_early_alerts") public var receiveEarlyAlerts: Bool = true
     @AppStorage("seismik.receive_official_updates") public var receiveOfficialUpdates: Bool = true
-    @AppStorage("seismik.map_provider") public var mapProvider: String = "apple"
+    @AppStorage("seismik.map_provider") public var mapProvider: String = "system"
     @AppStorage("seismik.app_map_type") public var appMapType: String = "standard"
     @AppStorage("seismik.crowdsourcing_enabled") public var crowdsourcingEnabled: Bool = true
     @AppStorage("seismik.precise_location") public var preciseLocationByDefault: Bool = false

@@ -43,24 +43,42 @@ public struct MonitorView: View {
                     Spacer()
                     HStack {
                         Spacer()
-                        Button {
-                            HapticManager.light()
-                            if let userCoord = locationManager.userCoordinate {
-                                targetRegion = MKCoordinateRegion(
-                                    center: userCoord,
-                                    span: MKCoordinateSpan(latitudeDelta: 3.5, longitudeDelta: 3.5)
-                                )
-                            } else {
-                                locationManager.requestPermission()
+                        VStack(spacing: 12) {
+                            Button {
+                                HapticManager.light()
+                                withAnimation(.easeInOut(duration: 0.2)) {
+                                    state.cycleMapType()
+                                }
+                            } label: {
+                                Image(systemName: state.appMapType == "satellite" ? "globe.americas.fill" : (state.appMapType == "hybrid" ? "square.3.layers.3d.down.right" : "map.fill"))
+                                    .font(.system(size: 16, weight: .semibold))
+                                    .foregroundColor(SeismikColors.systemBlue)
+                                    .frame(width: 44, height: 44)
+                                    .liquidGlass(cornerRadius: 22)
                             }
-                        } label: {
-                            Image(systemName: "location.fill")
-                                .font(.system(size: 16, weight: .semibold))
-                                .frame(width: 44, height: 44)
-                                .liquidGlass(cornerRadius: 22)
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("Cambiar estilo del mapa")
+
+                            Button {
+                                HapticManager.light()
+                                if let userCoord = locationManager.userCoordinate {
+                                    targetRegion = MKCoordinateRegion(
+                                        center: userCoord,
+                                        span: MKCoordinateSpan(latitudeDelta: 3.5, longitudeDelta: 3.5)
+                                    )
+                                } else {
+                                    locationManager.requestPermission()
+                                }
+                            } label: {
+                                Image(systemName: "location.fill")
+                                    .font(.system(size: 16, weight: .semibold))
+                                    .foregroundColor(SeismikColors.systemBlue)
+                                    .frame(width: 44, height: 44)
+                                    .liquidGlass(cornerRadius: 22)
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("Centrar mapa en mi ubicación")
                         }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel("Centrar mapa en mi ubicación")
                         .padding(.trailing, 18)
                         .padding(.bottom, DrawerPosition.peek.height(in: geometry.size.height) + 16)
                     }
@@ -122,13 +140,15 @@ public struct MonitorView: View {
         expandedHeight: CGFloat,
         screenHeight: CGFloat
     ) {
-        let projectedOffset = expandedHeight
-            - drawerPosition.height(in: screenHeight)
-            + projectedTranslation
-        let next = DrawerPosition.allCases.min {
-            abs(expandedHeight - $0.height(in: screenHeight) - projectedOffset)
-                < abs(expandedHeight - $1.height(in: screenHeight) - projectedOffset)
-        } ?? .medium
+        let currentVisualHeight = drawerPosition.height(in: screenHeight) - projectedTranslation
+        let next: DrawerPosition
+        if currentVisualHeight > screenHeight * 0.65 {
+            next = .expanded
+        } else if currentVisualHeight > screenHeight * 0.28 {
+            next = .medium
+        } else {
+            next = .peek
+        }
         withAnimation(drawerAnimation) {
             drawerTranslation = 0
             drawerPosition = next
@@ -159,9 +179,9 @@ private enum DrawerPosition: CaseIterable {
 
     func height(in screenHeight: CGFloat) -> CGFloat {
         switch self {
-        case .peek: return 138
-        case .medium: return max(310, screenHeight * 0.45)
-        case .expanded: return max(420, screenHeight * 0.85)
+        case .peek: return 165
+        case .medium: return max(330, screenHeight * 0.46)
+        case .expanded: return max(440, screenHeight * 0.86)
         }
     }
 }

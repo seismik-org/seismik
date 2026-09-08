@@ -5,7 +5,7 @@ import MapKit
 public struct EventDetailView: View {
     public let event: SeismicEvent
     @Environment(\.dismiss) private var dismiss
-    @AppStorage("seismik.map_provider") private var mapProvider = "apple"
+    @AppStorage("seismik.map_provider") private var mapProvider = "system"
 
     @State private var showFeltReport = false
     @State private var showDamageReport = false

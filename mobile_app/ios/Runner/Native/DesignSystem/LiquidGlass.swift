@@ -32,12 +32,15 @@ public struct LiquidGlassModifier: ViewModifier {
         } else {
             content
                 .background(.ultraThinMaterial, in: shape)
-                .overlay {
+                .background {
                     if let tint {
-                        shape.fill(tint.opacity(0.10))
+                        shape.fill(tint.opacity(0.12))
                     }
                 }
                 .clipShape(shape)
+                .overlay {
+                    shape.strokeBorder(Color.white.opacity(0.18), lineWidth: 0.8)
+                }
                 .shadow(color: showShadow ? .black.opacity(0.10) : .clear, radius: 10, y: 4)
         }
     }
