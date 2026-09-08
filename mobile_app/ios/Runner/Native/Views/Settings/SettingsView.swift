@@ -309,7 +309,7 @@ public struct SettingsView: View {
 
                     Button(action: openSystemSettings) {
                         HStack(spacing: 12) {
-                            Image(systemName: "shield.lefthalf.filled")
+                            Image(systemName: "shield.lefthalf.fill")
                                 .foregroundColor(SeismikColors.systemBlue)
                             VStack(alignment: .leading, spacing: 2) {
                                 Text("Permisos del sistema")
@@ -438,7 +438,7 @@ public struct SettingsView: View {
 
     private var versionDescription: String {
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0.0"
-        let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "35"
+        let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "36"
         return "\(version) (\(build))"
     }
 
