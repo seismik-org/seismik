@@ -306,6 +306,10 @@ async def list_keys(
     today = datetime.now(timezone.utc).strftime("%Y%m%d")
     summaries: list[KeySummary] = []
     for digest, record in await _records_for_uid(request, uid):
+        # Keep revoked credentials for authorization/audit evidence, but do not
+        # expose them in the person's current portal inventory.
+        if record.get("status", "active") != "active":
+            continue
         usage = int(
             await request.app.state.redis.get(
                 f"seismik:developer-usage:day:{digest}:{today}"
@@ -316,7 +320,7 @@ async def list_keys(
     summaries.sort(key=lambda item: item.created_at, reverse=True)
     return KeyListResponse(
         keys=summaries,
-        active_count=sum(item.status == "active" for item in summaries),
+        active_count=len(summaries),
         active_limit=request.app.state.settings.developer_max_active_keys,
     )
 
