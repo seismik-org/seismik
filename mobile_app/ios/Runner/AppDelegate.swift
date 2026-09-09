@@ -51,8 +51,13 @@ import SwiftUI
       }
     }
 
-    // La ventana la crea SceneDelegate: en un ciclo de vida basado en escenas,
-    // una segunda ventana aquí queda huérfana y monta un segundo árbol SwiftUI.
+    // Doble garantía: asegura que la ventana principal muestre directamente
+    // la app nativa en SwiftUI (SeismikNativeAppRoot) y jamás el FlutterViewController.
+    let appWindow = self.window ?? UIWindow(frame: UIScreen.main.bounds)
+    appWindow.rootViewController = UIHostingController(rootView: SeismikNativeAppRoot())
+    self.window = appWindow
+    appWindow.makeKeyAndVisible()
+
     return launched
   }
 

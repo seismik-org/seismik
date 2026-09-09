@@ -31,12 +31,29 @@
     <array><string>com.seismik.app.sensor-refresh</string></array>
     <key>FirebaseAppDelegateProxyEnabled</key><true/>
     <key>SeismikGoogleMapsAPIKey</key><string>$(SEISMIK_GOOGLE_MAPS_API_KEY)</string>
-    <!-- iOS sólo permite consultar y abrir esquemas declarados aquí. Sin esta
-         lista, «Abrir epicentro» caería siempre al respaldo web. -->
     <key>LSApplicationQueriesSchemes</key>
     <array>
         <string>comgooglemaps</string>
         <string>maps</string>
     </array>
+    <key>UIApplicationSceneManifest</key>
+    <dict>
+        <key>UIApplicationSupportsMultipleScenes</key>
+        <false/>
+        <key>UISceneConfigurations</key>
+        <dict>
+            <key>UIWindowSceneSessionRoleApplication</key>
+            <array>
+                <dict>
+                    <key>UISceneConfigurationName</key>
+                    <string>Default Configuration</string>
+                    <key>UISceneDelegateClassName</key>
+                    <string>$(PRODUCT_MODULE_NAME).SceneDelegate</string>
+                    <key>UISceneStoryboardFile</key>
+                    <string>Main</string>
+                </dict>
+            </array>
+        </dict>
+    </dict>
 </dict>
 </plist>
