@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		79E41A869086290EE994EB73 /* AlertSoundPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78E41A869086290EE994EB73 /* AlertSoundPlayer.swift */; };
 		79EF7E6E6EDD113150D33A33 /* InAppBrowserView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78EF7E6E6EDD113150D33A33 /* InAppBrowserView.swift */; };
 		7934CADE988ADED59AF21E47 /* SeismikNotificationPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7834CADE988ADED59AF21E47 /* SeismikNotificationPresenter.swift */; };
 		7B100001SEISMIKNATIVETESTS /* SeismikNativeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A100001SEISMIKNATIVETESTS /* SeismikNativeTests.swift */; };
@@ -71,6 +72,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		78E41A869086290EE994EB73 /* AlertSoundPlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Native/Services/AlertSoundPlayer.swift"; sourceTree = "<group>"; };
 		78EF7E6E6EDD113150D33A33 /* InAppBrowserView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Native/Views/Components/InAppBrowserView.swift"; sourceTree = "<group>"; };
 		7834CADE988ADED59AF21E47 /* SeismikNotificationPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Native/Services/SeismikNotificationPresenter.swift"; sourceTree = "<group>"; };
 		7A100001SEISMIKNATIVETESTS /* SeismikNativeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SeismikNativeTests.swift; sourceTree = "<group>"; };
@@ -175,6 +177,7 @@
 		97C146F01CF9000F007C117D /* Runner */ = {
 			isa = PBXGroup;
 			children = (
+				78E41A869086290EE994EB73 /* AlertSoundPlayer.swift */,
 				78EF7E6E6EDD113150D33A33 /* InAppBrowserView.swift */,
 				7834CADE988ADED59AF21E47 /* SeismikNotificationPresenter.swift */,
 				78EAAB209FAABDFA766D88FE /* MotionDetector.swift */,
@@ -374,6 +377,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				79E41A869086290EE994EB73 /* AlertSoundPlayer.swift in Sources */,
 				79EF7E6E6EDD113150D33A33 /* InAppBrowserView.swift in Sources */,
 				7934CADE988ADED59AF21E47 /* SeismikNotificationPresenter.swift in Sources */,
 				79EAAB209FAABDFA766D88FE /* MotionDetector.swift in Sources */,

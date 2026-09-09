@@ -210,6 +210,7 @@ public final class SeismikState: ObservableObject {
 
     /// Descarta la alerta sísmica en pantalla.
     public func dismissAlert() {
+        AlertSoundPlayer.shared.stop()
         withAnimation(.easeOut(duration: 0.25)) {
             self.activeAlert = nil
         }
@@ -223,14 +224,14 @@ public final class SeismikState: ObservableObject {
             Task { await refreshData() }
             return
         }
-        if event.isPreliminary {
+        if !events.contains(where: { $0.id == event.id }) {
+            events.insert(event, at: 0)
+        }
+        if event.isPreliminary || (event.magnitude ?? 0) >= 4.0 {
             activeAlert = event
             HapticManager.heavy()
         } else {
             selectedEvent = event
-        }
-        if !events.contains(where: { $0.id == event.id }) {
-            events.insert(event, at: 0)
         }
     }
 
@@ -250,6 +251,9 @@ public final class SeismikState: ObservableObject {
             intensityMmi: 7,
             tsunamiWarning: false
         )
+        if !events.contains(where: { $0.id == testEvent.id }) {
+            events.insert(testEvent, at: 0)
+        }
         withAnimation(.spring(response: 0.45, dampingFraction: 0.75)) {
             self.activeAlert = testEvent
         }

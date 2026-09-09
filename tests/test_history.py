@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+import asyncio
+import json
+from datetime import datetime, timezone
+
 import httpx
 import pytest
 from fakeredis.aioredis import FakeRedis
@@ -13,6 +17,60 @@ from api.dependencies import (
     get_redis,
     require_mobile_events_read,
 )
+
+
+@pytest.mark.asyncio
+async def test_combined_cache_single_flight_and_live_preliminary(monkeypatch):
+    calls = []
+
+    async def fetch(source, start, end, timeout_seconds):
+        calls.append(source.id)
+        await asyncio.sleep(0.02)
+        return []
+
+    monkeypatch.setattr(history, "_fetch_source", fetch)
+    redis = FakeRedis(decode_responses=True)
+    settings = AppSettings(official_sources_path="official_sources.json")
+
+    async def query(sources):
+        return await history.official_history(
+            sources=sources,
+            days=7,
+            minimum_magnitude=2.5,
+            limit=200,
+            settings=settings,
+            redis=redis,
+            _authorized=UNLIMITED_PRINCIPAL,
+        )
+
+    sources = "sgc_colombia,usgs_global,seismik_seedlink_preliminary"
+    pages = await asyncio.gather(*(query(sources) for _ in range(10)))
+    assert sorted(calls) == ["sgc_colombia", "usgs_global"]
+    assert sum(not page["cached"] for page in pages) == 1
+    await redis.xadd(
+        settings.candidate_stream,
+        {
+            "payload": json.dumps(
+                {
+                    "event_id": "candidate-new",
+                    "type": "earthquake_candidate",
+                    "detected_at": datetime.now(timezone.utc).isoformat(),
+                }
+            )
+        },
+    )
+    refreshed = await query(sources)
+    assert refreshed["cached"] is True
+    assert refreshed["events"][0]["event_id"] == "candidate-new"
+    official = await query("sgc_colombia,usgs_global")
+    assert official["cached"] is True
+    assert official["events"] == []
+    assert len(calls) == 2
+    keys = await redis.keys("cache:seismik:history:*")
+    for key in keys:
+        await redis.delete(key)
+    await query(sources)
+    assert len(calls) == 4
 
 
 @pytest.mark.asyncio
@@ -123,9 +181,7 @@ async def test_history_cache_is_scoped_by_limit(monkeypatch: pytest.MonkeyPatch)
     async with httpx.AsyncClient(
         transport=httpx.ASGITransport(app=app), base_url="http://test"
     ) as client:
-        one = await client.get(
-            "/v1/events/history", params={"sources": "sgc_colombia", "limit": 1}
-        )
+        one = await client.get("/v1/events/history", params={"sources": "sgc_colombia", "limit": 1})
         three = await client.get(
             "/v1/events/history", params={"sources": "sgc_colombia", "limit": 3}
         )

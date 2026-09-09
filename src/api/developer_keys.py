@@ -203,6 +203,36 @@ async def _records_for_uid(request: Request, uid: str) -> list[tuple[str, dict[s
     return records
 
 
+async def _enforce_creation_rate(request: Request, uid: str) -> None:
+    """Acota cuántas claves puede emitir una cuenta por hora.
+
+    El máximo de claves activas no basta: revocar libera un hueco, así que un
+    bucle de crear y revocar produce claves sin fin, infla la bitácora de
+    auditoría y deja rastros de secretos por todas partes. Se cuentan los
+    intentos, no los aciertos, porque el bucle es el abuso.
+
+    La ventana es un contador por hora en Redis, no un algoritmo deslizante: en
+    el peor caso alguien aprovecha el cambio de hora para el doble del límite,
+    y para lo que se busca aquí eso es irrelevante.
+    """
+
+    settings = request.app.state.settings
+    limit = settings.developer_key_creations_per_hour
+    window = datetime.now(timezone.utc).strftime("%Y%m%d%H")
+    counter = f"seismik:developer-key-creations:{uid}:{window}"
+
+    pipe = request.app.state.redis.pipeline(transaction=True)
+    pipe.incr(counter)
+    pipe.expire(counter, 7_200)
+    attempts, _ = await pipe.execute()
+    if int(attempts) > limit:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many API keys created recently; try again later",
+            headers={"Retry-After": "3600"},
+        )
+
+
 async def _create_key_record(
     request: Request,
     uid: str,
@@ -211,6 +241,8 @@ async def _create_key_record(
     settings = request.app.state.settings
     if payload.accepted_terms_version != settings.developer_terms_version:
         raise HTTPException(status_code=409, detail="The current API terms must be accepted")
+
+    await _enforce_creation_rate(request, uid)
 
     records = await _records_for_uid(request, uid)
     active_count = sum(record.get("status", "active") == "active" for _, record in records)

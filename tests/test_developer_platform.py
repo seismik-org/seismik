@@ -186,3 +186,74 @@ async def test_rotation_revokes_previous_secret(monkeypatch: pytest.MonkeyPatch)
     assert rotated.status_code == 200
     assert old_access.status_code == 401
     assert new_access.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_key_creation_is_rate_limited_per_account(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """El máximo de claves activas no frena el bucle de crear y revocar.
+
+    Revocar libera un hueco al instante, así que sin este límite una cuenta
+    puede emitir claves sin fin e inflar la bitácora de auditoría.
+    """
+
+    app = developer_app(
+        monkeypatch, developer_max_active_keys=1, developer_key_creations_per_hour=3
+    )
+    headers = {"Authorization": "Bearer valid-token"}
+    payload = {
+        "name": "Investigación",
+        "scopes": ["events:read"],
+        "accepted_terms_version": "2026-08-30",
+    }
+
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        statuses: list[int] = []
+        for _ in range(4):
+            created = await client.post("/v1/developer/keys", json=payload, headers=headers)
+            statuses.append(created.status_code)
+            if created.status_code == 201:
+                key_id = created.json()["key_id"]
+                await client.delete(f"/v1/developer/keys/{key_id}", headers=headers)
+
+        assert statuses[:3] == [201, 201, 201]
+        assert statuses[3] == 429
+        assert (
+            await client.post("/v1/developer/keys", json=payload, headers=headers)
+        ).headers["Retry-After"] == "3600"
+
+
+@pytest.mark.asyncio
+async def test_rotating_a_key_also_counts_against_the_creation_limit(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Rotar emite una clave nueva: si no contara, el bucle seguiría abierto."""
+
+    app = developer_app(monkeypatch, developer_key_creations_per_hour=2)
+    headers = {"Authorization": "Bearer valid-token"}
+    payload = {
+        "name": "Investigación",
+        "scopes": ["events:read"],
+        "accepted_terms_version": "2026-08-30",
+    }
+
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        created = await client.post("/v1/developer/keys", json=payload, headers=headers)
+        assert created.status_code == 201
+        key_id = created.json()["key_id"]
+
+        first_rotation = await client.post(
+            f"/v1/developer/keys/{key_id}/rotate", json=payload, headers=headers
+        )
+        assert first_rotation.status_code == 200
+
+        replacement = first_rotation.json()["key_id"]
+        blocked = await client.post(
+            f"/v1/developer/keys/{replacement}/rotate", json=payload, headers=headers
+        )
+        assert blocked.status_code == 429

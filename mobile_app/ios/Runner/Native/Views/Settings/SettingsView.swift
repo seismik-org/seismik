@@ -132,19 +132,18 @@ public struct SettingsView: View {
                 // Mapas y sincronización
                 Section(header: Text("Mapas y sincronización")) {
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("Abrir epicentros con")
+                        Text("Proveedor de mapa en la app")
                             .font(.body)
-                        Text("Se usa al tocar «Abrir epicentro» en un sismo. Si la app elegida no está instalada, se abre la versión web.")
+                        Text("Servicio cartográfico utilizado en la pantalla principal de monitoreo y para abrir epicentros.")
                             .font(.caption)
                             .foregroundColor(.secondary)
 
                         HStack {
-                            Text("Aplicación:")
+                            Text("Proveedor:")
                                 .font(.subheadline)
                                 .foregroundColor(.secondary)
                             Spacer()
-                            Picker("Abrir epicentros con", selection: $state.mapProvider) {
-                                Text("Según el sistema").tag("system")
+                            Picker("Proveedor de mapa", selection: $state.mapProvider) {
                                 Text("Apple Maps").tag("apple")
                                 Text("Google Maps").tag("google")
                                 Text("OpenStreetMap").tag("osm")
@@ -438,7 +437,7 @@ public struct SettingsView: View {
 
     private var versionDescription: String {
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0.0"
-        let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "37"
+        let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "38"
         return "\(version) (\(build))"
     }
 

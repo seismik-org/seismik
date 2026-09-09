@@ -22,10 +22,18 @@ import SwiftUI
       FirebaseApp.configure()
     }
 
-    if let mapsKey = Bundle.main.object(forInfoDictionaryKey: "SeismikGoogleMapsAPIKey") as? String,
-       !mapsKey.isEmpty,
-       !mapsKey.hasPrefix("$(") {
+    // La clave de Maps llega desde `SEISMIK_GOOGLE_MAPS_API_KEY`: el workflow de
+    // TestFlight la inyecta desde un secreto y en local sale de Seismik.xcconfig.
+    // No se escribe aquí ningún valor por defecto: este archivo va a un
+    // repositorio público, y una clave escrita en el código la puede usar
+    // cualquiera y facturártela a ti.
+    let configuredKey = Bundle.main.object(forInfoDictionaryKey: "SeismikGoogleMapsAPIKey") as? String
+    if let mapsKey = configuredKey, !mapsKey.isEmpty, !mapsKey.hasPrefix("$(") {
       GMSServices.provideAPIKey(mapsKey)
+    } else {
+      // El mapa principal es MapKit, así que la app arranca igual; sólo queda
+      // sin servicio el SDK de Google Maps.
+      NSLog("[Seismik] Falta SEISMIK_GOOGLE_MAPS_API_KEY; el SDK de Google Maps queda inactivo.")
     }
     GeneratedPluginRegistrant.register(with: self)
     let launched = super.application(application, didFinishLaunchingWithOptions: launchOptions)
