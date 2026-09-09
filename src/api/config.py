@@ -29,6 +29,9 @@ class AppSettings(BaseSettings):
     developer_max_active_keys: int = Field(default=3, ge=1, le=20)
     developer_free_requests_per_minute: int = Field(default=60, ge=1, le=10_000)
     developer_free_requests_per_day: int = Field(default=10_000, ge=10, le=10_000_000)
+    # Acota el bucle de crear y revocar: el máximo de claves activas no lo
+    # frena, porque revocar libera un hueco de inmediato.
+    developer_key_creations_per_hour: int = Field(default=10, ge=1, le=1_000)
     developer_audit_stream: str = "stream:seismik:developer-audit"
     integration_stream: str = "stream:seismik:integrations"
     integration_dead_letter_stream: str = "stream:seismik:integrations-dead-letter"

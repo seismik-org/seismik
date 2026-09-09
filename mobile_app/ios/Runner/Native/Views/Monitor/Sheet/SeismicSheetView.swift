@@ -8,7 +8,7 @@ public struct SeismicSheetView: View {
     @Binding var showFeltReport: Bool
     @Binding var showDamageReport: Bool
     let onDrawerDragChanged: (CGFloat) -> Void
-    let onDrawerDragEnded: (CGFloat) -> Void
+    let onDrawerDragEnded: (CGFloat, CGFloat) -> Void
     let onDrawerHandleTapped: () -> Void
 
     public var body: some View {
@@ -52,11 +52,44 @@ public struct SeismicSheetView: View {
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, 18)
-                    .padding(.bottom, 10)
+                    .padding(.bottom, 6)
+
+                    // Vista previa del sismo más reciente para visibilidad inmediata sin abrir la hoja
+                    if let latest = state.events.first {
+                        HStack(spacing: 8) {
+                            Text("ÚLTIMO")
+                                .font(.system(size: 9, weight: .bold, design: .rounded))
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(SeismikColors.severityColor(for: latest.magnitude, isPreliminary: latest.isPreliminary).opacity(0.2), in: Capsule())
+                                .foregroundColor(SeismikColors.severityColor(for: latest.magnitude, isPreliminary: latest.isPreliminary))
+
+                            Text(latest.magnitude.map { String(format: "M %.1f", $0) } ?? "Preliminar")
+                                .font(.system(size: 12.5, weight: .bold, design: .rounded))
+                                .foregroundColor(.primary)
+
+                            Text(latest.place ?? "Epicentro")
+                                .font(.system(size: 12))
+                                .foregroundColor(.secondary)
+                                .lineLimit(1)
+
+                            Spacer()
+
+                            Text(latest.relativeTimeFormatted)
+                                .font(.system(size: 11, weight: .medium))
+                                .foregroundColor(.secondary)
+                        }
+                        .padding(.horizontal, 18)
+                        .padding(.top, 2)
+                        .padding(.bottom, 6)
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            state.selectEvent(latest)
+                        }
+                    }
                 }
                 .contentShape(Rectangle())
                 .gesture(drawerDragGesture)
-                .onTapGesture(perform: onDrawerHandleTapped)
                 .accessibilityLabel("Cambiar altura del panel")
                 .accessibilityHint("Toca para alternar o desliza hacia arriba y abajo")
 
@@ -183,12 +216,16 @@ public struct SeismicSheetView: View {
     }
 
     private var drawerDragGesture: some Gesture {
-        DragGesture(minimumDistance: 4)
+        DragGesture(minimumDistance: 3)
             .onChanged { value in
                 onDrawerDragChanged(value.translation.height)
             }
             .onEnded { value in
-                onDrawerDragEnded(value.predictedEndTranslation.height)
+                if abs(value.translation.height) < 6 {
+                    onDrawerHandleTapped()
+                } else {
+                    onDrawerDragEnded(value.translation.height, value.predictedEndTranslation.height)
+                }
             }
     }
 }

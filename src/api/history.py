@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import json
 from datetime import datetime, timedelta, timezone
 from typing import Any, cast
@@ -13,6 +14,9 @@ from api.dependencies import ApiPrincipal, get_app_settings, get_redis, require_
 from eew.official import OfficialApiClient, OfficialSource, load_sources
 
 router = APIRouter(prefix="/v1/events", tags=["official-history"])
+
+# Bounded lock stripes prevent simultaneous cache fills in this API worker.
+_history_locks = [asyncio.Lock() for _ in range(64)]
 
 _PRELIMINARY_SOURCE_ID = "seismik_seedlink_preliminary"
 _PRELIMINARY_SOURCE = {
@@ -116,8 +120,7 @@ async def _recent_preliminary_events(
 ) -> list[dict[str, Any]]:
     raw = cast(
         list[tuple[str, dict[str, str]]],
-        await redis.xrevrange(settings.candidate_stream, count=max(limit * 4, 200))
-        or [],
+        await redis.xrevrange(settings.candidate_stream, count=max(limit * 4, 200)) or [],
     )
     events: list[dict[str, Any]] = []
     for _message_id, fields in raw:
@@ -129,9 +132,7 @@ async def _recent_preliminary_events(
             event = _preliminary_event(payload)
             if event is None:
                 continue
-            detected_at = datetime.fromisoformat(
-                str(event["detected_at"]).replace("Z", "+00:00")
-            )
+            detected_at = datetime.fromisoformat(str(event["detected_at"]).replace("Z", "+00:00"))
         except (TypeError, ValueError, json.JSONDecodeError):
             continue
         if detected_at >= start:
@@ -149,9 +150,7 @@ async def official_history(
     redis: Redis = Depends(get_redis),
     _authorized: ApiPrincipal = Depends(require_mobile_events_read),
 ) -> dict[str, Any]:
-    requested = tuple(
-        sorted({item.strip().lower() for item in sources.split(",") if item.strip()})
-    )
+    requested = tuple(sorted({item.strip().lower() for item in sources.split(",") if item.strip()}))
     available = {
         source.id: source
         for source in load_sources(settings.official_sources_path)
@@ -160,14 +159,73 @@ async def official_history(
     include_preliminary = _PRELIMINARY_SOURCE_ID in requested
     selected = [available[source_id] for source_id in requested if source_id in available]
     if not selected and not include_preliminary:
-        selected = [available[source_id] for source_id in ("sgc_colombia", "usgs_global") if source_id in available]
+        selected = [
+            available[source_id]
+            for source_id in ("sgc_colombia", "usgs_global")
+            if source_id in available
+        ]
+
+    if include_preliminary:
+        now = datetime.now(timezone.utc)
+        official: dict[str, Any] = (
+            await official_history(
+                sources=",".join(source.id for source in selected),
+                days=days,
+                minimum_magnitude=minimum_magnitude,
+                limit=limit,
+                settings=settings,
+                redis=redis,
+                _authorized=_authorized,
+            )
+            if selected
+            else {
+                "events": [],
+                "sources": [],
+                "errors": [],
+                "generated_at": now.isoformat(),
+                "cached": False,
+            }
+        )
+        preliminary = await _recent_preliminary_events(
+            redis,
+            settings,
+            start=now - timedelta(days=days),
+            limit=limit,
+        )
+        return {
+            **official,
+            "events": sorted(
+                official["events"] + preliminary,
+                key=lambda event: event["origin_time"],
+                reverse=True,
+            )[:limit],
+            "sources": official["sources"] + [_PRELIMINARY_SOURCE],
+            "official_generated_at": official["generated_at"],
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+        }
 
     cache_key = (
         f"cache:seismik:history:{days}:{minimum_magnitude:.1f}:{limit}:"
         f"{','.join(source.id for source in selected)}"
     )
+    lock = _history_locks[int.from_bytes(hashlib.sha256(cache_key.encode()).digest()[:2]) % 64]
+    async with lock:
+        return await _official_cached(
+            redis, settings, cache_key, days, minimum_magnitude, limit, selected
+        )
+
+
+async def _official_cached(
+    redis: Redis,
+    settings: AppSettings,
+    cache_key: str,
+    days: int,
+    minimum_magnitude: float,
+    limit: int,
+    selected: list[OfficialSource],
+) -> dict[str, Any]:
     cached = await redis.get(cache_key)
-    if cached and not include_preliminary:
+    if cached:
         result = json.loads(cached)
         result["cached"] = True
         return result
@@ -192,15 +250,6 @@ async def official_history(
             for event in result
             if event["magnitude"] is None or event["magnitude"] >= minimum_magnitude
         )
-    if include_preliminary:
-        events.extend(
-            await _recent_preliminary_events(
-                redis,
-                settings,
-                start=start,
-                limit=limit,
-            )
-        )
     events.sort(key=lambda event: event["origin_time"], reverse=True)
     payload: dict[str, Any] = {
         "events": events[:limit],
@@ -212,13 +261,12 @@ async def official_history(
                 "attribution": source.attribution,
             }
             for source in selected
-        ] + ([_PRELIMINARY_SOURCE] if include_preliminary else []),
+        ],
         "errors": errors,
         "generated_at": end.isoformat(),
         "cached": False,
     }
     # Los candidatos cambian rápidamente y su ventana de seguridad es corta;
     # no se mezclan con la caché de los catálogos oficiales.
-    if not include_preliminary:
-        await redis.set(cache_key, json.dumps(payload), ex=settings.official_history_cache_seconds)
+    await redis.set(cache_key, json.dumps(payload), ex=settings.official_history_cache_seconds)
     return payload

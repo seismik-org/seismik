@@ -11,20 +11,41 @@ public final class LocationManager: NSObject, ObservableObject, CLLocationManage
     @Published public var userCoordinate: CLLocationCoordinate2D?
     @Published public var authorizationStatus: CLAuthorizationStatus = .notDetermined
 
+    /// Coordenada actual del usuario utilizando la última posición reportada o en caché.
+    public var currentCoordinate: CLLocationCoordinate2D? {
+        userCoordinate ?? manager.location?.coordinate
+    }
+
     public override init() {
         super.init()
         manager.delegate = self
         manager.desiredAccuracy = kCLLocationAccuracyKilometer
         self.authorizationStatus = manager.authorizationStatus
+        if authorizationStatus == .authorizedWhenInUse || authorizationStatus == .authorizedAlways {
+            if let cached = manager.location?.coordinate {
+                self.userCoordinate = cached
+            }
+            manager.startUpdatingLocation()
+        }
     }
 
-    /// Solicita permiso de ubicación mientras se usa la app.
+    /// Solicita permiso de ubicación mientras se usa la app o refresca si ya está concedido.
     public func requestPermission() {
-        manager.requestWhenInUseAuthorization()
+        if manager.authorizationStatus == .notDetermined {
+            manager.requestWhenInUseAuthorization()
+        } else if manager.authorizationStatus == .authorizedWhenInUse || manager.authorizationStatus == .authorizedAlways {
+            if let cached = manager.location?.coordinate {
+                self.userCoordinate = cached
+            }
+            manager.startUpdatingLocation()
+        }
     }
 
     /// Inicia el seguimiento ligero de la posición del usuario.
     public func startUpdating() {
+        if let cached = manager.location?.coordinate {
+            self.userCoordinate = cached
+        }
         manager.startUpdatingLocation()
     }
 
