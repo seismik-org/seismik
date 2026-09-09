@@ -104,8 +104,14 @@ async def test_key_lifecycle_stores_only_digest(monkeypatch: pytest.MonkeyPatch)
 
         revoked = await client.delete(f"/v1/developer/keys/{key_id}", headers=headers)
         denied_revoked = await client.get("/events", headers={"X-Seismik-API-Key": secret})
+        listed_after_revoke = await client.get("/v1/developer/keys", headers=headers)
         assert revoked.status_code == 204
         assert denied_revoked.status_code == 401
+        assert listed_after_revoke.json() == {
+            "keys": [],
+            "active_count": 0,
+            "active_limit": 3,
+        }
 
 
 @pytest.mark.asyncio
