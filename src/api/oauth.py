@@ -26,6 +26,40 @@ def _cookie_name() -> str:
     return "seismik_session"
 
 
+def _github_is_configured(settings: object) -> bool:
+    return bool(
+        getattr(settings, "oauth_github_client_id", "")
+        and getattr(settings, "oauth_github_client_secret").get_secret_value()
+    )
+
+
+@router.get("/providers")
+async def oauth_providers(request: Request) -> dict[str, dict[str, dict[str, bool]]]:
+    """Expone sólo disponibilidad; no IDs de cliente ni secretos."""
+    settings = request.app.state.settings
+    return {
+        "providers": {
+            "google": {
+                "enabled": bool(
+                    settings.oauth_google_client_id
+                    and settings.oauth_google_client_secret.get_secret_value()
+                )
+            },
+            "github": {"enabled": _github_is_configured(settings)},
+        }
+    }
+
+
+@router.get("/login")
+async def login(request: Request, provider: str = "google") -> Response:
+    """Entrada estable de auth.seismik.org para el portal de desarrolladores."""
+    if provider == "google":
+        return await google_start(request)
+    if provider == "github":
+        return await github_start(request)
+    raise HTTPException(status_code=404, detail="Proveedor OAuth no disponible")
+
+
 @router.get("/google/start")
 async def google_start(request: Request) -> Response:
     settings = request.app.state.settings
@@ -92,10 +126,113 @@ async def google_callback(request: Request, code: str | None = None, state: str 
         settings.oauth_session_ttl_seconds,
         json.dumps({"uid": user.get("sub", ""), "email": user["email"], "name": user.get("name", "")}),
     )
-    response = RedirectResponse("https://devs.seismik.org/", status_code=status.HTTP_303_SEE_OTHER)
+    response = RedirectResponse(
+        settings.developer_portal_url, status_code=status.HTTP_303_SEE_OTHER
+    )
     response.set_cookie(
         _cookie_name(), session, max_age=settings.oauth_session_ttl_seconds,
         secure=True, httponly=True, samesite="lax", path="/",
+        domain=settings.oauth_cookie_domain,
+    )
+    return response
+
+
+@router.get("/github/start")
+async def github_start(request: Request) -> Response:
+    settings = request.app.state.settings
+    if not _github_is_configured(settings):
+        raise HTTPException(status_code=503, detail="GitHub OAuth aún no está configurado")
+    state = secrets.token_urlsafe(32)
+    verifier = _pkce_verifier()
+    await request.app.state.redis.setex(
+        f"seismik:oauth:state:{state}",
+        600,
+        json.dumps({"provider": "github", "verifier": verifier}),
+    )
+    params = {
+        "client_id": settings.oauth_github_client_id,
+        "redirect_uri": settings.oauth_github_redirect_uri,
+        "response_type": "code",
+        "scope": "read:user user:email",
+        "state": state,
+        "code_challenge": _challenge(verifier),
+        "code_challenge_method": "S256",
+    }
+    return RedirectResponse("https://github.com/login/oauth/authorize?" + urlencode(params))
+
+
+@router.get("/github/callback")
+async def github_callback(
+    request: Request, code: str | None = None, state: str | None = None
+) -> Response:
+    settings = request.app.state.settings
+    if not code or not state:
+        raise HTTPException(status_code=400, detail="Respuesta OAuth incompleta")
+    raw = await request.app.state.redis.get(f"seismik:oauth:state:{state}")
+    if not raw:
+        raise HTTPException(status_code=400, detail="Estado OAuth inválido o expirado")
+    await request.app.state.redis.delete(f"seismik:oauth:state:{state}")
+    saved = json.loads(raw)
+    if saved.get("provider") != "github":
+        raise HTTPException(status_code=400, detail="Estado OAuth no coincide con GitHub")
+    async with httpx.AsyncClient(timeout=10) as client:
+        token_response = await client.post(
+            "https://github.com/login/oauth/access_token",
+            data={
+                "client_id": settings.oauth_github_client_id,
+                "client_secret": settings.oauth_github_client_secret.get_secret_value(),
+                "code": code,
+                "code_verifier": saved["verifier"],
+                "grant_type": "authorization_code",
+                "redirect_uri": settings.oauth_github_redirect_uri,
+            },
+            headers={"Accept": "application/json"},
+        )
+        if token_response.is_error or not token_response.json().get("access_token"):
+            raise HTTPException(status_code=401, detail="GitHub no pudo validar el código OAuth")
+        headers = {
+            "Authorization": f"Bearer {token_response.json()['access_token']}",
+            "Accept": "application/json",
+        }
+        profile = await client.get("https://api.github.com/user", headers=headers)
+        emails = await client.get("https://api.github.com/user/emails", headers=headers)
+    if profile.is_error or emails.is_error:
+        raise HTTPException(status_code=401, detail="No se pudo obtener el perfil GitHub")
+    email_record = next(
+        (
+            item
+            for item in emails.json()
+            if item.get("primary") and item.get("verified") and item.get("email")
+        ),
+        None,
+    )
+    if not email_record:
+        raise HTTPException(status_code=403, detail="GitHub requiere un correo primario verificado")
+    github_user = profile.json()
+    session = secrets.token_urlsafe(48)
+    await request.app.state.redis.setex(
+        f"seismik:oauth:session:{session}",
+        settings.oauth_session_ttl_seconds,
+        json.dumps(
+            {
+                "uid": f"github:{github_user.get('id', '')}",
+                "email": email_record["email"],
+                "name": github_user.get("name") or github_user.get("login", ""),
+            }
+        ),
+    )
+    response = RedirectResponse(
+        settings.developer_portal_url, status_code=status.HTTP_303_SEE_OTHER
+    )
+    response.set_cookie(
+        _cookie_name(),
+        session,
+        max_age=settings.oauth_session_ttl_seconds,
+        secure=True,
+        httponly=True,
+        samesite="lax",
+        path="/",
+        domain=settings.oauth_cookie_domain,
     )
     return response
 
@@ -114,4 +251,6 @@ async def current_session(request: Request, seismik_session: str | None = Cookie
 async def logout(request: Request, response: Response, seismik_session: str | None = Cookie(default=None)) -> None:
     if seismik_session:
         await request.app.state.redis.delete(f"seismik:oauth:session:{seismik_session}")
-    response.delete_cookie(_cookie_name(), path="/")
+    response.delete_cookie(
+        _cookie_name(), path="/", domain=request.app.state.settings.oauth_cookie_domain
+    )

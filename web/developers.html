@@ -30,6 +30,7 @@
     <div class="auth-actions">
       <span id="user-label" class="user-label" hidden></span>
       <button id="login-button" class="button compact" type="button">Entrar con Google</button>
+      <button class="button secondary compact" data-login-provider="github" type="button" hidden>GitHub</button>
       <button id="logout-button" class="button secondary compact" type="button" hidden>Salir</button>
     </div>
   </header>
@@ -70,7 +71,7 @@
 
       <div id="signed-out-panel" class="signin-panel">
         <div><h3>Una cuenta, control completo.</h3><p>Las claves se muestran una sola vez. Se almacenan como hash y puedes revocarlas o rotarlas en cualquier momento.</p></div>
-        <button id="panel-login-button" class="button" type="button">Continuar con Google</button>
+        <div class="auth-provider-buttons"><button id="panel-login-button" class="button" type="button">Continuar con Google</button><button class="button secondary" data-login-provider="github" type="button" hidden>Continuar con GitHub</button></div>
       </div>
 
       <div id="signed-in-panel" hidden>
