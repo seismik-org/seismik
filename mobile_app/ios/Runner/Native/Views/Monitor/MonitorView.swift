@@ -2,12 +2,27 @@ import SwiftUI
 import MapKit
 import GoogleMaps
 
+/// Comandos imperativos de cámara para mapas MapKit y Google Maps.
+public enum MapCameraCommand: Equatable {
+    case none
+    case centerUser(UUID)
+    case centerEarthquakes(UUID)
+
+    var id: UUID? {
+        switch self {
+        case .none: return nil
+        case .centerUser(let id): return id
+        case .centerEarthquakes(let id): return id
+        }
+    }
+}
+
 /// Vista principal de monitoreo con Apple MapKit interactivo a pantalla completa y hoja de sismos nativa.
 public struct MonitorView: View {
     @StateObject private var state = SeismikState.shared
     @StateObject private var locationManager = LocationManager.shared
 
-    @State private var targetRegion: MKCoordinateRegion?
+    @State private var cameraCommand: MapCameraCommand = .none
     @State private var showSettings = false
     @State private var showFeltReport = false
     @State private var showDamageReport = false
@@ -28,10 +43,11 @@ public struct MonitorView: View {
             )
 
             ZStack(alignment: .top) {
-                if state.mapProvider == "google" {
+                // Mapa de fondo: Google Maps si está seleccionado y disponible, o MapKit nativo
+                if state.mapProvider == "google" && GoogleMapsBridge.isAvailable {
                     NativeGoogleMapView(
                         state: state,
-                        targetRegion: $targetRegion,
+                        cameraCommand: cameraCommand,
                         coveredBottomInset: visibleHeight
                     ) { selectedEvent in
                         state.selectEvent(selectedEvent)
@@ -40,7 +56,7 @@ public struct MonitorView: View {
                 } else {
                     NativeMapView(
                         state: state,
-                        targetRegion: $targetRegion,
+                        cameraCommand: cameraCommand,
                         coveredBottomInset: visibleHeight
                     ) { selectedEvent in
                         state.selectEvent(selectedEvent)
@@ -51,6 +67,28 @@ public struct MonitorView: View {
                 FloatingHeaderView(state: state, showSettings: $showSettings)
                     .padding(.top, max(8, geometry.safeAreaInsets.top + 4))
 
+                // Hoja inferior interactiva de sismos (Drawer)
+                SeismicSheetView(
+                    state: state,
+                    locationManager: locationManager,
+                    showFeltReport: $showFeltReport,
+                    showDamageReport: $showDamageReport,
+                    onDrawerDragChanged: { drawerTranslation = $0 },
+                    onDrawerDragEnded: { dragDistance, projectedDistance in
+                        settleDrawer(
+                            dragDistance: dragDistance,
+                            projectedDistance: projectedDistance,
+                            expandedHeight: expandedHeight,
+                            screenHeight: geometry.size.height
+                        )
+                    },
+                    onDrawerHandleTapped: cycleDrawer
+                )
+                .frame(height: expandedHeight)
+                .offset(y: drawerOffset)
+                .frame(maxHeight: .infinity, alignment: .bottom)
+
+                // Botones flotantes de control de mapa (en primer plano con .zIndex(10))
                 VStack {
                     Spacer()
                     HStack {
@@ -73,7 +111,7 @@ public struct MonitorView: View {
 
                             Button {
                                 HapticManager.light()
-                                centerOnEarthquakes()
+                                cameraCommand = .centerEarthquakes(UUID())
                             } label: {
                                 Image(systemName: "dot.scope")
                                     .font(.system(size: 16, weight: .semibold))
@@ -86,7 +124,7 @@ public struct MonitorView: View {
 
                             Button {
                                 HapticManager.light()
-                                centerOnUser()
+                                cameraCommand = .centerUser(UUID())
                             } label: {
                                 Image(systemName: "location.fill")
                                     .font(.system(size: 16, weight: .semibold))
@@ -101,26 +139,9 @@ public struct MonitorView: View {
                         .padding(.bottom, DrawerPosition.peek.height(in: geometry.size.height) + 16)
                     }
                 }
-
-                SeismicSheetView(
-                    state: state,
-                    locationManager: locationManager,
-                    showFeltReport: $showFeltReport,
-                    showDamageReport: $showDamageReport,
-                    onDrawerDragChanged: { drawerTranslation = $0 },
-                    onDrawerDragEnded: { dragDistance, projectedDistance in
-                        settleDrawer(
-                            dragDistance: dragDistance,
-                            projectedDistance: projectedDistance,
-                            expandedHeight: expandedHeight,
-                            screenHeight: geometry.size.height
-                        )
-                    },
-                    onDrawerHandleTapped: cycleDrawer
-                )
-                .frame(height: expandedHeight)
-                .offset(y: drawerOffset)
-                .frame(maxHeight: .infinity, alignment: .bottom)
+                .zIndex(10)
+                .opacity(max(0.0, min(1.0, 1.0 - (visibleHeight - DrawerPosition.peek.height(in: geometry.size.height)) / 60.0)))
+                .allowsHitTesting(visibleHeight <= DrawerPosition.peek.height(in: geometry.size.height) + 15)
             }
         }
         // Hoja de Detalle de Sismo Seleccionado
@@ -150,74 +171,32 @@ public struct MonitorView: View {
         }
     }
 
-    private func centerOnUser() {
-        if let userCoord = locationManager.currentCoordinate {
-            withAnimation(.easeInOut(duration: 0.35)) {
-                targetRegion = MKCoordinateRegion(
-                    center: userCoord,
-                    span: MKCoordinateSpan(latitudeDelta: 2.2, longitudeDelta: 2.2)
-                )
-            }
-        } else {
-            locationManager.requestPermission()
-            locationManager.startUpdating()
-        }
-    }
-
-    private func centerOnEarthquakes() {
-        if let first = state.events.first, let coord = first.coordinate {
-            withAnimation(.easeInOut(duration: 0.35)) {
-                targetRegion = MKCoordinateRegion(
-                    center: coord,
-                    span: MKCoordinateSpan(latitudeDelta: 3.5, longitudeDelta: 3.5)
-                )
-            }
-        } else {
-            withAnimation(.easeInOut(duration: 0.35)) {
-                targetRegion = MKCoordinateRegion(
-                    center: CLLocationCoordinate2D(latitude: 4.65, longitude: -74.05),
-                    span: MKCoordinateSpan(latitudeDelta: 9.0, longitudeDelta: 9.0)
-                )
-            }
-        }
-    }
-
     private func settleDrawer(
         dragDistance: CGFloat,
         projectedDistance: CGFloat,
         expandedHeight: CGFloat,
         screenHeight: CGFloat
     ) {
-        let isMovingUp = dragDistance < -24 || projectedDistance < -50
-        let isMovingDown = dragDistance > 24 || projectedDistance > 50
+        let peekH = DrawerPosition.peek.height(in: screenHeight)
+        let medH = DrawerPosition.medium.height(in: screenHeight)
+        let expH = DrawerPosition.expanded.height(in: screenHeight)
 
-        let next: DrawerPosition
-        if isMovingUp {
-            switch drawerPosition {
-            case .peek: next = .medium
-            case .medium: next = .expanded
-            case .expanded: next = .expanded
-            }
-        } else if isMovingDown {
-            switch drawerPosition {
-            case .expanded: next = .medium
-            case .medium: next = .peek
-            case .peek: next = .peek
-            }
-        } else {
-            let currentVisualHeight = drawerPosition.height(in: screenHeight) - dragDistance
-            if currentVisualHeight > screenHeight * 0.62 {
-                next = .expanded
-            } else if currentVisualHeight > screenHeight * 0.30 {
-                next = .medium
-            } else {
-                next = .peek
-            }
-        }
+        let currentH = drawerPosition.height(in: screenHeight) - dragDistance
+        let velocity = projectedDistance - dragDistance
+        // Proyección continua con inercia según la velocidad del arrastre
+        let targetH = currentH - (velocity * 0.45)
+
+        let detents: [(DrawerPosition, CGFloat)] = [
+            (.peek, peekH),
+            (.medium, medH),
+            (.expanded, expH)
+        ]
+
+        let best = detents.min(by: { abs($0.1 - targetH) < abs($1.1 - targetH) })?.0 ?? .peek
 
         withAnimation(drawerAnimation) {
             drawerTranslation = 0
-            drawerPosition = next
+            drawerPosition = best
         }
         HapticManager.selection()
     }
@@ -255,7 +234,7 @@ private enum DrawerPosition: CaseIterable {
 // MARK: - Mapa Nativo de Apple Compatible (iOS 15 - iOS 18+)
 private struct NativeMapView: UIViewRepresentable {
     @ObservedObject var state: SeismikState
-    @Binding var targetRegion: MKCoordinateRegion?
+    let cameraCommand: MapCameraCommand
     let coveredBottomInset: CGFloat
     let onSelectEvent: (SeismicEvent) -> Void
 
@@ -297,10 +276,39 @@ private struct NativeMapView: UIViewRepresentable {
             bottom: max(coveredBottomInset + 10, 148),
             right: 12
         )
-        if let target = targetRegion {
-            mapView.setRegion(target, animated: true)
-            DispatchQueue.main.async {
-                self.targetRegion = nil
+
+        if let cmdId = cameraCommand.id, cmdId != context.coordinator.lastCommandId {
+            context.coordinator.lastCommandId = cmdId
+            switch cameraCommand {
+            case .none:
+                break
+            case .centerUser:
+                if mapView.userLocation.location != nil {
+                    let coord = mapView.userLocation.coordinate
+                    mapView.setRegion(
+                        MKCoordinateRegion(center: coord, span: MKCoordinateSpan(latitudeDelta: 2.0, longitudeDelta: 2.0)),
+                        animated: true
+                    )
+                } else if let coord = LocationManager.shared.currentCoordinate {
+                    mapView.setRegion(
+                        MKCoordinateRegion(center: coord, span: MKCoordinateSpan(latitudeDelta: 2.0, longitudeDelta: 2.0)),
+                        animated: true
+                    )
+                } else {
+                    LocationManager.shared.requestPermission()
+                    LocationManager.shared.startUpdating()
+                }
+            case .centerEarthquakes:
+                let seismicAnnotations = mapView.annotations.filter { $0 is SeismicPointAnnotation }
+                if !seismicAnnotations.isEmpty {
+                    mapView.showAnnotations(seismicAnnotations, animated: true)
+                } else {
+                    let defaultRegion = MKCoordinateRegion(
+                        center: CLLocationCoordinate2D(latitude: 4.65, longitude: -74.05),
+                        span: MKCoordinateSpan(latitudeDelta: 9.0, longitudeDelta: 9.0)
+                    )
+                    mapView.setRegion(defaultRegion, animated: true)
+                }
             }
         }
 
@@ -310,6 +318,7 @@ private struct NativeMapView: UIViewRepresentable {
 
     class Coordinator: NSObject, MKMapViewDelegate {
         var parent: NativeMapView
+        var lastCommandId: UUID?
         private var lastEventSnapshots: [String] = []
         private var lastStationSnapshots: [String] = []
 
@@ -437,7 +446,7 @@ private struct NativeMapView: UIViewRepresentable {
 // MARK: - Mapa Nativo de Google Maps (Compatible iOS 15 - iOS 18+)
 private struct NativeGoogleMapView: UIViewRepresentable {
     @ObservedObject var state: SeismikState
-    @Binding var targetRegion: MKCoordinateRegion?
+    let cameraCommand: MapCameraCommand
     let coveredBottomInset: CGFloat
     let onSelectEvent: (SeismicEvent) -> Void
 
@@ -451,9 +460,9 @@ private struct NativeGoogleMapView: UIViewRepresentable {
             longitude: -74.05,
             zoom: 5.5
         )
-        let mapView = GMSMapView(frame: .zero, camera: defaultCamera)
+        let mapView = GMSMapView.map(withFrame: .zero, camera: defaultCamera)
         mapView.delegate = context.coordinator
-        mapView.isMyLocationEnabled = true
+        mapView.isMyLocationEnabled = (LocationManager.shared.authorizationStatus == .authorizedWhenInUse || LocationManager.shared.authorizationStatus == .authorizedAlways)
         mapView.settings.compassButton = true
         mapView.settings.myLocationButton = false
         mapView.padding = UIEdgeInsets(
@@ -479,17 +488,41 @@ private struct NativeGoogleMapView: UIViewRepresentable {
             right: 12
         )
 
-        if let target = targetRegion {
-            let latDelta = target.span.latitudeDelta
-            let zoom: Float = latDelta > 15 ? 4.5 : (latDelta > 8 ? 5.8 : (latDelta > 4 ? 7.2 : 9.0))
-            let camera = GMSCameraPosition.camera(
-                withLatitude: target.center.latitude,
-                longitude: target.center.longitude,
-                zoom: zoom
-            )
-            mapView.animate(to: camera)
-            DispatchQueue.main.async {
-                self.targetRegion = nil
+        if let cmdId = cameraCommand.id, cmdId != context.coordinator.lastCommandId {
+            context.coordinator.lastCommandId = cmdId
+            switch cameraCommand {
+            case .none:
+                break
+            case .centerUser:
+                if let myLoc = mapView.myLocation?.coordinate ?? LocationManager.shared.currentCoordinate {
+                    let camera = GMSCameraPosition.camera(
+                        withLatitude: myLoc.latitude,
+                        longitude: myLoc.longitude,
+                        zoom: 8.5
+                    )
+                    mapView.animate(to: camera)
+                } else {
+                    LocationManager.shared.requestPermission()
+                    LocationManager.shared.startUpdating()
+                }
+            case .centerEarthquakes:
+                var bounds = GMSCoordinateBounds()
+                for event in state.events {
+                    if let coord = event.coordinate {
+                        bounds = bounds.includingCoordinate(coord)
+                    }
+                }
+                if bounds.isValid {
+                    let update = GMSCameraUpdate.fit(bounds, withPadding: 60)
+                    mapView.animate(with: update)
+                } else {
+                    let camera = GMSCameraPosition.camera(
+                        withLatitude: 4.65,
+                        longitude: -74.05,
+                        zoom: 5.5
+                    )
+                    mapView.animate(to: camera)
+                }
             }
         }
 
@@ -498,6 +531,7 @@ private struct NativeGoogleMapView: UIViewRepresentable {
 
     class Coordinator: NSObject, GMSMapViewDelegate {
         var parent: NativeGoogleMapView
+        var lastCommandId: UUID?
         private var lastEventSnapshots: [String] = []
 
         init(_ parent: NativeGoogleMapView) {

@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		79F54301D6269A7BE803A417 /* GoogleMapsBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78F54301D6269A7BE803A417 /* GoogleMapsBridge.swift */; };
 		79E41A869086290EE994EB73 /* AlertSoundPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78E41A869086290EE994EB73 /* AlertSoundPlayer.swift */; };
 		79EF7E6E6EDD113150D33A33 /* InAppBrowserView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78EF7E6E6EDD113150D33A33 /* InAppBrowserView.swift */; };
 		7934CADE988ADED59AF21E47 /* SeismikNotificationPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7834CADE988ADED59AF21E47 /* SeismikNotificationPresenter.swift */; };
@@ -72,6 +73,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		78F54301D6269A7BE803A417 /* GoogleMapsBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Native/Services/GoogleMapsBridge.swift"; sourceTree = "<group>"; };
 		78E41A869086290EE994EB73 /* AlertSoundPlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Native/Services/AlertSoundPlayer.swift"; sourceTree = "<group>"; };
 		78EF7E6E6EDD113150D33A33 /* InAppBrowserView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Native/Views/Components/InAppBrowserView.swift"; sourceTree = "<group>"; };
 		7834CADE988ADED59AF21E47 /* SeismikNotificationPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Native/Services/SeismikNotificationPresenter.swift"; sourceTree = "<group>"; };
@@ -177,6 +179,7 @@
 		97C146F01CF9000F007C117D /* Runner */ = {
 			isa = PBXGroup;
 			children = (
+				78F54301D6269A7BE803A417 /* GoogleMapsBridge.swift */,
 				78E41A869086290EE994EB73 /* AlertSoundPlayer.swift */,
 				78EF7E6E6EDD113150D33A33 /* InAppBrowserView.swift */,
 				7834CADE988ADED59AF21E47 /* SeismikNotificationPresenter.swift */,
@@ -377,6 +380,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				79F54301D6269A7BE803A417 /* GoogleMapsBridge.swift in Sources */,
 				79E41A869086290EE994EB73 /* AlertSoundPlayer.swift in Sources */,
 				79EF7E6E6EDD113150D33A33 /* InAppBrowserView.swift in Sources */,
 				7934CADE988ADED59AF21E47 /* SeismikNotificationPresenter.swift in Sources */,

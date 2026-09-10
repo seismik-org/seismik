@@ -12,20 +12,22 @@ fi
 if [[ ! -f .env ]]; then
   umask 077
   webhook_secret="$(openssl rand -hex 32)"
-  device_key="$(openssl rand -hex 32)"
+  consumer_key="$(openssl rand -hex 32)"
   crowd_secret="$(openssl rand -hex 32)"
+  integration_secret="$(openssl rand -hex 32)"
   cat >.env <<EOF
 SEISMIK_ENVIRONMENT=staging
 SEISMIK_WEBHOOK_HMAC_SECRET=${webhook_secret}
-SEISMIK_DEVICE_API_KEY=${device_key}
+SEISMIK_CONSUMER_API_KEY=${consumer_key}
 SEISMIK_CROWD_MASTER_SECRET=${crowd_secret}
+SEISMIK_INTEGRATION_WEBHOOK_MASTER_SECRET=${integration_secret}
 SEISMIK_PUSH_ENABLED=false
 SEISMIK_PUSH_MODE=dry_run
 SEISMIK_PUSH_TEST_DEVICE_IDS=[]
 SEISMIK_INTEGRITY_VERIFICATION_ENABLED=false
 EOF
   chmod 600 .env
-  unset webhook_secret device_key crowd_secret
+  unset webhook_secret consumer_key crowd_secret integration_secret
   echo "Created a private .env with random beta secrets."
 else
   echo "Keeping the existing .env file."

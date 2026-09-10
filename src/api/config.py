@@ -121,15 +121,20 @@ class AppSettings(BaseSettings):
             # apta para producción, incluso si todos los secretos existen.
             if not self.integrity_verification_enabled:
                 raise ValueError("Production requires App Check integrity verification")
+        if self.environment.lower() in ("production", "staging"):
             secrets = {
                 self.webhook_hmac_secret.get_secret_value(),
                 self.crowd_master_secret.get_secret_value(),
                 self.integration_webhook_master_secret.get_secret_value(),
             }
             if any(value.startswith("change-me") for value in secrets):
-                raise ValueError("Production requires non-default HMAC/API secrets")
+                raise ValueError(
+                    f"{self.environment.capitalize()} requires non-default HMAC/API secrets"
+                )
             if not self.consumer_api_key.get_secret_value():
-                raise ValueError("Production requires a consumer API key")
+                raise ValueError(
+                    f"{self.environment.capitalize()} requires a consumer API key"
+                )
         return self
 
 

@@ -39,6 +39,11 @@ async def register_device(
     redis: Redis = Depends(get_redis),
 ) -> DeviceRegistrationResponse:
     verdict = await integrity.verify(registration)
+    if settings.integrity_verification_enabled and not verdict.verified:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Device integrity verification failed",
+        )
     if verdict.verified:
         binding_key = f"seismik:integrity:registration:{verdict.token_fingerprint}"
         ttl = max(60, (verdict.expires_at or int(time.time()) + 3600) - int(time.time()))
@@ -48,9 +53,13 @@ async def register_device(
                 status_code=status.HTTP_409_CONFLICT,
                 detail="Integrity token is already bound to another device",
             )
-    await devices.register(registration)
-    crowd_token = derive_crowd_token(
-        settings.crowd_master_secret.get_secret_value(), registration.device_id
+    await devices.register(registration, integrity_verified=verdict.verified)
+    crowd_token = (
+        derive_crowd_token(
+            settings.crowd_master_secret.get_secret_value(), registration.device_id
+        )
+        if (verdict.verified or settings.environment == "development")
+        else ""
     )
     return DeviceRegistrationResponse(
         device_id=registration.device_id,
