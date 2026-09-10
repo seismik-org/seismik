@@ -49,6 +49,9 @@ public final class SeismikState: ObservableObject {
     public init() {
         self.isRegistered = apiClient.isRegistered
         self.pendingReportCount = apiClient.pendingReportCount
+        if mapProvider == "google" && !GoogleMapsBridge.isAvailable {
+            mapProvider = "apple"
+        }
         locationRegistration = locationManager.$userCoordinate
             .compactMap { $0 }
             .first()

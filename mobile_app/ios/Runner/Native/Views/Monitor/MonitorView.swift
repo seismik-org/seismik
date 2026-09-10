@@ -460,9 +460,12 @@ private struct NativeGoogleMapView: UIViewRepresentable {
             longitude: -74.05,
             zoom: 5.5
         )
-        let mapView = GMSMapView.map(withFrame: .zero, camera: defaultCamera)
+        let mapView = GMSMapView(frame: UIScreen.main.bounds, camera: defaultCamera)
         mapView.delegate = context.coordinator
-        mapView.isMyLocationEnabled = (LocationManager.shared.authorizationStatus == .authorizedWhenInUse || LocationManager.shared.authorizationStatus == .authorizedAlways)
+        let auth = LocationManager.shared.authorizationStatus
+        if auth == .authorizedWhenInUse || auth == .authorizedAlways {
+            mapView.isMyLocationEnabled = true
+        }
         mapView.settings.compassButton = true
         mapView.settings.myLocationButton = false
         mapView.padding = UIEdgeInsets(
