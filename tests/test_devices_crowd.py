@@ -77,9 +77,11 @@ async def test_device_registration_records_integrity_verified() -> None:
 
 @pytest.mark.asyncio
 async def test_unverified_device_blocked_from_crowdsourcing_when_integrity_enabled() -> None:
-    from crowdsourcing.ingest import ingest_shake
-    from fastapi import HTTPException, Request
     from unittest.mock import AsyncMock, MagicMock
+
+    from fastapi import HTTPException, Request
+
+    from crowdsourcing.ingest import ingest_shake
 
     redis = FakeRedis(decode_responses=True)
     repository = DeviceRepository(redis)
