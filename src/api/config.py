@@ -25,6 +25,7 @@ class AppSettings(BaseSettings):
     device_session_ttl_seconds: int = Field(default=2_592_000, ge=3_600, le=31_536_000)
     crowd_master_secret: SecretStr = SecretStr("change-me-crowd-secret")
     developer_portal_origins: tuple[str, ...] = ("https://devs.seismik.org",)
+    developer_portal_url: str = "https://devs.seismik.org/"
     developer_terms_version: str = "2026-08-30"
     developer_max_active_keys: int = Field(default=3, ge=1, le=20)
     developer_free_requests_per_minute: int = Field(default=60, ge=1, le=10_000)
@@ -48,7 +49,13 @@ class AppSettings(BaseSettings):
     firebase_web_app_id: str = ""
     oauth_google_client_id: str = ""
     oauth_google_client_secret: SecretStr = SecretStr("")
-    oauth_google_redirect_uri: str = "https://devs.seismik.org/v1/oauth/google/callback"
+    # auth.seismik.org es el único origen del flujo de identidad. Así los
+    # proveedores no necesitan conocer las páginas privadas del portal.
+    oauth_google_redirect_uri: str = "https://auth.seismik.org/v1/oauth/google/callback"
+    oauth_github_client_id: str = ""
+    oauth_github_client_secret: SecretStr = SecretStr("")
+    oauth_github_redirect_uri: str = "https://auth.seismik.org/v1/oauth/github/callback"
+    oauth_cookie_domain: str = ".seismik.org"
     oauth_session_ttl_seconds: int = Field(default=86_400, ge=300, le=2_592_000)
 
     candidate_stream: str = "stream:seismik:candidates"

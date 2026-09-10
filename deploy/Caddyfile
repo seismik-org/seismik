@@ -84,3 +84,16 @@ devs.seismik.org {
 	rewrite @home /developers.html
 	file_server
 }
+
+auth.seismik.org {
+	import seismik_security_headers
+	# Origen único del inicio y los callbacks OAuth. devs queda aislado, pero
+	# ambos subdominios reciben la cookie HttpOnly de alcance .seismik.org.
+	handle /v1/oauth/* {
+		reverse_proxy api:8000
+	}
+	handle /login {
+		reverse_proxy api:8000
+	}
+	redir / https://devs.seismik.org/ permanent
+}
