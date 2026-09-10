@@ -145,10 +145,19 @@ public struct SettingsView: View {
                             Spacer()
                             Picker("Proveedor de mapa", selection: $state.mapProvider) {
                                 Text("Apple Maps").tag("apple")
-                                Text("Google Maps").tag("google")
+                                if GoogleMapsBridge.isAvailable {
+                                    Text("Google Maps").tag("google")
+                                } else {
+                                    Text("Google Maps (No configurado)").tag("google")
+                                }
                                 Text("OpenStreetMap").tag("osm")
                             }
                             .pickerStyle(.menu)
+                        }
+                        if state.mapProvider == "google" && !GoogleMapsBridge.isAvailable {
+                            Text("Google Maps requiere configurar SEISMIK_GOOGLE_MAPS_API_KEY en los secretos del repositorio.")
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
                         }
                         .padding(.top, 4)
                     }
@@ -437,7 +446,7 @@ public struct SettingsView: View {
 
     private var versionDescription: String {
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0.0"
-        let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "39"
+        let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "40"
         return "\(version) (\(build))"
     }
 

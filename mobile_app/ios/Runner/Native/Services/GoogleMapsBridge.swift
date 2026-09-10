@@ -8,12 +8,18 @@ public enum GoogleMapsBridge {
 
     /// Inicializa los servicios de Google Maps con la clave provista.
     public static func initialize(with apiKey: String) {
-        guard !apiKey.isEmpty, !apiKey.hasPrefix("$(") else {
-            NSLog("[Seismik] Clave de Google Maps vacia o invalida; el SDK permanecera inactivo.")
+        let trimmed = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, !trimmed.hasPrefix("$(") else {
+            isAvailable = false
+            NSLog("[Seismik] Clave de Google Maps vacia o no configurada; el SDK permanecera inactivo.")
             return
         }
-        GMSServices.provideAPIKey(apiKey)
-        isAvailable = true
-        NSLog("[Seismik] Google Maps SDK inicializado con exito.")
+        let ok = GMSServices.provideAPIKey(trimmed)
+        isAvailable = ok
+        if ok {
+            NSLog("[Seismik] Google Maps SDK inicializado con exito.")
+        } else {
+            NSLog("[Seismik] GMSServices.provideAPIKey no pudo inicializar el SDK.")
+        }
     }
 }
