@@ -41,18 +41,23 @@ function formatDate(value) {
 
 function keyMarkup(key) {
   const scopes = key.scopes.map((scope) => scope.replace(":read", "")).join(" · ");
-  return `<article class="key-row" data-key-id="${key.key_id}">
+  return `<article class="key-row" data-key-id="${escapeHtml(key.key_id)}">
     <div class="key-name"><strong>${escapeHtml(key.name)}</strong><small>${escapeHtml(key.prefix)}</small></div>
     <div class="key-meta"><code>${escapeHtml(scopes)}</code><br><small>${key.requests_today.toLocaleString("es-CO")} hoy · último uso: ${formatDate(key.last_used_at)}</small></div>
-    <span class="key-status ${key.status}">${key.status === "active" ? "Activa" : "Revocada"}</span>
+    <span class="key-status ${key.status === "active" ? "active" : "revoked"}">${key.status === "active" ? "Activa" : "Revocada"}</span>
     <div class="key-actions">${key.status === "active" ? `<button class="text-button rotate-key" type="button">Rotar</button><button class="text-button danger-button revoke-key" type="button">Revocar</button>` : ""}</div>
   </article>`;
 }
 
 function escapeHtml(value) {
-  const div = document.createElement("div");
-  div.textContent = value;
-  return div.innerHTML;
+  // `textContent` no escapa comillas, y estos valores también se interpolan
+  // dentro de atributos: sin ellas un valor con `"` se sale del atributo.
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
 
 async function loadKeys() {

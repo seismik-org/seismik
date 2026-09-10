@@ -16,6 +16,10 @@
 
 api.seismik.org {
 	import seismik_security_headers
+	# La API sólo devuelve JSON: ninguna respuesta suya debe poder cargar
+	# recursos ni ser incrustada. Acota el daño si alguna llegara a
+	# interpretarse como HTML.
+	header Content-Security-Policy "default-src 'none'; frame-ancestors 'none'; base-uri 'none'"
 	encode zstd gzip
 
 	request_body {
