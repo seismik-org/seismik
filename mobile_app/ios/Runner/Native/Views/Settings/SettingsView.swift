@@ -154,12 +154,13 @@ public struct SettingsView: View {
                             }
                             .pickerStyle(.menu)
                         }
+                        .padding(.top, 4)
+
                         if state.mapProvider == "google" && !GoogleMapsBridge.isAvailable {
                             Text("Google Maps requiere configurar SEISMIK_GOOGLE_MAPS_API_KEY en los secretos del repositorio.")
                                 .font(.caption2)
                                 .foregroundColor(.secondary)
                         }
-                        .padding(.top, 4)
                     }
                     .padding(.vertical, 4)
 
