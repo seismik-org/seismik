@@ -45,10 +45,20 @@ def create_app(settings: AppSettings | None = None) -> FastAPI:
         finally:
             await redis.aclose()
 
+    # `/docs` y `/openapi.json` publican el esquema exacto de todos los
+    # endpoints, incluidos los de ingesta firmada (`/v1/events/candidate`,
+    # `/v1/events/official-update`). Eso es útil mientras se desarrolla y es
+    # material de reconocimiento en un servidor expuesto: quien quiera
+    # inyectar un sismo falso ya no tiene que adivinar el cuerpo. El portal
+    # documenta por su cuenta lo que las personas desarrolladoras necesitan.
+    is_development = resolved.environment.lower() == "development"
     app = FastAPI(
         title="Seismik Platform API",
         version="0.4.0",
         lifespan=lifespan,
+        docs_url="/docs" if is_development else None,
+        redoc_url="/redoc" if is_development else None,
+        openapi_url="/openapi.json" if is_development else None,
     )
     app.add_middleware(
         CORSMiddleware,

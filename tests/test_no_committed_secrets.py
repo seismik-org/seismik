@@ -10,6 +10,8 @@ Sólo se revisan los archivos que Git sigue. Lo que está ignorado —el
 """
 from __future__ import annotations
 
+import base64
+import binascii
 import re
 import subprocess
 from pathlib import Path
@@ -34,6 +36,35 @@ SCANNED_SUFFIXES = {
 
 # Este archivo describe los patrones, así que necesariamente los contiene.
 SELF = Path(__file__).name
+
+# Una cadena Base64 larga dentro del código casi siempre es un valor que alguien
+# no quiso escribir en claro. Se exige un mínimo de 24 caracteres para no
+# tropezar con hashes cortos ni con identificadores normales.
+BASE64_BLOB = re.compile(r"[A-Za-z0-9+/_-]{24,}={0,2}")
+
+
+def decoded_candidates(content: str) -> list[str]:
+    """Devuelve el texto legible escondido en cadenas Base64 del archivo.
+
+    Codificar una clave en Base64 no la protege: sólo la esconde del `grep`.
+    Como el escaneo debe detectar la credencial y no la buena intención de
+    quien la escribió, aquí se deshace la codificación antes de buscar.
+    """
+
+    decoded: list[str] = []
+    for blob in BASE64_BLOB.findall(content):
+        for candidate in (blob, blob.replace("-", "+").replace("_", "/")):
+            padded = candidate + "=" * (-len(candidate) % 4)
+            try:
+                raw = base64.b64decode(padded, validate=True)
+            except (binascii.Error, ValueError):
+                continue
+            try:
+                decoded.append(raw.decode("utf-8"))
+            except UnicodeDecodeError:
+                continue
+            break
+    return decoded
 
 
 def tracked_files() -> list[Path]:
@@ -69,6 +100,9 @@ def test_no_tracked_file_contains_a_secret() -> None:
                 line = content[: match.start()].count("\n") + 1
                 # No se reproduce el valor: quedaría en la salida de CI.
                 findings.append(f"{path}:{line} parece {label}")
+                continue
+            if any(pattern.search(text) for text in decoded_candidates(content)):
+                findings.append(f"{path} parece {label} codificada en Base64")
 
     assert not findings, (
         "Posibles secretos en archivos versionados:\n"
@@ -86,6 +120,13 @@ def test_the_ios_maps_key_comes_from_configuration_not_from_source() -> None:
     assert "SeismikGoogleMapsAPIKey" in delegate, "Debe leerse del Info.plist"
     assert not PATTERNS["clave de API de Google"].search(delegate), (
         "Hay una clave de Google escrita en AppDelegate.swift"
+    )
+    assert not any(
+        PATTERNS["clave de API de Google"].search(text)
+        for text in decoded_candidates(delegate)
+    ), (
+        "Hay una clave de Google codificada en Base64 dentro de AppDelegate.swift. "
+        "Debe llegar por Info.plist / xcconfig desde el secreto de CI."
     )
 
 
