@@ -55,3 +55,59 @@ async def test_crowd_cluster_uses_atomic_unique_device_window() -> None:
     assert len(neighborhood.cells) == 7
     assert redis.args is not None
     assert redis.args[1] == 15
+
+
+@pytest.mark.asyncio
+async def test_device_registration_records_integrity_verified() -> None:
+    redis = FakeRedis(decode_responses=True)
+    repository = DeviceRepository(redis)
+    registration = DeviceRegistration(
+        device_id="device-unverified",
+        platform="android",
+        fcm_token="u" * 64,
+        zone_id="andes",
+        play_integrity_token="test-token-16chars",
+    )
+    await repository.register(registration, integrity_verified=False)
+    assert not await repository.is_integrity_verified("device-unverified")
+
+    await repository.register(registration, integrity_verified=True)
+    assert await repository.is_integrity_verified("device-unverified")
+
+
+@pytest.mark.asyncio
+async def test_unverified_device_blocked_from_crowdsourcing_when_integrity_enabled() -> None:
+    from crowdsourcing.ingest import ingest_shake
+    from fastapi import HTTPException, Request
+    from unittest.mock import AsyncMock, MagicMock
+
+    redis = FakeRedis(decode_responses=True)
+    repository = DeviceRepository(redis)
+    registration = DeviceRegistration(
+        device_id="device-unverified",
+        platform="android",
+        fcm_token="u" * 64,
+        zone_id="andes",
+        play_integrity_token="test-token-16chars",
+    )
+    await repository.register(registration, integrity_verified=False)
+
+    settings = AppSettings(
+        integrity_verification_enabled=True,
+        crowd_master_secret="master-secret-at-least-32-bytes-long",
+    )
+    request = MagicMock(spec=Request)
+    request.body = AsyncMock(
+        return_value=b'{"device_id":"device-unverified","lat":4.65,"lon":-74.05,"pga":0.08,"timestamp":1723860604.12}'
+    )
+
+    with pytest.raises(HTTPException) as exc:
+        await ingest_shake(
+            request,
+            settings=settings,
+            devices=repository,
+        )
+    assert exc.value.status_code == 403
+    assert "verified device integrity" in exc.value.detail
+
+

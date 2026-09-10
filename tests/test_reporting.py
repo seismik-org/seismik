@@ -141,3 +141,53 @@ async def test_agency_catalog_is_available_before_reporting() -> None:
         )
     assert response.status_code == 200
     assert [item["agency_id"] for item in response.json()] == ["sgc", "usgs_dyfi"]
+
+
+@pytest.mark.asyncio
+async def test_unverified_device_blocked_from_reporting_when_integrity_enabled() -> None:
+    from api.devices_store import DeviceRepository
+    from api.schemas import DeviceRegistration
+
+    redis = FakeRedis(decode_responses=True)
+    devices = DeviceRepository(redis)
+    registration = DeviceRegistration(
+        device_id="device-unverified",
+        platform="android",
+        fcm_token="u" * 64,
+        zone_id="andes",
+        play_integrity_token="test-token-16chars",
+    )
+    await devices.register(registration, integrity_verified=False)
+
+    app = FastAPI()
+    app.include_router(router)
+    settings = AppSettings(
+        integrity_verification_enabled=True,
+        crowd_master_secret="master-secret-at-least-32-bytes-long",
+    )
+    app.dependency_overrides[get_app_settings] = lambda: settings
+    app.dependency_overrides[get_devices] = lambda: devices
+    app.dependency_overrides[get_redis] = lambda: redis
+    app.dependency_overrides[get_bus] = lambda: FakeBus()
+
+    payload = felt_payload() | {"device_id": "device-unverified"}
+    body = json.dumps(payload, separators=(",", ":")).encode()
+    secret = derive_crowd_token(settings.crowd_master_secret.get_secret_value(), "device-unverified")
+    timestamp = str(time.time())
+    signature = create_signature(secret, timestamp, body)
+
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        response = await client.post(
+            "/v1/reports/felt",
+            content=body,
+            headers={
+                "Content-Type": "application/json",
+                "X-Seismik-Timestamp": timestamp,
+                "X-Seismik-Signature": signature,
+            },
+        )
+    assert response.status_code == 403
+    assert "verified device integrity" in response.json()["detail"]
+

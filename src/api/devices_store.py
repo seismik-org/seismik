@@ -28,7 +28,9 @@ class DeviceRepository:
         digest = hashlib.sha256(token.encode()).hexdigest()
         return f"seismik:device-token:{platform}:{digest}"
 
-    async def register(self, registration: DeviceRegistration) -> None:
+    async def register(
+        self, registration: DeviceRegistration, integrity_verified: bool = False
+    ) -> None:
         old = cast(dict[str, str], await self.redis.hgetall(self._device_key(registration.device_id)))
         if old:
             await self._remove_indexes(registration.device_id, old)
@@ -51,6 +53,7 @@ class DeviceRepository:
             "minimum_notification_magnitude": str(registration.minimum_notification_magnitude),
             "alert_radius_km": str(registration.alert_radius_km),
             "locale": registration.locale,
+            "integrity_verified": "1" if integrity_verified else "0",
             "updated_at": datetime.now(timezone.utc).isoformat(),
         }
         pipe = self.redis.pipeline(transaction=True)
@@ -76,6 +79,10 @@ class DeviceRepository:
 
     async def exists(self, device_id: str) -> bool:
         return bool(await self.redis.exists(self._device_key(device_id)))
+
+    async def is_integrity_verified(self, device_id: str) -> bool:
+        verified = await self.redis.hget(self._device_key(device_id), "integrity_verified")
+        return verified == "1"
 
     async def recipients(
         self,

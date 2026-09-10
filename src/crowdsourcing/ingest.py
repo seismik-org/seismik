@@ -40,6 +40,11 @@ async def ingest_shake(
         raise HTTPException(status_code=422, detail=exc.errors()) from exc
     if not await devices.exists(ping.device_id):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unknown device")
+    if settings.integrity_verification_enabled and not await devices.is_integrity_verified(ping.device_id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Crowdsourcing requires verified device integrity",
+        )
     crowd_token = derive_crowd_token(
         settings.crowd_master_secret.get_secret_value(), ping.device_id
     )

@@ -69,6 +69,11 @@ async def _ingest_report(
             )
     if not await devices.exists(device_id):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unknown device")
+    if settings.integrity_verification_enabled and not await devices.is_integrity_verified(device_id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Citizen reporting requires verified device integrity",
+        )
     secret = derive_crowd_token(settings.crowd_master_secret.get_secret_value(), device_id)
     verify_signature(
         secret=secret,

@@ -56,36 +56,39 @@ public struct SeismicSheetView: View {
 
                     // Vista previa del sismo más reciente para visibilidad inmediata sin abrir la hoja
                     if let latest = state.events.first {
-                        HStack(spacing: 8) {
-                            Text("ÚLTIMO")
-                                .font(.system(size: 9, weight: .bold, design: .rounded))
-                                .padding(.horizontal, 6)
-                                .padding(.vertical, 2)
-                                .background(SeismikColors.severityColor(for: latest.magnitude, isPreliminary: latest.isPreliminary).opacity(0.2), in: Capsule())
-                                .foregroundColor(SeismikColors.severityColor(for: latest.magnitude, isPreliminary: latest.isPreliminary))
-
-                            Text(latest.magnitude.map { String(format: "M %.1f", $0) } ?? "Preliminar")
-                                .font(.system(size: 12.5, weight: .bold, design: .rounded))
-                                .foregroundColor(.primary)
-
-                            Text(latest.place ?? "Epicentro")
-                                .font(.system(size: 12))
-                                .foregroundColor(.secondary)
-                                .lineLimit(1)
-
-                            Spacer()
-
-                            Text(latest.relativeTimeFormatted)
-                                .font(.system(size: 11, weight: .medium))
-                                .foregroundColor(.secondary)
-                        }
-                        .padding(.horizontal, 18)
-                        .padding(.top, 2)
-                        .padding(.bottom, 6)
-                        .contentShape(Rectangle())
-                        .onTapGesture {
+                        Button {
+                            HapticManager.light()
                             state.selectEvent(latest)
+                        } label: {
+                            HStack(spacing: 8) {
+                                Text("ÚLTIMO")
+                                    .font(.system(size: 9, weight: .bold, design: .rounded))
+                                    .padding(.horizontal, 6)
+                                    .padding(.vertical, 2)
+                                    .background(SeismikColors.severityColor(for: latest.magnitude, isPreliminary: latest.isPreliminary).opacity(0.2), in: Capsule())
+                                    .foregroundColor(SeismikColors.severityColor(for: latest.magnitude, isPreliminary: latest.isPreliminary))
+
+                                Text(latest.magnitude.map { String(format: "M %.1f", $0) } ?? "Preliminar")
+                                    .font(.system(size: 12.5, weight: .bold, design: .rounded))
+                                    .foregroundColor(.primary)
+
+                                Text(latest.place ?? "Epicentro")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.secondary)
+                                    .lineLimit(1)
+
+                                Spacer()
+
+                                Text(latest.relativeTimeFormatted)
+                                    .font(.system(size: 11, weight: .medium))
+                                    .foregroundColor(.secondary)
+                            }
+                            .padding(.horizontal, 18)
+                            .padding(.top, 2)
+                            .padding(.bottom, 6)
+                            .contentShape(Rectangle())
                         }
+                        .buttonStyle(.plain)
                     }
                 }
                 .contentShape(Rectangle())
