@@ -1,8 +1,7 @@
 import SwiftUI
 import MapKit
-import GoogleMaps
 
-/// Comandos imperativos de cámara para mapas MapKit y Google Maps.
+/// Comandos imperativos de cámara para mapas MapKit.
 public enum MapCameraCommand: Equatable {
     case none
     case centerUser(UUID)
@@ -43,26 +42,15 @@ public struct MonitorView: View {
             )
 
             ZStack(alignment: .top) {
-                // Mapa de fondo: Google Maps si está seleccionado y disponible, o MapKit nativo
-                if state.mapProvider == "google" && GoogleMapsBridge.isAvailable {
-                    NativeGoogleMapView(
-                        state: state,
-                        cameraCommand: cameraCommand,
-                        coveredBottomInset: visibleHeight
-                    ) { selectedEvent in
-                        state.selectEvent(selectedEvent)
-                    }
-                    .ignoresSafeArea()
-                } else {
-                    NativeMapView(
-                        state: state,
-                        cameraCommand: cameraCommand,
-                        coveredBottomInset: visibleHeight
-                    ) { selectedEvent in
-                        state.selectEvent(selectedEvent)
-                    }
-                    .ignoresSafeArea()
+                // Mapa nativo de Apple MapKit interactivo a pantalla completa
+                NativeMapView(
+                    state: state,
+                    cameraCommand: cameraCommand,
+                    coveredBottomInset: visibleHeight
+                ) { selectedEvent in
+                    state.selectEvent(selectedEvent)
                 }
+                .ignoresSafeArea()
 
                 FloatingHeaderView(state: state, showSettings: $showSettings)
                     .padding(.top, max(8, geometry.safeAreaInsets.top + 4))
@@ -88,57 +76,52 @@ public struct MonitorView: View {
                 .offset(y: drawerOffset)
                 .frame(maxHeight: .infinity, alignment: .bottom)
 
-                // Botones flotantes de control de mapa (en primer plano con .zIndex(10))
-                VStack {
-                    Spacer()
-                    HStack {
-                        Spacer()
-                        VStack(spacing: 12) {
-                            Button {
-                                HapticManager.light()
-                                withAnimation(.easeInOut(duration: 0.2)) {
-                                    state.cycleMapType()
-                                }
-                            } label: {
-                                Image(systemName: state.appMapType == "satellite" ? "globe.americas" : (state.appMapType == "hybrid" ? "square.3.layers.3d" : "map.fill"))
-                                    .font(.system(size: 16, weight: .semibold))
-                                    .foregroundColor(SeismikColors.systemBlue)
-                                    .frame(width: 44, height: 44)
-                                    .liquidGlass(cornerRadius: 22)
-                            }
-                            .buttonStyle(.plain)
-                            .accessibilityLabel("Cambiar estilo del mapa")
-
-                            Button {
-                                HapticManager.light()
-                                cameraCommand = .centerEarthquakes(UUID())
-                            } label: {
-                                Image(systemName: "dot.scope")
-                                    .font(.system(size: 16, weight: .semibold))
-                                    .foregroundColor(SeismikColors.systemBlue)
-                                    .frame(width: 44, height: 44)
-                                    .liquidGlass(cornerRadius: 22)
-                            }
-                            .buttonStyle(.plain)
-                            .accessibilityLabel("Centrar en sismos recientes")
-
-                            Button {
-                                HapticManager.light()
-                                cameraCommand = .centerUser(UUID())
-                            } label: {
-                                Image(systemName: "location.fill")
-                                    .font(.system(size: 16, weight: .semibold))
-                                    .foregroundColor(SeismikColors.systemBlue)
-                                    .frame(width: 44, height: 44)
-                                    .liquidGlass(cornerRadius: 22)
-                            }
-                            .buttonStyle(.plain)
-                            .accessibilityLabel("Centrar mapa en mi ubicación")
+                // Botones flotantes de control de mapa (en primer plano)
+                VStack(spacing: 12) {
+                    Button {
+                        HapticManager.light()
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            state.cycleMapType()
                         }
-                        .padding(.trailing, 18)
-                        .padding(.bottom, DrawerPosition.peek.height(in: geometry.size.height) + 16)
+                    } label: {
+                        Image(systemName: state.appMapType == "satellite" ? "globe.americas" : (state.appMapType == "hybrid" ? "square.3.layers.3d" : "map.fill"))
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(SeismikColors.systemBlue)
+                            .frame(width: 44, height: 44)
+                            .liquidGlass(cornerRadius: 22)
                     }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Cambiar estilo del mapa")
+
+                    Button {
+                        HapticManager.light()
+                        cameraCommand = .centerEarthquakes(UUID())
+                    } label: {
+                        Image(systemName: "dot.scope")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(SeismikColors.systemBlue)
+                            .frame(width: 44, height: 44)
+                            .liquidGlass(cornerRadius: 22)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Centrar en sismos recientes")
+
+                    Button {
+                        HapticManager.light()
+                        cameraCommand = .centerUser(UUID())
+                    } label: {
+                        Image(systemName: "location.fill")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(SeismikColors.systemBlue)
+                            .frame(width: 44, height: 44)
+                            .liquidGlass(cornerRadius: 22)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Centrar mapa en mi ubicación")
                 }
+                .padding(.trailing, 18)
+                .padding(.bottom, DrawerPosition.peek.height(in: geometry.size.height) + 16)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
                 .zIndex(10)
                 .opacity(max(0.0, min(1.0, 1.0 - (visibleHeight - DrawerPosition.peek.height(in: geometry.size.height)) / 60.0)))
                 .allowsHitTesting(visibleHeight <= DrawerPosition.peek.height(in: geometry.size.height) + 15)
@@ -443,132 +426,7 @@ private struct NativeMapView: UIViewRepresentable {
     }
 }
 
-// MARK: - Mapa Nativo de Google Maps (Compatible iOS 15 - iOS 18+)
-private struct NativeGoogleMapView: UIViewRepresentable {
-    @ObservedObject var state: SeismikState
-    let cameraCommand: MapCameraCommand
-    let coveredBottomInset: CGFloat
-    let onSelectEvent: (SeismicEvent) -> Void
 
-    func makeCoordinator() -> Coordinator {
-        Coordinator(self)
-    }
-
-    func makeUIView(context: Context) -> GMSMapView {
-        let defaultCamera = GMSCameraPosition.camera(
-            withLatitude: 4.65,
-            longitude: -74.05,
-            zoom: 5.5
-        )
-        let mapView = GMSMapView(frame: UIScreen.main.bounds, camera: defaultCamera)
-        mapView.delegate = context.coordinator
-        let auth = LocationManager.shared.authorizationStatus
-        if auth == .authorizedWhenInUse || auth == .authorizedAlways {
-            mapView.isMyLocationEnabled = true
-        }
-        mapView.settings.compassButton = true
-        mapView.settings.myLocationButton = false
-        mapView.padding = UIEdgeInsets(
-            top: 96,
-            left: 12,
-            bottom: max(coveredBottomInset + 10, 148),
-            right: 12
-        )
-        return mapView
-    }
-
-    func updateUIView(_ mapView: GMSMapView, context: Context) {
-        switch state.appMapType {
-        case "satellite": mapView.mapType = .satellite
-        case "hybrid": mapView.mapType = .hybrid
-        default: mapView.mapType = .normal
-        }
-
-        mapView.padding = UIEdgeInsets(
-            top: 96,
-            left: 12,
-            bottom: max(coveredBottomInset + 10, 148),
-            right: 12
-        )
-
-        if let cmdId = cameraCommand.id, cmdId != context.coordinator.lastCommandId {
-            context.coordinator.lastCommandId = cmdId
-            switch cameraCommand {
-            case .none:
-                break
-            case .centerUser:
-                if let myLoc = mapView.myLocation?.coordinate ?? LocationManager.shared.currentCoordinate {
-                    let camera = GMSCameraPosition.camera(
-                        withLatitude: myLoc.latitude,
-                        longitude: myLoc.longitude,
-                        zoom: 8.5
-                    )
-                    mapView.animate(to: camera)
-                } else {
-                    LocationManager.shared.requestPermission()
-                    LocationManager.shared.startUpdating()
-                }
-            case .centerEarthquakes:
-                var bounds = GMSCoordinateBounds()
-                for event in state.events {
-                    if let coord = event.coordinate {
-                        bounds = bounds.includingCoordinate(coord)
-                    }
-                }
-                if bounds.isValid {
-                    let update = GMSCameraUpdate.fit(bounds, withPadding: 60)
-                    mapView.animate(with: update)
-                } else {
-                    let camera = GMSCameraPosition.camera(
-                        withLatitude: 4.65,
-                        longitude: -74.05,
-                        zoom: 5.5
-                    )
-                    mapView.animate(to: camera)
-                }
-            }
-        }
-
-        context.coordinator.syncMarkers(mapView: mapView, events: state.events)
-    }
-
-    class Coordinator: NSObject, GMSMapViewDelegate {
-        var parent: NativeGoogleMapView
-        var lastCommandId: UUID?
-        private var lastEventSnapshots: [String] = []
-
-        init(_ parent: NativeGoogleMapView) {
-            self.parent = parent
-        }
-
-        func syncMarkers(mapView: GMSMapView, events: [SeismicEvent]) {
-            let snapshots = events.map { "\($0.id)|\($0.magnitude ?? -1)|\($0.latitude ?? 999)|\($0.longitude ?? 999)" }
-            guard snapshots != lastEventSnapshots else { return }
-            lastEventSnapshots = snapshots
-
-            mapView.clear()
-            for event in events {
-                guard let coord = event.coordinate else { continue }
-                let marker = GMSMarker(position: coord)
-                marker.title = event.place
-                if let mag = event.magnitude {
-                    marker.snippet = String(format: "M %.1f · %@", mag, event.relativeTimeFormatted)
-                }
-                marker.userData = event
-                marker.icon = GMSMarker.markerImage(with: SeismikColors.severityUIColor(for: event.magnitude, isPreliminary: event.isPreliminary))
-                marker.map = mapView
-            }
-        }
-
-        func mapView(_ mapView: GMSMapView, didTap marker: GMSMarker) -> Bool {
-            if let event = marker.userData as? SeismicEvent {
-                HapticManager.light()
-                parent.onSelectEvent(event)
-            }
-            return true
-        }
-    }
-}
 
 private final class MagnitudeAnnotationView: MKAnnotationView {
     private let magnitudeLabel = UILabel()

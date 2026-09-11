@@ -132,9 +132,9 @@ public struct SettingsView: View {
                 // Mapas y sincronización
                 Section(header: Text("Mapas y sincronización")) {
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("Proveedor de mapa en la app")
+                        Text("Proveedor de mapas")
                             .font(.body)
-                        Text("Servicio cartográfico utilizado en la pantalla principal de monitoreo y para abrir epicentros.")
+                        Text("Apple Maps y OpenStreetMap funcionan dentro de la app. Google Maps abre los epicentros en la app oficial de Google Maps.")
                             .font(.caption)
                             .foregroundColor(.secondary)
 
@@ -143,24 +143,14 @@ public struct SettingsView: View {
                                 .font(.subheadline)
                                 .foregroundColor(.secondary)
                             Spacer()
-                            Picker("Proveedor de mapa", selection: $state.mapProvider) {
+                            Picker("Proveedor de mapas", selection: $state.mapProvider) {
                                 Text("Apple Maps").tag("apple")
-                                if GoogleMapsBridge.isAvailable {
-                                    Text("Google Maps").tag("google")
-                                } else {
-                                    Text("Google Maps (No configurado)").tag("google")
-                                }
+                                Text("Google Maps").tag("google")
                                 Text("OpenStreetMap").tag("osm")
                             }
                             .pickerStyle(.menu)
                         }
                         .padding(.top, 4)
-
-                        if state.mapProvider == "google" && !GoogleMapsBridge.isAvailable {
-                            Text("Google Maps requiere configurar SEISMIK_GOOGLE_MAPS_API_KEY en los secretos del repositorio.")
-                                .font(.caption2)
-                                .foregroundColor(.secondary)
-                        }
                     }
                     .padding(.vertical, 4)
 
@@ -447,7 +437,7 @@ public struct SettingsView: View {
 
     private var versionDescription: String {
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0.0"
-        let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "40"
+        let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "41"
         return "\(version) (\(build))"
     }
 
