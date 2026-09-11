@@ -9,6 +9,7 @@ from typing import Awaitable, Callable, cast
 from fastapi import Depends, Header, HTTPException, Request, status
 from redis.asyncio import Redis
 
+from api.billing import record_usage
 from api.bus import RedisEventBus
 from api.config import AppSettings
 from api.device_sessions import DeviceSessionRepository
@@ -136,6 +137,7 @@ async def _authorize_developer_key(
             detail="Daily API quota exceeded",
             headers={"Retry-After": "86400"},
         )
+    await record_usage(resolved_redis, record["uid"], required_scope or "unscoped", record.get("key_id"))
     return ApiPrincipal(
         subject=record["uid"],
         key_id=record.get("key_id"),
