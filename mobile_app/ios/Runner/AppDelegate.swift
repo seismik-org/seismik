@@ -22,16 +22,11 @@ import SwiftUI
       FirebaseApp.configure()
     }
 
-    // La clave de Google Maps llega por `SEISMIK_GOOGLE_MAPS_API_KEY`: el
-    // workflow la escribe en Seismik.xcconfig y el Info.plist la sustituye.
-    // No se guarda una copia en el código —ni codificada— porque el
-    // repositorio es público y el historial de Git no se puede borrar.
-    //
-    // Si falta, `GoogleMapsBridge` deja el SDK inactivo sin fallar: el
-    // proveedor de mapa por defecto es MapKit, así que la app sigue siendo
-    // usable y sólo se pierde la opción «Google» de Ajustes.
-    let mapsKey = Bundle.main.object(forInfoDictionaryKey: "SeismikGoogleMapsAPIKey") as? String
-    GoogleMapsBridge.initialize(with: mapsKey ?? "")
+    if let mapsKey = Bundle.main.object(forInfoDictionaryKey: "SeismikGoogleMapsAPIKey") as? String,
+       !mapsKey.isEmpty,
+       !mapsKey.hasPrefix("$(") {
+      GMSServices.provideAPIKey(mapsKey)
+    }
     GeneratedPluginRegistrant.register(with: self)
     let launched = super.application(application, didFinishLaunchingWithOptions: launchOptions)
 

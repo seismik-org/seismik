@@ -91,10 +91,6 @@ public struct SeismicSheetView: View {
                         .buttonStyle(.plain)
                     }
                 }
-                .contentShape(Rectangle())
-                .gesture(drawerDragGesture)
-                .accessibilityLabel("Cambiar altura del panel")
-                .accessibilityHint("Toca para alternar o desliza hacia arriba y abajo")
 
                 // Barra de Acciones Rápidas Comunitarias
                 HStack(spacing: 12) {
@@ -133,6 +129,10 @@ public struct SeismicSheetView: View {
                 .padding(.horizontal, 16)
                 .padding(.bottom, 12)
             }
+            .contentShape(Rectangle())
+            .gesture(drawerDragGesture)
+            .accessibilityLabel("Cambiar altura del panel")
+            .accessibilityHint("Toca para alternar o desliza hacia arriba y abajo")
 
             Divider()
 
