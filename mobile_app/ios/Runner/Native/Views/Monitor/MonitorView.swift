@@ -91,6 +91,7 @@ public struct MonitorView: View {
                             .liquidGlass(cornerRadius: 22)
                     }
                     .buttonStyle(.plain)
+                    .contentShape(Circle())
                     .accessibilityLabel("Cambiar estilo del mapa")
 
                     Button {
@@ -104,6 +105,7 @@ public struct MonitorView: View {
                             .liquidGlass(cornerRadius: 22)
                     }
                     .buttonStyle(.plain)
+                    .contentShape(Circle())
                     .accessibilityLabel("Centrar en sismos recientes")
 
                     Button {
@@ -117,6 +119,7 @@ public struct MonitorView: View {
                             .liquidGlass(cornerRadius: 22)
                     }
                     .buttonStyle(.plain)
+                    .contentShape(Circle())
                     .accessibilityLabel("Centrar mapa en mi ubicación")
                 }
                 .padding(.trailing, 18)
@@ -266,36 +269,38 @@ private struct NativeMapView: UIViewRepresentable {
             case .none:
                 break
             case .centerUser:
-                if mapView.userLocation.location != nil {
-                    let coord = mapView.userLocation.coordinate
-                    mapView.setRegion(
-                        MKCoordinateRegion(center: coord, span: MKCoordinateSpan(latitudeDelta: 2.0, longitudeDelta: 2.0)),
-                        animated: true
+                let userCoord = mapView.userLocation.location?.coordinate ?? LocationManager.shared.currentCoordinate
+                if let coord = userCoord {
+                    let region = MKCoordinateRegion(
+                        center: coord,
+                        span: MKCoordinateSpan(latitudeDelta: 0.8, longitudeDelta: 0.8)
                     )
-                } else if let coord = LocationManager.shared.currentCoordinate {
-                    mapView.setRegion(
-                        MKCoordinateRegion(center: coord, span: MKCoordinateSpan(latitudeDelta: 2.0, longitudeDelta: 2.0)),
-                        animated: true
-                    )
+                    mapView.setRegion(region, animated: true)
+                    mapView.setUserTrackingMode(.follow, animated: true)
                 } else {
                     LocationManager.shared.requestPermission()
                     LocationManager.shared.startUpdating()
+                    mapView.setUserTrackingMode(.follow, animated: true)
                 }
             case .centerEarthquakes:
-                let seismicAnnotations = mapView.annotations.filter { $0 is SeismicPointAnnotation }
-                if !seismicAnnotations.isEmpty {
-                    mapView.showAnnotations(seismicAnnotations, animated: true)
+                mapView.setUserTrackingMode(.none, animated: false)
+                if let latest = state.events.first, let coord = latest.coordinate {
+                    let region = MKCoordinateRegion(
+                        center: coord,
+                        span: MKCoordinateSpan(latitudeDelta: 2.2, longitudeDelta: 2.2)
+                    )
+                    mapView.setRegion(region, animated: true)
                 } else {
                     let defaultRegion = MKCoordinateRegion(
                         center: CLLocationCoordinate2D(latitude: 4.65, longitude: -74.05),
-                        span: MKCoordinateSpan(latitudeDelta: 9.0, longitudeDelta: 9.0)
+                        span: MKCoordinateSpan(latitudeDelta: 6.5, longitudeDelta: 6.5)
                     )
                     mapView.setRegion(defaultRegion, animated: true)
                 }
             }
         }
 
-        context.coordinator.syncOverlays(mapView: mapView, provider: state.mapProvider)
+        context.coordinator.syncOverlays(mapView: mapView, provider: state.mapProvider, mapType: state.appMapType)
         context.coordinator.syncAnnotations(mapView: mapView, events: state.events, stations: state.stations)
     }
 
@@ -309,18 +314,37 @@ private struct NativeMapView: UIViewRepresentable {
             self.parent = parent
         }
 
-        func syncOverlays(mapView: MKMapView, provider: String) {
-            let hasOsm = mapView.overlays.contains { $0 is MKTileOverlay }
-            if provider == "osm" {
-                if !hasOsm {
-                    let osm = MKTileOverlay(urlTemplate: "https://tile.openstreetmap.org/{z}/{x}/{y}.png")
-                    osm.canReplaceMapContent = true
-                    mapView.addOverlay(osm, level: .aboveLabels)
+        func syncOverlays(mapView: MKMapView, provider: String, mapType: String) {
+            let desired: (url: String, id: String)?
+            switch provider {
+            case "google":
+                switch mapType {
+                case "satellite":
+                    desired = ("https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}", "google_satellite")
+                case "hybrid":
+                    desired = ("https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}", "google_hybrid")
+                default:
+                    desired = ("https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}", "google_standard")
+                }
+            case "osm":
+                desired = ("https://a.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png", "osm_standard")
+            default:
+                desired = nil
+            }
+
+            let currentTile = mapView.overlays.first { $0 is CustomUserAgentTileOverlay } as? CustomUserAgentTileOverlay
+            if let desired = desired {
+                if currentTile?.overlayIdentifier != desired.id {
+                    let oldTiles = mapView.overlays.filter { $0 is MKTileOverlay }
+                    mapView.removeOverlays(oldTiles)
+
+                    let overlay = CustomUserAgentTileOverlay(urlTemplate: desired.url, identifier: desired.id)
+                    mapView.addOverlay(overlay, level: .aboveLabels)
                 }
             } else {
-                if hasOsm {
-                    let osmOverlays = mapView.overlays.filter { $0 is MKTileOverlay }
-                    mapView.removeOverlays(osmOverlays)
+                let oldTiles = mapView.overlays.filter { $0 is MKTileOverlay }
+                if !oldTiles.isEmpty {
+                    mapView.removeOverlays(oldTiles)
                 }
             }
         }
@@ -537,4 +561,39 @@ private class StationPointAnnotation: NSObject, MKAnnotation {
     }
 
     var title: String? { "Estación \(station.id)" }
+}
+
+// MARK: - Mosaicos de Mapas con User-Agent
+private class CustomUserAgentTileOverlay: MKTileOverlay {
+    private let session: URLSession
+    let overlayIdentifier: String
+
+    init(urlTemplate: String, identifier: String) {
+        self.overlayIdentifier = identifier
+        let config = URLSessionConfiguration.default
+        config.requestCachePolicy = .returnCacheDataElseLoad
+        config.httpAdditionalHeaders = [
+            "User-Agent": "Seismik-iOS/1.0 (com.seismik.app; contact@seismik.org)"
+        ]
+        self.session = URLSession(configuration: config)
+        super.init(urlTemplate: urlTemplate)
+        self.tileSize = CGSize(width: 256, height: 256)
+        self.canReplaceMapContent = true
+    }
+
+    override func loadTile(at path: MKTileOverlayPath, result: @escaping (Data?, Error?) -> Void) {
+        let tileUrl = self.url(forTilePath: path)
+        let task = session.dataTask(with: tileUrl) { data, response, error in
+            if let error = error {
+                result(nil, error)
+                return
+            }
+            if let httpResponse = response as? HTTPURLResponse, !(200...299).contains(httpResponse.statusCode) {
+                result(nil, NSError(domain: "CustomUserAgentTileOverlay", code: httpResponse.statusCode, userInfo: nil))
+                return
+            }
+            result(data, nil)
+        }
+        task.resume()
+    }
 }
