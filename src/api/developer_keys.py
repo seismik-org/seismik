@@ -12,6 +12,8 @@ from fastapi import APIRouter, Cookie, Header, HTTPException, Request, status
 from firebase_admin import App, auth, credentials
 from pydantic import BaseModel, Field, field_validator
 
+from api.billing import summary as billing_summary
+
 router = APIRouter(prefix="/v1/developer", tags=["developer-platform"])
 
 # La gestión de webhooks exige iniciar sesión en el portal; no se concede con
@@ -77,6 +79,15 @@ class KeyListResponse(BaseModel):
     keys: list[KeySummary]
     active_count: int
     active_limit: int
+
+
+class BillingSummaryResponse(BaseModel):
+    period: str
+    requests: int
+    events_read: int
+    stations_read: int
+    credit_balance_microunits: int
+    payments_enabled: bool
 
 
 def _firebase_app(request: Request) -> App:
@@ -324,6 +335,25 @@ async def portal_config(request: Request) -> PortalConfigResponse:
                 "endpoints": ["/v1/network/stations"],
             },
         ],
+    )
+
+
+@router.get("/billing/summary", response_model=BillingSummaryResponse)
+async def billing_summary_for_developer(
+    request: Request,
+    authorization: str | None = Header(default=None),
+    seismik_session: str | None = Cookie(default=None),
+) -> BillingSummaryResponse:
+    """Muestra el medidor interno; no activa cobros ni almacena medios de pago."""
+    identity = await _request_identity(request, authorization, seismik_session)
+    values = await billing_summary(request.app.state.redis, str(identity["uid"]))
+    return BillingSummaryResponse(
+        period=str(values["period"]),
+        requests=int(values["requests"]),
+        events_read=int(values["events_read"]),
+        stations_read=int(values["stations_read"]),
+        credit_balance_microunits=int(values["credit_balance_microunits"]),
+        payments_enabled=bool(values["payments_enabled"]),
     )
 
 

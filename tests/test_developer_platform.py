@@ -160,6 +160,33 @@ async def test_free_plan_rate_limit(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 @pytest.mark.asyncio
+async def test_usage_is_metered_without_enabling_payments(monkeypatch: pytest.MonkeyPatch) -> None:
+    app = developer_app(monkeypatch)
+    headers = {"Authorization": "Bearer valid-token"}
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        created = await client.post(
+            "/v1/developer/keys",
+            headers=headers,
+            json={
+                "name": "Medición beta",
+                "scopes": ["events:read"],
+                "accepted_terms_version": "2026-08-30",
+            },
+        )
+        api_headers = {"X-Seismik-API-Key": created.json()["key"]}
+        assert (await client.get("/events", headers=api_headers)).status_code == 200
+        summary = await client.get("/v1/developer/billing/summary", headers=headers)
+
+    assert summary.status_code == 200
+    assert summary.json()["requests"] == 1
+    assert summary.json()["events_read"] == 1
+    assert summary.json()["credit_balance_microunits"] == 0
+    assert summary.json()["payments_enabled"] is False
+
+
+@pytest.mark.asyncio
 async def test_rotation_revokes_previous_secret(monkeypatch: pytest.MonkeyPatch) -> None:
     app = developer_app(monkeypatch)
     headers = {"Authorization": "Bearer valid-token"}
