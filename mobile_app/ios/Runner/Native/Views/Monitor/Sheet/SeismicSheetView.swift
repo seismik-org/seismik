@@ -130,6 +130,9 @@ public struct SeismicSheetView: View {
                 .padding(.bottom, 12)
             }
             .contentShape(Rectangle())
+            .onTapGesture {
+                onDrawerHandleTapped()
+            }
             .gesture(drawerDragGesture)
             .accessibilityLabel("Cambiar altura del panel")
             .accessibilityHint("Toca para alternar o desliza hacia arriba y abajo")
@@ -200,6 +203,21 @@ public struct SeismicSheetView: View {
                     .padding(.horizontal, 16)
                     .padding(.bottom, 36)
                 }
+                .simultaneousGesture(
+                    DragGesture(minimumDistance: 10)
+                        .onChanged { value in
+                            if value.translation.height > 0 {
+                                onDrawerDragChanged(value.translation.height)
+                            }
+                        }
+                        .onEnded { value in
+                            if value.translation.height > 15 {
+                                onDrawerDragEnded(value.translation.height, value.predictedEndTranslation.height)
+                            } else if value.translation.height > 0 {
+                                onDrawerDragEnded(0, 0)
+                            }
+                        }
+                )
             }
         }
         .background(
@@ -219,16 +237,12 @@ public struct SeismicSheetView: View {
     }
 
     private var drawerDragGesture: some Gesture {
-        DragGesture(minimumDistance: 3)
+        DragGesture(minimumDistance: 8)
             .onChanged { value in
                 onDrawerDragChanged(value.translation.height)
             }
             .onEnded { value in
-                if abs(value.translation.height) < 6 {
-                    onDrawerHandleTapped()
-                } else {
-                    onDrawerDragEnded(value.translation.height, value.predictedEndTranslation.height)
-                }
+                onDrawerDragEnded(value.translation.height, value.predictedEndTranslation.height)
             }
     }
 }
