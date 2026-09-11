@@ -29,8 +29,7 @@
     </nav>
     <div class="auth-actions">
       <span id="user-label" class="user-label" hidden></span>
-      <button id="login-button" class="button compact" type="button">Entrar con Google</button>
-      <button class="button secondary compact" data-login-provider="github" type="button" hidden>GitHub</button>
+      <button id="login-button" class="button compact" type="button">Entrar</button>
       <button id="logout-button" class="button secondary compact" type="button" hidden>Salir</button>
     </div>
   </header>
@@ -67,11 +66,11 @@
     </section>
 
     <section id="panel" class="developer-section dashboard-section">
-      <div class="section-heading"><p class="eyebrow">TU CUENTA</p><h2>Claves y consumo.</h2><p id="panel-intro">Inicia sesión con una cuenta Google verificada para administrar tus credenciales.</p></div>
+      <div class="section-heading"><p class="eyebrow">TU CUENTA</p><h2>Claves y consumo.</h2><p id="panel-intro">Inicia sesión con una cuenta verificada para administrar tus credenciales.</p></div>
 
       <div id="signed-out-panel" class="signin-panel">
         <div><h3>Una cuenta, control completo.</h3><p>Las claves se muestran una sola vez. Se almacenan como hash y puedes revocarlas o rotarlas en cualquier momento.</p></div>
-        <div class="auth-provider-buttons"><button id="panel-login-button" class="button" type="button">Continuar con Google</button><button class="button secondary" data-login-provider="github" type="button" hidden>Continuar con GitHub</button></div>
+        <button id="panel-login-button" class="button" type="button">Entrar</button>
       </div>
 
       <div id="signed-in-panel" hidden>

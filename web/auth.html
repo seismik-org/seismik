@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Inicio de sesión seguro de Seismik.">
+  <title>Entrar · Seismik</title>
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32.png">
+  <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/logo.css">
+  <link rel="stylesheet" href="/auth.css">
+</head>
+<body class="auth-page">
+  <main class="auth-card" aria-labelledby="auth-title">
+    <a class="auth-brand" href="https://seismik.org/">
+      <img class="brand-logo" src="/assets/seismik_logo.png" alt="">
+      <span>SEISMIK</span>
+    </a>
+    <p class="eyebrow">ACCESO SEGURO</p>
+    <h1 id="auth-title">Entra a Seismik Developers</h1>
+    <p class="auth-copy">Elige cómo quieres continuar. Seismik sólo solicita tu perfil básico y un correo verificado.</p>
+    <div id="providers" class="provider-list" aria-live="polite">
+      <button class="provider-button" type="button" data-provider="google"><span aria-hidden="true">G</span> Continuar con Google</button>
+      <button class="provider-button" type="button" data-provider="github"><span aria-hidden="true">⌘</span> Continuar con GitHub</button>
+    </div>
+    <p id="availability" class="availability" hidden></p>
+    <a class="return-link" href="https://devs.seismik.org/">Volver a Seismik Developers</a>
+  </main>
+  <script src="/auth.js"></script>
+</body>
+</html>

@@ -26,8 +26,8 @@ async function api(path, options = {}, authenticated = true) {
   return response.json();
 }
 
-async function login(provider = "google") {
-  window.location.assign(`${AUTH}/v1/oauth/login?provider=${encodeURIComponent(provider)}`);
+function login() {
+  window.location.assign(`${AUTH}/id/`);
 }
 
 async function copyText(value) {
@@ -190,18 +190,9 @@ function updateSession(user) {
   }
 }
 
-function setProviderButtons(providers) {
-  const githubEnabled = Boolean(providers?.github?.enabled);
-  for (const button of document.querySelectorAll("[data-login-provider='github']")) {
-    button.hidden = !githubEnabled;
-  }
-}
-
 async function boot() {
   try {
     portalConfig = await api("/v1/developer/config", {}, false);
-    const oauth = await api("/v1/oauth/providers", {}, false);
-    setProviderButtons(oauth.providers);
     const plan = portalConfig.plans[0];
     elements["minute-quota"].textContent = plan.requests_per_minute.toLocaleString("es-CO");
     elements["daily-quota"].textContent = plan.requests_per_day.toLocaleString("es-CO");
@@ -215,11 +206,8 @@ async function boot() {
   } catch (error) { toast(`No fue posible cargar la plataforma: ${error.message}`, true); }
 }
 
-elements["login-button"].addEventListener("click", () => login("google"));
-elements["panel-login-button"].addEventListener("click", () => login("google"));
-for (const button of document.querySelectorAll("[data-login-provider='github']")) {
-  button.addEventListener("click", () => login("github"));
-}
+elements["login-button"].addEventListener("click", login);
+elements["panel-login-button"].addEventListener("click", login);
 elements["logout-button"].addEventListener("click", async () => {
   await api("/v1/oauth/logout", { method: "POST" }, false);
   window.location.reload();
