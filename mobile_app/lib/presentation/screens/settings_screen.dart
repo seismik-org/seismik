@@ -7,6 +7,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
 
 import '../../services/map_launcher.dart';
+import 'family_safety_screen.dart';
 import '../../state/mobile_settings.dart';
 import '../../state/seismik_state.dart';
 
@@ -135,6 +136,19 @@ class SettingsScreen extends StatelessWidget {
                 ),
               ),
               const _PendingReportsTile(),
+              ListTile(
+                leading: const Icon(Icons.family_restroom_outlined),
+                title: const Text('Búsqueda de familiares'),
+                subtitle: const Text(
+                  'Círculos voluntarios con invitación y ubicación temporal.',
+                ),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => const FamilySafetyScreen(),
+                  ),
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 12),

@@ -11,6 +11,7 @@ import 'package:uuid/uuid.dart';
 import '../core/constants.dart';
 import '../core/security.dart';
 import '../data/models/citizen_report.dart';
+import '../data/models/family_circle.dart';
 import '../data/models/pending_report.dart';
 import '../data/models/seismic_event.dart';
 import '../data/models/station.dart';
@@ -519,6 +520,88 @@ class ApiClient {
           }),
         )
         .toList(growable: false);
+  }
+
+  Future<FamilyCircle?> fetchFamilyCircle() async {
+    final http.Response response = await _http
+        .get(_uri('/v1/family/circle'), headers: await _mobileHeaders())
+        .timeout(const Duration(seconds: 8));
+    if (response.statusCode == 404) return null;
+    return FamilyCircle.fromMap(_decode(response));
+  }
+
+  Future<void> createFamilyCircle({
+    required String displayName,
+    required String circleName,
+  }) async {
+    final http.Response response = await _http
+        .post(
+          _uri('/v1/family/circle'),
+          headers: await _mobileHeaders(),
+          body: jsonEncode(<String, String>{
+            'display_name': displayName.trim(),
+            'circle_name': circleName.trim(),
+          }),
+        )
+        .timeout(const Duration(seconds: 8));
+    _decode(response);
+  }
+
+  Future<String> createFamilyInvitation(String displayName) async {
+    final http.Response response = await _http
+        .post(
+          _uri('/v1/family/circle/invitations'),
+          headers: await _mobileHeaders(),
+          body: jsonEncode(<String, String>{'display_name': displayName.trim()}),
+        )
+        .timeout(const Duration(seconds: 8));
+    return _decode(response)['invite_code']?.toString() ?? '';
+  }
+
+  Future<void> joinFamilyCircle({
+    required String inviteCode,
+    required String displayName,
+  }) async {
+    final http.Response response = await _http
+        .post(
+          _uri('/v1/family/join'),
+          headers: await _mobileHeaders(),
+          body: jsonEncode(<String, String>{
+            'invite_code': inviteCode.trim(),
+            'display_name': displayName.trim(),
+          }),
+        )
+        .timeout(const Duration(seconds: 8));
+    _decode(response);
+  }
+
+  Future<void> shareFamilyLocation({
+    required double latitude,
+    required double longitude,
+    required int shareMinutes,
+    required bool precise,
+  }) async {
+    final http.Response response = await _http
+        .put(
+          _uri('/v1/family/location'),
+          headers: await _mobileHeaders(),
+          body: jsonEncode(<String, dynamic>{
+            'latitude': latitude,
+            'longitude': longitude,
+            'share_minutes': shareMinutes,
+            'precision': precise ? 'precise' : 'approximate',
+            'precise_location_consent': precise,
+          }),
+        )
+        .timeout(const Duration(seconds: 8));
+    _decode(response);
+  }
+
+  Future<void> stopSharingFamilyLocation() async {
+    final http.Response response = await _http
+        .delete(_uri('/v1/family/location'), headers: await _mobileHeaders())
+        .timeout(const Duration(seconds: 8));
+    if (response.statusCode != 204) _decode(response);
   }
 
   Future<List<SeismicEvent>> _fetchLegacyRecentEvents() async {
