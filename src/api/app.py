@@ -14,6 +14,7 @@ from api.config import AppSettings, get_settings
 from api.developer_keys import router as developer_keys_router
 from api.devices import router as devices_router
 from api.devices_store import DeviceRepository
+from api.family import router as family_router
 from api.history import router as history_router
 from api.integrations import router as integrations_router
 from api.integrity import DeviceIntegrityVerifier
@@ -70,6 +71,7 @@ def create_app(settings: AppSettings | None = None) -> FastAPI:
     )
     app.include_router(webhooks_router)
     app.include_router(devices_router)
+    app.include_router(family_router)
     app.include_router(alerts_router)
     app.include_router(developer_keys_router)
     app.include_router(integrations_router)
