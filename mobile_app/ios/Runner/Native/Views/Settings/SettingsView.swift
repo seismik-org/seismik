@@ -703,7 +703,7 @@ public struct FamilySafetyView: View {
 
     public init() {}
 
-    var body: some View {
+    public var body: some View {
         CompatibleNavigationStack {
             Group {
                 if isLoading {
