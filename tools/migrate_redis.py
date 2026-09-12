@@ -13,7 +13,6 @@ veces: una previa y otra justo durante el corte.
 from __future__ import annotations
 
 import argparse
-import sys
 
 from redis import Redis
 
