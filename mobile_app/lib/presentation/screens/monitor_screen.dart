@@ -9,9 +9,11 @@ import 'package:provider/provider.dart';
 import '../../core/platform.dart';
 import '../../core/theme.dart';
 import '../../data/models/seismic_event.dart';
+import '../../data/models/station.dart';
 import '../../state/mobile_settings.dart';
 import '../../state/seismik_state.dart';
 import '../widgets/liquid_glass.dart';
+import '../widgets/map_markers.dart';
 import '../widgets/status_pill.dart';
 import 'event_detail_screen.dart';
 
@@ -34,6 +36,10 @@ class _MonitorScreenState extends State<MonitorScreen> {
   static const double _expanded = 0.86;
 
   final DraggableScrollableController _sheet = DraggableScrollableController();
+  final MarkerSetCache _markerCache = MarkerSetCache();
+  static final Set<ClusterManager> _clusterManagers = <ClusterManager>{
+    stationClusterManager,
+  };
   @override
   void dispose() {
     _sheet.dispose();
@@ -57,19 +63,108 @@ class _MonitorScreenState extends State<MonitorScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final SeismikState state = context.watch<SeismikState>();
+    // Cada `select` reconstruye la pantalla sólo cuando cambia ese dato. Con
+    // `watch`, cualquier aviso del estado (un reporte en cola, un refresco, un
+    // toque en el mapa) volvía a construir el mapa y la lista completa.
+    final List<SeismicStation> stations = context
+        .select<SeismikState, List<SeismicStation>>((s) => s.stations);
+    final List<SeismicEvent> events = context
+        .select<SeismikState, List<SeismicEvent>>((s) => s.recentEvents);
+    final bool hasPosition = context.select<SeismikState, bool>(
+      (s) => s.position != null,
+    );
+    final bool online = context.select<SeismikState, bool>(
+      (s) => s.networkOnline,
+    );
+    final int pendingReports = context.select<SeismikState, int>(
+      (s) => s.pendingReportCount,
+    );
+    final String? syncMessage = context.select<SeismikState, String?>(
+      (s) => s.syncMessage,
+    );
+    final String? statusMessage = context.select<SeismikState, String?>(
+      (s) => s.statusMessage,
+    );
     final MobileSettings settings = context.watch<MobileSettings>();
+    final SeismikState state = Provider.of<SeismikState>(
+      context,
+      listen: false,
+    );
     final LatLng center = state.position == null
         ? const LatLng(4.65, -74.05)
         : LatLng(state.position!.latitude, state.position!.longitude);
+    final Set<Marker> markers = _markerCache.resolve(
+      stations: stations,
+      events: events,
+      build: () => buildMapMarkers(
+        stations: stations,
+        events: events,
+        onEventTap: _openDetail,
+        eventTitle: _markerTitle,
+        eventSnippet: _markerSnippet,
+      ),
+    );
+    final List<Widget> header = <Widget>[
+      const _SheetHandle(),
+      const SizedBox(height: 12),
+      StatusPill(online: online),
+      if (pendingReports > 0 || syncMessage != null) ...<Widget>[
+        const SizedBox(height: 8),
+        _SyncBanner(
+          pending: pendingReports,
+          message: syncMessage,
+          onRetry: state.flushPendingReports,
+        ),
+      ],
+      const SizedBox(height: 12),
+      Text(
+        'Historial de sismos',
+        style: Theme.of(
+          context,
+        ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900),
+      ),
+      Text(
+        '${settings.historyDays} días · M ≥ '
+        '${settings.minimumHistoryMagnitude.toStringAsFixed(1)} · '
+        '${settings.historySources.map(_sourceLabel).join(' + ')}',
+      ),
+      if (statusMessage != null)
+        Padding(
+          padding: const EdgeInsets.only(top: 8),
+          child: Text(
+            statusMessage,
+            style: const TextStyle(color: Colors.orangeAccent),
+          ),
+        ),
+      const SizedBox(height: 14),
+      if (events.isEmpty)
+        const Card(
+          child: Padding(
+            padding: EdgeInsets.all(18),
+            child: Text('Aún no hay reportes sincronizados.'),
+          ),
+        ),
+    ];
+    final List<Widget> footer = <Widget>[
+      if (events.any((event) => event.isPreliminary))
+        const _CalibrationStatusCard(),
+      const SizedBox(height: 8),
+      Text(
+        'Arrastra esta barra para explorar los sismos; mueve y '
+        'acerca el mapa libremente. Toca un sismo para abrir su '
+        'detalle del reporte.',
+        style: Theme.of(context).textTheme.bodySmall,
+      ),
+    ];
     final Widget content = Stack(
         children: <Widget>[
           GoogleMap(
             initialCameraPosition: CameraPosition(target: center, zoom: 5.8),
-            markers: _markers(state),
+            markers: markers,
+            clusterManagers: _clusterManagers,
             onTap: (_) => state.selectEvent(null),
-            myLocationEnabled: state.position != null,
-            myLocationButtonEnabled: state.position != null,
+            myLocationEnabled: hasPosition,
+            myLocationButtonEnabled: hasPosition,
             compassEnabled: false,
             zoomControlsEnabled: false,
             mapToolbarEnabled: false,
@@ -87,68 +182,24 @@ class _MonitorScreenState extends State<MonitorScreen> {
             snapSizes: const <double>[_collapsed, _resting, _expanded],
             builder: (context, controller) => _SheetSurface(
               onRefresh: state.refreshNetworkData,
-              child: Builder(
-                builder: (context) => ListView(
-                  controller: controller,
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
-                  children: <Widget>[
-                    const _SheetHandle(),
-                    const SizedBox(height: 12),
-                    StatusPill(online: state.networkOnline),
-                    if (state.pendingReportCount > 0 ||
-                        state.syncMessage != null) ...<Widget>[
-                      const SizedBox(height: 8),
-                      _SyncBanner(
-                        pending: state.pendingReportCount,
-                        message: state.syncMessage,
-                        onRetry: state.flushPendingReports,
-                      ),
-                    ],
-                    const SizedBox(height: 12),
-                    Text(
-                      'Historial de sismos',
-                      style: Theme.of(context).textTheme.headlineSmall
-                          ?.copyWith(fontWeight: FontWeight.w900),
-                    ),
-                    Text(
-                      '${settings.historyDays} días · M ≥ '
-                      '${settings.minimumHistoryMagnitude.toStringAsFixed(1)} · '
-                      '${settings.historySources.map(_sourceLabel).join(' + ')}',
-                    ),
-                    if (state.statusMessage != null)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 8),
-                        child: Text(
-                          state.statusMessage!,
-                          style: const TextStyle(color: Colors.orangeAccent),
-                        ),
-                      ),
-                    const SizedBox(height: 14),
-                    if (state.recentEvents.isEmpty)
-                      const Card(
-                        child: Padding(
-                          padding: EdgeInsets.all(18),
-                          child: Text('Aún no hay reportes sincronizados.'),
-                        ),
-                      )
-                    else
-                      ...state.recentEvents.map(
-                        (event) => _EventTile(
-                          event: event,
-                          onOpenDetail: () => _openDetail(event),
-                        ),
-                      ),
-                    if (state.recentEvents.any((event) => event.isPreliminary))
-                      const _CalibrationStatusCard(),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Arrastra esta barra para explorar los sismos; mueve y '
-                      'acerca el mapa libremente. Toca un sismo para abrir su '
-                      'detalle del reporte.',
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                  ],
-                ),
+              // Sólo se construyen las filas visibles. Con 200 sismos, armarlas
+              // todas en cada cambio era trabajo perdido en teléfonos modestos.
+              child: ListView.builder(
+                controller: controller,
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
+                itemCount: header.length + events.length + footer.length,
+                itemBuilder: (context, index) {
+                  if (index < header.length) return header[index];
+                  final int eventIndex = index - header.length;
+                  if (eventIndex < events.length) {
+                    final SeismicEvent event = events[eventIndex];
+                    return _EventTile(
+                      event: event,
+                      onOpenDetail: () => _openDetail(event),
+                    );
+                  }
+                  return footer[eventIndex - events.length];
+                },
               ),
             ),
           ),
@@ -195,42 +246,13 @@ class _MonitorScreenState extends State<MonitorScreen> {
     );
   }
 
-  Set<Marker> _markers(SeismikState state) => <Marker>{
-    for (final station in state.stations)
-      Marker(
-        markerId: MarkerId('${station.network}.${station.id}'),
-        position: LatLng(station.latitude, station.longitude),
-        infoWindow: InfoWindow(
-          title: '${station.network}.${station.id}',
-          snippet: 'Estación sísmica',
-        ),
-        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure),
-      ),
-    for (final event in state.recentEvents.take(100))
-      if (event.latitude != null && event.longitude != null)
-        Marker(
-          markerId: MarkerId('event.${event.id}'),
-          position: LatLng(event.latitude!, event.longitude!),
-          onTap: () => _openDetail(event),
-          infoWindow: InfoWindow(
-            title:
-                'M ${event.magnitude?.toStringAsFixed(1) ?? '—'} · '
-                '${_shortAgency(event)}',
-            snippet:
-                event.place ??
-                (event.isPreliminary
-                    ? 'Candidato preliminar'
-                    : 'Evento oficial'),
-          ),
-          icon: BitmapDescriptor.defaultMarkerWithHue(
-            event.isPreliminary
-                ? BitmapDescriptor.hueViolet
-                : event.magnitude != null && event.magnitude! >= 5
-                ? BitmapDescriptor.hueRed
-                : BitmapDescriptor.hueOrange,
-          ),
-        ),
-  };
+  static String _markerTitle(SeismicEvent event) =>
+      'M ${event.magnitude?.toStringAsFixed(1) ?? '—'} · '
+      '${_shortAgency(event)}';
+
+  static String _markerSnippet(SeismicEvent event) =>
+      event.place ??
+      (event.isPreliminary ? 'Candidato preliminar' : 'Evento oficial');
 
   static String _sourceLabel(String id) => switch (id) {
     'sgc_colombia' => 'SGC',

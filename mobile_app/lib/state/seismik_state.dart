@@ -13,29 +13,90 @@ import '../services/notification_service.dart';
 import '../services/offline_queue.dart';
 import 'mobile_settings.dart';
 
+/// Ajustes que obligan a hablar con el servidor.
+///
+/// El tema, el color o el proveedor de mapas sólo cambian la interfaz. Antes
+/// cualquier ajuste volvía a registrar el dispositivo y descargaba de nuevo el
+/// historial y el catálogo de estaciones.
+class _NetworkPreferences {
+  _NetworkPreferences.of(MobileSettings settings)
+    : crowdsourcing = settings.crowdsourcingEnabled,
+      earlyAlerts = settings.receiveEarlyAlerts,
+      officialUpdates = settings.receiveOfficialUpdates,
+      notificationMagnitude = settings.minimumNotificationMagnitude,
+      alertRadiusKm = settings.alertRadiusKm,
+      historyDays = settings.historyDays,
+      historyMagnitude = settings.minimumHistoryMagnitude,
+      historySources = (settings.historySources.toList()..sort()).join(',');
+
+  final bool crowdsourcing;
+  final bool earlyAlerts;
+  final bool officialUpdates;
+  final double notificationMagnitude;
+  final double alertRadiusKm;
+  final int historyDays;
+  final double historyMagnitude;
+  final String historySources;
+
+  bool alertFilterDiffers(_NetworkPreferences other) =>
+      earlyAlerts != other.earlyAlerts ||
+      officialUpdates != other.officialUpdates ||
+      notificationMagnitude != other.notificationMagnitude ||
+      alertRadiusKm != other.alertRadiusKm;
+
+  bool historyFilterDiffers(_NetworkPreferences other) =>
+      historyDays != other.historyDays ||
+      historyMagnitude != other.historyMagnitude ||
+      historySources != other.historySources;
+}
+
 class SeismikState extends ChangeNotifier with WidgetsBindingObserver {
   SeismikState({
     required this.settings,
     ApiClient? apiClient,
     NotificationService? notificationService,
     this.reportQueue = const OfflineReportQueue(),
+    this.settingsDebounce = const Duration(milliseconds: 600),
   }) : api = apiClient ?? ApiClient(),
        notifications = notificationService ?? NotificationService() {
     accelerometer = AccelerometerService(
       apiClient: api,
       positionProvider: currentCoordinates,
     );
+    _networkPreferences = _NetworkPreferences.of(settings);
     settings.addListener(_onSettingsChanged);
     WidgetsBinding.instance.addObserver(this);
   }
+
+  /// Una ubicación del sistema con menos de esta edad basta para registrar
+  /// las alertas, cuyos radios van de 50 a 600 km.
+  static const Duration _freshLocationAge = Duration(minutes: 15);
+
+  /// Distancia a partir de la cual conviene actualizar la geocerca registrada.
+  static const double _reregisterDistanceMeters = 5000;
+
+  /// Alertas recuperadas que se conservan al refrescar el historial.
+  static const int _maxRecoveredAlerts = 50;
 
   final MobileSettings settings;
   final ApiClient api;
   final NotificationService notifications;
   final OfflineReportQueue reportQueue;
+
+  /// Espera tras el último cambio de un ajuste antes de hablar con el servidor.
+  final Duration settingsDebounce;
+
   late final AccelerometerService accelerometer;
+  late _NetworkPreferences _networkPreferences;
   StreamSubscription<NotificationEnvelope>? _notificationSubscription;
-  bool _resumeSyncInProgress = false;
+  Timer? _alertPreferencesTimer;
+  Timer? _historyFilterTimer;
+  Future<void>? _refreshInFlight;
+  bool _refreshRequestedAgain = false;
+  Future<void>? _flushInFlight;
+  Future<void>? _missedAlertsInFlight;
+  List<SeismicEvent> _recoveredAlerts = const <SeismicEvent>[];
+  bool _disposed = false;
 
   bool initializing = true;
   bool networkOnline = false;
@@ -51,23 +112,62 @@ class SeismikState extends ChangeNotifier with WidgetsBindingObserver {
 
   Future<void> initialize() async {
     statusMessage = 'Conectando servicios en segundo plano…';
-    notifyListeners();
+    _notify();
     _notificationSubscription = notifications.events.listen(_onNotification);
-    pendingReportCount = await reportQueue.pendingCount();
 
-    final Future<void> notificationReady = _initializeNotifications();
-    final Future<void> locationReady = _resolveLocationSafely();
+    // Lo guardado en el teléfono aparece de inmediato y la red lo reemplaza en
+    // cuanto responde. Antes el mapa quedaba vacío hasta terminar la ubicación,
+    // el registro y dos descargas en serie.
+    unawaited(_showCachedData());
+    pendingReportCount = await _orDefault(reportQueue.pendingCount(), 0);
 
-    // The monitor endpoints require the short-lived device session created by
-    // registration. Starting both requests here used to race a fresh install:
-    // they failed before registration and Dart surfaced only ParallelWaitError.
-    await Future.wait(<Future<void>>[notificationReady, locationReady]);
+    // Toda apertura salvo la primera ya tiene sesión: los datos se piden en
+    // paralelo con la ubicación y el registro, sin esperarlos.
+    final bool hadSession = await _orDefault(api.hasDeviceSession(), false);
+    if (hadSession) unawaited(refreshNetworkData());
+
+    await Future.wait(<Future<void>>[
+      _initializeNotifications(),
+      _resolveLocationSafely(),
+    ]);
     initializing = false;
-    notifyListeners();
+    _notify();
+
     if (position != null) {
-      await _registerAndStartSensors();
+      final bool registered = await _registerAndStartSensors();
+      // Sin sesión previa, o con una que el servidor ya no aceptaba, los datos
+      // se vuelven a pedir con la sesión recién emitida.
+      if (registered && (!hadSession || !networkOnline)) {
+        unawaited(refreshNetworkData());
+      }
+    } else if (!hadSession) {
+      unawaited(refreshNetworkData());
     }
-    unawaited(refreshNetworkData());
+  }
+
+  Future<void> _showCachedData() async {
+    final Future<List<SeismicEvent>> cachedEvents = _orDefault(
+      api.readCachedEvents(),
+      const <SeismicEvent>[],
+    );
+    final Future<List<SeismicStation>> cachedStations = _orDefault(
+      api.readCachedStations(),
+      const <SeismicStation>[],
+    );
+    final List<SeismicEvent> events = await cachedEvents;
+    final List<SeismicStation> loadedStations = await cachedStations;
+    if (_disposed) return;
+    bool changed = false;
+    // La red pudo responder antes que el disco: nunca se pisan datos frescos.
+    if (recentEvents.isEmpty && events.isNotEmpty) {
+      recentEvents = events;
+      changed = true;
+    }
+    if (stations.isEmpty && loadedStations.isNotEmpty) {
+      stations = loadedStations;
+      changed = true;
+    }
+    if (changed) _notify();
   }
 
   Future<void> _initializeNotifications() async {
@@ -75,7 +175,7 @@ class SeismikState extends ChangeNotifier with WidgetsBindingObserver {
       await notifications.initialize();
     } catch (error) {
       statusMessage = 'Notificaciones pendientes: $error';
-      notifyListeners();
+      _notify();
     }
   }
 
@@ -84,45 +184,85 @@ class SeismikState extends ChangeNotifier with WidgetsBindingObserver {
       await _resolveLocation();
     } catch (error) {
       statusMessage = 'Ubicación pendiente: $error';
-      notifyListeners();
+      _notify();
     }
   }
 
-  Future<void> _registerAndStartSensors() async {
+  /// Devuelve si el registro terminó bien.
+  Future<bool> _registerAndStartSensors() async {
     try {
       await _registerWithRetry();
-      await _syncCrowdsourcing();
-      await syncMissedAlerts();
-      await flushPendingReports();
     } catch (error) {
       statusMessage = 'Registro del dispositivo pendiente: $error';
-      notifyListeners();
+      _notify();
+      return false;
     }
+    try {
+      // Son independientes entre sí: no hay motivo para encadenarlos.
+      await Future.wait(<Future<void>>[
+        _syncCrowdsourcing(),
+        syncMissedAlerts(),
+        flushPendingReports(),
+      ]);
+    } catch (_) {
+      // Cada uno informa su propio estado; el registro ya quedó hecho.
+    }
+    return true;
   }
 
   void _onSettingsChanged() {
-    unawaited(_syncCrowdsourcing());
+    final _NetworkPreferences previous = _networkPreferences;
+    final _NetworkPreferences next = _NetworkPreferences.of(settings);
+    _networkPreferences = next;
+
+    if (next.crowdsourcing != previous.crowdsourcing) {
+      unawaited(_syncCrowdsourcing());
+    }
     // El umbral de magnitud y el radio viven en el servidor: sin volver a
-    // registrar el dispositivo, el filtro nuevo no llegaría al dispatcher.
-    unawaited(_reregisterPreferences());
+    // registrar el dispositivo, el filtro nuevo no llegaría al dispatcher. Se
+    // espera a que la persona termine de ajustar para registrar una sola vez.
+    if (next.alertFilterDiffers(previous)) {
+      _alertPreferencesTimer?.cancel();
+      _alertPreferencesTimer = Timer(
+        settingsDebounce,
+        () => unawaited(_reregisterPreferences()),
+      );
+    }
+    if (next.historyFilterDiffers(previous)) {
+      _historyFilterTimer?.cancel();
+      _historyFilterTimer = Timer(settingsDebounce, _requestHistoryRefresh);
+    }
+  }
+
+  void _requestHistoryRefresh() {
+    if (_disposed) return;
+    if (_refreshInFlight != null) {
+      // La descarga en curso usa el filtro anterior: se repite al terminar.
+      _refreshRequestedAgain = true;
+      return;
+    }
     unawaited(refreshNetworkData());
   }
 
   Future<void> _reregisterPreferences() async {
-    if (position == null) return;
+    if (position == null || _disposed) return;
     try {
       await _registerWithRetry();
     } catch (error) {
       statusMessage = 'Preferencias de alerta sin sincronizar: $error';
-      notifyListeners();
+      _notify();
     }
   }
 
   Future<void> _syncCrowdsourcing() async {
-    if (settings.crowdsourcingEnabled && position != null) {
-      await accelerometer.start();
-    } else {
-      await accelerometer.stop();
+    try {
+      if (settings.crowdsourcingEnabled && position != null) {
+        await accelerometer.start();
+      } else {
+        await accelerometer.stop();
+      }
+    } catch (_) {
+      // Un sensor ausente o bloqueado no debe impedir el resto del monitor.
     }
   }
 
@@ -146,29 +286,80 @@ class SeismikState extends ChangeNotifier with WidgetsBindingObserver {
     }
   }
 
-  Future<void> refreshNetworkData() async {
+  /// Descarga el historial y el catálogo de estaciones.
+  ///
+  /// Volver a la app, tirar hacia abajo y cambiar un filtro pueden pedirlo a la
+  /// vez: todas esas llamadas comparten una sola descarga.
+  Future<void> refreshNetworkData() =>
+      _refreshInFlight ??= _runRefreshes();
+
+  Future<void> _runRefreshes() async {
     try {
-      // Await independently so a failed source reports its useful error rather
-      // than the opaque ParallelWaitError emitted by record.wait.
-      final List<SeismicStation> loadedStations = await api.fetchStations();
-      final List<SeismicEvent> loadedEvents = await api.fetchRecentEvents(
-        sourceIds: settings.historySources,
-        days: settings.historyDays,
-        minimumMagnitude: settings.minimumHistoryMagnitude,
-      );
-      stations = loadedStations;
-      recentEvents = loadedEvents;
+      do {
+        _refreshRequestedAgain = false;
+        await _refreshOnce();
+      } while (_refreshRequestedAgain && !_disposed);
+    } finally {
+      _refreshInFlight = null;
+    }
+  }
+
+  Future<void> _refreshOnce() async {
+    // Se piden a la vez. Las estaciones casi siempre salen de la caché y nunca
+    // retrasan los sismos, que es lo que la persona espera ver.
+    List<SeismicEvent>? loadedEvents;
+    Object? failure;
+    final Future<void> eventsReady = api
+        .fetchRecentEvents(
+          sourceIds: settings.historySources,
+          days: settings.historyDays,
+          minimumMagnitude: settings.minimumHistoryMagnitude,
+        )
+        .then<void>(
+          (List<SeismicEvent> value) => loadedEvents = value,
+          onError: (Object error) => failure = error,
+        );
+    final Future<List<SeismicStation>> stationsReady = _orDefault(
+      api.fetchStations(),
+      stations,
+    );
+
+    await eventsReady;
+    if (_disposed) return;
+    final List<SeismicEvent>? fresh = loadedEvents;
+    if (fresh != null) {
+      recentEvents = _withRecoveredAlerts(fresh);
       networkOnline = true;
       statusMessage = null;
-    } catch (error) {
+    } else {
       networkOnline = false;
-      statusMessage = 'Sincronización pendiente: $error';
+      statusMessage = 'Sincronización pendiente: $failure';
     }
-    notifyListeners();
+    _notify();
+
+    final List<SeismicStation> nextStations = await stationsReady;
+    if (_disposed) return;
+    // La misma lista significa el mismo catálogo: el mapa no se reconstruye.
+    if (!identical(nextStations, stations) && nextStations.isNotEmpty) {
+      stations = nextStations;
+      _notify();
+    }
+
     if (networkOnline) {
-      await flushPendingReports();
-      await syncMissedAlerts();
+      await Future.wait(<Future<void>>[
+        _orDefault(flushPendingReports(), null),
+        syncMissedAlerts(),
+      ]);
     }
+  }
+
+  List<SeismicEvent> _withRecoveredAlerts(List<SeismicEvent> history) {
+    if (_recoveredAlerts.isEmpty) return history;
+    final Set<String> ids = history.map((event) => event.id).toSet();
+    final List<SeismicEvent> missing = _recoveredAlerts
+        .where((event) => !ids.contains(event.id))
+        .toList(growable: false);
+    return missing.isEmpty ? history : <SeismicEvent>[...missing, ...history];
   }
 
   /// Al volver a primer plano, confirma que el servidor está disponible antes
@@ -177,22 +368,22 @@ class SeismikState extends ChangeNotifier with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed && !initializing) {
-      unawaited(_syncAfterResume());
-    }
-  }
-
-  Future<void> _syncAfterResume() async {
-    if (_resumeSyncInProgress) return;
-    _resumeSyncInProgress = true;
-    try {
-      await refreshNetworkData();
-    } finally {
-      _resumeSyncInProgress = false;
+      unawaited(refreshNetworkData());
     }
   }
 
   /// Reenvía los reportes que quedaron guardados sin conexión.
-  Future<void> flushPendingReports() async {
+  ///
+  /// Dos vaciados simultáneos podrían leer la misma cola y enviar un reporte
+  /// dos veces: se comparte el que ya está en curso.
+  Future<void> flushPendingReports() =>
+      _flushInFlight ??= _flushPendingReports().whenComplete(
+        () => _flushInFlight = null,
+      );
+
+  Future<void> _flushPendingReports() async {
+    final int previousCount = pendingReportCount;
+    final String? previousMessage = syncMessage;
     final QueueFlushResult result = await reportQueue.flush(_sendPending);
     pendingReportCount = result.remaining;
     if (result.sent > 0) {
@@ -206,7 +397,11 @@ class SeismikState extends ChangeNotifier with WidgetsBindingObserver {
     } else if (result.changed) {
       syncMessage = null;
     }
-    notifyListeners();
+    // Casi siempre la cola está vacía: avisar igual reconstruía la pantalla
+    // en cada refresco sin que nada hubiera cambiado.
+    if (pendingReportCount != previousCount || syncMessage != previousMessage) {
+      _notify();
+    }
   }
 
   Future<void> _sendPending(PendingReport report) async {
@@ -221,20 +416,31 @@ class SeismikState extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   /// Recupera del servidor las alertas emitidas mientras no hubo conexión.
-  Future<void> syncMissedAlerts() async {
+  Future<void> syncMissedAlerts() =>
+      _missedAlertsInFlight ??= _syncMissedAlerts().whenComplete(
+        () => _missedAlertsInFlight = null,
+      );
+
+  Future<void> _syncMissedAlerts() async {
     try {
       final List<SeismicEvent> missed = await api.fetchMissedAlerts();
-      if (missed.isEmpty) return;
+      if (missed.isEmpty || _disposed) return;
       final Set<String> known = recentEvents.map((event) => event.id).toSet();
       final List<SeismicEvent> added = missed
           .where((event) => !known.contains(event.id))
           .toList(growable: false);
       if (added.isEmpty) return;
+      // El cursor del servidor ya avanzó: si el historial se refresca, estas
+      // alertas no volverían a llegar. Se guardan para no perderlas.
+      _recoveredAlerts = <SeismicEvent>[
+        ...added.reversed,
+        ..._recoveredAlerts,
+      ].take(_maxRecoveredAlerts).toList(growable: false);
       recentEvents = <SeismicEvent>[...added.reversed, ...recentEvents];
       syncMessage = added.length == 1
           ? 'Se recuperó 1 alerta recibida sin conexión.'
           : 'Se recuperaron ${added.length} alertas recibidas sin conexión.';
-      notifyListeners();
+      _notify();
     } catch (_) {
       // La bitácora es un complemento: su ausencia no degrada el monitor.
     }
@@ -285,7 +491,7 @@ class SeismikState extends ChangeNotifier with WidgetsBindingObserver {
       ),
     );
     pendingReportCount = await reportQueue.pendingCount();
-    notifyListeners();
+    _notify();
     return ReportResult.queued(
       reportId: reportId,
       locationPrecision: preciseLocation ? 'precise' : 'approximate',
@@ -294,8 +500,10 @@ class SeismikState extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   void selectEvent(SeismicEvent? event) {
+    // Tocar el mapa sin nada seleccionado ya no reconstruye la pantalla.
+    if (identical(selectedEvent, event)) return;
     selectedEvent = event;
-    notifyListeners();
+    _notify();
   }
 
   Future<void> _resolveLocation() async {
@@ -312,12 +520,61 @@ class SeismikState extends ChangeNotifier with WidgetsBindingObserver {
       statusMessage = 'Ubicación no autorizada.';
       return;
     }
-    position = await Geolocator.getCurrentPosition(
-      locationSettings: const LocationSettings(
-        accuracy: LocationAccuracy.high,
-        timeLimit: Duration(seconds: 10),
-      ),
+
+    // La última ubicación del sistema llega al instante. Antes se esperaba un
+    // GPS de alta precisión que en interiores tardaba hasta 10 s, y todo el
+    // arranque quedaba detenido detrás de él.
+    final Position? lastKnown = await _orDefault(
+      Geolocator.getLastKnownPosition(),
+      null,
     );
+    if (lastKnown != null &&
+        DateTime.now().difference(lastKnown.timestamp) < _freshLocationAge) {
+      position = lastKnown;
+      unawaited(_refinePosition());
+      return;
+    }
+    try {
+      position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.medium,
+          timeLimit: Duration(seconds: 6),
+        ),
+      );
+    } catch (_) {
+      if (lastKnown == null) rethrow;
+      position = lastKnown;
+      unawaited(_refinePosition());
+    }
+  }
+
+  /// Confirma la ubicación en segundo plano y actualiza la geocerca si la
+  /// persona se movió desde la última posición conocida.
+  Future<void> _refinePosition() async {
+    final Position? before = position;
+    try {
+      final Position fresh = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.medium,
+          timeLimit: Duration(seconds: 20),
+        ),
+      );
+      if (_disposed) return;
+      position = fresh;
+      if (before != null &&
+          !initializing &&
+          Geolocator.distanceBetween(
+                before.latitude,
+                before.longitude,
+                fresh.latitude,
+                fresh.longitude,
+              ) >
+              _reregisterDistanceMeters) {
+        unawaited(_reregisterPreferences());
+      }
+    } catch (_) {
+      // Se conserva la ubicación anterior, que ya permitió registrarse.
+    }
   }
 
   Future<({double latitude, double longitude})?> currentCoordinates() async {
@@ -348,21 +605,38 @@ class SeismikState extends ChangeNotifier with WidgetsBindingObserver {
       officialEvent = envelope.event;
       recentEvents = <SeismicEvent>[envelope.event, ...recentEvents];
     }
-    notifyListeners();
+    _notify();
   }
 
   void dismissAlert() {
     activeAlert = null;
-    notifyListeners();
+    _notify();
   }
 
   void clearOfficialEvent() {
     officialEvent = null;
-    notifyListeners();
+    _notify();
+  }
+
+  /// Las descargas siguen en curso cuando la pantalla se cierra: avisar
+  /// después de `dispose` lanzaría una excepción.
+  void _notify() {
+    if (!_disposed) notifyListeners();
+  }
+
+  static Future<T> _orDefault<T>(Future<T> future, T fallback) async {
+    try {
+      return await future;
+    } catch (_) {
+      return fallback;
+    }
   }
 
   @override
   void dispose() {
+    _disposed = true;
+    _alertPreferencesTimer?.cancel();
+    _historyFilterTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     settings.removeListener(_onSettingsChanged);
     unawaited(_notificationSubscription?.cancel());
