@@ -200,6 +200,9 @@ async def test_history_includes_seedlink_candidates_only_when_requested(
 
     monkeypatch.setattr(history, "_fetch_source", fake_fetch)
     redis = FakeRedis(decode_responses=True)
+    # El historial descarta candidatos fuera de la ventana solicitada. Una
+    # fecha literal volvía esta prueba dependiente del calendario real.
+    candidate_at = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
     await redis.xadd(
         "stream:seismik:candidates",
         {
@@ -207,7 +210,7 @@ async def test_history_includes_seedlink_candidates_only_when_requested(
                 {
                     "event_id": "candidate-live-1",
                     "type": "earthquake_candidate",
-                    "detected_at": "2026-09-05T12:00:00Z",
+                    "detected_at": candidate_at,
                     "zone_id": "CO-central",
                     "country_code": "CO",
                     "country_codes": ["CO"],
@@ -225,8 +228,8 @@ async def test_history_includes_seedlink_candidates_only_when_requested(
                             "zone_id": "CO-central",
                             "station_id": "CM.PRA",
                             "stream_id": "CM.PRA.00.HHZ",
-                            "trigger_time": "2026-09-05T12:00:00Z",
-                            "received_at": "2026-09-05T12:00:01Z",
+                            "trigger_time": candidate_at,
+                            "received_at": candidate_at,
                             "sta_lta_ratio": 4.5,
                             "peak_amplitude_counts": 42.0,
                             "noise_rms_counts": 2.0,
@@ -237,8 +240,8 @@ async def test_history_includes_seedlink_candidates_only_when_requested(
                             "zone_id": "CO-central",
                             "station_id": "CM.SJC",
                             "stream_id": "CM.SJC.00.HHZ",
-                            "trigger_time": "2026-09-05T12:00:01Z",
-                            "received_at": "2026-09-05T12:00:02Z",
+                            "trigger_time": candidate_at,
+                            "received_at": candidate_at,
                             "sta_lta_ratio": 4.0,
                         },
                     ],
