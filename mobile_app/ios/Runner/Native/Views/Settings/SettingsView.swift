@@ -545,14 +545,14 @@ public struct SettingsView: View {
             notificationStatus = await state.requestNotificationPermission()
             if notificationStatus == .denied,
                let url = URL(string: UIApplication.openSettingsURLString) {
-                UIApplication.shared.open(url)
+                _ = await UIApplication.shared.open(url)
             }
         }
     }
 
     private func openSystemSettings() {
         guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
-        UIApplication.shared.open(url)
+        Task { _ = await UIApplication.shared.open(url) }
     }
 
     private func startSignIn(provider: String) {
