@@ -24,7 +24,8 @@ services:
     environment: &seismik-environment
       PORT: 8000
       SEISMIK_ENVIRONMENT: ${SEISMIK_ENVIRONMENT:-development}
-      SEISMIK_REDIS_URL: redis://redis:6379/0
+      # Permite el corte a Memorystore sin modificar los demás servicios.
+      SEISMIK_REDIS_URL: ${SEISMIK_REDIS_URL:-redis://redis:6379/0}
       SEISMIK_OAUTH_GOOGLE_CLIENT_ID: ${SEISMIK_OAUTH_GOOGLE_CLIENT_ID:-}
       SEISMIK_OAUTH_GOOGLE_CLIENT_SECRET: ${SEISMIK_OAUTH_GOOGLE_CLIENT_SECRET:-}
       SEISMIK_OAUTH_GOOGLE_REDIRECT_URI: ${SEISMIK_OAUTH_GOOGLE_REDIRECT_URI:-https://auth.seismik.org/v1/oauth/google/callback}
