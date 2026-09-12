@@ -1,0 +1,16 @@
+substitutions:
+  _IMAGE: ""
+  _DOCKERFILE: "Dockerfile.dispatcher"
+
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - --file
+      - ${_DOCKERFILE}
+      - --tag
+      - ${_IMAGE}
+      - .
+
+images:
+  - ${_IMAGE}
