@@ -13,9 +13,9 @@ function targetFor(request) {
     else if (path.startsWith("/__/auth/")) origin = FIREBASE;
     else if (path === "/") path = "/developers.html";
   } else if (host === "auth.seismik.org") {
-    if (path.startsWith("/v1/oauth/") || path.startsWith("/id/") || path === "/login") origin = API;
-    else if (path === "/") return new URL("https://devs.seismik.org/");
+    if (path === "/") return new URL("https://devs.seismik.org/");
     else if (path === "/id" || path === "/id/") path = "/auth.html";
+    else if (path.startsWith("/v1/oauth/") || path.startsWith("/id/") || path === "/login") origin = API;
   } else if (host === "www.seismik.org") return new URL(`https://seismik.org${path}${source.search}`);
   else if (host === "seismik.org") {
     if (path === "/privacy.html") return new URL("https://seismik.org/terms-of-privacy");
