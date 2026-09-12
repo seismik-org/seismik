@@ -17,6 +17,10 @@ la VM mediante Direct VPC Egress; Redis no debe exponerse a Internet. La
 migración completa requerirá Memorystore o un Redis gestionado antes de apagar
 la VM.
 
+Al mover Redis, copia las claves con `tools/migrate_redis.py` antes y durante
+el corte. Usa `DUMP`/`RESTORE`, preserva TTL y nunca imprime valores, claves de
+API, tokens ni secretos. No sustituyas datos de producción con un RDB local.
+
 El detector SeedLink **no se mueve todavía**: mantiene una cola de reintento en
 el volumen `detector-spool`. El disco de Cloud Run es efímero, así que moverlo
 sin sustituir esa cola por Pub/Sub (o una cola durable equivalente) podría
