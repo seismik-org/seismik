@@ -53,6 +53,6 @@ line-length = 100
 select = ["E4", "E7", "E9", "F", "I"]
 
 [[tool.mypy.overrides]]
-module = ["obspy", "obspy.*", "h3", "h3.*", "firebase_admin", "firebase_admin.*"]
+module = ["obspy", "obspy.*", "h3", "h3.*", "firebase_admin", "firebase_admin.*", "google.cloud", "google.cloud.*"]
 ignore_missing_imports = true
 disable_error_code = ["import-untyped"]
