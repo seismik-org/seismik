@@ -1,17 +1,18 @@
 # Seismik en Cloud Run
 
-El despliegue deja de depender de la VM para API, dispatcher y detector. API
-escala a cero; dispatcher y detector mantienen una instancia porque consumen
-Redis/SeedLink continuamente. Cada worker expone `/healthz` para cumplir el
-contrato de Cloud Run.
+La primera fase migra la **API HTTP** a Cloud Run. Puede escalar a cero y
+atiende `api.seismik.org`, las rutas `/v1` de `devs.seismik.org` y el inicio de
+sesión de `auth.seismik.org`. El detector SeedLink, dispatcher e integrations
+permanecen en la VM: son consumidores continuos y ejecutar una segunda copia
+en Cloud Run duplicaría entregas de alertas.
 
 ## Dependencia obligatoria
 
-Cloud Run no trae Redis. Antes de ejecutar `cloudrun-deploy.ps1` hay que crear
-Redis gestionado (Memorystore con conector VPC, o un Redis administrado
-compatible) y exportar `SEISMIK_REDIS_URL`. Mantener la VM solo como Redis no es
-una migración completa. La instancia detectora de Cloud Run también debe tener
-salida TCP a los servidores SeedLink.
+Cloud Run no trae Redis. Durante la fase híbrida usa la IP privada del Redis de
+la VM mediante Direct VPC Egress; Redis no debe exponerse a Internet. La
+migración completa requerirá Memorystore o un Redis gestionado antes de apagar
+la VM. El detector SeedLink necesita salida TCP persistente y no se mueve en
+esta fase.
 
 ## Secretos
 
@@ -29,7 +30,7 @@ Concede `roles/secretmanager.secretAccessor` a las cuentas de servicio de los
 tres servicios. Después ejecuta:
 
 ```powershell
-$env:SEISMIK_REDIS_URL = 'rediss://usuario:clave@host:6379/0'
+$env:SEISMIK_REDIS_URL = 'redis://IP_PRIVADA_DE_LA_VM:6379/0'
 ./deploy/cloudrun-deploy.ps1 -Project seismik-15bbb -Region us-east1
 ```
 
@@ -37,6 +38,6 @@ Con el despliegue activo, el portal `https://devs.seismik.org` puede entregar
 claves gratuitas después del inicio de sesión Firebase/Google. La clave se
 presenta una sola vez y se guarda como hash en Redis; nunca la incluyas en Git.
 
-El script configura límites bajos (API 0–2 instancias y workers 1 instancia)
-para evitar consumo accidental. Revisa costos antes de subir el detector: una
-instancia siempre activa no es gratuita.
+El API se limita inicialmente a 0–2 instancias. Antes de sustituir Redis y los
+workers, valida salud, registro de dispositivos, OAuth y entrega de alertas;
+una instancia continua de detector o dispatcher no es gratuita.
