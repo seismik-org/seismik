@@ -736,14 +736,21 @@ public struct FamilySafetyView: View {
     }
 
     private var registrationContent: some View {
-        ContentUnavailableView {
-            Label("Prepara este iPhone", systemImage: "iphone.and.arrow.forward")
-        } description: {
+        VStack(spacing: 16) {
+            Image(systemName: "iphone.and.arrow.forward")
+                .font(.system(size: 34, weight: .medium))
+                .foregroundColor(SeismikColors.systemBlue)
+            Text("Prepara este iPhone")
+                .font(.title3.weight(.semibold))
             Text("Búsqueda de familiares necesita crear una sesión segura en Seismik. Tus alertas se configurarán por separado cuando APNs esté disponible.")
-        } actions: {
+                .font(.body)
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
             Button("Reintentar registro") { Task { await prepareAndReload() } }
                 .buttonStyle(.borderedProminent)
         }
+        .padding(28)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private var enrollmentContent: some View {
