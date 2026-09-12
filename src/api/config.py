@@ -22,6 +22,10 @@ class AppSettings(BaseSettings):
     webhook_idempotency_seconds: int = Field(default=600, ge=60)
     event_max_body_bytes: int = Field(default=65_536, ge=1_024, le=1_048_576)
     consumer_api_key: SecretStr = SecretStr("")
+    # Secreto compartido con el Worker de Cloudflare y el reenviador de
+    # Pub/Sub. Vacío, la API atiende a cualquiera; definido, rechaza lo que
+    # llegue a su URL de Cloud Run sin él. Ver api/edge_origin.py.
+    edge_origin_secret: SecretStr = SecretStr("")
     device_session_ttl_seconds: int = Field(default=2_592_000, ge=3_600, le=31_536_000)
     crowd_master_secret: SecretStr = SecretStr("change-me-crowd-secret")
     developer_portal_origins: tuple[str, ...] = ("https://devs.seismik.org",)

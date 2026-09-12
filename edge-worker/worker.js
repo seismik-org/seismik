@@ -1,6 +1,17 @@
+/**
+ * Reemplaza al Caddy de la VM como origen de los dominios públicos.
+ *
+ * Configurar como Worker de zona para `*.seismik.org/*` y `seismik.org/*`.
+ * No contiene secretos: el de origen llega como secreto del Worker.
+ */
 const API = "https://seismik-api-331950364408.us-east1.run.app";
 const WEB = "https://seismik-web-331950364408.us-east1.run.app";
 const FIREBASE = "https://seismik-15bbb.firebaseapp.com";
+
+// La API rechaza lo que llega a su URL directa de Cloud Run sin este secreto,
+// para que nadie salte las cabeceras y la protección de Cloudflare. El valor
+// vive como secreto del Worker (`EDGE_ORIGIN_SECRET`), nunca en el código.
+const ORIGIN_AUTH_HEADER = "X-Seismik-Origin-Auth";
 
 function targetFor(request) {
   const source = new URL(request.url);
@@ -40,11 +51,16 @@ function securityHeaders(host) {
 }
 
 export default {
-  async fetch(request) {
+  async fetch(request, env) {
     const source = new URL(request.url);
     const target = targetFor(request);
     if (target.hostname.endsWith("seismik.org")) return Response.redirect(target, 301);
-    const upstream = await fetch(new Request(target, request));
+    const upstreamRequest = new Request(target, request);
+    // Un cliente no puede fijar la cabecera por su cuenta, y el secreto sólo
+    // viaja hacia la API: ni el sitio estático ni Firebase deben verlo.
+    upstreamRequest.headers.delete(ORIGIN_AUTH_HEADER);
+    if (target.origin === API && env?.EDGE_ORIGIN_SECRET) upstreamRequest.headers.set(ORIGIN_AUTH_HEADER, env.EDGE_ORIGIN_SECRET);
+    const upstream = await fetch(upstreamRequest);
     const headers = new Headers(upstream.headers);
     for (const [name, value] of securityHeaders(source.hostname)) headers.set(name, value);
     headers.delete("Server");
