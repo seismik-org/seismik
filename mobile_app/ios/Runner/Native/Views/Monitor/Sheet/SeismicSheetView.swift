@@ -18,14 +18,22 @@ public struct SeismicSheetView: View {
             VStack(spacing: 0) {
                 // Cabecera táctil y arrastrable de la hoja (Manija, estado y título)
                 VStack(spacing: 0) {
-                    // Manija táctil de arrastre
-                    Capsule()
-                        .fill(Color.secondary.opacity(0.38))
-                        .frame(width: 38, height: 5)
-                        .frame(maxWidth: .infinity, minHeight: 24)
-                        .contentShape(Rectangle())
-                        .onTapGesture { onDrawerHandleTapped() }
-                        .gesture(drawerDragGesture)
+                    // Zona de arrastre amplia: en iPhone la manija visible
+                    // sigue siendo discreta, pero el gesto se puede iniciar
+                    // en toda esta franja y no exige acertar 38 píxeles.
+                    HStack {
+                        Spacer(minLength: 0)
+                        Capsule()
+                            .fill(Color.secondary.opacity(0.38))
+                            .frame(width: 38, height: 5)
+                        Spacer(minLength: 0)
+                    }
+                    .frame(maxWidth: .infinity, minHeight: 44)
+                    .contentShape(Rectangle())
+                    .onTapGesture { onDrawerHandleTapped() }
+                    .gesture(drawerDragGesture)
+                    .accessibilityLabel("Deslizar historial de sismos")
+                    .accessibilityHint("Desliza hacia arriba o abajo para cambiar el tamaño del historial")
 
                     // Estado de sincronización / red exactamente como en Android
                     HStack(spacing: 6) {

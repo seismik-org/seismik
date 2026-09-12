@@ -28,15 +28,15 @@ public struct SeismikNativeAppRoot: View {
                 }
                 .tag(2)
 
-            SettingsView(state: state, showsCloseButton: false)
-                .tabItem {
-                    Label("Configuración", systemImage: "slider.horizontal.3")
-                }
-                .tag(3)
-
             FamilySafetyView()
                 .tabItem {
                     Label("Familia", systemImage: "person.2.fill")
+                }
+                .tag(3)
+
+            SettingsView(state: state, showsCloseButton: false)
+                .tabItem {
+                    Label("Configuración", systemImage: "slider.horizontal.3")
                 }
                 .tag(4)
         }
@@ -46,8 +46,8 @@ public struct SeismikNativeAppRoot: View {
             case "history", "map": selectedTab = 0
             case "felt", "sentido": selectedTab = 1
             case "damage", "danos": selectedTab = 2
-            case "settings", "configuracion": selectedTab = 3
-            case "family", "familia": selectedTab = 4
+            case "settings", "configuracion": selectedTab = 4
+            case "family", "familia": selectedTab = 3
             default: selectedTab = 0
             }
         }
