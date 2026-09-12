@@ -239,9 +239,6 @@ public final class SeismikAPIClient {
         alertRadiusKm: Double = 250.0,
         criticalAlertsAuthorized: Bool = false
     ) async throws -> Bool {
-        guard let pushToken = apnsToken else {
-            throw SeismikAPIError.pushTokenUnavailable
-        }
         let integrityToken = try await currentAppCheckToken()
         let url = baseURL.appendingPathComponent("v1/devices/register")
         var request = URLRequest(url: url)
@@ -250,7 +247,6 @@ public final class SeismikAPIClient {
         var registrationPayload: [String: Any] = [
             "device_id": deviceId,
             "platform": "ios",
-            "apns_token": pushToken,
             "country_code": countryCode.uppercased(),
             "critical_alerts_authorized": criticalAlertsAuthorized,
             "receive_early_alerts": receiveEarlyAlerts,
@@ -260,6 +256,12 @@ public final class SeismikAPIClient {
             "locale": String(Locale.current.identifier.prefix(16)),
             "app_attest_token": integrityToken
         ]
+        // APNs puede llegar después de que el usuario abrió la app. La API
+        // acepta en ese intervalo una instalación App Check verificada, pero
+        // no la elegirá para push hasta que este token se guarde.
+        if let pushToken = apnsToken {
+            registrationPayload["apns_token"] = pushToken
+        }
         if let latitude, let longitude {
             registrationPayload["latitude"] = latitude
             registrationPayload["longitude"] = longitude
@@ -550,7 +552,10 @@ public final class SeismikAPIClient {
         var request = try deviceRequest(path: "v1/family/circle")
         request.httpMethod = "GET"
         let (data, response) = try await session.data(for: request)
-        if (response as? HTTPURLResponse)?.statusCode == 404 { return nil }
+        if let http = response as? HTTPURLResponse, http.statusCode == 404,
+           String(data: data, encoding: .utf8)?.contains("No family circle found") == true {
+            return nil
+        }
         try assertSuccess(response, data: data)
         return try JSONDecoder().decode(FamilyCircle.self, from: data)
     }

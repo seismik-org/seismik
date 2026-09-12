@@ -101,12 +101,15 @@ public final class SeismikState: ObservableObject {
             self.isRegistered = registered
             self.registrationIssue = registered ? nil : "El servidor no aceptó el registro."
         } catch let error as SeismikAPIError {
-            self.isRegistered = apiClient.isRegistered
+            // Un token en Keychain no prueba que la sesión siga vigente en
+            // Redis. Marcarlo como registrado ocultaba el problema y hacía
+            // que módulos como Familia mostraran un 401 técnico.
+            self.isRegistered = false
             // Al arrancar es normal: APNs entrega el token unos instantes
             // después y AppDelegate vuelve a llamar aquí.
             self.registrationIssue = error.errorDescription
         } catch {
-            self.isRegistered = apiClient.isRegistered
+            self.isRegistered = false
             self.registrationIssue = error.localizedDescription
         }
     }
