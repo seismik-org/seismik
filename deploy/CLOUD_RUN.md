@@ -63,3 +63,78 @@ es publicar `deploy/cloudflare-edge-router.js` como Worker de zona: enruta los
 dominios a la API, Firebase o el sitio estático sin revelar secretos. Tras
 validar `seismik.org`, `devs.seismik.org`, `auth.seismik.org` y
 `api.seismik.org`, se puede apagar Caddy y finalmente la VM.
+
+## Cerrar la URL directa de la API
+
+Cloud Run publica `seismik-api-331950364408.us-east1.run.app` en Internet. Sin
+más, esa URL salta las cabeceras de seguridad y la protección de Cloudflare.
+La API la cierra con un secreto compartido (`api/edge_origin.py`):
+
+- el Worker lo añade en `X-Seismik-Origin-Auth` sólo cuando el destino es la
+  API (nunca hacia el sitio estático ni hacia Firebase) y borra la que mande un
+  cliente;
+- el reenviador de Pub/Sub, que llama a la URL directa, envía el mismo;
+- sin el secreto configurado la guardia no hace nada, así que el código se
+  despliega antes de repartir el valor sin cortar el servicio.
+
+`/health/live` queda exento para las sondas. Los 401 y 403 ya no descartan
+eventos en el reenviador: se reintentan, porque indican configuración
+desalineada y no un sismo inválido.
+
+**El orden importa.** Si la API exige el secreto antes de que el reenviador lo
+tenga, los candidatos quedan reintentándose en Pub/Sub hasta que se corrija
+(no se pierden, pero no alertan). Ejecutar en Cloud Shell desde la raíz del
+repositorio:
+
+```bash
+REGION=us-east1
+REPO=us-east1-docker.pkg.dev/seismik-15bbb/seismik
+
+# 1. Crear el secreto (el valor nunca pasa por Git ni por la terminal).
+openssl rand -base64 48 | tr -d '\n' | \
+  gcloud secrets create seismik-edge-origin --data-file=- --replication-policy=automatic
+
+for service in seismik-api seismik-event-forwarder; do
+  sa=$(gcloud run services describe "$service" --region "$REGION" \
+    --format='value(spec.template.spec.serviceAccountName)')
+  sa=${sa:-331950364408-compute@developer.gserviceaccount.com}
+  gcloud secrets add-iam-policy-binding seismik-edge-origin \
+    --member="serviceAccount:$sa" --role=roles/secretmanager.secretAccessor
+done
+```
+
+2. **Worker.** En Cloudflare: Workers y Pages → `seismik` → Configuración →
+   Variables y secretos → Agregar → tipo *Secreto*, nombre
+   `EDGE_ORIGIN_SECRET`, valor igual al de
+   `gcloud secrets versions access latest --secret=seismik-edge-origin`.
+   Los secretos del panel se conservan en cada despliegue desde GitHub.
+
+```bash
+# 3. Reenviador: imagen nueva con el secreto.
+gcloud builds submit --config deploy/cloudbuild.worker.yaml \
+  --substitutions=_IMAGE=$REPO/worker:edge-origin,_DOCKERFILE=Dockerfile.dispatcher
+gcloud run services update seismik-event-forwarder --region "$REGION" \
+  --image "$REPO/worker:edge-origin" \
+  --update-secrets=SEISMIK_EDGE_ORIGIN_SECRET=seismik-edge-origin:latest
+
+# 4. API: imagen nueva y, con ella, la guardia activa.
+gcloud builds submit --config deploy/cloudbuild.api.yaml \
+  --substitutions=_IMAGE=$REPO/api:edge-origin
+gcloud run services update seismik-api --region "$REGION" \
+  --image "$REPO/api:edge-origin" \
+  --update-secrets=SEISMIK_EDGE_ORIGIN_SECRET=seismik-edge-origin:latest
+
+# 5. Comprobar: la URL directa se niega y el dominio público sigue funcionando.
+curl -s -o /dev/null -w 'directa %{http_code} (esperado 403)\n' \
+  https://seismik-api-331950364408.us-east1.run.app/v1/developer/config
+curl -s -o /dev/null -w 'publica %{http_code} (esperado 200)\n' \
+  https://api.seismik.org/v1/developer/config
+```
+
+`--update-secrets` añade el secreto sin tocar los demás ni las variables de
+entorno. Para deshacerlo:
+
+```bash
+gcloud run services update seismik-api --region us-east1 \
+  --remove-secrets=SEISMIK_EDGE_ORIGIN_SECRET
+```

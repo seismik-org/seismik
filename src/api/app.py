@@ -14,6 +14,7 @@ from api.config import AppSettings, get_settings
 from api.developer_keys import router as developer_keys_router
 from api.devices import router as devices_router
 from api.devices_store import DeviceRepository
+from api.edge_origin import EdgeOriginGuard
 from api.family import router as family_router
 from api.history import router as history_router
 from api.integrations import router as integrations_router
@@ -69,6 +70,11 @@ def create_app(settings: AppSettings | None = None) -> FastAPI:
         allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
         allow_headers=["Authorization", "Content-Type", "X-Seismik-API-Key"],
         max_age=600,
+    )
+    # Añadida después de CORS para ser la capa más externa: una petición sin
+    # el secreto de origen no llega a ningún router ni a Redis.
+    app.add_middleware(
+        EdgeOriginGuard, secret=resolved.edge_origin_secret.get_secret_value()
     )
     app.include_router(webhooks_router)
     app.include_router(devices_router)
