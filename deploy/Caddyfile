@@ -14,6 +14,15 @@
 	}
 }
 
+# La capa HTTP de la plataforma vive en Cloud Run. Caddy conserva por ahora
+# únicamente los archivos estáticos y el origen de Cloudflare; detector,
+# dispatcher y Redis siguen dentro de la red privada de la VM.
+(seismik_cloud_run_api) {
+	reverse_proxy https://seismik-api-izkzxyaukq-ue.a.run.app {
+		header_up Host seismik-api-izkzxyaukq-ue.a.run.app
+	}
+}
+
 api.seismik.org {
 	import seismik_security_headers
 	# La API sólo devuelve JSON: ninguna respuesta suya debe poder cargar
@@ -26,11 +35,7 @@ api.seismik.org {
 		max_size 64KB
 	}
 
-	reverse_proxy api:8000 {
-		health_uri /health/live
-		health_interval 30s
-		health_timeout 3s
-	}
+	import seismik_cloud_run_api
 }
 
 www.seismik.org {
@@ -53,7 +58,7 @@ seismik.org {
 devs.seismik.org {
 	# OAuth/API endpoints for the developer portal are served by FastAPI.
 	handle /v1/* {
-		reverse_proxy api:8000
+		import seismik_cloud_run_api
 	}
 
 	@portal not path /__/auth/*
@@ -91,15 +96,15 @@ auth.seismik.org {
 	# Origen único del inicio y los callbacks OAuth. devs queda aislado, pero
 	# ambos subdominios reciben la cookie HttpOnly de alcance .seismik.org.
 	handle /v1/oauth/* {
-		reverse_proxy api:8000
+		import seismik_cloud_run_api
 	}
 	# Cada inicio crea una URL opaca /id/<aleatorio>; debe llegar a FastAPI,
 	# no al archivo estático de la pantalla heredada de autenticación.
 	handle /id/* {
-		reverse_proxy api:8000
+		import seismik_cloud_run_api
 	}
 	handle /login {
-		reverse_proxy api:8000
+		import seismik_cloud_run_api
 	}
 	@id path /id /id/
 	rewrite @id /auth.html

@@ -4,7 +4,9 @@ services:
     command: ["redis-server", "--appendonly", "yes", "--appendfsync", "everysec"]
     restart: unless-stopped
     ports:
-      - "127.0.0.1:6379:6379"
+      # Cloud Run llega únicamente por IP privada de la VPC. El firewall no
+      # publica 6379 a Internet; no uses esta apertura sin esa regla interna.
+      - "0.0.0.0:6379:6379"
     volumes:
       - redis-data:/data
     healthcheck:
