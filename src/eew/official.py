@@ -270,9 +270,20 @@ class OfficialApiClient:
         return reports
 
     def _fetch_sgc_geojson(self, start: datetime, end: datetime) -> list[OfficialReport]:
+        start_utc = start.replace(tzinfo=timezone.utc) if start.tzinfo is None else start.astimezone(timezone.utc)
+        end_utc = end.replace(tzinfo=timezone.utc) if end.tzinfo is None else end.astimezone(timezone.utc)
         payload = self._get(
-            params={"startdate": start.date().isoformat(), "enddate": end.date().isoformat()}
+            # El endpoint del SGC exige fecha y hora ISO-8601. Con sólo la
+            # fecha responde 200 pero incluye un objeto ``error`` y el
+            # agregador terminaba interpretándolo como un catálogo vacío.
+            params={
+                "startdate": start_utc.strftime("%Y-%m-%dT%H:%M:%S"),
+                "enddate": end_utc.strftime("%Y-%m-%dT%H:%M:%S"),
+            }
         ).json()
+        if isinstance(payload, dict) and payload.get("error"):
+            detail = payload["error"]
+            raise RuntimeError(f"SGC devolvió un error de catálogo: {detail}")
         reports = []
         for feature in payload.get("features", []):
             props = feature.get("properties", {})

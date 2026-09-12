@@ -308,6 +308,7 @@ private struct NativeMapView: UIViewRepresentable {
         var lastCommandId: UUID?
         private var lastEventSnapshots: [String] = []
         private var lastStationSnapshots: [String] = []
+        private var lastWaveSnapshots: [String] = []
 
         init(_ parent: NativeMapView) {
             self.parent = parent
@@ -341,6 +342,44 @@ private struct NativeMapView: UIViewRepresentable {
             }
 
             mapView.addAnnotations(newAnnotations)
+            syncPreliminaryWaves(mapView: mapView, events: events)
+        }
+
+        /// Dibuja la zona donde el modelo preliminar estima movimiento
+        /// perceptible. Es una guía de alcance, no un perímetro oficial.
+        private func syncPreliminaryWaves(mapView: MKMapView, events: [SeismicEvent]) {
+            let waves = events.compactMap { event -> (SeismicEvent, Double)? in
+                guard event.isPreliminary, let radius = feltWaveRadiusKm(for: event) else { return nil }
+                return (event, radius)
+            }
+            let snapshots = waves.map { "\($0.0.id)|\($0.1)" }
+            guard snapshots != lastWaveSnapshots else { return }
+            lastWaveSnapshots = snapshots
+            mapView.removeOverlays(mapView.overlays.filter { $0 is MKCircle })
+            for (event, radius) in waves {
+                guard let coordinate = event.coordinate else { continue }
+                mapView.addOverlay(MKCircle(center: coordinate, radius: radius * 1_000))
+            }
+        }
+
+        private func feltWaveRadiusKm(for event: SeismicEvent) -> Double? {
+            guard let magnitude = event.magnitude, event.coordinate != nil else { return nil }
+            // Inversa del modelo de selección del dispatcher (MMI III). Se
+            // limita para evitar que una estimación temprana ocupe el mundo.
+            let radius = pow(10, (1.5 * magnitude - 2.0) / 3.0) - 10.0
+            return min(800, max(15, radius))
+        }
+
+        func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
+            if let circle = overlay as? MKCircle {
+                let renderer = MKCircleRenderer(circle: circle)
+                renderer.fillColor = UIColor.systemIndigo.withAlphaComponent(0.10)
+                renderer.strokeColor = UIColor.systemIndigo.withAlphaComponent(0.78)
+                renderer.lineWidth = 2
+                renderer.lineDashPattern = [6, 5]
+                return renderer
+            }
+            return MKOverlayRenderer(overlay: overlay)
         }
 
         func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {

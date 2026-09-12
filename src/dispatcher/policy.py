@@ -21,6 +21,11 @@ from api.config import AppSettings
 from api.schemas import DeviceTarget
 
 EARTH_RADIUS_KM = 6371.0088
+# MMI III es perceptible habitualmente en interiores. Es un umbral prudente
+# para una alerta temprana preliminar: no convierte la estimación en un dato
+# oficial y siempre se presenta como tal en el cliente.
+PRELIMINARY_FELT_INTENSITY_MMI = 3.0
+MAX_PRELIMINARY_WAVE_RADIUS_KM = 800.0
 
 ACCEPTED = "accepted"
 DUPLICATE = "duplicate_event"
@@ -187,17 +192,53 @@ class AlertPolicy:
         *,
         latitude: float | None,
         longitude: float | None,
+        magnitude: float | None = None,
     ) -> list[DeviceTarget]:
-        """Alerta temprana: respeta la suscripción y el radio elegido."""
+        """Alerta temprana dentro de la zona estimada de sacudida.
+
+        Cuando hay epicentro y magnitud preliminar, la zona sustituye el radio
+        fijo elegido por la persona: una M alta puede sentirse lejos y una M
+        pequeña no debe avisarse sólo por estar dentro de un radio arbitrario.
+        Si faltan esos datos, se conserva el filtro geográfico anterior.
+        """
 
         selected: list[DeviceTarget] = []
         for target in targets:
             if not target.receive_early_alerts:
                 continue
-            if not self._within_radius(target, latitude, longitude):
+            if not self._within_estimated_wave(target, latitude, longitude, magnitude):
                 continue
             selected.append(target)
         return selected
+
+    def _within_estimated_wave(
+        self,
+        target: DeviceTarget,
+        latitude: float | None,
+        longitude: float | None,
+        magnitude: float | None,
+    ) -> bool:
+        """Modelo de atenuación conservador para decidir si podría sentirse.
+
+        No se usa para publicar magnitudes ni para reemplazar un boletín de
+        una autoridad. Su única finalidad es seleccionar destinatarios de un
+        candidato SeedLink mientras llega la confirmación oficial.
+        """
+        if (
+            magnitude is None
+            or latitude is None
+            or longitude is None
+            or target.latitude is None
+            or target.longitude is None
+        ):
+            return self._within_radius(target, latitude, longitude)
+        distance = haversine_km(latitude, longitude, target.latitude, target.longitude)
+        if distance > MAX_PRELIMINARY_WAVE_RADIUS_KM:
+            return False
+        # Relación simple de intensidad con distancia, deliberadamente
+        # conservadora y acotada. M6 a 100 km da ~MMI IV; M7 a 300 km ~MMI IV.
+        intensity = 1.5 * float(magnitude) - 3.0 * math.log10(max(distance, 1.0) + 10.0) + 1.0
+        return intensity >= PRELIMINARY_FELT_INTENSITY_MMI
 
     def filter_official(
         self,

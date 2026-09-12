@@ -23,13 +23,16 @@ public struct SeismicSheetView: View {
                         .fill(Color.secondary.opacity(0.38))
                         .frame(width: 38, height: 5)
                         .frame(maxWidth: .infinity, minHeight: 24)
+                        .contentShape(Rectangle())
+                        .onTapGesture { onDrawerHandleTapped() }
+                        .gesture(drawerDragGesture)
 
                     // Estado de sincronización / red exactamente como en Android
                     HStack(spacing: 6) {
                         Circle()
                             .fill(state.isOnline ? SeismikColors.emerald : SeismikColors.amber)
                             .frame(width: 8, height: 8)
-                        Text(state.isOnline ? "En línea" : "Reconectando con Seismik")
+                        Text(state.isOnline ? "Sincronizado" : "Actualizando cuando vuelva la red")
                             .font(.system(size: 12.5, weight: .medium, design: .rounded))
                             .foregroundColor(state.isOnline ? .secondary : SeismikColors.amber)
                         Spacer()
@@ -46,7 +49,7 @@ public struct SeismicSheetView: View {
                             .font(.system(size: 22, weight: .bold, design: .rounded))
                             .foregroundColor(.primary)
 
-                        Text("\(state.historyDays) días · M ≥ \(String(format: "%.1f", state.minMagnitude)) · SGC + USGS")
+                        Text("\(state.historyDays) días · M ≥ \(String(format: "%.1f", state.minMagnitude)) · Oficiales + preliminares")
                             .font(.system(size: 13, weight: .regular, design: .rounded))
                             .foregroundColor(.secondary)
                     }
@@ -129,13 +132,6 @@ public struct SeismicSheetView: View {
                 .padding(.horizontal, 16)
                 .padding(.bottom, 12)
             }
-            .contentShape(Rectangle())
-            .onTapGesture {
-                onDrawerHandleTapped()
-            }
-            .gesture(drawerDragGesture)
-            .accessibilityLabel("Cambiar altura del panel")
-            .accessibilityHint("Toca para alternar o desliza hacia arriba y abajo")
 
             Divider()
 
@@ -203,21 +199,6 @@ public struct SeismicSheetView: View {
                     .padding(.horizontal, 16)
                     .padding(.bottom, 36)
                 }
-                .simultaneousGesture(
-                    DragGesture(minimumDistance: 10)
-                        .onChanged { value in
-                            if value.translation.height > 0 {
-                                onDrawerDragChanged(value.translation.height)
-                            }
-                        }
-                        .onEnded { value in
-                            if value.translation.height > 15 {
-                                onDrawerDragEnded(value.translation.height, value.predictedEndTranslation.height)
-                            } else if value.translation.height > 0 {
-                                onDrawerDragEnded(0, 0)
-                            }
-                        }
-                )
             }
         }
         .background(

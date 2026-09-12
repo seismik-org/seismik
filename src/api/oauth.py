@@ -11,9 +11,11 @@ from fastapi import APIRouter, Body, Cookie, HTTPException, Request, Response, s
 from fastapi.responses import RedirectResponse
 
 router = APIRouter(prefix="/v1/oauth", tags=["oauth"])
+identity_router = APIRouter(tags=["oauth"])
 
 _MOBILE_CALLBACK = "seismik://auth/callback"
 _MOBILE_CODE_TTL_SECONDS = 60
+_IDENTITY_FLOW_TTL_SECONDS = 600
 
 
 def _pkce_verifier() -> str:
@@ -111,6 +113,44 @@ async def login(
     if provider == "github":
         return await github_start(request, return_to=return_to)
     raise HTTPException(status_code=404, detail="Proveedor OAuth no disponible")
+
+
+@router.get("/authorize")
+async def authorize(request: Request, provider: str = "google", origin: str = "devs") -> Response:
+    """Crea un identificador opaco para el inicio de sesión.
+
+    El navegador sólo ve ``auth.seismik.org/id/<aleatorio>`` antes de ir al
+    proveedor. El origen permitido decide el retorno: el portal de
+    desarrolladores o el esquema de la app; no se acepta una URL arbitraria.
+    """
+    if provider not in {"google", "github"}:
+        raise HTTPException(status_code=404, detail="Proveedor OAuth no disponible")
+    returns = {"devs": None, "app": _MOBILE_CALLBACK}
+    if origin not in returns:
+        raise HTTPException(status_code=400, detail="Origen OAuth no permitido")
+    flow_id = secrets.token_urlsafe(24)
+    await request.app.state.redis.set(
+        f"seismik:oauth:identity:{flow_id}",
+        json.dumps({"provider": provider, "return_to": returns[origin], "origin": origin}),
+        ex=_IDENTITY_FLOW_TTL_SECONDS,
+    )
+    return RedirectResponse(f"/id/{flow_id}", status_code=status.HTTP_303_SEE_OTHER)
+
+
+@identity_router.get("/id/{flow_id}")
+async def identity_entry(request: Request, flow_id: str) -> Response:
+    """Consume la intención guardada y arranca el proveedor correspondiente."""
+    if len(flow_id) < 24 or len(flow_id) > 128:
+        raise HTTPException(status_code=404, detail="Solicitud de inicio de sesión inválida")
+    raw = await request.app.state.redis.get(f"seismik:oauth:identity:{flow_id}")
+    if not raw:
+        raise HTTPException(status_code=410, detail="Esta solicitud de inicio de sesión expiró")
+    saved = json.loads(raw)
+    if saved.get("provider") == "google":
+        return await google_start(request, return_to=saved.get("return_to"))
+    if saved.get("provider") == "github":
+        return await github_start(request, return_to=saved.get("return_to"))
+    raise HTTPException(status_code=400, detail="Solicitud de inicio de sesión inválida")
 
 
 @router.get("/google/start")

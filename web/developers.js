@@ -27,7 +27,7 @@ async function api(path, options = {}, authenticated = true) {
 }
 
 function login() {
-  window.location.assign(`${AUTH}/id/`);
+  window.location.assign(`${AUTH}/v1/oauth/authorize?origin=devs&provider=google`);
 }
 
 async function copyText(value) {

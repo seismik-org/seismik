@@ -33,6 +33,12 @@ public struct SeismikNativeAppRoot: View {
                     Label("Configuración", systemImage: "slider.horizontal.3")
                 }
                 .tag(3)
+
+            FamilySafetyView()
+                .tabItem {
+                    Label("Familia", systemImage: "person.2.fill")
+                }
+                .tag(4)
         }
         .onOpenURL { url in
             guard url.scheme == "seismik" else { return }
@@ -41,6 +47,7 @@ public struct SeismikNativeAppRoot: View {
             case "felt", "sentido": selectedTab = 1
             case "damage", "danos": selectedTab = 2
             case "settings", "configuracion": selectedTab = 3
+            case "family", "familia": selectedTab = 4
             default: selectedTab = 0
             }
         }
