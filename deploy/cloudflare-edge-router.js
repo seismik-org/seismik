@@ -37,10 +37,45 @@ function targetFor(request) {
   return new URL(`${path}${source.search}`, origin);
 }
 
+function securityHeaders(host) {
+  const headers = new Headers({
+    "Cache-Control": "no-store",
+    "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+    "Referrer-Policy": "no-referrer",
+    "Strict-Transport-Security": "max-age=31536000; includeSubDomains; preload",
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+  });
+
+  if (host === "api.seismik.org") {
+    headers.set("Content-Security-Policy", "default-src 'none'; base-uri 'none'; frame-ancestors 'none'");
+  } else if (host === "devs.seismik.org") {
+    headers.set(
+      "Content-Security-Policy",
+      "default-src 'self'; script-src 'self' https://www.gstatic.com; style-src 'self'; img-src 'self' data: https://lh3.googleusercontent.com; connect-src 'self' https://api.seismik.org https://identitytoolkit.googleapis.com https://securetoken.googleapis.com; frame-src 'self' https://accounts.google.com https://seismik-15bbb.firebaseapp.com; base-uri 'none'; frame-ancestors 'none'; form-action 'self'",
+    );
+  } else {
+    headers.set(
+      "Content-Security-Policy",
+      "default-src 'self'; style-src 'self'; img-src 'self' data:; base-uri 'none'; frame-ancestors 'none'; form-action 'self'",
+    );
+  }
+  return headers;
+}
+
 export default {
   async fetch(request) {
+    const source = new URL(request.url);
     const target = targetFor(request);
     if (target.hostname.endsWith("seismik.org")) return Response.redirect(target, 301);
-    return fetch(new Request(target, request));
+    const upstream = await fetch(new Request(target, request));
+    const headers = new Headers(upstream.headers);
+    for (const [name, value] of securityHeaders(source.hostname)) headers.set(name, value);
+    headers.delete("Server");
+    return new Response(upstream.body, {
+      status: upstream.status,
+      statusText: upstream.statusText,
+      headers,
+    });
   },
 };
