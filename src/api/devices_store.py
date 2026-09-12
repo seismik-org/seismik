@@ -35,9 +35,12 @@ class DeviceRepository:
         if old:
             await self._remove_indexes(registration.device_id, old)
 
-        token_owner = await self.redis.get(self._token_key(registration.platform, registration.token))
-        if token_owner and token_owner != registration.device_id:
-            await self.unregister(str(token_owner))
+        if registration.token:
+            token_owner = await self.redis.get(
+                self._token_key(registration.platform, registration.token)
+            )
+            if token_owner and token_owner != registration.device_id:
+                await self.unregister(str(token_owner))
 
         record = {
             "device_id": registration.device_id,
@@ -58,7 +61,8 @@ class DeviceRepository:
         }
         pipe = self.redis.pipeline(transaction=True)
         pipe.hset(self._device_key(registration.device_id), mapping=cast(dict[Any, Any], record))
-        pipe.set(self._token_key(registration.platform, registration.token), registration.device_id)
+        if registration.token:
+            pipe.set(self._token_key(registration.platform, registration.token), registration.device_id)
         if registration.zone_id:
             pipe.sadd(self._zone_key(registration.zone_id), registration.device_id)
         if registration.latitude is not None and registration.longitude is not None:

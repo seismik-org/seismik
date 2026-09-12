@@ -60,3 +60,17 @@ async def test_precise_location_requires_explicit_consent() -> None:
         await client.post("/v1/family/circle", headers=owner_headers, json={"display_name": "Óscar"})
         response = await client.put("/v1/family/location", headers=owner_headers, json={"latitude": 4.65, "longitude": -74.08, "precision": "precise"})
     assert response.status_code == 422
+
+
+def test_verified_ios_installation_can_create_session_before_apns_token() -> None:
+    """La sesión segura no depende de que APNs ya haya respondido."""
+    from api.schemas import DeviceRegistration
+
+    registration = DeviceRegistration(
+        device_id="ios-family-session",
+        platform="ios",
+        country_code="CO",
+        zone_id="global",
+        app_attest_token="verified-app-check-token",
+    )
+    assert registration.token == ""

@@ -162,10 +162,11 @@ class DeviceRegistration(StrictModel):
 
     @model_validator(mode="after")
     def validate_platform_and_location(self) -> "DeviceRegistration":
-        if self.platform is Platform.IOS and not self.apns_token:
-            raise ValueError("ios requires apns_token")
-        if self.platform is Platform.ANDROID and not self.fcm_token:
-            raise ValueError("android requires fcm_token")
+        # Una instalación puede abrir la aplicación antes de que APNs/FCM
+        # entregue su token. No se le debe negar por eso una sesión segura de
+        # aplicación (historial, reportes y círculo familiar). El dispositivo
+        # no entra a la lista de destinatarios de push hasta que se actualice
+        # el registro con ``apns_token`` o ``fcm_token``.
         if self.platform is Platform.IOS and self.fcm_token:
             raise ValueError("ios cannot register fcm_token")
         if self.platform is Platform.ANDROID and self.apns_token:

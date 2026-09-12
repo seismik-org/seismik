@@ -687,6 +687,7 @@ private struct HistorySourceRow: View {
 public struct FamilySafetyView: View {
     @Environment(\.dismiss) private var dismiss
     @ObservedObject private var locationManager = LocationManager.shared
+    @ObservedObject private var appState = SeismikState.shared
 
     @State private var circle: FamilyCircle?
     @State private var isLoading = true
@@ -707,7 +708,9 @@ public struct FamilySafetyView: View {
         CompatibleNavigationStack {
             Group {
                 if isLoading {
-                    ProgressView("Cargando círculo…")
+                    ProgressView("Preparando Búsqueda de familiares…")
+                } else if !appState.isRegistered {
+                    registrationContent
                 } else if let circle {
                     circleContent(circle)
                 } else {
@@ -721,7 +724,7 @@ public struct FamilySafetyView: View {
                     Button("Listo") { dismiss() }
                 }
             }
-            .task { await reload() }
+            .task { await prepareAndReload() }
             .alert("Búsqueda de familiares", isPresented: Binding(
                 get: { message != nil }, set: { if !$0 { message = nil } }
             )) {
@@ -729,6 +732,17 @@ public struct FamilySafetyView: View {
             } message: {
                 Text(message ?? "")
             }
+        }
+    }
+
+    private var registrationContent: some View {
+        ContentUnavailableView {
+            Label("Prepara este iPhone", systemImage: "iphone.and.arrow.forward")
+        } description: {
+            Text("Búsqueda de familiares necesita crear una sesión segura en Seismik. Tus alertas se configurarán por separado cuando APNs esté disponible.")
+        } actions: {
+            Button("Reintentar registro") { Task { await prepareAndReload() } }
+                .buttonStyle(.borderedProminent)
         }
     }
 
@@ -823,6 +837,16 @@ public struct FamilySafetyView: View {
         return location.precision == "precise" ? "Ubicación precisa temporal" : "Ubicación aproximada temporal"
     }
 
+    private func prepareAndReload() async {
+        isLoading = true
+        await appState.updateRegistration()
+        guard appState.isRegistered else {
+            isLoading = false
+            return
+        }
+        await reload()
+    }
+
     private func reload() async {
         defer { isLoading = false }
         do {
@@ -831,7 +855,16 @@ public struct FamilySafetyView: View {
                 region.center = CLLocationCoordinate2D(latitude: first.latitude, longitude: first.longitude)
             }
         } catch {
-            message = error.localizedDescription
+            // El estado se puede perder si Redis se reinicia mientras la app
+            // estaba cerrada. Reintenta una sola vez tras renovar sesión y no
+            // expone al usuario el detalle HTTP interno.
+            await appState.updateRegistration()
+            guard appState.isRegistered else { return }
+            do {
+                circle = try await SeismikAPIClient.shared.fetchFamilyCircle()
+            } catch {
+                message = "No se pudo abrir el círculo familiar ahora. Revisa tu conexión e inténtalo de nuevo."
+            }
         }
     }
 
