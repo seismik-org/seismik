@@ -55,3 +55,11 @@ El API se limita inicialmente a 0–2 instancias. Antes de sustituir Redis y los
 workers, valida salud, registro de dispositivos, OAuth y entrega de alertas.
 Los workers continuos usan facturación por instancia y una instancia mínima;
 no escalan a cero y no son gratuitos.
+
+## Retiro del proxy de la VM
+
+`Dockerfile.web` sirve los archivos estáticos desde Cloud Run. El último paso
+es publicar `deploy/cloudflare-edge-router.js` como Worker de zona: enruta los
+dominios a la API, Firebase o el sitio estático sin revelar secretos. Tras
+validar `seismik.org`, `devs.seismik.org`, `auth.seismik.org` y
+`api.seismik.org`, se puede apagar Caddy y finalmente la VM.
