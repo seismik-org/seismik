@@ -19,6 +19,7 @@ from eew.delivery import (
     DurableEventDelivery,
 )
 from eew.models import EarthquakeCandidate, OfficialReportUpdate
+from eew.pubsub_delivery import PubSubEventPublisher
 
 AlertEvent = EarthquakeCandidate | OfficialReportUpdate
 
@@ -45,6 +46,7 @@ class AlertDispatcher:
         )
         self._delivery: DurableEventDelivery | None = None
         self._delivery_lock = threading.Lock()
+        self._publisher: PubSubEventPublisher | None = None
 
     def start(self) -> None:
         self._worker.start()
@@ -100,17 +102,29 @@ class AlertDispatcher:
 
         payload = event.to_dict()
         print(json.dumps(payload, ensure_ascii=False, separators=(",", ":")), flush=True)
-        if not self._configured_target:
+        if not self._configured_target and not self.settings.pubsub_topic:
             return
-        if not self.settings.webhook_hmac_secret:
-            LOGGER.error("Webhook configured without WEBHOOK_HMAC_SECRET; refusing unsigned delivery")
-            return
-
         event_type = (
             "earthquake_candidate"
             if isinstance(event, EarthquakeCandidate)
             else "official_report_update"
         )
+        if self.settings.pubsub_topic:
+            if self._publisher is None:
+                self._publisher = PubSubEventPublisher(
+                    self.settings.pubsub_topic, self.settings.pubsub_publish_timeout_seconds
+                )
+            outcome = self._publisher.publish(event_type, payload)
+            if outcome.delivered:
+                self.metrics.record(queued=1)
+                self.metrics.mark_delivered(duplicate=False)
+            else:
+                self.metrics.mark_error(outcome.detail or "Pub/Sub no disponible")
+            return
+        if not self.settings.webhook_hmac_secret:
+            LOGGER.error("Webhook configured without WEBHOOK_HMAC_SECRET; refusing unsigned delivery")
+            return
+
         delivery = self._ensure_delivery()
         if delivery is None:
             self._deliver_once(event_type, payload)

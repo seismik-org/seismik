@@ -5,5 +5,6 @@ pydantic-settings>=2.15,<3
 redis>=8.1,<9
 aioapns>=4,<5
 firebase-admin>=7.5,<8
+google-cloud-pubsub>=2.29,<3
 h3>=4.5,<5
 httpx>=0.28,<1

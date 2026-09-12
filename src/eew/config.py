@@ -98,6 +98,10 @@ class AlertSettings:
     spool_max_entries: int = 500
     spool_max_age_seconds: float = 900.0
     retry_interval_seconds: float = 5.0
+    # Topic completo ``projects/.../topics/...``. Cuando existe, Pub/Sub es la
+    # fuente durable y el reenvío a HTTP se hace en un worker separado.
+    pubsub_topic: str | None = None
+    pubsub_publish_timeout_seconds: float = 10.0
 
 
 @dataclass(frozen=True)
@@ -225,6 +229,9 @@ class Settings:
         spool_from_env = os.getenv("SEISMIK_ALERT_SPOOL_DIR")
         if spool_from_env:
             alert_raw = {**alert_raw, "spool_directory": spool_from_env}
+        pubsub_topic_from_env = os.getenv("SEISMIK_PUBSUB_TOPIC")
+        if pubsub_topic_from_env:
+            alert_raw = {**alert_raw, "pubsub_topic": pubsub_topic_from_env}
 
         official_raw = raw.get("official_reports", {})
         intervals = official_raw.get("poll_intervals_seconds")
@@ -293,6 +300,8 @@ class Settings:
             raise ValueError("Use webhook_url o webhook_base_url, no ambos")
         if (self.alert.webhook_url or self.alert.webhook_base_url) and not self.alert.webhook_hmac_secret:
             raise ValueError("Un webhook configurado requiere webhook_hmac_secret")
+        if self.alert.pubsub_publish_timeout_seconds <= 0:
+            raise ValueError("pubsub_publish_timeout_seconds debe ser positivo")
         if self.alert.spool_max_entries < 1:
             raise ValueError("spool_max_entries debe ser positivo")
         if self.alert.spool_max_age_seconds <= 0 or self.alert.retry_interval_seconds <= 0:
