@@ -1,4 +1,3 @@
-name = "seismik-edge-router"
+name = "seismik"
 main = "deploy/cloudflare-edge-router.js"
 compatibility_date = "2026-09-12"
-
