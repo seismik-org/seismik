@@ -8,7 +8,7 @@ from fakeredis.aioredis import FakeRedis
 from fastapi import FastAPI
 
 from api.config import AppSettings
-from api.oauth import router
+from api.oauth import identity_router, router
 
 
 def oauth_app(**overrides: object) -> FastAPI:
@@ -20,6 +20,7 @@ def oauth_app(**overrides: object) -> FastAPI:
         **overrides,
     )
     app.include_router(router)
+    app.include_router(identity_router)
     return app
 
 
@@ -60,6 +61,25 @@ async def test_mobile_oauth_return_is_strict_and_stored_with_pkce_state() -> Non
     saved = await app.state.redis.get(f"seismik:oauth:state:{state}")
     assert '"return_to": "seismik://auth/callback"' in saved
     assert rejected.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_identity_url_is_opaque_and_binds_the_app_origin() -> None:
+    app = oauth_app()
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app), base_url="https://auth.seismik.org"
+    ) as client:
+        created = await client.get(
+            "/v1/oauth/authorize?provider=google&origin=app", follow_redirects=False
+        )
+        identity_path = created.headers["location"]
+        started = await client.get(identity_path, follow_redirects=False)
+
+    assert created.status_code == 303
+    assert identity_path.startswith("/id/")
+    state = parse_qs(urlparse(started.headers["location"]).query)["state"][0]
+    saved = await app.state.redis.get(f"seismik:oauth:state:{state}")
+    assert '"return_to": "seismik://auth/callback"' in saved
 
 
 @pytest.mark.asyncio

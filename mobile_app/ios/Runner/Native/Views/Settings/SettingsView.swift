@@ -155,6 +155,10 @@ public struct SettingsView: View {
                         saveAlertPreferences()
                     }
 
+                    Text("Las alertas tempranas preliminares usan una zona estimada de sacudida; una magnitud alta puede avisarte aunque esté más lejos si el movimiento podría sentirse. No reemplaza un boletín oficial.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+
                     // Chips interactivos de radio de cercanía (idénticos a Android)
                     ProximityRadiusChipsView(selectedRadius: $state.alertRadiusKm) {
                         saveAlertPreferences()
@@ -680,7 +684,7 @@ private struct HistorySourceRow: View {
 
 // MARK: - Círculo familiar (iPhone nativo)
 
-private struct FamilySafetyView: View {
+public struct FamilySafetyView: View {
     @Environment(\.dismiss) private var dismiss
     @ObservedObject private var locationManager = LocationManager.shared
 
@@ -696,6 +700,8 @@ private struct FamilySafetyView: View {
         center: CLLocationCoordinate2D(latitude: 4.65, longitude: -74.05),
         span: MKCoordinateSpan(latitudeDelta: 4.0, longitudeDelta: 4.0)
     )
+
+    public init() {}
 
     var body: some View {
         CompatibleNavigationStack {

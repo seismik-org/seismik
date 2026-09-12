@@ -175,33 +175,22 @@ public final class SeismikState: ObservableObject {
     public func refreshData() async {
         isRefreshing = true
         HapticManager.light()
-
-        if !apiClient.isRegistered {
-            await updateRegistration()
-            guard apiClient.isRegistered else {
-                isOnline = false
-                isRefreshing = false
-                return
-            }
-        }
+        defer { isRefreshing = false }
 
         do {
-            async let fetchedEvents = apiClient.fetchRecentEvents(
+            // El historial es el dato esencial. Antes se esperaba también la
+            // capa de estaciones: una demora o fallo de ese endpoint dejaba
+            // la interfaz en "Reconectando" aunque los sismos sí llegaran.
+            let newEvents = try await apiClient.fetchRecentEvents(
                 sources: historySourceIds,
                 days: historyDays,
                 minimumMagnitude: minMagnitude
             )
-            async let fetchedStations = apiClient.fetchStations()
-
-            let (newEvents, newStations) = try await (fetchedEvents, fetchedStations)
             let filtered = includePreliminaryEvents ? newEvents : newEvents.filter { !$0.isPreliminary }
             // Se asigna aunque venga vacío: si el filtro actual no deja ningún
             // sismo, la lista debe quedar vacía en vez de conservar la anterior.
             self.events = filtered.sorted {
                 ($0.detectedAt ?? Date.distantPast) > ($1.detectedAt ?? Date.distantPast)
-            }
-            if !newStations.isEmpty {
-                self.stations = newStations
             }
             self.isOnline = true
             self.isRegistered = apiClient.isRegistered
@@ -211,7 +200,16 @@ public final class SeismikState: ObservableObject {
             self.isOnline = false
         }
 
-        isRefreshing = false
+        // La capa de estaciones es enriquecimiento visual, nunca una razón
+        // para impedir que se vea el historial o los reportes oficiales.
+        do {
+            let newStations = try await apiClient.fetchStations()
+            if !newStations.isEmpty { self.stations = newStations }
+        } catch {
+            // Se conservan las últimas estaciones conocidas y el catálogo
+            // permanece utilizable aunque SeedLink o su índice estén lentos.
+        }
+
         await flushPendingReports()
         await syncMissedAlerts()
     }

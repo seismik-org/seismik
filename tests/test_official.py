@@ -28,8 +28,10 @@ class FakeSession:
     def __init__(self, payload: dict):
         self.payload = payload
         self.headers: dict[str, str] = {}
+        self.calls: list[dict] = []
 
-    def get(self, *_args, **_kwargs) -> FakeResponse:
+    def get(self, *_args, **kwargs) -> FakeResponse:
+        self.calls.append(kwargs)
         return FakeResponse(self.payload)
 
 
@@ -203,10 +205,15 @@ def test_sgc_rapid_feed_contract_is_normalized() -> None:
             "updated": "2026-08-10T13:00:00Z",
         },
     }]}
-    rows = OfficialApiClient(sgc, 1, FakeSession(payload)).fetch(
+    session = FakeSession(payload)
+    rows = OfficialApiClient(sgc, 1, session).fetch(
         datetime(2026, 8, 10), datetime(2026, 8, 11)
     )
     assert rows[0].official_event_id == "SGC2026pqqmro"
     assert rows[0].magnitude == 7.4
     assert rows[0].depth_km == 31.2
     assert rows[0].official_url.endswith("/SGC2026pqqmro/resumen")
+    assert session.calls[0]["params"] == {
+        "startdate": "2026-08-10T00:00:00",
+        "enddate": "2026-08-11T00:00:00",
+    }

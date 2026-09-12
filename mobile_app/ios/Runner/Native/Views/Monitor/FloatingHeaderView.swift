@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Cápsula flotante superior en Liquid Glass que aloja la identidad de Seismik y controles de red.
+/// Controles discretos del mapa. El estado de red vive en la hoja de historial.
 public struct FloatingHeaderView: View {
     @ObservedObject var state: SeismikState
     @Binding var showSettings: Bool
@@ -8,80 +8,37 @@ public struct FloatingHeaderView: View {
     @State private var rotationAngle: Double = 0
 
     public var body: some View {
-        HStack(spacing: 12) {
-            // Logotipo e Identidad
-            HStack(spacing: 8) {
-                Image("AppLogo")
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 30, height: 30)
-                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                    .accessibilityHidden(true)
-
-                Text("SEISMIK")
-                    .font(.system(size: 15, weight: .black, design: .rounded))
-                    .tracking(2.2)
-                    .foregroundColor(.primary)
-            }
-
+        HStack(spacing: 10) {
             Spacer()
-
-            // Pastilla de Estado de Red
-            HStack(spacing: 6) {
-                Circle()
-                    .fill(state.isOnline ? SeismikColors.emerald : SeismikColors.amber)
-                    .frame(width: 8, height: 8)
-                    .shadow(
-                        color: (state.isOnline ? SeismikColors.emerald : SeismikColors.amber).opacity(0.8),
-                        radius: 4
-                    )
-
-                Text(state.isOnline ? "En línea" : "Sin red")
-                    .font(.system(size: 12, weight: .semibold, design: .rounded))
-                    .foregroundColor(.secondary)
-            }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 5)
-            .background(.ultraThinMaterial, in: Capsule())
-
-            // Botón de Recarga con Respuesta Háptica
             Button {
                 HapticManager.light()
-                withAnimation(.linear(duration: 0.8)) {
-                    rotationAngle += 360
-                }
-                Task {
-                    await state.refreshData()
-                }
+                withAnimation(.linear(duration: 0.55)) { rotationAngle += 360 }
+                Task { await state.refreshData() }
             } label: {
                 Image(systemName: "arrow.clockwise")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(.primary)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(.primary)
                     .rotationEffect(.degrees(rotationAngle))
-                    .frame(width: 32, height: 32)
+                    .frame(width: 44, height: 44)
                     .background(.ultraThinMaterial, in: Circle())
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Actualizar sismos")
 
-            // Botón de Configuración
             Button {
                 HapticManager.selection()
                 showSettings = true
             } label: {
                 Image(systemName: "gearshape")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(.primary)
-                    .frame(width: 32, height: 32)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(.primary)
+                    .frame(width: 44, height: 44)
                     .background(.ultraThinMaterial, in: Circle())
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("Abrir ajustes")
+            .accessibilityLabel("Abrir configuración")
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 10)
-        .liquidGlass(cornerRadius: 26)
-        .padding(.horizontal, 16)
+        .padding(.trailing, 18)
         .padding(.top, 4)
     }
 }

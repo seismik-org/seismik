@@ -21,10 +21,10 @@ public final class SeismikOAuthSignIn: NSObject, ASWebAuthenticationPresentation
         provider: String,
         completion: @escaping (Result<SeismikAccount, Error>) -> Void
     ) {
-        var components = URLComponents(string: "https://auth.seismik.org/v1/oauth/login")!
+        var components = URLComponents(string: "https://auth.seismik.org/v1/oauth/authorize")!
         components.queryItems = [
             URLQueryItem(name: "provider", value: provider),
-            URLQueryItem(name: "return_to", value: "seismik://auth/callback"),
+            URLQueryItem(name: "origin", value: "app"),
         ]
         let flow = ASWebAuthenticationSession(
             url: components.url!, callbackURLScheme: "seismik"

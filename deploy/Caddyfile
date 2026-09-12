@@ -93,6 +93,11 @@ auth.seismik.org {
 	handle /v1/oauth/* {
 		reverse_proxy api:8000
 	}
+	# Cada inicio crea una URL opaca /id/<aleatorio>; debe llegar a FastAPI,
+	# no al archivo estático de la pantalla heredada de autenticación.
+	handle /id/* {
+		reverse_proxy api:8000
+	}
 	handle /login {
 		reverse_proxy api:8000
 	}

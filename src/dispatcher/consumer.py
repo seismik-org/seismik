@@ -19,6 +19,13 @@ from runtime_health import start_health_server
 LOGGER = logging.getLogger(__name__)
 
 
+def _as_float(value: Any) -> float | None:
+    try:
+        return float(value) if value is not None else None
+    except (TypeError, ValueError):
+        return None
+
+
 class StreamConsumer:
     def __init__(
         self,
@@ -116,7 +123,10 @@ class StreamConsumer:
                 radius_km=self.settings.geofence_radius_km,
             )
             targets = self.policy.filter_critical(
-                targets, latitude=latitude, longitude=longitude
+                targets,
+                latitude=latitude,
+                longitude=longitude,
+                magnitude=_as_float(event.get("magnitude_estimate")),
             )
             result = await self.push.send(event, targets, critical=True)
             await self._record_dry_run(event, result, critical=True)

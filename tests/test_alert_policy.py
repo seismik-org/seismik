@@ -130,6 +130,24 @@ def test_device_radius_never_exceeds_the_platform_geofence() -> None:
     assert not policy.filter_critical([greedy], latitude=4.65, longitude=-74.05)
 
 
+def test_preliminary_wave_reaches_a_person_beyond_their_fixed_radius() -> None:
+    policy = AlertPolicy(FakeRedis(decode_responses=True), AppSettings())
+    # ~390 km desde Bogotá: fuera de sus 50 km, pero dentro de la zona de
+    # sacudida perceptible que estima una M7 preliminar.
+    target = device("wave-target", radius_km=50, latitude=7.0, longitude=-75.0)
+    assert policy.filter_critical(
+        [target], latitude=4.65, longitude=-74.05, magnitude=7.0
+    ) == [target]
+
+
+def test_preliminary_wave_does_not_promote_a_small_event_at_long_distance() -> None:
+    policy = AlertPolicy(FakeRedis(decode_responses=True), AppSettings())
+    target = device("far-target", radius_km=2_000, latitude=7.0, longitude=-75.0)
+    assert not policy.filter_critical(
+        [target], latitude=4.65, longitude=-74.05, magnitude=4.0
+    )
+
+
 def test_haversine_matches_a_known_bogota_medellin_distance() -> None:
     distance = haversine_km(4.711, -74.072, 6.244, -75.581)
     assert 230 < distance < 250

@@ -125,7 +125,12 @@ def _relevant(
     longitude = _as_float(payload.get("longitude"))
     if critical:
         return bool(
-            policy.filter_critical([target], latitude=latitude, longitude=longitude)
+            policy.filter_critical(
+                [target],
+                latitude=latitude,
+                longitude=longitude,
+                magnitude=_as_float(payload.get("magnitude")),
+            )
         )
     return bool(
         policy.filter_official(
