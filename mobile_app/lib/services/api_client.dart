@@ -1,10 +1,13 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
 import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:http/io_client.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 
@@ -34,15 +37,51 @@ class SeismikApiException implements Exception {
 }
 
 class ApiClient {
-  ApiClient({http.Client? httpClient}) : _http = httpClient ?? http.Client();
+  ApiClient({http.Client? httpClient})
+    : _http = httpClient ?? _persistentHttpClient();
+
+  /// Un único cliente con conexiones persistentes. Cada petición reutiliza el
+  /// TLS ya negociado con Cloudflare en vez de repetir el apretón de manos,
+  /// que desde una red móvil cuesta cientos de milisegundos por llamada.
+  static http.Client _persistentHttpClient() => IOClient(
+    HttpClient()
+      ..connectionTimeout = const Duration(seconds: 6)
+      ..idleTimeout = const Duration(seconds: 45),
+  );
 
   static const String _deviceIdKey = 'seismik.device_id';
   static const String _crowdTokenKey = 'seismik.crowd_token';
   static const String _deviceSessionKey = 'seismik.device_session';
   static const String _eventCacheKey = 'seismik.official_event_cache';
   static const String _alertCursorKey = 'seismik.alert_cursor';
+  static const String _stationsCacheKey = 'seismik.stations_cache';
+  static const String _stationsCachedAtKey = 'seismik.stations_cached_at';
+
+  /// El catálogo de estaciones cambia muy poco: basta renovarlo dos veces al día.
+  static const Duration stationsCacheTtl = Duration(hours: 12);
+
+  /// Por debajo de este tamaño, arrancar un isolate cuesta más que decodificar.
+  static const int backgroundParseThreshold = 32 * 1024;
+
   final http.Client _http;
   static const FlutterSecureStorage _secureStorage = FlutterSecureStorage();
+
+  // El almacén seguro de Android descifra en cada lectura: la sesión se lee
+  // una vez y se conserva en memoria en vez de pagarlo en cada petición.
+  String? _sessionToken;
+  List<SeismicStation>? _stationsMemory;
+  DateTime? _stationsFetchedAt;
+  String? _eventsCacheSignature;
+
+  /// Toda apertura salvo la primera ya tiene sesión: con ella los datos se
+  /// pueden pedir sin esperar a que termine un registro nuevo.
+  Future<bool> hasDeviceSession() async {
+    final String? session = await _deviceSession();
+    return session != null && session.isNotEmpty;
+  }
+
+  Future<String?> _deviceSession() async =>
+      _sessionToken ??= await _secureStorage.read(key: _deviceSessionKey);
 
   Future<String> ensureDeviceId() async {
     final SharedPreferences preferences = await SharedPreferences.getInstance();
@@ -65,7 +104,11 @@ class ApiClient {
     final String deviceId = await ensureDeviceId();
     String? integrityToken;
     try {
-      integrityToken = await FirebaseAppCheck.instance.getToken(true);
+      // Sin forzar: el SDK devuelve el token vigente (dura cerca de una hora)
+      // y sólo pide otro al vencer. Forzarlo exigía una verificación nueva de
+      // Play Integrity en cada registro, lenta y con cuota diaria. El servidor
+      // lo valida sin consumirlo, así que reutilizarlo es seguro.
+      integrityToken = await FirebaseAppCheck.instance.getToken();
     } catch (_) {
       if (SeismikConstants.integrityRequired) rethrow;
     }
@@ -123,6 +166,7 @@ class ApiClient {
     }
     await _secureStorage.write(key: _crowdTokenKey, value: crowdToken);
     await _secureStorage.write(key: _deviceSessionKey, value: deviceSession);
+    _sessionToken = deviceSession;
   }
 
   Future<void> sendShake({
@@ -407,15 +451,80 @@ class ApiClient {
     return parts.last.toUpperCase();
   }
 
-  Future<List<SeismicStation>> fetchStations() async {
-    final http.Response response = await _http
-        .get(_uri('/v1/network/stations'), headers: await _mobileHeaders())
-        .timeout(const Duration(seconds: 8));
-    final Map<String, dynamic> decoded = _decode(response);
-    return (decoded['stations'] as List<dynamic>? ?? <dynamic>[])
-        .whereType<Map<String, dynamic>>()
-        .map(SeismicStation.fromMap)
-        .toList(growable: false);
+  /// Catálogo de estaciones sísmicas: cientos de kilobytes, casi siempre igual.
+  ///
+  /// Se sirve desde memoria o desde el teléfono mientras tenga menos de
+  /// [stationsCacheTtl], así abrir la app o volver a ella no lo descarga cada
+  /// vez. Mientras no cambie se devuelve la misma lista, lo que permite al mapa
+  /// saltarse la reconstrucción de sus marcadores.
+  Future<List<SeismicStation>> fetchStations({bool forceRefresh = false}) async {
+    final DateTime now = DateTime.now();
+    if (!forceRefresh) {
+      final List<SeismicStation> known =
+          _stationsMemory ?? await readCachedStations();
+      final DateTime? fetchedAt = _stationsFetchedAt;
+      if (known.isNotEmpty &&
+          fetchedAt != null &&
+          now.difference(fetchedAt) < stationsCacheTtl) {
+        return known;
+      }
+    }
+    try {
+      final http.Response response = await _http
+          .get(_uri('/v1/network/stations'), headers: await _mobileHeaders())
+          .timeout(const Duration(seconds: 10));
+      _ensureSuccess(response);
+      final List<SeismicStation> stations = await _parseInBackground(
+        parseStationsBody,
+        response.body,
+      );
+      _stationsMemory = stations;
+      _stationsFetchedAt = now;
+      try {
+        final SharedPreferences preferences =
+            await SharedPreferences.getInstance();
+        await preferences.setString(_stationsCacheKey, response.body);
+        await preferences.setInt(
+          _stationsCachedAtKey,
+          now.millisecondsSinceEpoch,
+        );
+      } catch (_) {
+        // Sin caché en disco la app funciona igual; sólo descargará otra vez.
+      }
+      return stations;
+    } catch (_) {
+      // Sin red, un catálogo vencido sigue siendo mejor que un mapa vacío.
+      final List<SeismicStation>? fallback = _stationsMemory;
+      if (fallback != null && fallback.isNotEmpty) return fallback;
+      rethrow;
+    }
+  }
+
+  /// Estaciones guardadas en el teléfono, para dibujar el mapa al instante.
+  Future<List<SeismicStation>> readCachedStations() async {
+    final List<SeismicStation>? memory = _stationsMemory;
+    if (memory != null) return memory;
+    try {
+      final SharedPreferences preferences =
+          await SharedPreferences.getInstance();
+      final String? raw = preferences.getString(_stationsCacheKey);
+      if (raw == null || raw.isEmpty) return const <SeismicStation>[];
+      final List<SeismicStation> stations = await _parseInBackground(
+        parseStationsBody,
+        raw,
+      );
+      // Una descarga pudo llenar la memoria mientras se leía el disco.
+      final List<SeismicStation>? downloaded = _stationsMemory;
+      if (downloaded != null) return downloaded;
+      _stationsMemory = stations;
+      final int? cachedAt = preferences.getInt(_stationsCachedAtKey);
+      _stationsFetchedAt = cachedAt == null
+          ? null
+          : DateTime.fromMillisecondsSinceEpoch(cachedAt);
+      return stations;
+    } catch (_) {
+      return const <SeismicStation>[];
+    }
   }
 
   Future<List<AgencyRoute>> fetchReportingAgencies({
@@ -455,36 +564,29 @@ class ApiClient {
     int days = 7,
     double minimumMagnitude = 2.5,
   }) async {
-    try {
-      final Uri historyUri = _uri('/v1/events/history').replace(
-        queryParameters: <String, String>{
-          'sources': (sourceIds.toList()..sort()).join(','),
-          'days': days.toString(),
-          'minimum_magnitude': minimumMagnitude.toStringAsFixed(1),
-          'limit': '200',
-        },
-      );
-      final http.Response response = await _http
-          .get(historyUri, headers: await _mobileHeaders())
-          .timeout(const Duration(seconds: 15));
-      if (response.statusCode == 404) {
-        return await _fetchLegacyRecentEvents();
-      }
-      final Map<String, dynamic> decoded = _decode(response);
-      final List<SeismicEvent> events = _eventsFromPayload(decoded);
-      await _cacheEvents(events);
-      return events;
-    } catch (_) {
-      try {
-        final List<SeismicEvent> events = await _fetchLegacyRecentEvents();
-        await _cacheEvents(events);
-        return events;
-      } catch (_) {
-        final List<SeismicEvent> cached = await _readCachedEvents();
-        if (cached.isNotEmpty) return cached;
-        rethrow;
-      }
+    final Uri historyUri = _uri('/v1/events/history').replace(
+      queryParameters: <String, String>{
+        'sources': (sourceIds.toList()..sort()).join(','),
+        'days': days.toString(),
+        'minimum_magnitude': minimumMagnitude.toStringAsFixed(1),
+        'limit': '200',
+      },
+    );
+    final http.Response response = await _http
+        .get(historyUri, headers: await _mobileHeaders())
+        .timeout(const Duration(seconds: 12));
+    // Sólo un servidor anterior al historial combinado responde 404. Ante otros
+    // fallos, repetir contra la ruta antigua sumaba hasta 8 s de espera antes
+    // de que la app mostrara lo que ya tenía guardado.
+    final List<SeismicEvent> events;
+    if (response.statusCode == 404) {
+      events = await _fetchLegacyRecentEvents();
+    } else {
+      _ensureSuccess(response);
+      events = await _parseInBackground(parseEventsBody, response.body);
     }
+    unawaited(_cacheEvents(events));
+    return events;
   }
 
   /// Recupera las alertas emitidas mientras el teléfono estuvo sin conexión.
@@ -617,24 +719,81 @@ class ApiClient {
           .map(SeismicEvent.fromMap)
           .toList(growable: false);
 
-  Future<void> _cacheEvents(List<SeismicEvent> events) async {
-    final SharedPreferences preferences = await SharedPreferences.getInstance();
-    await preferences.setString(
-      _eventCacheKey,
-      jsonEncode(events.map((event) => event.toMap()).toList(growable: false)),
+  /// Comprueba el estado sin decodificar en este hilo un cuerpo exitoso.
+  static void _ensureSuccess(http.Response response) {
+    if (response.statusCode >= 200 && response.statusCode < 300) return;
+    Object? detail;
+    try {
+      detail = response.body.isEmpty ? null : jsonDecode(response.body);
+    } on FormatException {
+      // Una página de error del proxy no es JSON: basta con el código.
+      detail = null;
+    }
+    throw SeismikApiException(
+      (detail ?? 'HTTP ${response.statusCode}').toString(),
+      response.statusCode,
     );
   }
 
-  Future<List<SeismicEvent>> _readCachedEvents() async {
-    final SharedPreferences preferences = await SharedPreferences.getInstance();
-    final String? raw = preferences.getString(_eventCacheKey);
-    if (raw == null) return <SeismicEvent>[];
-    final Object? decoded = jsonDecode(raw);
-    if (decoded is! List<dynamic>) return <SeismicEvent>[];
-    return decoded
-        .whereType<Map<String, dynamic>>()
-        .map(SeismicEvent.fromMap)
-        .toList(growable: false);
+  /// Decodifica fuera del hilo de la interfaz cuando el cuerpo es grande.
+  ///
+  /// El historial y el catálogo de estaciones superan los 200 KB. Decodificarlos
+  /// en el hilo principal detenía la animación del mapa y de la hoja durante
+  /// decenas de milisegundos, y bastante más en teléfonos de gama baja.
+  static Future<T> _parseInBackground<T>(
+    T Function(String body) parser,
+    String body,
+  ) async {
+    if (body.length < backgroundParseThreshold) return parser(body);
+    return compute(parser, body);
+  }
+
+  Future<void> _cacheEvents(List<SeismicEvent> events) async {
+    // Volver a la app suele traer los mismos sismos: si nada cambió no se
+    // codifica ni se reescribe el historial guardado.
+    final String signature = _eventsSignature(events);
+    if (signature == _eventsCacheSignature) return;
+    try {
+      final String encoded = events.length < 40
+          ? encodeEventsCache(events)
+          : await compute(encodeEventsCache, events);
+      final SharedPreferences preferences = await SharedPreferences.getInstance();
+      await preferences.setString(_eventCacheKey, encoded);
+      _eventsCacheSignature = signature;
+    } catch (_) {
+      // La caché es un respaldo: la próxima respuesta vuelve a intentarlo.
+    }
+  }
+
+  /// Historial guardado en el teléfono, para mostrarlo antes que la red.
+  Future<List<SeismicEvent>> readCachedEvents() async {
+    try {
+      final SharedPreferences preferences = await SharedPreferences.getInstance();
+      final String? raw = preferences.getString(_eventCacheKey);
+      if (raw == null || raw.isEmpty) return const <SeismicEvent>[];
+      final List<SeismicEvent> events = await _parseInBackground(
+        parseEventsBody,
+        raw,
+      );
+      _eventsCacheSignature ??= _eventsSignature(events);
+      return events;
+    } catch (_) {
+      return const <SeismicEvent>[];
+    }
+  }
+
+  static String _eventsSignature(List<SeismicEvent> events) {
+    final StringBuffer buffer = StringBuffer()..write(events.length);
+    for (final SeismicEvent event in events) {
+      buffer
+        ..write('|')
+        ..write(event.id)
+        ..write('@')
+        ..write(event.updatedAt?.millisecondsSinceEpoch ?? 0)
+        ..write(':')
+        ..write(event.magnitude);
+    }
+    return buffer.toString();
   }
 
   Uri _uri(String path) => Uri.parse('${SeismikConstants.apiBaseUrl}$path');
@@ -648,7 +807,7 @@ class ApiClient {
       await _secureStorage.read(key: _crowdTokenKey);
 
   Future<Map<String, String>> _mobileHeaders() async {
-    final String? session = await _secureStorage.read(key: _deviceSessionKey);
+    final String? session = await _deviceSession();
     if (session == null || session.isEmpty) {
       throw const SeismikApiException('Device is not registered', null);
     }
@@ -673,3 +832,34 @@ class ApiClient {
 
   void close() => _http.close();
 }
+
+/// Catálogo de estaciones desde el cuerpo JSON de la API o de la caché.
+///
+/// Es una función de nivel superior para poder ejecutarse en otro isolate.
+List<SeismicStation> parseStationsBody(String body) {
+  final Object? decoded = jsonDecode(body);
+  if (decoded is! Map<String, dynamic>) return const <SeismicStation>[];
+  return (decoded['stations'] as List<dynamic>? ?? <dynamic>[])
+      .whereType<Map<String, dynamic>>()
+      .map(SeismicStation.fromMap)
+      .toList(growable: false);
+}
+
+/// Sismos desde la respuesta del historial (`{"events": [...]}`) o desde la
+/// caché que guardaban versiones anteriores, que era directamente la lista.
+List<SeismicEvent> parseEventsBody(String body) {
+  final Object? decoded = jsonDecode(body);
+  final List<dynamic> items = switch (decoded) {
+    final Map<String, dynamic> map =>
+      map['events'] as List<dynamic>? ?? <dynamic>[],
+    final List<dynamic> list => list,
+    _ => <dynamic>[],
+  };
+  return items
+      .whereType<Map<String, dynamic>>()
+      .map(SeismicEvent.fromMap)
+      .toList(growable: false);
+}
+
+String encodeEventsCache(List<SeismicEvent> events) =>
+    jsonEncode(events.map((event) => event.toMap()).toList(growable: false));

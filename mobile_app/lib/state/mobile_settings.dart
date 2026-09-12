@@ -161,6 +161,7 @@ class MobileSettings extends ChangeNotifier {
   }
 
   Future<void> setReceiveEarlyAlerts(bool value) async {
+    if (receiveEarlyAlerts == value) return;
     receiveEarlyAlerts = value;
     notifyListeners();
     final SharedPreferences preferences = await SharedPreferences.getInstance();
@@ -168,6 +169,7 @@ class MobileSettings extends ChangeNotifier {
   }
 
   Future<void> setReceiveOfficialUpdates(bool value) async {
+    if (receiveOfficialUpdates == value) return;
     receiveOfficialUpdates = value;
     notifyListeners();
     final SharedPreferences preferences = await SharedPreferences.getInstance();
@@ -175,7 +177,9 @@ class MobileSettings extends ChangeNotifier {
   }
 
   Future<void> setMinimumNotificationMagnitude(double value) async {
-    minimumNotificationMagnitude = value.clamp(0, 9).toDouble();
+    final double normalized = value.clamp(0, 9).toDouble();
+    if (minimumNotificationMagnitude == normalized) return;
+    minimumNotificationMagnitude = normalized;
     notifyListeners();
     final SharedPreferences preferences = await SharedPreferences.getInstance();
     await preferences.setDouble(

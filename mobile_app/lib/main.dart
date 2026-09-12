@@ -113,17 +113,28 @@ class _SeismikShellState extends State<_SeismikShell> {
         dynamicColorAvailable: widget.dynamicColorAvailable,
       );
     }
-    final SeismikState state = context.watch<SeismikState>();
+    // Sólo lo que el marco necesita. Con `watch`, cada aviso del estado (un
+    // reporte en cola, un refresco, un toque en el mapa) reconstruía a la vez
+    // todas las pestañas.
+    final SeismicEvent? officialEvent = context
+        .select<SeismikState, SeismicEvent?>((s) => s.officialEvent);
+    final SeismicEvent? activeAlert = context
+        .select<SeismikState, SeismicEvent?>((s) => s.activeAlert);
+    final SeismicEvent? latestEvent = context
+        .select<SeismikState, SeismicEvent?>(
+          (s) => s.recentEvents.isEmpty ? null : s.recentEvents.first,
+        );
+    final SeismikState state = Provider.of<SeismikState>(
+      context,
+      listen: false,
+    );
     final Widget base;
-    if (state.officialEvent != null) {
+    if (officialEvent != null) {
       base = EventDetailScreen(
-        event: state.officialEvent!,
+        event: officialEvent,
         onClose: state.clearOfficialEvent,
       );
     } else {
-      final event = state.recentEvents.isEmpty
-          ? null
-          : state.recentEvents.first;
       final bool keyboardVisible = MediaQuery.viewInsetsOf(context).bottom > 0;
       base = Scaffold(
         resizeToAvoidBottomInset: true,
@@ -131,8 +142,8 @@ class _SeismikShellState extends State<_SeismikShell> {
           index: _selectedIndex,
           children: <Widget>[
             const MonitorScreen(),
-            FeltReportScreen(event: event),
-            DamageReportScreen(event: event),
+            FeltReportScreen(event: latestEvent),
+            DamageReportScreen(event: latestEvent),
             SettingsScreen(dynamicColorAvailable: widget.dynamicColorAvailable),
           ],
         ),
@@ -152,14 +163,14 @@ class _SeismikShellState extends State<_SeismikShell> {
               ),
       );
     }
-    if (state.activeAlert == null) return base;
+    if (activeAlert == null) return base;
     return Stack(
       fit: StackFit.expand,
       children: <Widget>[
         base,
         Material(
           child: AlertOverlay(
-            event: state.activeAlert!,
+            event: activeAlert,
             onDismiss: state.dismissAlert,
           ),
         ),
@@ -178,16 +189,28 @@ class _IosSeismikShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final SeismikState state = context.watch<SeismikState>();
-    if (state.officialEvent != null) {
+    // Sólo lo que el marco necesita. Con `watch`, cada aviso del estado (un
+    // reporte en cola, un refresco, un toque en el mapa) reconstruía a la vez
+    // todas las pestañas.
+    final SeismicEvent? officialEvent = context
+        .select<SeismikState, SeismicEvent?>((s) => s.officialEvent);
+    final SeismicEvent? activeAlert = context
+        .select<SeismikState, SeismicEvent?>((s) => s.activeAlert);
+    final SeismicEvent? latestEvent = context
+        .select<SeismikState, SeismicEvent?>(
+          (s) => s.recentEvents.isEmpty ? null : s.recentEvents.first,
+        );
+    final SeismikState state = Provider.of<SeismikState>(
+      context,
+      listen: false,
+    );
+    if (officialEvent != null) {
       return EventDetailScreen(
-        event: state.officialEvent!,
+        event: officialEvent,
         onClose: state.clearOfficialEvent,
       );
     }
-    final SeismicEvent? event = state.recentEvents.isEmpty
-        ? null
-        : state.recentEvents.first;
+    final SeismicEvent? event = latestEvent;
     final Widget tabs = CupertinoTabScaffold(
       tabBar: CupertinoTabBar(
         // Un color translúcido activa el material del sistema en la barra: el
@@ -226,14 +249,14 @@ class _IosSeismikShell extends StatelessWidget {
         },
       ),
     );
-    if (state.activeAlert == null) return tabs;
+    if (activeAlert == null) return tabs;
     return Stack(
       fit: StackFit.expand,
       children: <Widget>[
         tabs,
         Material(
           child: AlertOverlay(
-            event: state.activeAlert!,
+            event: activeAlert,
             onDismiss: state.dismissAlert,
           ),
         ),
