@@ -62,7 +62,8 @@ public final class SeismikState: ObservableObject {
                 }
             }
         Task {
-            locationManager.requestPermission()
+            // La ubicación se pide sólo al centrar el mapa, compartirla o
+            // enviar un reporte. Al arrancar se registra la zona global.
             locationManager.startUpdating()
             await updateRegistration()
             await refreshData()
@@ -154,6 +155,20 @@ public final class SeismikState: ObservableObject {
     public func applyAlertPreferences() async {
         await updateRegistration()
         syncCrowdsourcing()
+    }
+
+    /// Solicita permisos de aviso únicamente tras una acción explícita en
+    /// Ajustes. APNs ya se registró en AppDelegate sin mostrar este diálogo.
+    public func requestNotificationPermission() async -> UNAuthorizationStatus {
+        let center = UNUserNotificationCenter.current()
+        let granted = try? await center.requestAuthorization(
+            options: [.alert, .sound, .badge, .criticalAlert]
+        )
+        if granted == true {
+            await updateRegistration()
+        }
+        let settings = await center.notificationSettings()
+        return settings.authorizationStatus
     }
 
     /// Actualiza el catálogo de sismos y estaciones desde la red.

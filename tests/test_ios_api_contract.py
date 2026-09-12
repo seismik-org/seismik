@@ -121,8 +121,13 @@ def test_the_app_asks_for_notification_permission() -> None:
     """
 
     delegate = APP_DELEGATE.read_text(encoding="utf-8")
+    state = Path("mobile_app/ios/Runner/Native/State/SeismikState.swift").read_text(
+        encoding="utf-8"
+    )
 
-    assert "requestAuthorization" in delegate
+    # El diálogo aparece cuando el usuario activa alertas desde Configuración,
+    # no al abrir la aplicación por primera vez.
+    assert "requestAuthorization" in state
     assert "registerForRemoteNotifications" in delegate
 
 

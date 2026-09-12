@@ -4,13 +4,16 @@ import base64
 import hashlib
 import json
 import secrets
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlparse
 
 import httpx
-from fastapi import APIRouter, Cookie, HTTPException, Request, Response, status
+from fastapi import APIRouter, Body, Cookie, HTTPException, Request, Response, status
 from fastapi.responses import RedirectResponse
 
 router = APIRouter(prefix="/v1/oauth", tags=["oauth"])
+
+_MOBILE_CALLBACK = "seismik://auth/callback"
+_MOBILE_CODE_TTL_SECONDS = 60
 
 
 def _pkce_verifier() -> str:
@@ -24,6 +27,54 @@ def _challenge(verifier: str) -> str:
 
 def _cookie_name() -> str:
     return "seismik_session"
+
+
+def _mobile_return_to(value: str | None) -> str | None:
+    """Accept exactly the app callback; never turn OAuth into an open redirect."""
+    if value is None:
+        return None
+    parsed = urlparse(value)
+    if (
+        parsed.scheme == "seismik"
+        and parsed.netloc == "auth"
+        and parsed.path == "/callback"
+        and not parsed.params
+        and not parsed.query
+        and not parsed.fragment
+    ):
+        return _MOBILE_CALLBACK
+    raise HTTPException(status_code=400, detail="Callback móvil OAuth no permitido")
+
+
+async def _finish_login(
+    request: Request,
+    user: dict[str, str],
+    return_to: str | None,
+) -> Response:
+    """Issue the browser cookie and, only for the native app, a one-time code."""
+    settings = request.app.state.settings
+    session = secrets.token_urlsafe(48)
+    await request.app.state.redis.set(
+        f"seismik:oauth:session:{session}",
+        json.dumps(user),
+        ex=settings.oauth_session_ttl_seconds,
+    )
+    target = settings.developer_portal_url
+    if return_to:
+        code = secrets.token_urlsafe(32)
+        await request.app.state.redis.set(
+            f"seismik:oauth:mobile-code:{code}",
+            json.dumps(user),
+            ex=_MOBILE_CODE_TTL_SECONDS,
+        )
+        target = return_to + "?" + urlencode({"code": code})
+    response = RedirectResponse(target, status_code=status.HTTP_303_SEE_OTHER)
+    response.set_cookie(
+        _cookie_name(), session, max_age=settings.oauth_session_ttl_seconds,
+        secure=True, httponly=True, samesite="lax", path="/",
+        domain=settings.oauth_cookie_domain,
+    )
+    return response
 
 
 def _github_is_configured(settings: object) -> bool:
@@ -51,26 +102,28 @@ async def oauth_providers(request: Request) -> dict[str, dict[str, dict[str, boo
 
 
 @router.get("/login")
-async def login(request: Request, provider: str = "google") -> Response:
+async def login(
+    request: Request, provider: str = "google", return_to: str | None = None
+) -> Response:
     """Entrada estable de auth.seismik.org para el portal de desarrolladores."""
     if provider == "google":
-        return await google_start(request)
+        return await google_start(request, return_to=return_to)
     if provider == "github":
-        return await github_start(request)
+        return await github_start(request, return_to=return_to)
     raise HTTPException(status_code=404, detail="Proveedor OAuth no disponible")
 
 
 @router.get("/google/start")
-async def google_start(request: Request) -> Response:
+async def google_start(request: Request, return_to: str | None = None) -> Response:
     settings = request.app.state.settings
     if not settings.oauth_google_client_id or not settings.oauth_google_client_secret.get_secret_value():
         raise HTTPException(status_code=503, detail="OAuth directo no está configurado")
     state = secrets.token_urlsafe(32)
     verifier = _pkce_verifier()
-    await request.app.state.redis.setex(
+    await request.app.state.redis.set(
         f"seismik:oauth:state:{state}",
-        600,
-        json.dumps({"verifier": verifier}),
+        json.dumps({"verifier": verifier, "return_to": _mobile_return_to(return_to)}),
+        ex=600,
     )
     params = {
         "client_id": settings.oauth_google_client_id,
@@ -95,7 +148,8 @@ async def google_callback(request: Request, code: str | None = None, state: str 
     if not raw:
         raise HTTPException(status_code=400, detail="Estado OAuth inválido o expirado")
     await request.app.state.redis.delete(f"seismik:oauth:state:{state}")
-    verifier = json.loads(raw)["verifier"]
+    saved = json.loads(raw)
+    verifier = saved["verifier"]
     async with httpx.AsyncClient(timeout=10) as client:
         token_response = await client.post(
             "https://oauth2.googleapis.com/token",
@@ -120,34 +174,26 @@ async def google_callback(request: Request, code: str | None = None, state: str 
     user = profile.json()
     if not user.get("email_verified", False):
         raise HTTPException(status_code=403, detail="Se requiere un correo Google verificado")
-    session = secrets.token_urlsafe(48)
-    await request.app.state.redis.setex(
-        f"seismik:oauth:session:{session}",
-        settings.oauth_session_ttl_seconds,
-        json.dumps({"uid": user.get("sub", ""), "email": user["email"], "name": user.get("name", "")}),
+    return await _finish_login(
+        request,
+        {"uid": user.get("sub", ""), "email": user["email"], "name": user.get("name", "")},
+        saved.get("return_to"),
     )
-    response = RedirectResponse(
-        settings.developer_portal_url, status_code=status.HTTP_303_SEE_OTHER
-    )
-    response.set_cookie(
-        _cookie_name(), session, max_age=settings.oauth_session_ttl_seconds,
-        secure=True, httponly=True, samesite="lax", path="/",
-        domain=settings.oauth_cookie_domain,
-    )
-    return response
 
 
 @router.get("/github/start")
-async def github_start(request: Request) -> Response:
+async def github_start(request: Request, return_to: str | None = None) -> Response:
     settings = request.app.state.settings
     if not _github_is_configured(settings):
         raise HTTPException(status_code=503, detail="GitHub OAuth aún no está configurado")
     state = secrets.token_urlsafe(32)
     verifier = _pkce_verifier()
-    await request.app.state.redis.setex(
+    await request.app.state.redis.set(
         f"seismik:oauth:state:{state}",
-        600,
-        json.dumps({"provider": "github", "verifier": verifier}),
+        json.dumps(
+            {"provider": "github", "verifier": verifier, "return_to": _mobile_return_to(return_to)}
+        ),
+        ex=600,
     )
     params = {
         "client_id": settings.oauth_github_client_id,
@@ -209,32 +255,30 @@ async def github_callback(
     if not email_record:
         raise HTTPException(status_code=403, detail="GitHub requiere un correo primario verificado")
     github_user = profile.json()
-    session = secrets.token_urlsafe(48)
-    await request.app.state.redis.setex(
-        f"seismik:oauth:session:{session}",
-        settings.oauth_session_ttl_seconds,
-        json.dumps(
-            {
-                "uid": f"github:{github_user.get('id', '')}",
-                "email": email_record["email"],
-                "name": github_user.get("name") or github_user.get("login", ""),
-            }
-        ),
+    return await _finish_login(
+        request,
+        {
+            "uid": f"github:{github_user.get('id', '')}",
+            "email": email_record["email"],
+            "name": github_user.get("name") or github_user.get("login", ""),
+        },
+        saved.get("return_to"),
     )
-    response = RedirectResponse(
-        settings.developer_portal_url, status_code=status.HTTP_303_SEE_OTHER
+
+
+@router.post("/mobile/exchange")
+async def exchange_mobile_code(request: Request, code: str = Body(embed=True, min_length=20)) -> dict[str, str]:
+    """Exchange a single-use app callback code for a Keychain-held session."""
+    raw = await request.app.state.redis.getdel(f"seismik:oauth:mobile-code:{code}")
+    if not raw:
+        raise HTTPException(status_code=401, detail="Código móvil OAuth inválido o expirado")
+    settings = request.app.state.settings
+    token = secrets.token_urlsafe(48)
+    await request.app.state.redis.set(
+        f"seismik:oauth:mobile-session:{token}", raw, ex=settings.oauth_session_ttl_seconds
     )
-    response.set_cookie(
-        _cookie_name(),
-        session,
-        max_age=settings.oauth_session_ttl_seconds,
-        secure=True,
-        httponly=True,
-        samesite="lax",
-        path="/",
-        domain=settings.oauth_cookie_domain,
-    )
-    return response
+    user = json.loads(raw)
+    return {"mobile_session_token": token, "uid": user["uid"], "email": user["email"], "name": user["name"]}
 
 
 @router.get("/session")

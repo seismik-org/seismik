@@ -23,18 +23,21 @@
     <key>NSMotionUsageDescription</key>
     <string>Seismik usa el acelerómetro para detectar movimiento compatible con actividad sísmica.</string>
     <key>UIBackgroundModes</key>
-    <array>
-        <string>remote-notification</string>
-        <string>processing</string>
-    </array>
-    <key>BGTaskSchedulerPermittedIdentifiers</key>
-    <array><string>com.seismik.app.sensor-refresh</string></array>
+    <array><string>remote-notification</string></array>
     <key>FirebaseAppDelegateProxyEnabled</key><true/>
     <key>SeismikGoogleMapsAPIKey</key><string>$(SEISMIK_GOOGLE_MAPS_API_KEY)</string>
+    <key>SeismikAPIBaseURL</key><string>$(SEISMIK_API_BASE_URL)</string>
     <key>LSApplicationQueriesSchemes</key>
     <array>
         <string>comgooglemaps</string>
         <string>maps</string>
+    </array>
+    <key>CFBundleURLTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleURLSchemes</key>
+            <array><string>seismik</string></array>
+        </dict>
     </array>
     <key>UIApplicationSceneManifest</key>
     <dict>

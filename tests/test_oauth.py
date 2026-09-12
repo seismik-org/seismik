@@ -41,6 +41,49 @@ async def test_auth_entry_uses_auth_subdomain_callback_and_pkce() -> None:
 
 
 @pytest.mark.asyncio
+async def test_mobile_oauth_return_is_strict_and_stored_with_pkce_state() -> None:
+    app = oauth_app()
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app), base_url="https://auth.seismik.org"
+    ) as client:
+        response = await client.get(
+            "/v1/oauth/login?provider=google&return_to=seismik%3A%2F%2Fauth%2Fcallback",
+            follow_redirects=False,
+        )
+        rejected = await client.get(
+            "/v1/oauth/login?provider=google&return_to=https%3A%2F%2Fevil.example",
+            follow_redirects=False,
+        )
+
+    assert response.status_code == 307
+    state = parse_qs(urlparse(response.headers["location"]).query)["state"][0]
+    saved = await app.state.redis.get(f"seismik:oauth:state:{state}")
+    assert '"return_to": "seismik://auth/callback"' in saved
+    assert rejected.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_mobile_exchange_is_one_time_and_short_lived() -> None:
+    app = oauth_app()
+    code = "one-time-mobile-code-123"
+    await app.state.redis.set(
+        f"seismik:oauth:mobile-code:{code}",
+        '{"uid":"u-1","email":"person@example.com","name":"Person"}',
+        ex=60,
+    )
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app), base_url="https://auth.seismik.org"
+    ) as client:
+        first = await client.post("/v1/oauth/mobile/exchange", json={"code": code})
+        replay = await client.post("/v1/oauth/mobile/exchange", json={"code": code})
+
+    assert first.status_code == 200
+    assert first.json()["email"] == "person@example.com"
+    assert len(first.json()["mobile_session_token"]) >= 64
+    assert replay.status_code == 401
+
+
+@pytest.mark.asyncio
 async def test_only_configured_providers_are_advertised() -> None:
     disabled = oauth_app()
     enabled = oauth_app(oauth_github_client_id="github-client", oauth_github_client_secret="github-secret")

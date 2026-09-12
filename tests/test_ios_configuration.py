@@ -41,6 +41,18 @@ def test_info_plist_is_well_formed_and_keeps_permission_strings(info_plist: dict
 
 def test_push_and_background_modes_survive(info_plist: dict) -> None:
     assert "remote-notification" in info_plist["UIBackgroundModes"]
+    # No declaramos procesamiento en segundo plano si no hay un handler que lo
+    # programe: iOS puede rechazar ese modo y no es necesario para el push.
+    assert "processing" not in info_plist["UIBackgroundModes"]
+
+
+def test_native_auth_callback_and_configurable_api_endpoint_are_declared(info_plist: dict) -> None:
+    callback_schemes = {
+        item["CFBundleURLSchemes"][0]
+        for item in info_plist["CFBundleURLTypes"]
+    }
+    assert "seismik" in callback_schemes
+    assert info_plist["SeismikAPIBaseURL"] == "$(SEISMIK_API_BASE_URL)"
 
 
 def test_map_schemes_are_declared(info_plist: dict) -> None:
