@@ -1,6 +1,105 @@
 import Foundation
 import CryptoKit
 import FirebaseAppCheck
+import AuthenticationServices
+import UIKit
+
+public struct SeismikAccount: Codable, Equatable {
+    public let uid: String
+    public let email: String
+    public let name: String
+}
+
+/// Inicio de sesión web seguro: el proveedor nunca entrega sus tokens a la
+/// app. `auth.seismik.org` devuelve un código de un solo uso al esquema propio.
+@MainActor
+public final class SeismikOAuthSignIn: NSObject, ASWebAuthenticationPresentationContextProviding {
+    public static let shared = SeismikOAuthSignIn()
+    private var session: ASWebAuthenticationSession?
+
+    public func start(
+        provider: String,
+        completion: @escaping (Result<SeismikAccount, Error>) -> Void
+    ) {
+        var components = URLComponents(string: "https://auth.seismik.org/v1/oauth/login")!
+        components.queryItems = [
+            URLQueryItem(name: "provider", value: provider),
+            URLQueryItem(name: "return_to", value: "seismik://auth/callback"),
+        ]
+        let flow = ASWebAuthenticationSession(
+            url: components.url!, callbackURLScheme: "seismik"
+        ) { [weak self] callbackURL, error in
+            self?.session = nil
+            if let error {
+                completion(.failure(error))
+                return
+            }
+            guard let callbackURL,
+                  let code = URLComponents(url: callbackURL, resolvingAgainstBaseURL: false)?
+                    .queryItems?.first(where: { $0.name == "code" })?.value,
+                  !code.isEmpty else {
+                completion(.failure(SeismikAPIError.malformedResponse))
+                return
+            }
+            Task {
+                do {
+                    completion(.success(try await SeismikAPIClient.shared.exchangeMobileOAuthCode(code)))
+                } catch {
+                    completion(.failure(error))
+                }
+            }
+        }
+        flow.presentationContextProvider = self
+        flow.prefersEphemeralWebBrowserSession = false
+        session = flow
+        if !flow.start() {
+            completion(.failure(SeismikAPIError.malformedResponse))
+        }
+    }
+
+    public func presentationAnchor(for session: ASWebAuthenticationSession) -> ASPresentationAnchor {
+        let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+        return scenes.first?.windows.first(where: { $0.isKeyWindow })
+            ?? ASPresentationAnchor()
+    }
+}
+
+public struct FamilyLocation: Decodable, Equatable {
+    public let latitude: Double
+    public let longitude: Double
+    public let precision: String
+    public let expiresAt: String
+
+    enum CodingKeys: String, CodingKey {
+        case latitude, longitude, precision
+        case expiresAt = "expires_at"
+    }
+}
+
+public struct FamilyMember: Decodable, Identifiable, Equatable {
+    public let displayName: String
+    public let isYou: Bool
+    public let location: FamilyLocation?
+    public var id: String { "\(displayName)-\(isYou)" }
+
+    enum CodingKeys: String, CodingKey {
+        case displayName = "display_name"
+        case isYou = "is_you"
+        case location
+    }
+}
+
+public struct FamilyCircle: Decodable, Equatable {
+    public let circleId: String
+    public let circleName: String
+    public let members: [FamilyMember]
+
+    enum CodingKeys: String, CodingKey {
+        case circleId = "circle_id"
+        case circleName = "circle_name"
+        case members
+    }
+}
 
 /// Errores del cliente que la interfaz necesita distinguir.
 public enum SeismikAPIError: LocalizedError {
@@ -58,9 +157,12 @@ public final class SeismikAPIClient {
     private static let crowdTokenKey = "seismik.crowd_token"
     private static let eventCacheKey = "seismik.cached_events_json"
     private static let alertCursorKey = "seismik.alert_cursor"
+    private static let accountSessionKey = "seismik.account_session_token"
+    private static let accountProfileKey = "seismik.account_profile"
 
     private init() {
-        self.baseURL = URL(string: "https://api.seismik.org")!
+        let configuredURL = Bundle.main.object(forInfoDictionaryKey: "SeismikAPIBaseURL") as? String
+        self.baseURL = URL(string: configuredURL ?? "") ?? URL(string: "https://api.seismik.org")!
         let config = URLSessionConfiguration.default
         config.timeoutIntervalForRequest = 12.0
         config.timeoutIntervalForResource = 30.0
@@ -98,6 +200,11 @@ public final class SeismikAPIClient {
     /// Token secreto crowd para firma HMAC de reportes sísmicos.
     public var crowdToken: String? {
         try? keychain.string(for: Self.crowdTokenKey)
+    }
+
+    public var signedInAccount: SeismikAccount? {
+        guard let data = UserDefaults.standard.data(forKey: Self.accountProfileKey) else { return nil }
+        return try? JSONDecoder().decode(SeismikAccount.self, from: data)
     }
 
     /// Indica si el dispositivo cuenta con credenciales válidas registradas.
@@ -406,6 +513,98 @@ public final class SeismikAPIClient {
         }
     }
 
+    // MARK: - OAuth de cuenta Seismik
+
+    public func exchangeMobileOAuthCode(_ code: String) async throws -> SeismikAccount {
+        var request = URLRequest(url: URL(string: "https://auth.seismik.org/v1/oauth/mobile/exchange")!)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONSerialization.data(withJSONObject: ["code": code])
+        let (data, response) = try await session.data(for: request)
+        try assertSuccess(response, data: data)
+        struct Exchange: Decodable {
+            let mobileSessionToken: String
+            let uid: String
+            let email: String
+            let name: String
+            enum CodingKeys: String, CodingKey {
+                case mobileSessionToken = "mobile_session_token"
+                case uid, email, name
+            }
+        }
+        let result = try JSONDecoder().decode(Exchange.self, from: data)
+        let account = SeismikAccount(uid: result.uid, email: result.email, name: result.name)
+        try keychain.set(result.mobileSessionToken, for: Self.accountSessionKey)
+        UserDefaults.standard.set(try JSONEncoder().encode(account), forKey: Self.accountProfileKey)
+        return account
+    }
+
+    public func signOutAccount() throws {
+        try keychain.remove(Self.accountSessionKey)
+        UserDefaults.standard.removeObject(forKey: Self.accountProfileKey)
+    }
+
+    // MARK: - Círculos familiares voluntarios
+
+    public func fetchFamilyCircle() async throws -> FamilyCircle? {
+        var request = try deviceRequest(path: "v1/family/circle")
+        request.httpMethod = "GET"
+        let (data, response) = try await session.data(for: request)
+        if (response as? HTTPURLResponse)?.statusCode == 404 { return nil }
+        try assertSuccess(response, data: data)
+        return try JSONDecoder().decode(FamilyCircle.self, from: data)
+    }
+
+    public func createFamilyCircle(displayName: String, circleName: String) async throws {
+        _ = try await familySend(
+            path: "v1/family/circle", method: "POST",
+            body: ["display_name": displayName, "circle_name": circleName]
+        )
+    }
+
+    public func createFamilyInvitation(displayName: String) async throws -> String {
+        let data = try await familySend(
+            path: "v1/family/circle/invitations", method: "POST",
+            body: ["display_name": displayName]
+        )
+        struct Invitation: Decodable {
+            let inviteCode: String
+            enum CodingKeys: String, CodingKey { case inviteCode = "invite_code" }
+        }
+        return try JSONDecoder().decode(Invitation.self, from: data).inviteCode
+    }
+
+    public func joinFamilyCircle(inviteCode: String, displayName: String) async throws {
+        _ = try await familySend(
+            path: "v1/family/join", method: "POST",
+            body: ["invite_code": inviteCode, "display_name": displayName]
+        )
+    }
+
+    public func shareFamilyLocation(
+        latitude: Double, longitude: Double, minutes: Int, precise: Bool
+    ) async throws {
+        _ = try await familySend(
+            path: "v1/family/location", method: "PUT",
+            body: [
+                "latitude": latitude,
+                "longitude": longitude,
+                "share_minutes": minutes,
+                "precision": precise ? "precise" : "approximate",
+                "precise_location_consent": precise,
+            ]
+        )
+    }
+
+    public func stopSharingFamilyLocation() async throws {
+        var request = try deviceRequest(path: "v1/family/location")
+        request.httpMethod = "DELETE"
+        let (data, response) = try await session.data(for: request)
+        if (response as? HTTPURLResponse)?.statusCode != 204 {
+            try assertSuccess(response, data: data)
+        }
+    }
+
     // MARK: - Detección colaborativa
 
     /// Envía un ping de aceleración firmado. Devuelve si el servidor lo aceptó.
@@ -454,6 +653,35 @@ public final class SeismikAPIClient {
         message.append(body)
         let signature = HMAC<SHA256>.authenticationCode(for: message, using: key)
         return signature.map { String(format: "%02x", $0) }.joined()
+    }
+
+    private func deviceRequest(path: String) throws -> URLRequest {
+        guard let sessionToken = deviceSessionToken, !sessionToken.isEmpty else {
+            throw SeismikAPIError.rejected(status: 401, message: "El dispositivo aún se está preparando")
+        }
+        var request = URLRequest(url: baseURL.appendingPathComponent(path))
+        request.setValue(sessionToken, forHTTPHeaderField: "X-Seismik-Device-Session")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        return request
+    }
+
+    @discardableResult
+    private func familySend(path: String, method: String, body: [String: Any]) async throws -> Data {
+        var request = try deviceRequest(path: path)
+        request.httpMethod = method
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        let (data, response) = try await session.data(for: request)
+        try assertSuccess(response, data: data)
+        return data
+    }
+
+    private func assertSuccess(_ response: URLResponse, data: Data) throws {
+        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
+            throw SeismikAPIError.rejected(
+                status: (response as? HTTPURLResponse)?.statusCode ?? 0,
+                message: String(data: data, encoding: .utf8) ?? "El servidor rechazó la solicitud"
+            )
+        }
     }
 
     /// Obtiene un token efímero emitido por Firebase App Check y respaldado

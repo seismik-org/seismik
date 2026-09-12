@@ -7,6 +7,7 @@
 // AppDelegate.swift a GMSServices. Si se deja vacía, la app arranca sin mapas
 // nativos de Google en iOS en lugar de fallar.
 SEISMIK_GOOGLE_MAPS_API_KEY =
+SEISMIK_API_BASE_URL = https://api.seismik.org
 
 // Equipo de firma para las Critical Alerts y APNs. Debe coincidir con el
 // perfil aprobado por Apple para el entitlement de alertas críticas.

@@ -1,4 +1,5 @@
 import CoreLocation
+import MapKit
 import SwiftUI
 import UIKit
 import UserNotifications
@@ -13,6 +14,10 @@ public struct SettingsView: View {
     @State private var notificationStatus: UNAuthorizationStatus = .notDetermined
     @State private var showCopiedAlert = false
     @State private var browserDestination: BrowserDestination?
+    @State private var showFamilySafety = false
+    @State private var showSignInProviders = false
+    @State private var account: SeismikAccount? = SeismikAPIClient.shared.signedInAccount
+    @State private var accountError: String?
 
     public init(state: SeismikState, showsCloseButton: Bool = true) {
         self.state = state
@@ -48,15 +53,42 @@ public struct SettingsView: View {
                     .padding(.vertical, 4)
                 }
 
+                Section(header: Text("Cuenta Seismik")) {
+                    if let account {
+                        HStack(spacing: 12) {
+                            Image(systemName: "person.crop.circle.fill")
+                                .foregroundColor(SeismikColors.systemBlue)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(account.name.isEmpty ? "Cuenta Seismik" : account.name)
+                                Text(account.email).font(.caption).foregroundColor(.secondary)
+                            }
+                            Spacer()
+                            Button("Salir", role: .destructive) {
+                                try? SeismikAPIClient.shared.signOutAccount()
+                                self.account = nil
+                            }
+                        }
+                    } else {
+                        Button {
+                            showSignInProviders = true
+                        } label: {
+                            Label("Iniciar sesión", systemImage: "person.badge.key")
+                        }
+                    }
+                    Text("La cuenta permite recuperar preferencias. Nunca comparte tu ubicación sin una acción explícita.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+
                 // Alertas críticas (Pantalla completa, simulacro, magnitudes y radio)
                 Section(header: Text("Alertas críticas")) {
-                    Button(action: openSystemSettings) {
+                    Button(action: requestNotificationPermission) {
                         HStack {
                             VStack(alignment: .leading, spacing: 3) {
-                                Text("Autorizar pantalla completa / Alertas")
+                                Text("Activar alertas")
                                     .font(.body)
                                     .foregroundColor(.primary)
-                                Text("Necesario para abrir la guía con pantalla bloqueada y emitir alertas críticas.")
+                                Text("Las alertas críticas requieren aprobación de Apple; mientras tanto se usan avisos urgentes normales.")
                                     .font(.caption)
                                     .foregroundColor(.secondary)
                             }
@@ -180,6 +212,17 @@ public struct SettingsView: View {
                             .font(.system(size: 14, weight: .semibold))
                             .foregroundColor(SeismikColors.systemBlue)
                         }
+                    }
+                }
+
+                Section(
+                    header: Text("Seguridad familiar"),
+                    footer: Text("Cada integrante decide si comparte una ubicación aproximada o precisa y durante cuánto tiempo. No es rastreo continuo ni un canal de emergencia.")
+                ) {
+                    Button {
+                        showFamilySafety = true
+                    } label: {
+                        Label("Búsqueda de familiares", systemImage: "person.2.fill")
                     }
                 }
 
@@ -432,6 +475,22 @@ public struct SettingsView: View {
                 InAppBrowserView(url: destination.url)
                     .ignoresSafeArea()
             }
+            .sheet(isPresented: $showFamilySafety) {
+                FamilySafetyView()
+            }
+            .confirmationDialog("Iniciar sesión con", isPresented: $showSignInProviders) {
+                Button("Google") { startSignIn(provider: "google") }
+                Button("GitHub") { startSignIn(provider: "github") }
+                Button("Cancelar", role: .cancel) {}
+            }
+            .alert("No se pudo iniciar sesión", isPresented: Binding(
+                get: { accountError != nil },
+                set: { if !$0 { accountError = nil } }
+            )) {
+                Button("Aceptar", role: .cancel) {}
+            } message: {
+                Text(accountError ?? "")
+            }
         }
     }
 
@@ -481,9 +540,30 @@ public struct SettingsView: View {
         }
     }
 
+    private func requestNotificationPermission() {
+        Task {
+            notificationStatus = await state.requestNotificationPermission()
+            if notificationStatus == .denied,
+               let url = URL(string: UIApplication.openSettingsURLString) {
+                UIApplication.shared.open(url)
+            }
+        }
+    }
+
     private func openSystemSettings() {
         guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
         UIApplication.shared.open(url)
+    }
+
+    private func startSignIn(provider: String) {
+        SeismikOAuthSignIn.shared.start(provider: provider) { result in
+            DispatchQueue.main.async {
+                switch result {
+                case let .success(identity): self.account = identity
+                case let .failure(error): self.accountError = error.localizedDescription
+                }
+            }
+        }
     }
 }
 
@@ -598,3 +678,198 @@ private struct HistorySourceRow: View {
     }
 }
 
+// MARK: - Círculo familiar (iPhone nativo)
+
+private struct FamilySafetyView: View {
+    @Environment(\.dismiss) private var dismiss
+    @ObservedObject private var locationManager = LocationManager.shared
+
+    @State private var circle: FamilyCircle?
+    @State private var isLoading = true
+    @State private var displayName = ""
+    @State private var circleName = "Mi círculo"
+    @State private var inviteCode = ""
+    @State private var shareMinutes = 60
+    @State private var precise = false
+    @State private var message: String?
+    @State private var region = MKCoordinateRegion(
+        center: CLLocationCoordinate2D(latitude: 4.65, longitude: -74.05),
+        span: MKCoordinateSpan(latitudeDelta: 4.0, longitudeDelta: 4.0)
+    )
+
+    var body: some View {
+        CompatibleNavigationStack {
+            Group {
+                if isLoading {
+                    ProgressView("Cargando círculo…")
+                } else if let circle {
+                    circleContent(circle)
+                } else {
+                    enrollmentContent
+                }
+            }
+            .navigationTitle("Familiares")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Listo") { dismiss() }
+                }
+            }
+            .task { await reload() }
+            .alert("Búsqueda de familiares", isPresented: Binding(
+                get: { message != nil }, set: { if !$0 { message = nil } }
+            )) {
+                Button("Aceptar", role: .cancel) {}
+            } message: {
+                Text(message ?? "")
+            }
+        }
+    }
+
+    private var enrollmentContent: some View {
+        Form {
+            Section {
+                Label("Ubicación compartida con consentimiento", systemImage: "hand.raised.fill")
+                    .foregroundColor(SeismikColors.systemBlue)
+                Text("No localiza a nadie automáticamente. Cada integrante comparte su propia ubicación durante un tiempo limitado y puede borrarla cuando quiera.")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            Section("Crear círculo") {
+                TextField("Tu nombre visible", text: $displayName)
+                TextField("Nombre del círculo", text: $circleName)
+                Button("Crear círculo") { Task { await createCircle() } }
+                    .disabled(displayName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            }
+            Section("Unirse con invitación") {
+                TextField("Código de invitación", text: $inviteCode)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                TextField("Tu nombre visible", text: $displayName)
+                Button("Unirme al círculo") { Task { await joinCircle() } }
+                    .disabled(inviteCode.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || displayName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            }
+        }
+    }
+
+    private func circleContent(_ circle: FamilyCircle) -> some View {
+        Form {
+            let located = circle.members.filter { $0.location != nil }
+            if !located.isEmpty {
+                Section("Mapa compartido") {
+                    Map(coordinateRegion: $region, annotationItems: located) { member in
+                        MapMarker(
+                            coordinate: CLLocationCoordinate2D(
+                                latitude: member.location!.latitude,
+                                longitude: member.location!.longitude
+                            ),
+                            tint: member.isYou ? .blue : .orange
+                        )
+                    }
+                    .frame(height: 240)
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                }
+            }
+
+            Section("Integrantes de \(circle.circleName)") {
+                ForEach(circle.members) { member in
+                    HStack {
+                        Image(systemName: member.isYou ? "person.crop.circle.fill" : "person.circle")
+                            .foregroundColor(member.isYou ? SeismikColors.systemBlue : .secondary)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(member.isYou ? "\(member.displayName) · Tú" : member.displayName)
+                            Text(locationLabel(member.location))
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                }
+                Button("Crear y copiar invitación") { Task { await createInvitation() } }
+            }
+
+            Section("Compartir mi ubicación") {
+                Picker("Duración", selection: $shareMinutes) {
+                    Text("15 minutos").tag(15)
+                    Text("1 hora").tag(60)
+                    Text("4 horas").tag(240)
+                }
+                Toggle("Ubicación precisa", isOn: $precise)
+                Text(precise ? "Compartirás el punto exacto sólo durante el período elegido." : "Por defecto se redondea la ubicación antes de guardarla.")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                Button("Compartir durante \(durationLabel)") { Task { await shareLocation() } }
+                    .foregroundColor(SeismikColors.systemBlue)
+                Button("Dejar de compartir", role: .destructive) { Task { await stopSharing() } }
+            }
+        }
+    }
+
+    private var durationLabel: String {
+        switch shareMinutes {
+        case 15: return "15 min"
+        case 60: return "1 h"
+        default: return "4 h"
+        }
+    }
+
+    private func locationLabel(_ location: FamilyLocation?) -> String {
+        guard let location else { return "No está compartiendo ubicación" }
+        return location.precision == "precise" ? "Ubicación precisa temporal" : "Ubicación aproximada temporal"
+    }
+
+    private func reload() async {
+        defer { isLoading = false }
+        do {
+            circle = try await SeismikAPIClient.shared.fetchFamilyCircle()
+            if let first = circle?.members.first(where: { $0.location != nil })?.location {
+                region.center = CLLocationCoordinate2D(latitude: first.latitude, longitude: first.longitude)
+            }
+        } catch {
+            message = error.localizedDescription
+        }
+    }
+
+    private func createCircle() async {
+        do {
+            try await SeismikAPIClient.shared.createFamilyCircle(displayName: displayName, circleName: circleName)
+            await reload()
+        } catch { message = error.localizedDescription }
+    }
+
+    private func joinCircle() async {
+        do {
+            try await SeismikAPIClient.shared.joinFamilyCircle(inviteCode: inviteCode, displayName: displayName)
+            await reload()
+        } catch { message = error.localizedDescription }
+    }
+
+    private func createInvitation() async {
+        do {
+            let code = try await SeismikAPIClient.shared.createFamilyInvitation(displayName: displayName.isEmpty ? "Familiar" : displayName)
+            UIPasteboard.general.string = code
+            message = "Invitación copiada. Expira en 24 horas y sólo se puede usar una vez."
+        } catch { message = error.localizedDescription }
+    }
+
+    private func shareLocation() async {
+        locationManager.requestPermission()
+        guard let coordinate = locationManager.currentCoordinate else {
+            message = "Permite la ubicación y vuelve a tocar Compartir. Seismik no continuará siguiéndote después del tiempo elegido."
+            return
+        }
+        do {
+            try await SeismikAPIClient.shared.shareFamilyLocation(
+                latitude: coordinate.latitude, longitude: coordinate.longitude,
+                minutes: shareMinutes, precise: precise
+            )
+            await reload()
+        } catch { message = error.localizedDescription }
+    }
+
+    private func stopSharing() async {
+        do {
+            try await SeismikAPIClient.shared.stopSharingFamilyLocation()
+            await reload()
+        } catch { message = error.localizedDescription }
+    }
+}

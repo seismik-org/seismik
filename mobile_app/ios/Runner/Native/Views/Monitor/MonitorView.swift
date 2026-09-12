@@ -300,7 +300,6 @@ private struct NativeMapView: UIViewRepresentable {
             }
         }
 
-        context.coordinator.syncOverlays(mapView: mapView, provider: state.mapProvider, mapType: state.appMapType)
         context.coordinator.syncAnnotations(mapView: mapView, events: state.events, stations: state.stations)
     }
 
@@ -312,48 +311,6 @@ private struct NativeMapView: UIViewRepresentable {
 
         init(_ parent: NativeMapView) {
             self.parent = parent
-        }
-
-        func syncOverlays(mapView: MKMapView, provider: String, mapType: String) {
-            let desired: (url: String, id: String)?
-            switch provider {
-            case "google":
-                switch mapType {
-                case "satellite":
-                    desired = ("https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}", "google_satellite")
-                case "hybrid":
-                    desired = ("https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}", "google_hybrid")
-                default:
-                    desired = ("https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}", "google_standard")
-                }
-            case "osm":
-                desired = ("https://a.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png", "osm_standard")
-            default:
-                desired = nil
-            }
-
-            let currentTile = mapView.overlays.first { $0 is CustomUserAgentTileOverlay } as? CustomUserAgentTileOverlay
-            if let desired = desired {
-                if currentTile?.overlayIdentifier != desired.id {
-                    let oldTiles = mapView.overlays.filter { $0 is MKTileOverlay }
-                    mapView.removeOverlays(oldTiles)
-
-                    let overlay = CustomUserAgentTileOverlay(urlTemplate: desired.url, identifier: desired.id)
-                    mapView.addOverlay(overlay, level: .aboveLabels)
-                }
-            } else {
-                let oldTiles = mapView.overlays.filter { $0 is MKTileOverlay }
-                if !oldTiles.isEmpty {
-                    mapView.removeOverlays(oldTiles)
-                }
-            }
-        }
-
-        func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
-            if let tile = overlay as? MKTileOverlay {
-                return MKTileOverlayRenderer(tileOverlay: tile)
-            }
-            return MKOverlayRenderer(overlay: overlay)
         }
 
         func syncAnnotations(mapView: MKMapView, events: [SeismicEvent], stations: [SeismicStation]) {
@@ -561,39 +518,4 @@ private class StationPointAnnotation: NSObject, MKAnnotation {
     }
 
     var title: String? { "Estación \(station.id)" }
-}
-
-// MARK: - Mosaicos de Mapas con User-Agent
-private class CustomUserAgentTileOverlay: MKTileOverlay {
-    private let session: URLSession
-    let overlayIdentifier: String
-
-    init(urlTemplate: String, identifier: String) {
-        self.overlayIdentifier = identifier
-        let config = URLSessionConfiguration.default
-        config.requestCachePolicy = .returnCacheDataElseLoad
-        config.httpAdditionalHeaders = [
-            "User-Agent": "Seismik-iOS/1.0 (com.seismik.app; contact@seismik.org)"
-        ]
-        self.session = URLSession(configuration: config)
-        super.init(urlTemplate: urlTemplate)
-        self.tileSize = CGSize(width: 256, height: 256)
-        self.canReplaceMapContent = true
-    }
-
-    override func loadTile(at path: MKTileOverlayPath, result: @escaping (Data?, Error?) -> Void) {
-        let tileUrl = self.url(forTilePath: path)
-        let task = session.dataTask(with: tileUrl) { data, response, error in
-            if let error = error {
-                result(nil, error)
-                return
-            }
-            if let httpResponse = response as? HTTPURLResponse, !(200...299).contains(httpResponse.statusCode) {
-                result(nil, NSError(domain: "CustomUserAgentTileOverlay", code: httpResponse.statusCode, userInfo: nil))
-                return
-            }
-            result(data, nil)
-        }
-        task.resume()
-    }
 }

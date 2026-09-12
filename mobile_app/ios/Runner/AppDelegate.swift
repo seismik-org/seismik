@@ -25,7 +25,7 @@ import SwiftUI
     if let mapsKey = Bundle.main.object(forInfoDictionaryKey: "SeismikGoogleMapsAPIKey") as? String,
        !mapsKey.isEmpty,
        !mapsKey.hasPrefix("$(") {
-      GMSServices.provideAPIKey(mapsKey)
+      GoogleMapsBridge.initialize(with: mapsKey)
     }
     GeneratedPluginRegistrant.register(with: self)
     let launched = super.application(application, didFinishLaunchingWithOptions: launchOptions)
@@ -36,20 +36,11 @@ import SwiftUI
       }
     }
 
-    // Sin autorización, iOS descarta el contenido de la alerta aunque APNs
-    // entregue el push: el token llega igual, pero la persona no ve nada. Es
-    // el permiso que hace útil a toda la app, así que se pide al arrancar.
+    // Registrar APNs no muestra un permiso. El permiso de presentación se
+    // solicita de forma contextual desde Ajustes, cuando la persona activa
+    // alertas; así el primer arranque no muestra dos diálogos consecutivos.
     UNUserNotificationCenter.current().delegate = SeismikNotificationPresenter.shared
-    UNUserNotificationCenter.current().requestAuthorization(
-      options: [.alert, .sound, .badge]
-    ) { _, _ in
-      // El token de APNs sirve aunque la persona rechace: permite avisos
-      // silenciosos y deja el dispositivo registrado para cuando cambie de
-      // opinión desde Ajustes.
-      DispatchQueue.main.async {
-        application.registerForRemoteNotifications()
-      }
-    }
+    application.registerForRemoteNotifications()
 
     // Doble garantía: asegura que la ventana principal muestre directamente
     // la app nativa en SwiftUI (SeismikNativeAppRoot) y jamás el FlutterViewController.
