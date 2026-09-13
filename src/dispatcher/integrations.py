@@ -6,6 +6,7 @@ import hashlib
 import hmac
 import json
 import logging
+from collections.abc import Awaitable, Callable
 from datetime import datetime, timezone
 from typing import Any, cast
 
@@ -15,9 +16,11 @@ from redis.exceptions import ResponseError
 
 from api.config import AppSettings, get_settings
 from integrations.security import derive_webhook_secret
+from integrations.x_publisher import XPublisher
 from runtime_health import start_health_server
 
 LOGGER = logging.getLogger(__name__)
+X_PUBLISHER_RETRY_SECONDS = 5.0
 
 
 def _wire_event(event: dict[str, Any]) -> dict[str, Any]:
@@ -131,14 +134,37 @@ class IntegrationConsumer:
         return f"seismik:integration:failures:{message_id}"
 
 
+async def keep_running(name: str, run: Callable[[], Awaitable[None]], retry_seconds: float) -> None:
+    """Mantiene viva una tarea secundaria sin arrastrar al proceso con ella.
+
+    Si falla, se registra y se reinicia; nunca detiene la entrega de webhooks.
+    """
+    while True:
+        try:
+            await run()
+            return
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            LOGGER.exception("%s se detuvo; se reinicia en %ss", name, retry_seconds)
+            await asyncio.sleep(retry_seconds)
+
+
 async def run_integrations() -> None:
     settings = get_settings()
     redis = Redis.from_url(settings.redis_url, decode_responses=True)
     worker = IntegrationConsumer(redis, settings)
+    # El publicador de X necesita CPU fuera de peticiones, y este servicio ya la
+    # tiene siempre asignada. Un servicio propio costaría ~40 USD/mes más.
+    x_publisher = asyncio.create_task(
+        keep_running("X publisher", XPublisher(redis, settings).run, X_PUBLISHER_RETRY_SECONDS)
+    )
     health_server = start_health_server()
     try:
         await worker.run()
     finally:
+        x_publisher.cancel()
+        await asyncio.gather(x_publisher, return_exceptions=True)
         health_server.shutdown()
         await redis.aclose()
 
