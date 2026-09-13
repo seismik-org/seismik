@@ -4,6 +4,7 @@ import base64
 import hashlib
 import hmac
 import json
+import logging
 import re
 import secrets
 from urllib.parse import urlencode, urlparse
@@ -11,6 +12,8 @@ from urllib.parse import urlencode, urlparse
 import httpx
 from fastapi import APIRouter, Body, Cookie, HTTPException, Request, Response, status
 from fastapi.responses import RedirectResponse
+
+LOGGER = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/v1/oauth", tags=["oauth"])
 identity_router = APIRouter(tags=["oauth"])
@@ -20,6 +23,25 @@ _MOBILE_CODE_TTL_SECONDS = 60
 _IDENTITY_FLOW_TTL_SECONDS = 600
 # PKCE generado por la app (RFC 7636, S256): base64url de 43 a 128 caracteres.
 _APP_CHALLENGE = re.compile(r"^[A-Za-z0-9_-]{43,128}$")
+
+
+def _provider_error(response: httpx.Response) -> str:
+    """Código de error del proveedor, p. ej. ``invalid_client``.
+
+    Google y GitHub responden con un código estándar que distingue un secreto
+    de cliente incorrecto (``invalid_client``) de un código ya usado o una URI
+    distinta (``invalid_grant``). Sin registrarlo, el fallo sólo se veía como
+    «no pudo validar el código». La respuesta de error no incluye secretos.
+    """
+    try:
+        body = response.json()
+    except ValueError:
+        return f"HTTP {response.status_code}"
+    if not isinstance(body, dict):
+        return f"HTTP {response.status_code}"
+    code = str(body.get("error") or f"HTTP {response.status_code}")
+    description = str(body.get("error_description") or "")
+    return (f"{code}: {description}" if description else code)[:300]
 
 
 def _pkce_verifier() -> str:
@@ -238,6 +260,7 @@ async def google_callback(request: Request, code: str | None = None, state: str 
             },
         )
         if token_response.is_error:
+            LOGGER.warning("Google rechazó el canje OAuth: %s", _provider_error(token_response))
             raise HTTPException(status_code=401, detail="Google no pudo validar el código OAuth")
         token = token_response.json()
         profile = await client.get(
@@ -318,6 +341,7 @@ async def github_callback(
             headers={"Accept": "application/json"},
         )
         if token_response.is_error or not token_response.json().get("access_token"):
+            LOGGER.warning("GitHub rechazó el canje OAuth: %s", _provider_error(token_response))
             raise HTTPException(status_code=401, detail="GitHub no pudo validar el código OAuth")
         headers = {
             "Authorization": f"Bearer {token_response.json()['access_token']}",
