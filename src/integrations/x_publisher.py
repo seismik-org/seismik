@@ -4,6 +4,10 @@ Sólo publica eventos oficiales reales. Las detecciones sin confirmación y los
 simulacros se auditan, pero no salen a la cuenta pública: una detección no es
 un boletín oficial, y un simulacro anunciaría un sismo que no ocurrió.
 
+Cada post lleva la imagen del boletín (integrations/bulletin_card.py). El texto
+no incluye enlace: X cobra $0.200 por post con URL y $0.015 sin ella, y el
+enlace oficial ya va escrito en la imagen.
+
 Ningún mensaje detiene el servicio. Uno ilegible se audita y se descarta,
 porque reintentarlo no lo arregla. Un rechazo de X queda pendiente y se
 reintenta, también tras un reinicio, hasta `integration_delivery_max_attempts`;
@@ -24,10 +28,12 @@ from requests_oauthlib import OAuth1
 
 from api.config import AppSettings, get_settings
 from eew.simulation import is_drill
+from integrations.bulletin_card import bulletin_facts, is_withdrawn, render_bulletin_card, when_text
 from runtime_health import start_health_server
 
 LOGGER = logging.getLogger(__name__)
 X_POST_URL = "https://api.x.com/2/tweets"
+X_MEDIA_UPLOAD_URL = "https://api.x.com/2/media/upload"
 X_MAX_CHARS = 280
 AUDIT_STREAM = "stream:seismik:x-audit"
 
@@ -70,6 +76,7 @@ def eligible(event: dict[str, Any], minimum_magnitude: float) -> bool:
     return (
         event.get("type") in {"official_report_available", "official_report_update"}
         and not is_simulated(event)
+        and not is_withdrawn(event)
         # Sin identificador todos compartirían la marca de «publicado» y sólo
         # saldría el primer boletín.
         and bool(event.get("event_id"))
@@ -80,17 +87,12 @@ def eligible(event: dict[str, Any], minimum_magnitude: float) -> bool:
 
 
 def bulletin_text(event: dict[str, Any]) -> str:
-    report = _report(event)
-    magnitude = _magnitude(event) or 0.0
-    place = str(report.get("place") or report.get("title") or "ubicación en evaluación")
-    # Los reportes oficiales (eew/models.py) nombran a la entidad en `agency`.
-    agency = str(report.get("agency") or report.get("source") or "fuente oficial")
-    origin = str(report.get("origin_time") or event.get("occurred_at") or "")
-    url = str(report.get("official_url") or "")
-    head = f"Boletín sísmico Seismik · M{magnitude:.1f}"
-    tail = "\n".join(part for part in (f"Fuente: {agency}", origin, url) if part)
-    # Si no cabe se recorta el lugar, nunca el enlace: sin él no se puede
-    # verificar el boletín en la fuente oficial.
+    facts = bulletin_facts(event)
+    kind = "Boletín preliminar Seismik" if facts.preliminary else "Boletín sísmico Seismik"
+    magnitude = f" · M{facts.magnitude:.1f}" if facts.magnitude is not None else ""
+    head = f"{kind}{magnitude}"
+    tail = f"{when_text(facts)}\nFuente: {facts.agency_short}"
+    place = facts.title
     room = X_MAX_CHARS - len(head) - len(tail) - 2
     if len(place) > room:
         place = place[: max(room - 1, 0)].rstrip() + "…"
@@ -178,8 +180,12 @@ class XPublisher:
     async def _publish(self, event: dict[str, Any], published_key: str) -> None:
         event_id = str(event["event_id"])
         text = bulletin_text(event)
+        image = await self._render_card(event) if self.settings.x_publisher_images else None
         if not self.settings.x_publisher_enabled or self.settings.x_publisher_dry_run:
-            await self._audit(event_id, "dry_run", text=text)
+            extra = {"text": text}
+            if self.settings.x_publisher_images:
+                extra["image_bytes"] = str(len(image)) if image else "render_failed"
+            await self._audit(event_id, "dry_run", **extra)
             return
         auth = OAuth1(
             self.settings.x_consumer_key.get_secret_value(),
@@ -188,7 +194,10 @@ class XPublisher:
             self.settings.x_access_token_secret.get_secret_value(),
         )
         try:
-            response = await asyncio.to_thread(requests.post, X_POST_URL, json={"text": text}, auth=auth, timeout=10)
+            payload: dict[str, Any] = {"text": text}
+            if image:
+                payload["media"] = {"media_ids": [await self._upload_image(image, auth)]}
+            response = await asyncio.to_thread(requests.post, X_POST_URL, json=payload, auth=auth, timeout=10)
             response.raise_for_status()
         except Exception:
             # No salió: se libera la marca para que el reintento lo publique en
@@ -202,7 +211,33 @@ class XPublisher:
             body = {}
         data = body.get("data") if isinstance(body, dict) else None
         post_id = str(data.get("id", "")) if isinstance(data, dict) else ""
-        await self._audit(event_id, "published", post_id=post_id)
+        await self._audit(event_id, "published", post_id=post_id, image="yes" if image else "no")
+
+    async def _render_card(self, event: dict[str, Any]) -> bytes | None:
+        try:
+            return await asyncio.to_thread(render_bulletin_card, event)
+        except Exception:
+            # Un fallo al dibujar no debe impedir el boletín: sale sólo el texto.
+            LOGGER.exception("No se pudo generar la imagen del boletín event_id=%s", event.get("event_id"))
+            return None
+
+    @staticmethod
+    async def _upload_image(image: bytes, auth: OAuth1) -> str:
+        response = await asyncio.to_thread(
+            requests.post,
+            X_MEDIA_UPLOAD_URL,
+            files={"media": ("boletin.png", image, "image/png")},
+            data={"media_category": "tweet_image"},
+            auth=auth,
+            timeout=30,
+        )
+        response.raise_for_status()
+        body = response.json()
+        data = body.get("data") if isinstance(body, dict) else None
+        media_id = data.get("id") if isinstance(data, dict) else None
+        if not media_id:
+            raise ValueError("X no devolvió el id de la imagen")
+        return str(media_id)
 
     async def _record_failure(self, message_id: str, event_id: str) -> None:
         key = self._failure_key(message_id)
