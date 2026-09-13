@@ -23,6 +23,14 @@ public final class SeismikState: ObservableObject {
     @Published public var syncMessage: String?
     /// Motivo por el que el alta no pudo completarse, si aplica.
     @Published public var registrationIssue: String?
+    /// Cuenta con sesión iniciada; Búsqueda de familiares la exige.
+    @Published public var account: SeismikAccount?
+    /// Sismo tras el cual la persona pidió avisar a su familia desde la alerta.
+    @Published public var pendingFamilyCheckIn: SeismicEvent?
+    /// Pestaña que la raíz debe mostrar, p. ej. Familia al tocar un aviso.
+    @Published public var requestedTab: Int?
+    /// Aumenta con cada aviso familiar recibido: la vista vuelve a cargar.
+    @Published public var familyUpdates: Int = 0
 
     // Preferencias de filtrado y monitoreo
     @AppStorage("seismik.history_days") public var historyDays: Int = 7
@@ -49,6 +57,8 @@ public final class SeismikState: ObservableObject {
     public init() {
         self.isRegistered = apiClient.isRegistered
         self.pendingReportCount = apiClient.pendingReportCount
+        // Un perfil sin sesión en Keychain no sirve para hablar con el servidor.
+        self.account = apiClient.accountSessionToken == nil ? nil : apiClient.signedInAccount
         if mapProvider != "apple" && mapProvider != "google" && mapProvider != "osm" {
             mapProvider = "apple"
         }
@@ -100,6 +110,11 @@ public final class SeismikState: ObservableObject {
             )
             self.isRegistered = registered
             self.registrationIssue = registered ? nil : "El servidor no aceptó el registro."
+            if registered, account != nil {
+                // Cada registro puede traer un token APNs nuevo: la cuenta debe
+                // apuntar a este iPhone para recibir los avisos de la familia.
+                await linkDeviceToAccount()
+            }
         } catch let error as SeismikAPIError {
             // Un token en Keychain no prueba que la sesión siga vigente en
             // Redis. Marcarlo como registrado ocultaba el problema y hacía
@@ -217,6 +232,48 @@ public final class SeismikState: ObservableObject {
         await syncMissedAlerts()
     }
 
+    // MARK: - Cuenta y familia
+
+    /// Guarda la cuenta recién iniciada y asocia este iPhone a ella. El círculo
+    /// que el teléfono tenía antes de exigir cuenta pasa a la persona.
+    public func accountDidSignIn(_ newAccount: SeismikAccount) async {
+        account = newAccount
+        await linkDeviceToAccount()
+        familyUpdates += 1
+    }
+
+    public func signOutAccount() async {
+        // Sin esto el teléfono seguiría recibiendo los avisos de la familia.
+        try? await apiClient.unlinkDeviceFromAccount()
+        try? apiClient.signOutAccount()
+        account = nil
+        pendingFamilyCheckIn = nil
+    }
+
+    /// La sesión venció en el servidor: hay que volver a iniciar sesión.
+    public func accountSessionExpired() {
+        try? apiClient.signOutAccount()
+        account = nil
+    }
+
+    /// La persona tocó «Avisar a mi familia» en la alerta de un sismo.
+    public func requestFamilyCheckIn(for event: SeismicEvent) {
+        dismissAlert()
+        pendingFamilyCheckIn = event
+        requestedTab = 3
+    }
+
+    private func linkDeviceToAccount() async {
+        guard account != nil, apiClient.isRegistered else { return }
+        do {
+            try await apiClient.linkDeviceToAccount()
+        } catch let SeismikAPIError.rejected(status, message) where status == 401 && message.contains("Account session") {
+            accountSessionExpired()
+        } catch {
+            // Sin registro todavía: se reintenta tras el próximo alta.
+        }
+    }
+
     /// Selecciona un sismo para desplegar su vista de detalle.
     public func selectEvent(_ event: SeismicEvent?) {
         withAnimation(.spring(response: 0.38, dampingFraction: 0.82)) {
@@ -238,7 +295,14 @@ public final class SeismikState: ObservableObject {
 
     /// Convierte el contenido APNs en estado visible. Las alertas tempranas se
     /// muestran de inmediato; una actualización oficial se abre como detalle.
-    public func handleRemoteNotification(_ userInfo: [AnyHashable: Any]) {
+    public func handleRemoteNotification(_ userInfo: [AnyHashable: Any], opened: Bool = false) {
+        // Un aviso familiar no es un sismo: interpretarlo como tal lo metía en
+        // el historial como un evento sin coordenadas.
+        if (userInfo["type"] as? String) == "family_status" {
+            familyUpdates += 1
+            if opened { requestedTab = 3 }
+            return
+        }
         guard let event = SeismicEvent(notificationUserInfo: userInfo) else {
             Task { await refreshData() }
             return

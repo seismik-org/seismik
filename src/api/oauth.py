@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import hmac
 import json
+import re
 import secrets
 from urllib.parse import urlencode, urlparse
 
@@ -16,6 +18,8 @@ identity_router = APIRouter(tags=["oauth"])
 _MOBILE_CALLBACK = "seismik://auth/callback"
 _MOBILE_CODE_TTL_SECONDS = 60
 _IDENTITY_FLOW_TTL_SECONDS = 600
+# PKCE generado por la app (RFC 7636, S256): base64url de 43 a 128 caracteres.
+_APP_CHALLENGE = re.compile(r"^[A-Za-z0-9_-]{43,128}$")
 
 
 def _pkce_verifier() -> str:
@@ -48,10 +52,20 @@ def _mobile_return_to(value: str | None) -> str | None:
     raise HTTPException(status_code=400, detail="Callback móvil OAuth no permitido")
 
 
+def _app_challenge(value: str | None, return_to: str | None) -> str | None:
+    """Valida el challenge PKCE de la app; sólo tiene sentido con retorno móvil."""
+    if value is None:
+        return None
+    if return_to is None or not _APP_CHALLENGE.fullmatch(value):
+        raise HTTPException(status_code=400, detail="Challenge PKCE de la app inválido")
+    return value
+
+
 async def _finish_login(
     request: Request,
     user: dict[str, str],
     return_to: str | None,
+    app_challenge: str | None = None,
 ) -> Response:
     """Issue the browser cookie and, only for the native app, a one-time code."""
     settings = request.app.state.settings
@@ -66,7 +80,7 @@ async def _finish_login(
         code = secrets.token_urlsafe(32)
         await request.app.state.redis.set(
             f"seismik:oauth:mobile-code:{code}",
-            json.dumps(user),
+            json.dumps({**user, "app_challenge": app_challenge} if app_challenge else user),
             ex=_MOBILE_CODE_TTL_SECONDS,
         )
         target = return_to + "?" + urlencode({"code": code})
@@ -116,7 +130,12 @@ async def login(
 
 
 @router.get("/authorize")
-async def authorize(request: Request, provider: str = "google", origin: str = "devs") -> Response:
+async def authorize(
+    request: Request,
+    provider: str = "google",
+    origin: str = "devs",
+    app_challenge: str | None = None,
+) -> Response:
     """Crea un identificador opaco para el inicio de sesión.
 
     El navegador sólo ve ``auth.seismik.org/id/<aleatorio>`` antes de ir al
@@ -128,10 +147,16 @@ async def authorize(request: Request, provider: str = "google", origin: str = "d
     returns = {"devs": None, "app": _MOBILE_CALLBACK}
     if origin not in returns:
         raise HTTPException(status_code=400, detail="Origen OAuth no permitido")
+    challenge = _app_challenge(app_challenge, returns[origin])
     flow_id = secrets.token_urlsafe(24)
     await request.app.state.redis.set(
         f"seismik:oauth:identity:{flow_id}",
-        json.dumps({"provider": provider, "return_to": returns[origin], "origin": origin}),
+        json.dumps({
+            "provider": provider,
+            "return_to": returns[origin],
+            "origin": origin,
+            "app_challenge": challenge,
+        }),
         ex=_IDENTITY_FLOW_TTL_SECONDS,
     )
     return RedirectResponse(f"/id/{flow_id}", status_code=status.HTTP_303_SEE_OTHER)
@@ -147,14 +172,20 @@ async def identity_entry(request: Request, flow_id: str) -> Response:
         raise HTTPException(status_code=410, detail="Esta solicitud de inicio de sesión expiró")
     saved = json.loads(raw)
     if saved.get("provider") == "google":
-        return await google_start(request, return_to=saved.get("return_to"))
+        return await google_start(
+            request, return_to=saved.get("return_to"), app_challenge=saved.get("app_challenge")
+        )
     if saved.get("provider") == "github":
-        return await github_start(request, return_to=saved.get("return_to"))
+        return await github_start(
+            request, return_to=saved.get("return_to"), app_challenge=saved.get("app_challenge")
+        )
     raise HTTPException(status_code=400, detail="Solicitud de inicio de sesión inválida")
 
 
 @router.get("/google/start")
-async def google_start(request: Request, return_to: str | None = None) -> Response:
+async def google_start(
+    request: Request, return_to: str | None = None, app_challenge: str | None = None
+) -> Response:
     settings = request.app.state.settings
     if not settings.oauth_google_client_id or not settings.oauth_google_client_secret.get_secret_value():
         raise HTTPException(status_code=503, detail="OAuth directo no está configurado")
@@ -162,7 +193,11 @@ async def google_start(request: Request, return_to: str | None = None) -> Respon
     verifier = _pkce_verifier()
     await request.app.state.redis.set(
         f"seismik:oauth:state:{state}",
-        json.dumps({"verifier": verifier, "return_to": _mobile_return_to(return_to)}),
+        json.dumps({
+            "verifier": verifier,
+            "return_to": _mobile_return_to(return_to),
+            "app_challenge": _app_challenge(app_challenge, return_to),
+        }),
         ex=600,
     )
     params = {
@@ -218,11 +253,14 @@ async def google_callback(request: Request, code: str | None = None, state: str 
         request,
         {"uid": user.get("sub", ""), "email": user["email"], "name": user.get("name", "")},
         saved.get("return_to"),
+        saved.get("app_challenge"),
     )
 
 
 @router.get("/github/start")
-async def github_start(request: Request, return_to: str | None = None) -> Response:
+async def github_start(
+    request: Request, return_to: str | None = None, app_challenge: str | None = None
+) -> Response:
     settings = request.app.state.settings
     if not _github_is_configured(settings):
         raise HTTPException(status_code=503, detail="GitHub OAuth aún no está configurado")
@@ -231,7 +269,12 @@ async def github_start(request: Request, return_to: str | None = None) -> Respon
     await request.app.state.redis.set(
         f"seismik:oauth:state:{state}",
         json.dumps(
-            {"provider": "github", "verifier": verifier, "return_to": _mobile_return_to(return_to)}
+            {
+                "provider": "github",
+                "verifier": verifier,
+                "return_to": _mobile_return_to(return_to),
+                "app_challenge": _app_challenge(app_challenge, return_to),
+            }
         ),
         ex=600,
     )
@@ -303,21 +346,35 @@ async def github_callback(
             "name": github_user.get("name") or github_user.get("login", ""),
         },
         saved.get("return_to"),
+        saved.get("app_challenge"),
     )
 
 
 @router.post("/mobile/exchange")
-async def exchange_mobile_code(request: Request, code: str = Body(embed=True, min_length=20)) -> dict[str, str]:
+async def exchange_mobile_code(
+    request: Request,
+    code: str = Body(embed=True, min_length=20),
+    code_verifier: str | None = Body(default=None, embed=True, min_length=43, max_length=128),
+) -> dict[str, str]:
     """Exchange a single-use app callback code for a Keychain-held session."""
     raw = await request.app.state.redis.getdel(f"seismik:oauth:mobile-code:{code}")
     if not raw:
         raise HTTPException(status_code=401, detail="Código móvil OAuth inválido o expirado")
+    user = json.loads(raw)
+    challenge = user.pop("app_challenge", None)
+    if challenge is not None:
+        # En Android otra app puede registrar el mismo esquema `seismik://` y
+        # recibir el código. Sin el verificador, que sólo conoce la app que
+        # empezó el inicio de sesión, ese código robado no sirve.
+        if not code_verifier or not hmac.compare_digest(_challenge(code_verifier), str(challenge)):
+            raise HTTPException(status_code=401, detail="Verificador PKCE de la app inválido")
     settings = request.app.state.settings
     token = secrets.token_urlsafe(48)
     await request.app.state.redis.set(
-        f"seismik:oauth:mobile-session:{token}", raw, ex=settings.oauth_session_ttl_seconds
+        f"seismik:oauth:mobile-session:{token}",
+        json.dumps(user),
+        ex=settings.mobile_account_session_ttl_seconds,
     )
-    user = json.loads(raw)
     return {"mobile_session_token": token, "uid": user["uid"], "email": user["email"], "name": user["name"]}
 
 

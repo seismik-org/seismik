@@ -13,10 +13,12 @@ import 'data/models/seismic_event.dart';
 import 'presentation/screens/alert_overlay.dart';
 import 'presentation/screens/damage_report_screen.dart';
 import 'presentation/screens/event_detail_screen.dart';
+import 'presentation/screens/family_safety_screen.dart';
 import 'presentation/screens/felt_report_screen.dart';
 import 'presentation/screens/ios_settings_screen.dart';
 import 'presentation/screens/monitor_screen.dart';
 import 'presentation/screens/settings_screen.dart';
+import 'state/family_state.dart';
 import 'state/mobile_settings.dart';
 import 'state/seismik_state.dart';
 
@@ -43,6 +45,18 @@ class SeismikApp extends StatelessWidget {
           final SeismikState state = SeismikState(settings: settings);
           unawaited(state.initialize());
           return state;
+        },
+      ),
+      ChangeNotifierProvider<FamilyState>(
+        // No perezoso: debe escuchar los avisos familiares desde el arranque,
+        // aunque la persona no haya abierto la pestaña.
+        lazy: false,
+        create: (context) {
+          final FamilyState family = FamilyState(
+            seismik: context.read<SeismikState>(),
+          );
+          unawaited(family.initialize());
+          return family;
         },
       ),
     ],
@@ -104,7 +118,34 @@ class _SeismikShell extends StatefulWidget {
 }
 
 class _SeismikShellState extends State<_SeismikShell> {
+  static const int _familyTab = 3;
   int _selectedIndex = 0;
+  ValueNotifier<int>? _familyOpenRequests;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Tocar un aviso familiar o «Avisar a mi familia» en la alerta lleva a
+    // la pestaña Familia.
+    final ValueNotifier<int> requests = Provider.of<FamilyState>(
+      context,
+      listen: false,
+    ).openRequests;
+    if (!identical(requests, _familyOpenRequests)) {
+      _familyOpenRequests?.removeListener(_openFamilyTab);
+      _familyOpenRequests = requests..addListener(_openFamilyTab);
+    }
+  }
+
+  void _openFamilyTab() {
+    if (mounted) setState(() => _selectedIndex = _familyTab);
+  }
+
+  @override
+  void dispose() {
+    _familyOpenRequests?.removeListener(_openFamilyTab);
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -144,6 +185,7 @@ class _SeismikShellState extends State<_SeismikShell> {
             const MonitorScreen(),
             FeltReportScreen(event: latestEvent),
             DamageReportScreen(event: latestEvent),
+            const FamilySafetyScreen(),
             SettingsScreen(dynamicColorAvailable: widget.dynamicColorAvailable),
           ],
         ),
@@ -172,6 +214,13 @@ class _SeismikShellState extends State<_SeismikShell> {
           child: AlertOverlay(
             event: activeAlert,
             onDismiss: state.dismissAlert,
+            onReportSafe: () {
+              state.dismissAlert();
+              Provider.of<FamilyState>(
+                context,
+                listen: false,
+              ).requestCheckIn(activeAlert);
+            },
           ),
         ),
       ],
@@ -233,6 +282,10 @@ class _IosSeismikShell extends StatelessWidget {
             label: 'Daños',
           ),
           BottomNavigationBarItem(
+            icon: Icon(CupertinoIcons.person_2_fill),
+            label: 'Familia',
+          ),
+          BottomNavigationBarItem(
             icon: Icon(CupertinoIcons.gear_alt),
             label: 'Configuración',
           ),
@@ -243,6 +296,7 @@ class _IosSeismikShell extends StatelessWidget {
           0 => const MonitorScreen(),
           1 => FeltReportScreen(event: event),
           2 => DamageReportScreen(event: event),
+          3 => const FamilySafetyScreen(),
           _ => IosSettingsScreen(
             dynamicColorAvailable: dynamicColorAvailable,
           ),
@@ -258,6 +312,13 @@ class _IosSeismikShell extends StatelessWidget {
           child: AlertOverlay(
             event: activeAlert,
             onDismiss: state.dismissAlert,
+            onReportSafe: () {
+              state.dismissAlert();
+              Provider.of<FamilyState>(
+                context,
+                listen: false,
+              ).requestCheckIn(activeAlert);
+            },
           ),
         ),
       ],
@@ -309,6 +370,12 @@ class _FloatingMenu extends StatelessWidget {
               selectedIcon: Icon(Icons.home_work_rounded),
               label: 'Daños',
               tooltip: 'Reporte de daños',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.family_restroom_outlined),
+              selectedIcon: Icon(Icons.family_restroom_rounded),
+              label: 'Familia',
+              tooltip: 'Búsqueda de familiares',
             ),
             NavigationDestination(
               icon: Icon(Icons.tune_rounded),

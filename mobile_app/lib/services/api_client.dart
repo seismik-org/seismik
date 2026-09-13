@@ -16,6 +16,7 @@ import '../core/security.dart';
 import '../data/models/citizen_report.dart';
 import '../data/models/family_circle.dart';
 import '../data/models/pending_report.dart';
+import '../data/models/seismik_account.dart';
 import '../data/models/seismic_event.dart';
 import '../data/models/station.dart';
 
@@ -31,6 +32,9 @@ class SeismikApiException implements Exception {
     if (code == null) return false;
     return code >= 400 && code < 500 && code != 408 && code != 429;
   }
+
+  /// La sesión de la cuenta falta o venció: hay que volver a iniciar sesión.
+  bool get isUnauthorized => statusCode == 401;
 
   @override
   String toString() => 'SeismikApiException($statusCode): $message';
@@ -56,6 +60,11 @@ class ApiClient {
   static const String _alertCursorKey = 'seismik.alert_cursor';
   static const String _stationsCacheKey = 'seismik.stations_cache';
   static const String _stationsCachedAtKey = 'seismik.stations_cached_at';
+  static const String _accountSessionKey = 'seismik.account_session';
+  static const String _accountProfileKey = 'seismik.account_profile';
+
+  /// Identificadores de sismo que acepta el aviso familiar.
+  static final RegExp _eventIdPattern = RegExp(r'^[A-Za-z0-9._:-]{1,128}$');
 
   /// El catálogo de estaciones cambia muy poco: basta renovarlo dos veces al día.
   static const Duration stationsCacheTtl = Duration(hours: 12);
@@ -72,6 +81,7 @@ class ApiClient {
   List<SeismicStation>? _stationsMemory;
   DateTime? _stationsFetchedAt;
   String? _eventsCacheSignature;
+  String? _accountToken;
 
   /// Toda apertura salvo la primera ya tiene sesión: con ella los datos se
   /// pueden pedir sin esperar a que termine un registro nuevo.
@@ -624,9 +634,92 @@ class ApiClient {
         .toList(growable: false);
   }
 
+  // ---------------------------------------------------------------------------
+  // Cuenta Seismik
+  // ---------------------------------------------------------------------------
+
+  /// Cuenta con sesión guardada en este teléfono, o `null`.
+  Future<SeismikAccount?> currentAccount() async {
+    final String? token = await _accountSession();
+    if (token == null || token.isEmpty) return null;
+    final SharedPreferences preferences = await SharedPreferences.getInstance();
+    final String? raw = preferences.getString(_accountProfileKey);
+    if (raw == null) return null;
+    final Object? decoded = jsonDecode(raw);
+    return decoded is Map<String, dynamic>
+        ? SeismikAccount.fromMap(decoded)
+        : null;
+  }
+
+  /// Canjea el código de un solo uso del retorno por una sesión de cuenta.
+  ///
+  /// El verificador PKCE prueba que este teléfono empezó el inicio de sesión:
+  /// si otra app interceptó `seismik://auth/callback`, el código no le sirve.
+  Future<SeismikAccount> exchangeOAuthCode({
+    required String code,
+    required String verifier,
+  }) async {
+    final http.Response response = await _http
+        .post(
+          Uri.parse('${SeismikConstants.authBaseUrl}/v1/oauth/mobile/exchange'),
+          headers: _jsonHeaders(),
+          body: jsonEncode(<String, String>{
+            'code': code,
+            'code_verifier': verifier,
+          }),
+        )
+        .timeout(const Duration(seconds: 10));
+    final Map<String, dynamic> decoded = _decode(response);
+    final String token = decoded['mobile_session_token']?.toString() ?? '';
+    if (token.isEmpty) {
+      throw SeismikApiException(
+        'Sign-in omitted the account session',
+        response.statusCode,
+      );
+    }
+    final SeismikAccount account = SeismikAccount.fromMap(decoded);
+    await _secureStorage.write(key: _accountSessionKey, value: token);
+    _accountToken = token;
+    final SharedPreferences preferences = await SharedPreferences.getInstance();
+    await preferences.setString(_accountProfileKey, jsonEncode(account.toMap()));
+    return account;
+  }
+
+  Future<void> clearAccount() async {
+    _accountToken = null;
+    await _secureStorage.delete(key: _accountSessionKey);
+    final SharedPreferences preferences = await SharedPreferences.getInstance();
+    await preferences.remove(_accountProfileKey);
+  }
+
+  /// Asocia este teléfono a la cuenta: aquí llegarán los avisos de la familia.
+  Future<void> linkDeviceToAccount() async {
+    final http.Response response = await _http
+        .post(
+          _uri('/v1/account/device'),
+          headers: await _accountHeaders(requireDevice: true),
+        )
+        .timeout(const Duration(seconds: 8));
+    _decode(response);
+  }
+
+  Future<void> unlinkDeviceFromAccount() async {
+    final http.Response response = await _http
+        .delete(
+          _uri('/v1/account/device'),
+          headers: await _accountHeaders(requireDevice: true),
+        )
+        .timeout(const Duration(seconds: 8));
+    if (response.statusCode != 204) _decode(response);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Búsqueda de familiares
+  // ---------------------------------------------------------------------------
+
   Future<FamilyCircle?> fetchFamilyCircle() async {
     final http.Response response = await _http
-        .get(_uri('/v1/family/circle'), headers: await _mobileHeaders())
+        .get(_uri('/v1/family/circle'), headers: await _accountHeaders())
         .timeout(const Duration(seconds: 8));
     if (response.statusCode == 404) return null;
     return FamilyCircle.fromMap(_decode(response));
@@ -639,7 +732,7 @@ class ApiClient {
     final http.Response response = await _http
         .post(
           _uri('/v1/family/circle'),
-          headers: await _mobileHeaders(),
+          headers: await _accountHeaders(),
           body: jsonEncode(<String, String>{
             'display_name': displayName.trim(),
             'circle_name': circleName.trim(),
@@ -653,7 +746,7 @@ class ApiClient {
     final http.Response response = await _http
         .post(
           _uri('/v1/family/circle/invitations'),
-          headers: await _mobileHeaders(),
+          headers: await _accountHeaders(),
           body: jsonEncode(<String, String>{'display_name': displayName.trim()}),
         )
         .timeout(const Duration(seconds: 8));
@@ -667,7 +760,7 @@ class ApiClient {
     final http.Response response = await _http
         .post(
           _uri('/v1/family/join'),
-          headers: await _mobileHeaders(),
+          headers: await _accountHeaders(),
           body: jsonEncode(<String, String>{
             'invite_code': inviteCode.trim(),
             'display_name': displayName.trim(),
@@ -686,7 +779,7 @@ class ApiClient {
     final http.Response response = await _http
         .put(
           _uri('/v1/family/location'),
-          headers: await _mobileHeaders(),
+          headers: await _accountHeaders(),
           body: jsonEncode(<String, dynamic>{
             'latitude': latitude,
             'longitude': longitude,
@@ -701,9 +794,46 @@ class ApiClient {
 
   Future<void> stopSharingFamilyLocation() async {
     final http.Response response = await _http
-        .delete(_uri('/v1/family/location'), headers: await _mobileHeaders())
+        .delete(_uri('/v1/family/location'), headers: await _accountHeaders())
         .timeout(const Duration(seconds: 8));
     if (response.statusCode != 204) _decode(response);
+  }
+
+  /// «Estoy bien» o «Necesito ayuda». Con coordenadas las comparte con la
+  /// familia durante [shareMinutes]; sin ellas el aviso sale igual.
+  Future<void> reportFamilyStatus({
+    required bool needsHelp,
+    String? message,
+    String? eventId,
+    double? latitude,
+    double? longitude,
+    bool precise = false,
+    int shareMinutes = 240,
+  }) async {
+    final String? note = _nullIfBlank(message);
+    final Map<String, dynamic> body = <String, dynamic>{
+      'status': needsHelp ? 'need_help' : 'safe',
+      'share_minutes': shareMinutes,
+      'message': ?note,
+      // Un identificador que el servidor rechazaría no debe impedir el aviso.
+      if (eventId != null && _eventIdPattern.hasMatch(eventId))
+        'event_id': eventId,
+      if (latitude != null && longitude != null)
+        'location': <String, dynamic>{
+          'latitude': latitude,
+          'longitude': longitude,
+          'precision': precise ? 'precise' : 'approximate',
+          'precise_location_consent': precise,
+        },
+    };
+    final http.Response response = await _http
+        .put(
+          _uri('/v1/family/status'),
+          headers: await _accountHeaders(),
+          body: jsonEncode(body),
+        )
+        .timeout(const Duration(seconds: 10));
+    _decode(response);
   }
 
   Future<List<SeismicEvent>> _fetchLegacyRecentEvents() async {
@@ -814,6 +944,30 @@ class ApiClient {
     return <String, String>{
       ..._jsonHeaders(),
       'X-Seismik-Device-Session': session,
+    };
+  }
+
+  Future<String?> _accountSession() async =>
+      _accountToken ??= await _secureStorage.read(key: _accountSessionKey);
+
+  /// Búsqueda de familiares exige cuenta. La sesión del dispositivo la
+  /// acompaña cuando existe, para asociar el teléfono que recibe los avisos.
+  Future<Map<String, String>> _accountHeaders({
+    bool requireDevice = false,
+  }) async {
+    final String? account = await _accountSession();
+    if (account == null || account.isEmpty) {
+      throw const SeismikApiException('Account session required', 401);
+    }
+    final String? device = await _deviceSession();
+    final bool hasDevice = device != null && device.isNotEmpty;
+    if (requireDevice && !hasDevice) {
+      throw const SeismikApiException('Device is not registered', null);
+    }
+    return <String, String>{
+      ..._jsonHeaders(),
+      'X-Seismik-Account-Session': account,
+      if (hasDevice) 'X-Seismik-Device-Session': device,
     };
   }
 

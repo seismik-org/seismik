@@ -40,7 +40,8 @@ public final class SeismikNotificationPresenter: NSObject, UNUserNotificationCen
         // originó incluso si el push llegó mientras estaba cerrada.
         Task { @MainActor in
             SeismikState.shared.handleRemoteNotification(
-                response.notification.request.content.userInfo
+                response.notification.request.content.userInfo,
+                opened: true
             )
             await SeismikState.shared.syncMissedAlerts()
             await SeismikState.shared.refreshData()

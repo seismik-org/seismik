@@ -47,6 +47,21 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <!-- Retorno del inicio de sesión: seismik://auth/callback.
+             Ver OAuthCallbackActivity para el motivo de una actividad aparte. -->
+        <activity
+            android:name=".OAuthCallbackActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="seismik" android:host="auth" android:path="/callback" />
+            </intent-filter>
+        </activity>
         <meta-data android:name="flutterEmbedding" android:value="2" />
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_channel_id"
