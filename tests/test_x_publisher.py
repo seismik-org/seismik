@@ -9,12 +9,36 @@ import pytest
 from fakeredis.aioredis import FakeRedis
 
 from api.config import AppSettings
+from eew.simulation import drill_sequence
 from integrations import x_publisher
-from integrations.x_publisher import AUDIT_STREAM, XPublisher, bulletin_text, eligible
+from integrations.x_publisher import (
+    AUDIT_STREAM,
+    XPublisher,
+    bulletin_text,
+    eligible,
+    is_simulated,
+)
+
+OFFICIAL_URL = "https://www.sgc.gov.co/detallesismo/sgc2026abc/resumen"
 
 
 def official_event(magnitude: Any = 3.2) -> dict:
-    return {"type": "official_report_available", "event_id": "official-1", "preferred_report": {"magnitude": magnitude, "place": "Los Santos, Colombia", "source": "SGC", "official_url": "https://example.org/event", "origin_time": "2026-09-12T12:00:00Z"}}
+    """Mismos campos que `eew.models.OfficialReportUpdate.to_dict()`."""
+    return {
+        "type": "official_report_update",
+        "status": "official_report_available",
+        "event_id": "official-1",
+        "candidate_event_id": "candidate-1",
+        "preferred_report": {
+            "source_id": "sgc_colombia",
+            "agency": "SGC",
+            "official_event_id": "sgc2026abc",
+            "magnitude": magnitude,
+            "place": "Los Santos, Colombia",
+            "official_url": OFFICIAL_URL,
+            "origin_time": "2026-09-12T12:00:00Z",
+        },
+    }
 
 
 def test_only_official_events_are_eligible() -> None:
@@ -29,9 +53,32 @@ def test_malformed_official_events_are_not_eligible() -> None:
     assert not eligible({**official_event(), "event_id": ""}, 2.5), "compartiría la marca de publicado"
 
 
-def test_bulletin_is_short_and_source_attributed() -> None:
+def test_drills_are_never_eligible() -> None:
+    """Un simulacro publicado anunciaría en la cuenta pública un sismo que no ocurrió."""
+    _candidate, drill = drill_sequence("bogota")
+
+    assert is_simulated(drill)
+    assert not eligible(drill, 0.0)
+    assert not is_simulated(official_event())
+
+
+def test_bulletin_names_the_agency_and_links_the_official_report() -> None:
     text = bulletin_text(official_event())
-    assert "M3.2" in text and "Fuente: SGC" in text and len(text) <= 280
+
+    assert "M3.2" in text and "Fuente: SGC" in text
+    assert text.endswith(OFFICIAL_URL)
+    assert len(text) <= 280
+
+
+def test_a_long_place_is_trimmed_but_the_official_link_is_kept() -> None:
+    event = official_event()
+    event["preferred_report"]["place"] = "Zona rural muy extensa " * 20
+
+    text = bulletin_text(event)
+
+    assert len(text) <= 280
+    assert "…" in text
+    assert text.endswith(OFFICIAL_URL)
 
 
 # --- Consumo del stream ------------------------------------------------------
@@ -87,6 +134,21 @@ async def pending(pub: XPublisher) -> int:
 
 async def audit_actions(pub: XPublisher) -> list[str]:
     return [fields["action"] for _id, fields in await pub.redis.xrange(AUDIT_STREAM)]
+
+
+@pytest.mark.asyncio
+async def test_a_drill_is_audited_and_never_posted(monkeypatch: pytest.MonkeyPatch) -> None:
+    def post(*_args: object, **_kwargs: object) -> FakeXResponse:
+        raise AssertionError("un simulacro no debe llegar a X")
+
+    monkeypatch.setattr(x_publisher.requests, "post", post)
+    pub = await publisher()
+    _candidate, drill = drill_sequence("bogota")
+
+    await deliver(pub, {"payload": json.dumps(drill)})
+
+    assert await pending(pub) == 0
+    assert await audit_actions(pub) == ["skipped_drill"]
 
 
 @pytest.mark.asyncio
