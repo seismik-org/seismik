@@ -36,6 +36,12 @@ class SeismikApiException implements Exception {
   /// La sesión de la cuenta falta o venció: hay que volver a iniciar sesión.
   bool get isUnauthorized => statusCode == 401;
 
+  /// El servidor rechazó la sesión de la **cuenta**. Un 401 por la sesión del
+  /// teléfono —que rota en cada registro— no significa que la persona deba
+  /// volver a iniciar sesión.
+  bool get isAccountSessionRejected =>
+      statusCode == 401 && message.contains('Account session');
+
   @override
   String toString() => 'SeismikApiException($statusCode): $message';
 }

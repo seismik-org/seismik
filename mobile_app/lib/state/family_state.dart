@@ -114,7 +114,7 @@ class FamilyState extends ChangeNotifier {
       circle = await _api.fetchFamilyCircle();
       error = null;
     } on SeismikApiException catch (failure) {
-      if (failure.isUnauthorized) {
+      if (failure.isAccountSessionRejected) {
         await _expireSession();
       } else {
         error = 'No fue posible actualizar tu familia. Revisa tu conexión.';
@@ -183,7 +183,7 @@ class FamilyState extends ChangeNotifier {
       unawaited(refresh());
       return coordinates != null;
     } on SeismikApiException catch (failure) {
-      if (failure.isUnauthorized) await _expireSession();
+      if (failure.isAccountSessionRejected) await _expireSession();
       rethrow;
     } finally {
       reporting = false;
@@ -220,7 +220,10 @@ class FamilyState extends ChangeNotifier {
     try {
       await _api.linkDeviceToAccount();
     } on SeismikApiException catch (failure) {
-      if (failure.isUnauthorized) await _expireSession();
+      // Justo después de un registro la sesión del teléfono acaba de rotar y
+      // el servidor responde 401 a la anterior. Eso no invalida la cuenta:
+      // el enlace se repite con la sesión nueva.
+      if (failure.isAccountSessionRejected) await _expireSession();
     } catch (_) {
       // Sin registro todavía; se reintenta cuando el teléfono se registre.
     }
