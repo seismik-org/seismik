@@ -177,3 +177,47 @@ gcloud run services update seismik-event-forwarder --region "$REGION" \
 
 La versión anterior se puede **inhabilitar** (no destruir) un día después:
 si algo quedó apuntando a ella, se vuelve a habilitar al instante.
+
+## Publicador de X
+
+Corre dentro de `seismik-integrations` (`dispatcher/integrations.py`), no como
+servicio propio. Lee Redis en segundo plano y nunca recibe peticiones: con
+facturación basada en solicitudes Cloud Run no le asigna CPU, y un servicio
+propio con `--no-cpu-throttling` costaría unos 40 USD/mes más. Integraciones ya
+tiene la CPU siempre asignada. Si el publicador falla, se registra y se reinicia
+sin detener los webhooks.
+
+Por defecto no publica (`SEISMIK_X_PUBLISHER_ENABLED=false`,
+`SEISMIK_X_PUBLISHER_DRY_RUN=true`): sólo audita en `stream:seismik:x-audit`.
+
+```bash
+REGION=us-east1
+REPO=us-east1-docker.pkg.dev/seismik-15bbb/seismik
+
+# 1. Acceso de la cuenta de servicio de integraciones a las credenciales de X.
+sa=$(gcloud run services describe seismik-integrations --region "$REGION" \
+  --format='value(spec.template.spec.serviceAccountName)')
+sa=${sa:-331950364408-compute@developer.gserviceaccount.com}
+for secret in seismik-x-consumer-key seismik-x-consumer-secret \
+  seismik-x-access-token seismik-x-access-token-secret; do
+  gcloud secrets add-iam-policy-binding "$secret" \
+    --member="serviceAccount:$sa" --role=roles/secretmanager.secretAccessor
+done
+
+# 2. Imagen nueva de integraciones con las credenciales.
+gcloud builds submit --config deploy/cloudbuild.worker.yaml \
+  --substitutions=_IMAGE=$REPO/worker:x-embedded,_DOCKERFILE=Dockerfile.dispatcher
+gcloud run services update seismik-integrations --region "$REGION" \
+  --image "$REPO/worker:x-embedded" \
+  --update-secrets=SEISMIK_X_CONSUMER_KEY=seismik-x-consumer-key:latest,SEISMIK_X_CONSUMER_SECRET=seismik-x-consumer-secret:latest,SEISMIK_X_ACCESS_TOKEN=seismik-x-access-token:latest,SEISMIK_X_ACCESS_TOKEN_SECRET=seismik-x-access-token-secret:latest
+
+# 3. Publicar de verdad, cuando se decida.
+gcloud run services update seismik-integrations --region "$REGION" \
+  --update-env-vars=SEISMIK_X_PUBLISHER_ENABLED=true,SEISMIK_X_PUBLISHER_DRY_RUN=false
+```
+
+Mientras convivan con un servicio `seismik-x-publisher` anterior, ambos leen el
+mismo grupo de Redis: cada mensaje llega a uno solo y la marca de «publicado»
+evita duplicados. Ese servicio se puede retirar en cuanto integraciones arranque
+bien; `Dockerfile.x-publisher` queda por si algún día conviene separarlo (por
+ejemplo, como worker pool).

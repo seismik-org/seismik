@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import hmac
 import json
+from types import SimpleNamespace
 
 import httpx
 import pytest
@@ -11,7 +13,8 @@ from fastapi import FastAPI
 
 from api import developer_keys, integrations
 from api.config import AppSettings
-from dispatcher.integrations import IntegrationConsumer
+from dispatcher import integrations as integration_worker
+from dispatcher.integrations import IntegrationConsumer, keep_running
 
 
 async def verified_identity(request, authorization):  # type: ignore[no-untyped-def]
@@ -96,3 +99,62 @@ async def test_delivery_is_signed_and_explicitly_not_for_physical_control() -> N
     assert headers["x-seismik-signature"] == f"sha256={expected}"
     assert headers["x-seismik-safety-mode"] == "simulation_only"
     await client.aclose()
+
+
+# --- Publicador de X en el mismo proceso ---------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_a_failing_background_task_is_restarted_instead_of_propagating() -> None:
+    calls = 0
+
+    async def flaky() -> None:
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            raise RuntimeError("X no responde")
+
+    await asyncio.wait_for(keep_running("prueba", flaky, retry_seconds=0), timeout=1)
+
+    assert calls == 2
+
+
+@pytest.mark.asyncio
+async def test_the_x_publisher_shares_the_process_and_cannot_stop_webhooks(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Corre junto a los webhooks para aprovechar su CPU siempre asignada."""
+
+    publisher_runs = 0
+    publisher_cancelled = asyncio.Event()
+
+    async def crashing_publisher(_self: object) -> None:
+        nonlocal publisher_runs
+        publisher_runs += 1
+        if publisher_runs < 3:
+            raise RuntimeError("X no responde")
+        try:
+            await asyncio.Event().wait()
+        except asyncio.CancelledError:
+            publisher_cancelled.set()
+            raise
+
+    async def webhooks(_self: object) -> None:
+        # La entrega de webhooks sigue viva mientras el publicador falla.
+        while publisher_runs < 3:
+            await asyncio.sleep(0.01)
+
+    redis = FakeRedis(decode_responses=True)
+    monkeypatch.setattr(integration_worker, "get_settings", AppSettings)
+    monkeypatch.setattr(integration_worker.Redis, "from_url", lambda *_args, **_kwargs: redis)
+    monkeypatch.setattr(
+        integration_worker, "start_health_server", lambda: SimpleNamespace(shutdown=lambda: None)
+    )
+    monkeypatch.setattr(integration_worker, "X_PUBLISHER_RETRY_SECONDS", 0)
+    monkeypatch.setattr(integration_worker.XPublisher, "run", crashing_publisher)
+    monkeypatch.setattr(integration_worker.IntegrationConsumer, "run", webhooks)
+
+    await asyncio.wait_for(integration_worker.run_integrations(), timeout=2)
+
+    assert publisher_runs == 3
+    assert publisher_cancelled.is_set(), "al cerrar el proceso la tarea no queda colgada"
