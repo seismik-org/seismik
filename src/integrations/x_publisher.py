@@ -1,7 +1,8 @@
 """Publicador seguro de boletines de Seismik en X.
 
-Sólo publica eventos oficiales. Las detecciones sin confirmación se auditan,
-pero no salen a la cuenta pública: una detección no es un boletín oficial.
+Sólo publica eventos oficiales reales. Las detecciones sin confirmación y los
+simulacros se auditan, pero no salen a la cuenta pública: una detección no es
+un boletín oficial, y un simulacro anunciaría un sismo que no ocurrió.
 
 Ningún mensaje detiene el servicio. Uno ilegible se audita y se descarta,
 porque reintentarlo no lo arregla. Un rechazo de X queda pendiente y se
@@ -22,10 +23,12 @@ from redis.exceptions import ResponseError
 from requests_oauthlib import OAuth1
 
 from api.config import AppSettings, get_settings
+from eew.simulation import is_drill
 from runtime_health import start_health_server
 
 LOGGER = logging.getLogger(__name__)
 X_POST_URL = "https://api.x.com/2/tweets"
+X_MAX_CHARS = 280
 AUDIT_STREAM = "stream:seismik:x-audit"
 
 
@@ -50,11 +53,23 @@ def _parse(fields: dict[str, str] | None) -> dict[str, Any] | None:
     return event if isinstance(event, dict) else None
 
 
+def is_simulated(event: dict[str, Any]) -> bool:
+    """Un simulacro cumple el mismo contrato que un boletín real (eew/simulation.py).
+
+    Atraviesa la API, Redis y el dispatcher sin rutas especiales, así que sólo
+    se reconoce por sus identificadores `drill-` o por su fuente `simulation`.
+    """
+    report = _report(event)
+    ids = (event.get("event_id"), event.get("candidate_event_id"), report.get("official_event_id"))
+    return report.get("source_id") == "simulation" or any(is_drill(str(value or "")) for value in ids)
+
+
 def eligible(event: dict[str, Any], minimum_magnitude: float) -> bool:
-    """Conservador: sólo informe oficial con magnitud suficiente y fuente URL."""
+    """Conservador: sólo informe oficial real con magnitud suficiente y fuente URL."""
     magnitude = _magnitude(event)
     return (
         event.get("type") in {"official_report_available", "official_report_update"}
+        and not is_simulated(event)
         # Sin identificador todos compartirían la marca de «publicado» y sólo
         # saldría el primer boletín.
         and bool(event.get("event_id"))
@@ -68,10 +83,18 @@ def bulletin_text(event: dict[str, Any]) -> str:
     report = _report(event)
     magnitude = _magnitude(event) or 0.0
     place = str(report.get("place") or report.get("title") or "ubicación en evaluación")
-    source = str(report.get("source") or "fuente oficial")
+    # Los reportes oficiales (eew/models.py) nombran a la entidad en `agency`.
+    agency = str(report.get("agency") or report.get("source") or "fuente oficial")
     origin = str(report.get("origin_time") or event.get("occurred_at") or "")
-    text = f"Boletín sísmico Seismik · M{magnitude:.1f}\n{place}\nFuente: {source}\n{origin}".strip()
-    return text[:280]
+    url = str(report.get("official_url") or "")
+    head = f"Boletín sísmico Seismik · M{magnitude:.1f}"
+    tail = "\n".join(part for part in (f"Fuente: {agency}", origin, url) if part)
+    # Si no cabe se recorta el lugar, nunca el enlace: sin él no se puede
+    # verificar el boletín en la fuente oficial.
+    room = X_MAX_CHARS - len(head) - len(tail) - 2
+    if len(place) > room:
+        place = place[: max(room - 1, 0)].rstrip() + "…"
+    return f"{head}\n{place}\n{tail}"
 
 
 class XPublisher:
@@ -140,7 +163,9 @@ class XPublisher:
         event_id = str(event.get("event_id", ""))
         published_key = f"seismik:x:published:{event_id}"
         try:
-            if not eligible(event, self.settings.x_publisher_minimum_magnitude):
+            if is_simulated(event):
+                await self._audit(event_id, "skipped_drill")
+            elif not eligible(event, self.settings.x_publisher_minimum_magnitude):
                 await self._audit(event_id, "skipped_not_official_or_below_threshold")
             elif await self.redis.set(published_key, "1", nx=True, ex=2_592_000):
                 await self._publish(event, published_key)
