@@ -47,6 +47,16 @@ class AppSettings(BaseSettings):
     integration_delivery_max_attempts: int = Field(default=5, ge=1, le=20)
     integration_delivery_concurrency: int = Field(default=20, ge=1, le=100)
     integration_webhook_master_secret: SecretStr = SecretStr("change-me-integration-secret")
+    x_publisher_enabled: bool = False
+    x_publisher_dry_run: bool = True
+    x_publisher_minimum_magnitude: float = Field(default=2.5, ge=0, le=10)
+    x_publisher_stream: str = "stream:seismik:x-publisher"
+    x_publisher_group: str = "x-publishers"
+    x_publisher_consumer_name: str = "x-publisher-1"
+    x_consumer_key: SecretStr = SecretStr("")
+    x_consumer_secret: SecretStr = SecretStr("")
+    x_access_token: SecretStr = SecretStr("")
+    x_access_token_secret: SecretStr = SecretStr("")
     firebase_web_api_key: str = ""
     firebase_web_auth_domain: str = ""
     firebase_web_project_id: str = ""
