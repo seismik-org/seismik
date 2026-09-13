@@ -8,3 +8,5 @@ firebase-admin>=7.5,<8
 google-cloud-pubsub>=2.29,<3
 h3>=4.5,<5
 httpx>=0.28,<1
+requests>=2.32,<3
+requests-oauthlib>=2.0,<3
