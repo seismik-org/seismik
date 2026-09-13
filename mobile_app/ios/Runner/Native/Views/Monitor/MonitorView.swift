@@ -149,9 +149,11 @@ public struct MonitorView: View {
         // Superposición de Alerta de Emergencia Crítica
         .overlay {
             if let alertEvent = state.activeAlert {
-                EmergencyAlertView(event: alertEvent) {
-                    state.dismissAlert()
-                }
+                EmergencyAlertView(
+                    event: alertEvent,
+                    onDismiss: { state.dismissAlert() },
+                    onReportSafe: { state.requestFamilyCheckIn(for: alertEvent) }
+                )
                 .transition(.opacity.combined(with: .scale(scale: 0.96)))
             }
         }

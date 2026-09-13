@@ -10,8 +10,11 @@ from typing import Any, cast
 from redis.asyncio import Redis
 from redis.exceptions import ResponseError
 
+from api.accounts import devices_for_account
 from api.config import AppSettings, get_settings
 from api.devices_store import DeviceRepository
+from api.family import family_members_key
+from api.schemas import DeviceTarget
 from dispatcher.policy import AlertPolicy
 from dispatcher.push import PushDispatcher, PushResult, notification_content
 from runtime_health import start_health_server
@@ -40,7 +43,11 @@ class StreamConsumer:
         self.devices = devices
         self.push = push
         self.policy = policy or AlertPolicy(redis, settings)
-        self.streams = (settings.candidate_stream, settings.official_stream)
+        self.streams = (
+            settings.candidate_stream,
+            settings.official_stream,
+            settings.family_notification_stream,
+        )
         self._stop = asyncio.Event()
 
     async def ensure_groups(self) -> None:
@@ -88,6 +95,8 @@ class StreamConsumer:
                 await self._handle_candidate(event)
             elif event_type == "official_report_update":
                 await self._handle_official(event)
+            elif event_type == "family_status":
+                await self._handle_family_status(event)
             else:
                 raise ValueError(f"Unsupported event type: {event_type}")
             await self.redis.xack(stream, self.settings.dispatcher_group, message_id)
@@ -178,6 +187,47 @@ class StreamConsumer:
             "Official push event_id=%s attempted=%d succeeded=%d",
             event["event_id"], result.attempted, result.succeeded,
         )
+
+    async def _handle_family_status(self, event: dict[str, Any]) -> None:
+        """Avisa al resto del círculo que alguien reportó su estado tras un sismo."""
+
+        # El stream puede reentregar el mensaje tras un reinicio: reclamarlo
+        # antes de enviar evita que la familia reciba el mismo aviso dos veces.
+        claim = f"seismik:family:push:{event['event_id']}"
+        if not await self.redis.set(claim, "1", nx=True, ex=86_400):
+            return
+        try:
+            targets = await self._family_targets(str(event["circle_id"]), str(event["member_id"]))
+            result = await self.push.send(event, targets, critical=False)
+            await self._record_dry_run(event, result, critical=False)
+            await self._remove_invalid(result.invalid_device_ids)
+        except Exception:
+            await self.redis.delete(claim)
+            raise
+        LOGGER.info(
+            "Family status push event_id=%s attempted=%d succeeded=%d",
+            event["event_id"], result.attempted, result.succeeded,
+        )
+
+    async def _family_targets(self, circle_id: str, reporter: str) -> list[DeviceTarget]:
+        members = {str(item) for item in await self.redis.smembers(family_members_key(circle_id))}
+        device_ids: set[str] = set()
+        for member in members - {reporter}:
+            linked = await devices_for_account(self.redis, member)
+            if linked:
+                device_ids.update(linked)
+            else:
+                # Familiar que todavía no inició sesión en la versión con cuenta:
+                # su pertenencia al círculo sigue ligada al teléfono.
+                device_ids.add(member)
+        # Tampoco se avisa en otros teléfonos de quien reportó.
+        device_ids -= await devices_for_account(self.redis, reporter)
+        targets: list[DeviceTarget] = []
+        for device_id in sorted(device_ids):
+            target = await self.devices.resolve(device_id)
+            if target is not None:
+                targets.append(target)
+        return targets
 
     async def _enqueue_integration_event(self, event: dict[str, Any]) -> None:
         """Desacopla el push móvil de las salidas de terceros.

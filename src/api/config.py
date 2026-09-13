@@ -61,11 +61,20 @@ class AppSettings(BaseSettings):
     oauth_github_redirect_uri: str = "https://auth.seismik.org/v1/oauth/github/callback"
     oauth_cookie_domain: str = ".seismik.org"
     oauth_session_ttl_seconds: int = Field(default=86_400, ge=300, le=2_592_000)
+    # Sesión de la cuenta en la app: dura más que la del navegador y se renueva
+    # con el uso. Búsqueda de familiares no puede pedir iniciar sesión justo
+    # después de un sismo porque la sesión venció la noche anterior.
+    mobile_account_session_ttl_seconds: int = Field(
+        default=7_776_000, ge=3_600, le=31_536_000
+    )
 
     candidate_stream: str = "stream:seismik:candidates"
     official_stream: str = "stream:seismik:official"
     felt_reports_stream: str = "stream:seismik:felt-reports"
     damage_reports_stream: str = "stream:seismik:damage-reports"
+    family_notification_stream: str = "stream:seismik:family-notifications"
+    # Un «estoy bien» vale para los días siguientes al sismo, no para siempre.
+    family_status_ttl_seconds: int = Field(default=259_200, ge=3_600, le=2_592_000)
     stream_maxlen: int = Field(default=100_000, ge=1_000)
     dispatcher_group: str = "push-dispatchers"
     consumer_name: str = "dispatcher-1"

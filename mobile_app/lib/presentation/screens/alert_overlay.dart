@@ -10,9 +10,17 @@ import '../widgets/open_in_maps_button.dart';
 import '../widgets/safety_steps.dart';
 
 class AlertOverlay extends StatefulWidget {
-  const AlertOverlay({required this.event, required this.onDismiss, super.key});
+  const AlertOverlay({
+    required this.event,
+    required this.onDismiss,
+    this.onReportSafe,
+    super.key,
+  });
   final SeismicEvent event;
   final VoidCallback onDismiss;
+
+  /// Cierra la alerta y lleva a avisar a la familia si la persona está bien.
+  final VoidCallback? onReportSafe;
 
   @override
   State<AlertOverlay> createState() => _AlertOverlayState();
@@ -193,6 +201,41 @@ class _AlertOverlayState extends State<AlertOverlay>
                 ),
                 child: OpenInMapsButton(event: widget.event, compact: true),
               ),
+              if (widget.onReportSafe != null) ...<Widget>[
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  height: 52,
+                  child: CupertinoButton(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(26),
+                    onPressed: () {
+                      unawaited(HapticFeedback.mediumImpact());
+                      widget.onReportSafe!();
+                    },
+                    child: const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: <Widget>[
+                        Icon(
+                          Icons.family_restroom_rounded,
+                          color: Color(0xFFB71C1C),
+                          size: 20,
+                        ),
+                        SizedBox(width: 8),
+                        Text(
+                          'AVISAR A MI FAMILIA',
+                          style: TextStyle(
+                            color: Color(0xFFB71C1C),
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.4,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
               const SizedBox(height: 8),
               SizedBox(
                 width: double.infinity,

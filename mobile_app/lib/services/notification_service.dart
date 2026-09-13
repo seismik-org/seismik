@@ -48,15 +48,48 @@ class NotificationEnvelope {
   final bool critical;
 }
 
+/// Aviso de que un familiar reportó su estado tras un sismo.
+class FamilyNotification {
+  const FamilyNotification({
+    required this.displayName,
+    required this.needsHelp,
+    required this.opened,
+  });
+
+  factory FamilyNotification.fromData(
+    Map<String, dynamic> data, {
+    required bool opened,
+  }) => FamilyNotification(
+    displayName: (data['display_name'] ?? 'Tu familiar').toString(),
+    needsHelp: data['status']?.toString() == 'need_help',
+    opened: opened,
+  );
+
+  static const String type = 'family_status';
+
+  final String displayName;
+  final bool needsHelp;
+
+  /// La persona tocó el aviso: hay que llevarla a la pestaña Familia.
+  final bool opened;
+
+  String get title =>
+      needsHelp ? '$displayName necesita ayuda' : '$displayName está bien';
+}
+
 class NotificationService {
   final FlutterLocalNotificationsPlugin _local =
       FlutterLocalNotificationsPlugin();
   final StreamController<NotificationEnvelope> _events =
       StreamController<NotificationEnvelope>.broadcast();
+  final StreamController<FamilyNotification> _family =
+      StreamController<FamilyNotification>.broadcast();
   final List<StreamSubscription<RemoteMessage>> _subscriptions =
       <StreamSubscription<RemoteMessage>>[];
 
   Stream<NotificationEnvelope> get events => _events.stream;
+
+  Stream<FamilyNotification> get familyUpdates => _family.stream;
 
   Future<void> initialize() async {
     if (Firebase.apps.isEmpty) await Firebase.initializeApp();
@@ -92,6 +125,9 @@ class NotificationService {
       FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
         if (_isCritical(message.data)) {
           await _showCriticalNotification(_local, message.data);
+        } else if (_isFamily(message.data)) {
+          // Con la app abierta Android no muestra el aviso por su cuenta.
+          await _showFamilyNotification(_local, message);
         }
         _emit(Map<String, dynamic>.from(message.data));
       }),
@@ -99,12 +135,14 @@ class NotificationService {
     _subscriptions.add(
       FirebaseMessaging.onMessageOpenedApp.listen(
         (RemoteMessage message) =>
-            _emit(Map<String, dynamic>.from(message.data)),
+            _emit(Map<String, dynamic>.from(message.data), opened: true),
       ),
     );
     final RemoteMessage? initial = await FirebaseMessaging.instance
         .getInitialMessage();
-    if (initial != null) _emit(Map<String, dynamic>.from(initial.data));
+    if (initial != null) {
+      _emit(Map<String, dynamic>.from(initial.data), opened: true);
+    }
   }
 
   Future<void> _requestPermissions() async {
@@ -165,16 +203,27 @@ class NotificationService {
     if (payload == null || payload.isEmpty) return;
     try {
       final Object? decoded = jsonDecode(payload);
-      if (decoded is Map<String, dynamic>) _emit(decoded);
+      if (decoded is Map<String, dynamic>) _emit(decoded, opened: true);
     } on FormatException {
       // Ignore notifications not created by Seismik.
     }
   }
 
-  void _emit(Map<String, dynamic> data) {
+  /// Punto de entrada de los datos de un aviso, expuesto para las pruebas.
+  @visibleForTesting
+  void handleIncomingData(Map<String, dynamic> data, {bool opened = false}) =>
+      _emit(data, opened: opened);
+
+  void _emit(Map<String, dynamic> data, {bool opened = false}) {
     final String type = (data['type'] ?? '').toString();
-    final bool critical = _isCriticalStringMap(data);
     if (type.isEmpty) return;
+    // Un aviso familiar no es un sismo: convertirlo en SeismicEvent lo metía
+    // en el historial y en el mapa como un evento sin coordenadas.
+    if (type == FamilyNotification.type) {
+      _family.add(FamilyNotification.fromData(data, opened: opened));
+      return;
+    }
+    final bool critical = _isCriticalStringMap(data);
     _events.add(
       NotificationEnvelope(
         event: SeismicEvent.fromMap(data),
@@ -188,6 +237,7 @@ class NotificationService {
       _subscriptions.map((subscription) => subscription.cancel()),
     );
     await _events.close();
+    await _family.close();
   }
 }
 
@@ -255,6 +305,35 @@ Future<void> _showCriticalNotification(
 }
 
 bool _isCritical(Map<String, dynamic> data) => _isCriticalStringMap(data);
+
+bool _isFamily(Map<String, dynamic> data) =>
+    data['type']?.toString() == FamilyNotification.type;
+
+Future<void> _showFamilyNotification(
+  FlutterLocalNotificationsPlugin plugin,
+  RemoteMessage message,
+) async {
+  final Map<String, dynamic> data = Map<String, dynamic>.from(message.data);
+  final FamilyNotification notice = FamilyNotification.fromData(
+    data,
+    opened: true,
+  );
+  await plugin.show(
+    id: (data['event_id'] ?? DateTime.now().toIso8601String()).hashCode,
+    title: message.notification?.title ?? notice.title,
+    body: message.notification?.body ?? '',
+    notificationDetails: const NotificationDetails(
+      android: AndroidNotificationDetails(
+        SeismikConstants.updatesChannelId,
+        'Reportes sísmicos oficiales',
+        importance: Importance.high,
+        priority: Priority.high,
+      ),
+      iOS: DarwinNotificationDetails(presentAlert: true, presentSound: true),
+    ),
+    payload: jsonEncode(data),
+  );
+}
 
 bool _isCriticalStringMap(Map<String, dynamic> data) =>
     data['channel_id']?.toString() == SeismikConstants.criticalChannelId ||

@@ -6,6 +6,10 @@ abstract final class SeismikConstants {
     'SEISMIK_API_BASE_URL',
     defaultValue: 'https://api.seismik.org',
   );
+  static const String authBaseUrl = String.fromEnvironment(
+    'SEISMIK_AUTH_BASE_URL',
+    defaultValue: 'https://auth.seismik.org',
+  );
   static const bool integrityRequired = bool.fromEnvironment(
     'SEISMIK_INTEGRITY_REQUIRED',
     defaultValue: false,

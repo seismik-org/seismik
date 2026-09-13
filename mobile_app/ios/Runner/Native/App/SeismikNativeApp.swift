@@ -28,7 +28,7 @@ public struct SeismikNativeAppRoot: View {
                 }
                 .tag(2)
 
-            FamilySafetyView()
+            FamilySafetyView(showsCloseButton: false)
                 .tabItem {
                     Label("Familia", systemImage: "person.2.fill")
                 }
@@ -50,6 +50,11 @@ public struct SeismikNativeAppRoot: View {
             case "family", "familia": selectedTab = 3
             default: selectedTab = 0
             }
+        }
+        .onChange(of: state.requestedTab) { tab in
+            guard let tab else { return }
+            selectedTab = tab
+            state.requestedTab = nil
         }
         .onChange(of: scenePhase) { phase in
             guard phase == .active else { return }

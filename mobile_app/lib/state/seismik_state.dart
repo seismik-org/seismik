@@ -87,6 +87,10 @@ class SeismikState extends ChangeNotifier with WidgetsBindingObserver {
   final Duration settingsDebounce;
 
   late final AccelerometerService accelerometer;
+
+  /// Aumenta con cada registro exitoso del dispositivo. Búsqueda de
+  /// familiares lo escucha para asociar a la cuenta el token push nuevo.
+  final ValueNotifier<int> registrations = ValueNotifier<int>(0);
   late _NetworkPreferences _networkPreferences;
   StreamSubscription<NotificationEnvelope>? _notificationSubscription;
   Timer? _alertPreferencesTimer;
@@ -278,6 +282,7 @@ class SeismikState extends ChangeNotifier with WidgetsBindingObserver {
           minimumNotificationMagnitude: settings.minimumNotificationMagnitude,
           alertRadiusKm: settings.alertRadiusKm,
         );
+        registrations.value++;
         return;
       } catch (_) {
         if (attempt == 2) rethrow;
@@ -637,6 +642,7 @@ class SeismikState extends ChangeNotifier with WidgetsBindingObserver {
     _disposed = true;
     _alertPreferencesTimer?.cancel();
     _historyFilterTimer?.cancel();
+    registrations.dispose();
     WidgetsBinding.instance.removeObserver(this);
     settings.removeListener(_onSettingsChanged);
     unawaited(_notificationSubscription?.cancel());

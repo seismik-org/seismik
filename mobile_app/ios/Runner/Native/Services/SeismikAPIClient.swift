@@ -21,10 +21,14 @@ public final class SeismikOAuthSignIn: NSObject, ASWebAuthenticationPresentation
         provider: String,
         completion: @escaping (Result<SeismikAccount, Error>) -> Void
     ) {
+        // PKCE generado aquí: el servidor sólo canjea el código con este
+        // verificador, así que otra app que declare `seismik://` no puede usarlo.
+        let verifier = Self.makeVerifier()
         var components = URLComponents(string: "https://auth.seismik.org/v1/oauth/authorize")!
         components.queryItems = [
             URLQueryItem(name: "provider", value: provider),
             URLQueryItem(name: "origin", value: "app"),
+            URLQueryItem(name: "app_challenge", value: Self.challenge(for: verifier)),
         ]
         let flow = ASWebAuthenticationSession(
             url: components.url!, callbackURLScheme: "seismik"
@@ -43,7 +47,10 @@ public final class SeismikOAuthSignIn: NSObject, ASWebAuthenticationPresentation
             }
             Task {
                 do {
-                    completion(.success(try await SeismikAPIClient.shared.exchangeMobileOAuthCode(code)))
+                    let account = try await SeismikAPIClient.shared.exchangeMobileOAuthCode(
+                        code, verifier: verifier
+                    )
+                    completion(.success(account))
                 } catch {
                     completion(.failure(error))
                 }
@@ -55,6 +62,25 @@ public final class SeismikOAuthSignIn: NSObject, ASWebAuthenticationPresentation
         if !flow.start() {
             completion(.failure(SeismikAPIError.malformedResponse))
         }
+    }
+
+    /// Verificador PKCE de 64 caracteres base64url (RFC 7636).
+    static func makeVerifier() -> String {
+        // En plataformas de Apple el generador del sistema es criptográfico.
+        var generator = SystemRandomNumberGenerator()
+        let bytes = (0..<48).map { _ in UInt8.random(in: .min ... .max, using: &generator) }
+        return base64URL(Data(bytes))
+    }
+
+    static func challenge(for verifier: String) -> String {
+        base64URL(Data(SHA256.hash(data: Data(verifier.utf8))))
+    }
+
+    private static func base64URL(_ data: Data) -> String {
+        data.base64EncodedString()
+            .replacingOccurrences(of: "+", with: "-")
+            .replacingOccurrences(of: "/", with: "_")
+            .replacingOccurrences(of: "=", with: "")
     }
 
     public func presentationAnchor(for session: ASWebAuthenticationSession) -> ASPresentationAnchor {
@@ -76,27 +102,51 @@ public struct FamilyLocation: Decodable, Equatable {
     }
 }
 
-public struct FamilyMember: Decodable, Identifiable, Equatable {
-    public let displayName: String
-    public let isYou: Bool
-    public let location: FamilyLocation?
-    public var id: String { "\(displayName)-\(isYou)" }
+/// Último aviso de un integrante tras un sismo.
+public struct FamilyStatus: Decodable, Equatable {
+    public let status: String
+    public let message: String?
+    public let eventId: String?
+    public let reportedAt: String?
+
+    public var needsHelp: Bool { status == "need_help" }
 
     enum CodingKeys: String, CodingKey {
+        case status, message
+        case eventId = "event_id"
+        case reportedAt = "reported_at"
+    }
+}
+
+public struct FamilyMember: Decodable, Identifiable, Equatable {
+    public let memberId: String?
+    public let displayName: String
+    public let isYou: Bool
+    public let isOwner: Bool?
+    public let location: FamilyLocation?
+    public let status: FamilyStatus?
+    public var id: String { memberId ?? "\(displayName)-\(isYou)" }
+
+    enum CodingKeys: String, CodingKey {
+        case memberId = "member_id"
         case displayName = "display_name"
         case isYou = "is_you"
-        case location
+        case isOwner = "is_owner"
+        case location, status
     }
 }
 
 public struct FamilyCircle: Decodable, Equatable {
     public let circleId: String
     public let circleName: String
+    /// Sólo quien creó el círculo puede invitar.
+    public let isOwner: Bool?
     public let members: [FamilyMember]
 
     enum CodingKeys: String, CodingKey {
         case circleId = "circle_id"
         case circleName = "circle_name"
+        case isOwner = "is_owner"
         case members
     }
 }
@@ -108,6 +158,8 @@ public enum SeismikAPIError: LocalizedError {
     /// El servidor rechazó la petición.
     case rejected(status: Int, message: String)
     case malformedResponse
+    /// Búsqueda de familiares exige iniciar sesión.
+    case accountRequired
 
     /// 408 y 429 son transitorios; el resto de los 4xx indica un contrato
     /// inválido y reintentarlo sólo repetiría el rechazo.
@@ -115,7 +167,7 @@ public enum SeismikAPIError: LocalizedError {
         switch self {
         case .pushTokenUnavailable:
             return false
-        case .malformedResponse:
+        case .malformedResponse, .accountRequired:
             return true
         case let .rejected(status, _):
             return (400..<500).contains(status) && status != 408 && status != 429
@@ -130,6 +182,8 @@ public enum SeismikAPIError: LocalizedError {
             return "El servidor respondió \(status): \(message)"
         case .malformedResponse:
             return "La respuesta del servidor no tiene el formato esperado."
+        case .accountRequired:
+            return "Inicia sesión para usar Búsqueda de familiares."
         }
     }
 }
@@ -205,6 +259,14 @@ public final class SeismikAPIClient {
     public var signedInAccount: SeismikAccount? {
         guard let data = UserDefaults.standard.data(forKey: Self.accountProfileKey) else { return nil }
         return try? JSONDecoder().decode(SeismikAccount.self, from: data)
+    }
+
+    /// Sesión de la cuenta Seismik en Keychain, o `nil` sin inicio de sesión.
+    public var accountSessionToken: String? {
+        guard let token = try? keychain.string(for: Self.accountSessionKey), !token.isEmpty else {
+            return nil
+        }
+        return token
     }
 
     /// Indica si el dispositivo cuenta con credenciales válidas registradas.
@@ -517,11 +579,13 @@ public final class SeismikAPIClient {
 
     // MARK: - OAuth de cuenta Seismik
 
-    public func exchangeMobileOAuthCode(_ code: String) async throws -> SeismikAccount {
+    public func exchangeMobileOAuthCode(_ code: String, verifier: String) async throws -> SeismikAccount {
         var request = URLRequest(url: URL(string: "https://auth.seismik.org/v1/oauth/mobile/exchange")!)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.httpBody = try JSONSerialization.data(withJSONObject: ["code": code])
+        request.httpBody = try JSONSerialization.data(
+            withJSONObject: ["code": code, "code_verifier": verifier]
+        )
         let (data, response) = try await session.data(for: request)
         try assertSuccess(response, data: data)
         struct Exchange: Decodable {
@@ -541,15 +605,34 @@ public final class SeismikAPIClient {
         return account
     }
 
+    /// Borra la sesión local. Llama antes a `unlinkDeviceFromAccount()` para que
+    /// el teléfono deje de recibir los avisos de la familia.
     public func signOutAccount() throws {
         try keychain.remove(Self.accountSessionKey)
         UserDefaults.standard.removeObject(forKey: Self.accountProfileKey)
     }
 
+    /// Asocia este iPhone a la cuenta: aquí llegarán los avisos de la familia.
+    public func linkDeviceToAccount() async throws {
+        var request = try accountRequest(path: "v1/account/device", requireDevice: true)
+        request.httpMethod = "POST"
+        let (data, response) = try await session.data(for: request)
+        try assertSuccess(response, data: data)
+    }
+
+    public func unlinkDeviceFromAccount() async throws {
+        var request = try accountRequest(path: "v1/account/device", requireDevice: true)
+        request.httpMethod = "DELETE"
+        let (data, response) = try await session.data(for: request)
+        if (response as? HTTPURLResponse)?.statusCode != 204 {
+            try assertSuccess(response, data: data)
+        }
+    }
+
     // MARK: - Círculos familiares voluntarios
 
     public func fetchFamilyCircle() async throws -> FamilyCircle? {
-        var request = try deviceRequest(path: "v1/family/circle")
+        var request = try accountRequest(path: "v1/family/circle")
         request.httpMethod = "GET"
         let (data, response) = try await session.data(for: request)
         if let http = response as? HTTPURLResponse, http.statusCode == 404,
@@ -602,12 +685,43 @@ public final class SeismikAPIClient {
     }
 
     public func stopSharingFamilyLocation() async throws {
-        var request = try deviceRequest(path: "v1/family/location")
+        var request = try accountRequest(path: "v1/family/location")
         request.httpMethod = "DELETE"
         let (data, response) = try await session.data(for: request)
         if (response as? HTTPURLResponse)?.statusCode != 204 {
             try assertSuccess(response, data: data)
         }
+    }
+
+    /// «Estoy bien» o «Necesito ayuda». Con coordenadas las comparte con la
+    /// familia durante `minutes`; sin ellas el aviso sale igual.
+    public func reportFamilyStatus(
+        needsHelp: Bool,
+        eventId: String?,
+        latitude: Double?,
+        longitude: Double?,
+        precise: Bool,
+        minutes: Int = 240
+    ) async throws {
+        var statusBody: [String: Any] = [
+            "status": needsHelp ? "need_help" : "safe",
+            "share_minutes": minutes,
+        ]
+        // Un identificador que el servidor rechazaría no debe impedir el aviso.
+        if let eventId,
+           eventId.range(of: "^[A-Za-z0-9._:-]{1,128}$", options: .regularExpression) != nil {
+            statusBody["event_id"] = eventId
+        }
+        if let latitude, let longitude {
+            let location: [String: Any] = [
+                "latitude": latitude,
+                "longitude": longitude,
+                "precision": precise ? "precise" : "approximate",
+                "precise_location_consent": precise,
+            ]
+            statusBody["location"] = location
+        }
+        _ = try await familySend(path: "v1/family/status", method: "PUT", body: statusBody)
     }
 
     // MARK: - Detección colaborativa
@@ -670,9 +784,28 @@ public final class SeismikAPIClient {
         return request
     }
 
+    /// Búsqueda de familiares exige cuenta. La sesión del dispositivo la
+    /// acompaña cuando existe, para asociar el teléfono que recibe los avisos.
+    private func accountRequest(path: String, requireDevice: Bool = false) throws -> URLRequest {
+        guard let accountToken = accountSessionToken else {
+            throw SeismikAPIError.accountRequired
+        }
+        let deviceToken = deviceSessionToken ?? ""
+        if requireDevice && deviceToken.isEmpty {
+            throw SeismikAPIError.rejected(status: 401, message: "El dispositivo aún se está preparando")
+        }
+        var request = URLRequest(url: baseURL.appendingPathComponent(path))
+        request.setValue(accountToken, forHTTPHeaderField: "X-Seismik-Account-Session")
+        if !deviceToken.isEmpty {
+            request.setValue(deviceToken, forHTTPHeaderField: "X-Seismik-Device-Session")
+        }
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        return request
+    }
+
     @discardableResult
     private func familySend(path: String, method: String, body: [String: Any]) async throws -> Data {
-        var request = try deviceRequest(path: path)
+        var request = try accountRequest(path: path)
         request.httpMethod = method
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
         let (data, response) = try await session.data(for: request)

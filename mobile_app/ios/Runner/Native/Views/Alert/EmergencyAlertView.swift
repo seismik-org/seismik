@@ -4,6 +4,8 @@ import SwiftUI
 public struct EmergencyAlertView: View {
     public let event: SeismicEvent
     public let onDismiss: () -> Void
+    /// Cierra la alerta y lleva a avisar a la familia.
+    public var onReportSafe: (() -> Void)? = nil
 
     @State private var isPulsing: Bool = false
 
@@ -76,6 +78,23 @@ public struct EmergencyAlertView: View {
                 .padding(.horizontal, 24)
 
                 Spacer()
+
+                if let onReportSafe {
+                    Button {
+                        HapticManager.heavy()
+                        AlertSoundPlayer.shared.stop()
+                        onReportSafe()
+                    } label: {
+                        Label("Avisar a mi familia", systemImage: "person.2.fill")
+                            .font(.system(size: 16, weight: .bold))
+                            .foregroundColor(SeismikColors.crimson)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 16)
+                            .background(Color.white, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.horizontal, 24)
+                }
 
                 // Botón de Cierre Seguro
                 Button {

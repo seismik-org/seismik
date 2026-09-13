@@ -96,7 +96,10 @@ class PushDispatcher:
             aps: dict[str, Any] = {
                 "alert": {"title": title, "body": body},
                 "thread-id": str(
-                    event.get("zone_id") or event.get("candidate_event_id") or "seismik"
+                    event.get("zone_id")
+                    or event.get("candidate_event_id")
+                    or event.get("thread_id")
+                    or "seismik"
                 ),
                 "interruption-level": (
                     "critical" if use_critical else ("time-sensitive" if critical else "active")
@@ -248,6 +251,8 @@ class PushDispatcher:
 def notification_content(
     event: dict[str, Any], *, critical: bool
 ) -> tuple[str, str, dict[str, Any]]:
+    if event.get("type") == "family_status":
+        return family_notification_content(event)
     if event.get("type") == "official_report_update":
         report = event["preferred_report"]
         magnitude = report.get("magnitude")
@@ -289,6 +294,31 @@ def notification_content(
         "estimated_latitude": event.get("estimated_latitude"),
         "estimated_longitude": event.get("estimated_longitude"),
         "critical": critical,
+    }
+
+
+def family_notification_content(event: dict[str, Any]) -> tuple[str, str, dict[str, Any]]:
+    """Aviso a la familia tras un reporte de estado.
+
+    Los datos que viajan al teléfono se eligen uno a uno: el identificador de la
+    cuenta del autor y el del círculo sirven al dispatcher, no a los familiares.
+    """
+
+    name = str(event.get("display_name") or "Tu familiar")
+    needs_help = event.get("status") == "need_help"
+    title = f"{name} necesita ayuda" if needs_help else f"{name} está bien"
+    message = str(event.get("message") or "").strip()
+    default_body = (
+        "Reportó que necesita ayuda. Abre Seismik para ver dónde está."
+        if needs_help
+        else "Reportó que está a salvo. Abre Seismik para ver a tu familia."
+    )
+    return title, message or default_body, {
+        "type": "family_status",
+        "event_id": event["event_id"],
+        "status": event.get("status"),
+        "display_name": name,
+        "reported_at": event.get("reported_at"),
     }
 
 

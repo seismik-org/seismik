@@ -1,3 +1,4 @@
+import AuthenticationServices
 import CoreLocation
 import MapKit
 import SwiftUI
@@ -14,7 +15,6 @@ public struct SettingsView: View {
     @State private var notificationStatus: UNAuthorizationStatus = .notDetermined
     @State private var showCopiedAlert = false
     @State private var browserDestination: BrowserDestination?
-    @State private var showFamilySafety = false
     @State private var showSignInProviders = false
     @State private var account: SeismikAccount? = SeismikAPIClient.shared.signedInAccount
     @State private var accountError: String?
@@ -64,8 +64,10 @@ public struct SettingsView: View {
                             }
                             Spacer()
                             Button("Salir", role: .destructive) {
-                                try? SeismikAPIClient.shared.signOutAccount()
-                                self.account = nil
+                                Task {
+                                    await state.signOutAccount()
+                                    self.account = nil
+                                }
                             }
                         }
                     } else {
@@ -75,7 +77,7 @@ public struct SettingsView: View {
                             Label("Iniciar sesión", systemImage: "person.badge.key")
                         }
                     }
-                    Text("La cuenta permite recuperar preferencias. Nunca comparte tu ubicación sin una acción explícita.")
+                    Text("La cuenta identifica a tu familia en la pestaña Familia. Nunca comparte tu ubicación sin una acción explícita.")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
@@ -216,17 +218,6 @@ public struct SettingsView: View {
                             .font(.system(size: 14, weight: .semibold))
                             .foregroundColor(SeismikColors.systemBlue)
                         }
-                    }
-                }
-
-                Section(
-                    header: Text("Seguridad familiar"),
-                    footer: Text("Cada integrante decide si comparte una ubicación aproximada o precisa y durante cuánto tiempo. No es rastreo continuo ni un canal de emergencia.")
-                ) {
-                    Button {
-                        showFamilySafety = true
-                    } label: {
-                        Label("Búsqueda de familiares", systemImage: "person.2.fill")
                     }
                 }
 
@@ -479,9 +470,6 @@ public struct SettingsView: View {
                 InAppBrowserView(url: destination.url)
                     .ignoresSafeArea()
             }
-            .sheet(isPresented: $showFamilySafety) {
-                FamilySafetyView()
-            }
             .confirmationDialog("Iniciar sesión con", isPresented: $showSignInProviders) {
                 Button("Google") { startSignIn(provider: "google") }
                 Button("GitHub") { startSignIn(provider: "github") }
@@ -563,7 +551,9 @@ public struct SettingsView: View {
         SeismikOAuthSignIn.shared.start(provider: provider) { result in
             DispatchQueue.main.async {
                 switch result {
-                case let .success(identity): self.account = identity
+                case let .success(identity):
+                    self.account = identity
+                    Task { await state.accountDidSignIn(identity) }
                 case let .failure(error): self.accountError = error.localizedDescription
                 }
             }
@@ -682,19 +672,23 @@ private struct HistorySourceRow: View {
     }
 }
 
-// MARK: - Círculo familiar (iPhone nativo)
+// MARK: - Búsqueda de familiares (iPhone nativo)
 
+/// Tras un sismo cada integrante avisa si está bien o necesita ayuda. Ese toque
+/// comparte su ubicación con el círculo durante unas horas y avisa a los demás.
+/// La cuenta identifica a cada persona; nada se comparte sin tocar un botón.
 public struct FamilySafetyView: View {
+    public let showsCloseButton: Bool
     @Environment(\.dismiss) private var dismiss
     @ObservedObject private var locationManager = LocationManager.shared
     @ObservedObject private var appState = SeismikState.shared
 
     @State private var circle: FamilyCircle?
-    @State private var isLoading = true
+    @State private var isLoading = false
+    @State private var isReporting = false
     @State private var displayName = ""
-    @State private var circleName = "Mi círculo"
+    @State private var circleName = "Mi familia"
     @State private var inviteCode = ""
-    @State private var shareMinutes = 60
     @State private var precise = false
     @State private var message: String?
     @State private var region = MKCoordinateRegion(
@@ -702,30 +696,37 @@ public struct FamilySafetyView: View {
         span: MKCoordinateSpan(latitudeDelta: 4.0, longitudeDelta: 4.0)
     )
 
-    public init() {}
+    public init(showsCloseButton: Bool = true) {
+        self.showsCloseButton = showsCloseButton
+    }
 
     public var body: some View {
         CompatibleNavigationStack {
             Group {
-                if isLoading {
-                    ProgressView("Preparando Búsqueda de familiares…")
-                } else if !appState.isRegistered {
-                    registrationContent
+                if appState.account == nil {
+                    signInContent
+                } else if isLoading && circle == nil {
+                    ProgressView("Cargando tu familia…")
                 } else if let circle {
                     circleContent(circle)
                 } else {
                     enrollmentContent
                 }
             }
-            .navigationTitle("Familiares")
+            .navigationTitle("Familia")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Listo") { dismiss() }
+                    if showsCloseButton {
+                        Button("Listo") { dismiss() }
+                    }
                 }
             }
-            .task { await prepareAndReload() }
-            .alert("Búsqueda de familiares", isPresented: Binding(
+            .task(id: appState.account?.uid) { await reload() }
+            .onChange(of: appState.familyUpdates) { _ in
+                Task { await reload() }
+            }
+            .alert("Familia", isPresented: Binding(
                 get: { message != nil }, set: { if !$0 { message = nil } }
             )) {
                 Button("Aceptar", role: .cancel) {}
@@ -735,62 +736,128 @@ public struct FamilySafetyView: View {
         }
     }
 
-    private var registrationContent: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "iphone.and.arrow.forward")
-                .font(.system(size: 34, weight: .medium))
-                .foregroundColor(SeismikColors.systemBlue)
-            Text("Prepara este iPhone")
-                .font(.title3.weight(.semibold))
-            Text("Búsqueda de familiares necesita crear una sesión segura en Seismik. Tus alertas se configurarán por separado cuando APNs esté disponible.")
-                .font(.body)
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
-            Button("Reintentar registro") { Task { await prepareAndReload() } }
+    private var signInContent: some View {
+        ScrollView {
+            VStack(spacing: 18) {
+                Image(systemName: "person.2.wave.2.fill")
+                    .font(.system(size: 44, weight: .medium))
+                    .foregroundColor(SeismikColors.systemBlue)
+                    .padding(.top, 24)
+                Text("Avísale a tu familia que estás bien")
+                    .font(.title2.weight(.bold))
+                    .multilineTextAlignment(.center)
+                Text("Tras un sismo, cada integrante de tu círculo reporta si está bien o necesita ayuda. Ese reporte comparte su ubicación con la familia durante unas horas y les llega como notificación.")
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                Text("Para saber quién es quién necesitas iniciar sesión. Seismik nunca comparte tu ubicación sin que toques un botón.")
+                    .font(.footnote)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                Button {
+                    signIn(provider: "google")
+                } label: {
+                    Label("Iniciar sesión con Google", systemImage: "person.badge.key.fill")
+                        .frame(maxWidth: .infinity)
+                }
                 .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+                .padding(.top, 8)
+                Button("Iniciar sesión con GitHub") { signIn(provider: "github") }
+                    .font(.footnote)
+            }
+            .padding(24)
         }
-        .padding(28)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private var enrollmentContent: some View {
         Form {
             Section {
-                Label("Ubicación compartida con consentimiento", systemImage: "hand.raised.fill")
+                Label("Hola, \(firstName)", systemImage: "hand.wave.fill")
                     .foregroundColor(SeismikColors.systemBlue)
-                Text("No localiza a nadie automáticamente. Cada integrante comparte su propia ubicación durante un tiempo limitado y puede borrarla cuando quiera.")
+                Text("Crea el círculo de tu familia o únete con el código que te envió quien lo creó. Cada código sirve una sola vez y vence en 24 horas.")
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
             Section("Crear círculo") {
-                TextField("Tu nombre visible", text: $displayName)
+                TextField("Cómo te verá tu familia", text: $displayName)
                 TextField("Nombre del círculo", text: $circleName)
                 Button("Crear círculo") { Task { await createCircle() } }
-                    .disabled(displayName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .disabled(trimmed(displayName).isEmpty)
             }
             Section("Unirse con invitación") {
                 TextField("Código de invitación", text: $inviteCode)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
-                TextField("Tu nombre visible", text: $displayName)
+                TextField("Cómo te verá tu familia", text: $displayName)
                 Button("Unirme al círculo") { Task { await joinCircle() } }
-                    .disabled(inviteCode.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || displayName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .disabled(trimmed(inviteCode).isEmpty || trimmed(displayName).isEmpty)
             }
+            Section {
+                Button("Cerrar sesión", role: .destructive) {
+                    Task { await appState.signOutAccount() }
+                }
+            }
+        }
+        .onAppear {
+            if displayName.isEmpty { displayName = firstName }
         }
     }
 
     private func circleContent(_ circle: FamilyCircle) -> some View {
         Form {
+            Section {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text(appState.pendingFamilyCheckIn == nil ? "¿Estás bien?" : "Tras el sismo, ¿estás bien?")
+                        .font(.title3.weight(.bold))
+                    if let event = appState.pendingFamilyCheckIn {
+                        Text(eventLabel(event))
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                    }
+                    if let last = circle.members.first(where: { $0.isYou })?.status {
+                        Text("Tu último aviso: \(last.needsHelp ? "necesitas ayuda" : "estás bien") · \(ago(last.reportedAt))")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    HStack(spacing: 10) {
+                        Button {
+                            Task { await report(needsHelp: false) }
+                        } label: {
+                            Label("Estoy bien", systemImage: "checkmark.circle.fill")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(.green)
+
+                        Button {
+                            Task { await report(needsHelp: true) }
+                        } label: {
+                            Label("Necesito ayuda", systemImage: "exclamationmark.triangle.fill")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(.red)
+                    }
+                    .controlSize(.large)
+                    .disabled(isReporting)
+                    Toggle("Compartir ubicación precisa", isOn: $precise)
+                    Text("Tu ubicación se comparte con tu familia durante 4 horas y luego se borra. Sin la precisa ven una zona aproximada.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                .padding(.vertical, 4)
+            }
+
             let located = circle.members.filter { $0.location != nil }
             if !located.isEmpty {
-                Section("Mapa compartido") {
+                Section("Mapa de tu familia") {
                     Map(coordinateRegion: $region, annotationItems: located) { member in
                         MapMarker(
                             coordinate: CLLocationCoordinate2D(
                                 latitude: member.location!.latitude,
                                 longitude: member.location!.longitude
                             ),
-                            tint: member.isYou ? .blue : .orange
+                            tint: member.status == nil ? .blue : statusColor(member.status)
                         )
                     }
                     .frame(height: 240)
@@ -800,78 +867,160 @@ public struct FamilySafetyView: View {
 
             Section("Integrantes de \(circle.circleName)") {
                 ForEach(circle.members) { member in
-                    HStack {
-                        Image(systemName: member.isYou ? "person.crop.circle.fill" : "person.circle")
-                            .foregroundColor(member.isYou ? SeismikColors.systemBlue : .secondary)
+                    HStack(spacing: 12) {
+                        Image(systemName: statusSymbol(member.status))
+                            .font(.title3)
+                            .foregroundColor(statusColor(member.status))
                         VStack(alignment: .leading, spacing: 2) {
                             Text(member.isYou ? "\(member.displayName) · Tú" : member.displayName)
+                            Text(statusLabel(member.status))
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            if let note = member.status?.message {
+                                Text("«\(note)»")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
                             Text(locationLabel(member.location))
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                         }
                     }
                 }
-                Button("Crear y copiar invitación") { Task { await createInvitation() } }
+                if circle.isOwner == true {
+                    Button("Crear y copiar invitación") { Task { await createInvitation() } }
+                }
             }
 
-            Section("Compartir mi ubicación") {
-                Picker("Duración", selection: $shareMinutes) {
-                    Text("15 minutos").tag(15)
-                    Text("1 hora").tag(60)
-                    Text("4 horas").tag(240)
+            Section(footer: Text("Seismik no sustituye a los servicios de emergencia. Si alguien está en peligro, llama a la línea de emergencias de tu país.")) {
+                Button("Dejar de compartir mi ubicación", role: .destructive) {
+                    Task { await stopSharing() }
                 }
-                Toggle("Ubicación precisa", isOn: $precise)
-                Text(precise ? "Compartirás el punto exacto sólo durante el período elegido." : "Por defecto se redondea la ubicación antes de guardarla.")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                Button("Compartir durante \(durationLabel)") { Task { await shareLocation() } }
-                    .foregroundColor(SeismikColors.systemBlue)
-                Button("Dejar de compartir", role: .destructive) { Task { await stopSharing() } }
+                Button("Cerrar sesión", role: .destructive) {
+                    Task {
+                        await appState.signOutAccount()
+                        self.circle = nil
+                    }
+                }
             }
         }
     }
 
-    private var durationLabel: String {
-        switch shareMinutes {
-        case 15: return "15 min"
-        case 60: return "1 h"
-        default: return "4 h"
-        }
+    private var firstName: String {
+        let name = appState.account?.name.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if let first = name.split(separator: " ").first { return String(first) }
+        return appState.account?.email.components(separatedBy: "@").first ?? ""
+    }
+
+    private func trimmed(_ value: String) -> String {
+        value.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private func statusSymbol(_ status: FamilyStatus?) -> String {
+        guard let status else { return "questionmark.circle" }
+        return status.needsHelp ? "exclamationmark.triangle.fill" : "checkmark.circle.fill"
+    }
+
+    private func statusColor(_ status: FamilyStatus?) -> Color {
+        guard let status else { return .secondary }
+        return status.needsHelp ? .red : .green
+    }
+
+    private func statusLabel(_ status: FamilyStatus?) -> String {
+        guard let status else { return "Sin aviso reciente" }
+        return "\(status.needsHelp ? "Necesita ayuda" : "Está bien") · \(ago(status.reportedAt))"
     }
 
     private func locationLabel(_ location: FamilyLocation?) -> String {
-        guard let location else { return "No está compartiendo ubicación" }
-        return location.precision == "precise" ? "Ubicación precisa temporal" : "Ubicación aproximada temporal"
+        guard let location else { return "No comparte ubicación" }
+        return location.precision == "precise" ? "Ubicación precisa" : "Ubicación aproximada"
     }
 
-    private func prepareAndReload() async {
-        isLoading = true
-        await appState.updateRegistration()
-        guard appState.isRegistered else {
-            isLoading = false
-            return
+    private func ago(_ iso: String?) -> String {
+        guard let iso else { return "hace un momento" }
+        // El servidor envía microsegundos, que ISO8601DateFormatter no admite.
+        let normalized = iso.replacingOccurrences(of: "\\.[0-9]+", with: "", options: .regularExpression)
+        guard let date = ISO8601DateFormatter().date(from: normalized) else { return "hace un momento" }
+        let minutes = Int(Date().timeIntervalSince(date) / 60)
+        if minutes < 1 { return "hace un momento" }
+        if minutes < 60 { return "hace \(minutes) min" }
+        if minutes < 1_440 { return "hace \(minutes / 60) h" }
+        return "hace \(minutes / 1_440) d"
+    }
+
+    private func eventLabel(_ event: SeismicEvent) -> String {
+        let magnitude = event.magnitude.map { String(format: "M %.1f", $0) } ?? "Sismo"
+        guard let place = event.place else { return magnitude }
+        return "\(magnitude) · \(place)"
+    }
+
+    private func signIn(provider: String) {
+        SeismikOAuthSignIn.shared.start(provider: provider) { result in
+            DispatchQueue.main.async {
+                switch result {
+                case let .success(identity):
+                    Task { await appState.accountDidSignIn(identity) }
+                case let .failure(error):
+                    // Cerrar la hoja de inicio de sesión no es un error que mostrar.
+                    if let authError = error as? ASWebAuthenticationSessionError,
+                       authError.code == .canceledLogin {
+                        return
+                    }
+                    message = "No se pudo iniciar sesión. Revisa tu conexión e inténtalo de nuevo."
+                }
+            }
         }
-        await reload()
     }
 
     private func reload() async {
+        guard appState.account != nil else {
+            circle = nil
+            return
+        }
+        isLoading = true
         defer { isLoading = false }
         do {
             circle = try await SeismikAPIClient.shared.fetchFamilyCircle()
             if let first = circle?.members.first(where: { $0.location != nil })?.location {
                 region.center = CLLocationCoordinate2D(latitude: first.latitude, longitude: first.longitude)
             }
+        } catch SeismikAPIError.accountRequired {
+            appState.accountSessionExpired()
+        } catch let SeismikAPIError.rejected(status, _) where status == 401 {
+            appState.accountSessionExpired()
+            message = "Tu sesión venció. Inicia sesión de nuevo para ver a tu familia."
         } catch {
-            // El estado se puede perder si Redis se reinicia mientras la app
-            // estaba cerrada. Reintenta una sola vez tras renovar sesión y no
-            // expone al usuario el detalle HTTP interno.
-            await appState.updateRegistration()
-            guard appState.isRegistered else { return }
-            do {
-                circle = try await SeismikAPIClient.shared.fetchFamilyCircle()
-            } catch {
-                message = "No se pudo abrir el círculo familiar ahora. Revisa tu conexión e inténtalo de nuevo."
+            message = "No se pudo cargar tu familia ahora. Revisa tu conexión e inténtalo de nuevo."
+        }
+    }
+
+    private func report(needsHelp: Bool) async {
+        isReporting = true
+        defer { isReporting = false }
+        locationManager.requestPermission()
+        let coordinate = locationManager.currentCoordinate
+        do {
+            try await SeismikAPIClient.shared.reportFamilyStatus(
+                needsHelp: needsHelp,
+                eventId: appState.pendingFamilyCheckIn?.id,
+                latitude: coordinate?.latitude,
+                longitude: coordinate?.longitude,
+                precise: precise
+            )
+            appState.pendingFamilyCheckIn = nil
+            if coordinate == nil {
+                message = "Aviso enviado sin ubicación. Permite la ubicación para compartirla con tu familia."
+            } else {
+                message = needsHelp
+                    ? "Tu familia sabe que necesitas ayuda y ve dónde estás."
+                    : "Tu familia sabe que estás bien."
             }
+            await reload()
+        } catch let SeismikAPIError.rejected(status, _) where status == 401 {
+            appState.accountSessionExpired()
+            message = "Tu sesión venció. Inicia sesión de nuevo para avisar a tu familia."
+        } catch {
+            message = "No se pudo enviar el aviso. Revisa tu conexión e inténtalo otra vez."
         }
     }
 
@@ -879,43 +1028,28 @@ public struct FamilySafetyView: View {
         do {
             try await SeismikAPIClient.shared.createFamilyCircle(displayName: displayName, circleName: circleName)
             await reload()
-        } catch { message = error.localizedDescription }
+        } catch { message = "No se pudo crear el círculo. Inténtalo otra vez." }
     }
 
     private func joinCircle() async {
         do {
             try await SeismikAPIClient.shared.joinFamilyCircle(inviteCode: inviteCode, displayName: displayName)
             await reload()
-        } catch { message = error.localizedDescription }
+        } catch { message = "El código no es válido, ya venció o tu cuenta ya está en un círculo." }
     }
 
     private func createInvitation() async {
         do {
-            let code = try await SeismikAPIClient.shared.createFamilyInvitation(displayName: displayName.isEmpty ? "Familiar" : displayName)
+            let code = try await SeismikAPIClient.shared.createFamilyInvitation(displayName: "Familiar")
             UIPasteboard.general.string = code
-            message = "Invitación copiada. Expira en 24 horas y sólo se puede usar una vez."
-        } catch { message = error.localizedDescription }
-    }
-
-    private func shareLocation() async {
-        locationManager.requestPermission()
-        guard let coordinate = locationManager.currentCoordinate else {
-            message = "Permite la ubicación y vuelve a tocar Compartir. Seismik no continuará siguiéndote después del tiempo elegido."
-            return
-        }
-        do {
-            try await SeismikAPIClient.shared.shareFamilyLocation(
-                latitude: coordinate.latitude, longitude: coordinate.longitude,
-                minutes: shareMinutes, precise: precise
-            )
-            await reload()
-        } catch { message = error.localizedDescription }
+            message = "Invitación copiada. Vence en 24 horas y sirve una sola vez."
+        } catch { message = "Sólo quien creó el círculo puede invitar." }
     }
 
     private func stopSharing() async {
         do {
             try await SeismikAPIClient.shared.stopSharingFamilyLocation()
             await reload()
-        } catch { message = error.localizedDescription }
+        } catch { message = "No se pudo borrar tu ubicación. Revisa tu conexión." }
     }
 }
