@@ -91,7 +91,9 @@ def main() -> None:
     subscription = os.environ["SEISMIK_PUBSUB_SUBSCRIPTION"]
     base_url = os.environ["SEISMIK_EVENT_FORWARD_URL"]
     secret = os.environ["SEISMIK_WEBHOOK_HMAC_SECRET"]
-    edge_secret = os.environ.get("SEISMIK_EDGE_ORIGIN_SECRET", "")
+    # Igual que la API (api/config.py): un salto de línea guardado en Secret
+    # Manager no debe cambiar el valor que se compara.
+    edge_secret = os.environ.get("SEISMIK_EDGE_ORIGIN_SECRET", "").strip()
     health_server = start_health_server()
     subscriber = pubsub_v1.SubscriberClient()
     future = subscriber.subscribe(

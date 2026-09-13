@@ -141,9 +141,16 @@ class AppSettings(BaseSettings):
     def strip_oauth_client_id(cls, value: object) -> object:
         return value.strip() if isinstance(value, str) else value
 
-    @field_validator("oauth_google_client_secret", "oauth_github_client_secret", mode="before")
+    @field_validator(
+        "oauth_google_client_secret",
+        "oauth_github_client_secret",
+        "edge_origin_secret",
+        mode="before",
+    )
     @classmethod
-    def strip_oauth_client_secret(cls, value: object) -> object:
+    def strip_secret(cls, value: object) -> object:
+        # En el secreto de origen, ese salto de línea haría que la API rechazara
+        # con 403 todo lo que llega por el Worker de Cloudflare.
         # Un secreto guardado con `echo` en Secret Manager arrastra un salto de
         # línea final. Google lo rechaza como `invalid_client` y el mensaje no
         # dice por qué: basta un carácter invisible para romper el inicio de sesión.
