@@ -62,6 +62,19 @@ async def test_requests_with_the_secret_reach_the_api() -> None:
 
 
 @pytest.mark.asyncio
+async def test_a_trailing_newline_in_the_stored_secret_is_ignored() -> None:
+    """Un secreto guardado con `echo` en Secret Manager termina en salto de línea."""
+
+    response = await _get(
+        AppSettings(edge_origin_secret=f"  {SECRET}\n"),
+        PAST_THE_GUARD,
+        {EDGE_ORIGIN_HEADER: SECRET},
+    )
+
+    assert response.status_code == 404
+
+
+@pytest.mark.asyncio
 async def test_liveness_probe_does_not_need_the_secret() -> None:
     response = await _get(AppSettings(edge_origin_secret=SECRET), "/health/live")
 

@@ -138,3 +138,42 @@ entorno. Para deshacerlo:
 gcloud run services update seismik-api --region us-east1 \
   --remove-secrets=SEISMIK_EDGE_ORIGIN_SECRET
 ```
+
+## Rotar el secreto de origen
+
+**Nunca con `:latest`.** Cloud Run lee el secreto al arrancar cada instancia.
+Con `seismik-edge-origin:latest`, crear una versión nueva no cambia nada en el
+momento, pero la siguiente instancia que arranque (la API escala a cero) toma
+el valor nuevo mientras el Worker sigue enviando el anterior: todo lo que llega
+por Cloudflare recibe 403. Por eso los servicios apuntan a un número de versión
+y la rotación mueve las tres piezas a la vez:
+
+```bash
+REGION=us-east1
+
+# 1. Versión nueva sin salto de línea. Anotar el número que imprime (N).
+openssl rand -base64 48 | tr -d '\n' | \
+  gcloud secrets versions add seismik-edge-origin --data-file=-
+```
+
+2. **Preparar el Worker sin guardar.** Cloudflare → `seismik` → Settings →
+   `EDGE_ORIGIN_SECRET` → editar y pegar el valor de la versión N (Secret
+   Manager → `seismik-edge-origin` → versión N → *Ver valor del secreto*).
+   Dejar el formulario abierto.
+
+```bash
+# 3. API con la versión N. En cuanto termine, guardar/desplegar el Worker:
+#    entre ambos pasos api.seismik.org responde 403.
+N=2
+gcloud run services update seismik-api --region "$REGION" \
+  --update-secrets=SEISMIK_EDGE_ORIGIN_SECRET=seismik-edge-origin:$N
+
+# 4. Reenviador. Mientras tanto sus eventos se reintentan; no se pierden.
+gcloud run services update seismik-event-forwarder --region "$REGION" \
+  --update-secrets=SEISMIK_EDGE_ORIGIN_SECRET=seismik-edge-origin:$N
+
+# 5. Comprobar como en el paso 5 de arriba.
+```
+
+La versión anterior se puede **inhabilitar** (no destruir) un día después:
+si algo quedó apuntando a ella, se vuelve a habilitar al instante.
