@@ -213,7 +213,9 @@ def test_sgc_rapid_feed_contract_is_normalized() -> None:
     assert rows[0].magnitude == 7.4
     assert rows[0].depth_km == 31.2
     assert rows[0].official_url.endswith("/SGC2026pqqmro/resumen")
+    # El SGC filtra en hora de Colombia (UTC-5): en UTC, una ventana de la
+    # última hora caía cinco horas en el futuro y llegaba vacía.
     assert session.calls[0]["params"] == {
-        "startdate": "2026-08-10T00:00:00",
-        "enddate": "2026-08-11T00:00:00",
+        "startdate": "2026-08-09T19:00:00",
+        "enddate": "2026-08-10T19:00:00",
     }

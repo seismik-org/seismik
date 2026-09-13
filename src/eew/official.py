@@ -25,6 +25,8 @@ from eew.models import (
 
 LOGGER = logging.getLogger(__name__)
 USER_AGENT = "seismik-detector/0.3 (+official-report-enrichment)"
+# Colombia no usa horario de verano.
+COLOMBIA_TIME = timezone(timedelta(hours=-5))
 
 
 @dataclass(frozen=True)
@@ -270,15 +272,19 @@ class OfficialApiClient:
         return reports
 
     def _fetch_sgc_geojson(self, start: datetime, end: datetime) -> list[OfficialReport]:
-        start_utc = start.replace(tzinfo=timezone.utc) if start.tzinfo is None else start.astimezone(timezone.utc)
-        end_utc = end.replace(tzinfo=timezone.utc) if end.tzinfo is None else end.astimezone(timezone.utc)
+        # El SGC filtra ``startdate`` y ``enddate`` en hora de Colombia aunque
+        # cada sismo traiga ``utcTime``. Con la ventana en UTC, «la última hora»
+        # caía cinco horas en el futuro y llegaba vacía: ni el publicador de X
+        # ni la búsqueda del reporte de una detección veían sus sismos.
+        start_local = (start.replace(tzinfo=timezone.utc) if start.tzinfo is None else start).astimezone(COLOMBIA_TIME)
+        end_local = (end.replace(tzinfo=timezone.utc) if end.tzinfo is None else end).astimezone(COLOMBIA_TIME)
         payload = self._get(
             # El endpoint del SGC exige fecha y hora ISO-8601. Con sólo la
             # fecha responde 200 pero incluye un objeto ``error`` y el
             # agregador terminaba interpretándolo como un catálogo vacío.
             params={
-                "startdate": start_utc.strftime("%Y-%m-%dT%H:%M:%S"),
-                "enddate": end_utc.strftime("%Y-%m-%dT%H:%M:%S"),
+                "startdate": start_local.strftime("%Y-%m-%dT%H:%M:%S"),
+                "enddate": end_local.strftime("%Y-%m-%dT%H:%M:%S"),
             }
         ).json()
         if isinstance(payload, dict) and payload.get("error"):
