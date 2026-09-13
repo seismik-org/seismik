@@ -52,6 +52,16 @@ class AppSettings(BaseSettings):
     x_publisher_minimum_magnitude: float = Field(default=2.5, ge=0, le=10)
     # Adjunta la imagen del boletín (integrations/bulletin_card.py) a cada post.
     x_publisher_images: bool = True
+    # Qué publica: los sismos nuevos de los catálogos de official_sources.json o
+    # las actualizaciones oficiales de las detecciones propias por SeedLink.
+    x_publisher_source: Literal["official_catalogs", "seismik_detections"] = "official_catalogs"
+    x_publisher_poll_seconds: float = Field(default=120.0, ge=30, le=3_600)
+    x_publisher_max_age_minutes: float = Field(default=60.0, ge=5, le=1_440)
+    # Dos reportes son el mismo sismo si sus orígenes y epicentros están así de cerca.
+    x_publisher_duplicate_seconds: float = Field(default=90.0, ge=10, le=900)
+    x_publisher_duplicate_km: float = Field(default=150.0, ge=10, le=1_000)
+    # Dentro de los países de una agencia local, el USGS espera a que ésta publique.
+    x_publisher_global_settle_minutes: float = Field(default=15.0, ge=0, le=120)
     x_publisher_stream: str = "stream:seismik:x-publisher"
     x_publisher_group: str = "x-publishers"
     x_publisher_consumer_name: str = "x-publisher-1"

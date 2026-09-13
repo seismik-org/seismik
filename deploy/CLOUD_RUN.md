@@ -193,8 +193,19 @@ propio con `--no-cpu-throttling` costaría unos 40 USD/mes más. Integraciones y
 tiene la CPU siempre asignada. Si el publicador falla, se registra y se reinicia
 sin detener los webhooks.
 
+Publica los sismos nuevos de las agencias de `official_sources.json`: consulta
+sus catálogos cada 2 minutos (`SEISMIK_X_PUBLISHER_POLL_SECONDS`) y publica una
+vez cada sismo con origen en la última hora y magnitud desde
+`SEISMIK_X_PUBLISHER_MINIMUM_MAGNITUDE`. Un sismo que reportan varias agencias
+sale una sola vez, con el reporte local; dentro de los países de una agencia
+local, el USGS espera 15 minutos a que ésta lo publique. Las detecciones
+propias por SeedLink no se publican (`SEISMIK_X_PUBLISHER_SOURCE=official_catalogs`;
+`seismik_detections` usaría el stream de integraciones).
+
 Por defecto no publica (`SEISMIK_X_PUBLISHER_ENABLED=false`,
 `SEISMIK_X_PUBLISHER_DRY_RUN=true`): sólo audita en `stream:seismik:x-audit`.
+Conviene desplegar primero así unos minutos: los sismos de la última hora quedan
+marcados y al activar la publicación sólo salen los nuevos.
 
 ```bash
 REGION=us-east1
