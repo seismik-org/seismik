@@ -107,7 +107,11 @@ done
    Variables y secretos → Agregar → tipo *Secreto*, nombre
    `EDGE_ORIGIN_SECRET`, valor igual al de
    `gcloud secrets versions access latest --secret=seismik-edge-origin`.
-   Los secretos del panel se conservan en cada despliegue desde GitHub.
+   Los secretos del panel se conservan en cada despliegue desde GitHub; las
+   variables de **texto** no: el siguiente push las borra, el Worker deja de
+   enviar la cabecera y todo `api.seismik.org` y `auth.seismik.org` responde
+   403 «Origin not allowed». Al editarlo, comprobar que el tipo siga en
+   *Secret*.
 
 ```bash
 # 3. Reenviador: imagen nueva con el secreto.
@@ -159,7 +163,9 @@ openssl rand -base64 48 | tr -d '\n' | \
 2. **Preparar el Worker sin guardar.** Cloudflare → `seismik` → Settings →
    `EDGE_ORIGIN_SECRET` → editar y pegar el valor de la versión N (Secret
    Manager → `seismik-edge-origin` → versión N → *Ver valor del secreto*).
-   Dejar el formulario abierto.
+   El tipo debe quedar en *Secret*, no *Text*: una variable de texto funciona
+   hasta el siguiente despliegue desde GitHub, que la borra. Dejar el
+   formulario abierto.
 
 ```bash
 # 3. API con la versión N. En cuanto termine, guardar/desplegar el Worker:
