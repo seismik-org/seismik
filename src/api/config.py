@@ -3,7 +3,7 @@ from __future__ import annotations
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import Field, SecretStr, model_validator
+from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -135,6 +135,21 @@ class AppSettings(BaseSettings):
     crowd_trigger_cooldown_seconds: int = Field(default=60, ge=1)
     crowd_rate_limit_per_second: int = Field(default=5, ge=1, le=100)
     report_rate_limit_per_minute: int = Field(default=10, ge=1, le=100)
+
+    @field_validator("oauth_google_client_id", "oauth_github_client_id", mode="before")
+    @classmethod
+    def strip_oauth_client_id(cls, value: object) -> object:
+        return value.strip() if isinstance(value, str) else value
+
+    @field_validator("oauth_google_client_secret", "oauth_github_client_secret", mode="before")
+    @classmethod
+    def strip_oauth_client_secret(cls, value: object) -> object:
+        # Un secreto guardado con `echo` en Secret Manager arrastra un salto de
+        # línea final. Google lo rechaza como `invalid_client` y el mensaje no
+        # dice por qué: basta un carácter invisible para romper el inicio de sesión.
+        if isinstance(value, SecretStr):
+            return SecretStr(value.get_secret_value().strip())
+        return value.strip() if isinstance(value, str) else value
 
     @model_validator(mode="after")
     def validate_production_secrets(self) -> "AppSettings":
