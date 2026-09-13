@@ -57,8 +57,14 @@ class _FamilyApi extends ApiClient {
   @override
   Future<void> clearAccount() async => account = null;
 
+  Object? linkFailure;
+
   @override
-  Future<void> linkDeviceToAccount() async => links++;
+  Future<void> linkDeviceToAccount() async {
+    links++;
+    final Object? failure = linkFailure;
+    if (failure != null) throw failure;
+  }
 
   @override
   Future<FamilyCircle?> fetchFamilyCircle() async {
@@ -187,5 +193,24 @@ void main() {
 
     expect(openRequests, 1);
     expect(seismik.recentEvents, isEmpty, reason: 'no es un sismo');
+  });
+
+  test('un 401 de la sesión del teléfono no cierra la sesión de la cuenta', () async {
+    final _FamilyApi api = _FamilyApi()
+      ..account = const SeismikAccount(uid: 'u', email: 'e@x.test', name: 'E')
+      ..linkFailure = const SeismikApiException(
+        '{detail: Invalid device session}',
+        401,
+      );
+    final FamilyState family = familyWith(api, _FakeAuthorizer());
+
+    await family.initialize();
+
+    expect(
+      family.account,
+      isNotNull,
+      reason: 'el siguiente registro vuelve a enlazar el teléfono',
+    );
+    expect(family.error, isNull);
   });
 }
