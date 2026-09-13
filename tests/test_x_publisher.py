@@ -19,25 +19,30 @@ from integrations.x_publisher import (
     is_simulated,
 )
 
-OFFICIAL_URL = "https://www.sgc.gov.co/detallesismo/sgc2026abc/resumen"
 
-
-def official_event(magnitude: Any = 3.2) -> dict:
+def official_event(magnitude: Any = 3.2, **report: Any) -> dict:
     """Mismos campos que `eew.models.OfficialReportUpdate.to_dict()`."""
+    preferred = {
+        "source_id": "sgc_colombia",
+        "agency": "Servicio Geológico Colombiano (SGC)",
+        "official_event_id": "sgc2026abc",
+        "magnitude": magnitude,
+        "magnitude_type": "ML",
+        "place": "Los Santos, Colombia",
+        "latitude": 6.75,
+        "longitude": -73.1,
+        "depth_km": 150.0,
+        "review_status": "reviewed",
+        "official_url": "https://www.sgc.gov.co/detallesismo/sgc2026abc/resumen",
+        "origin_time": "2026-09-12T12:00:00Z",
+        **report,
+    }
     return {
         "type": "official_report_update",
         "status": "official_report_available",
         "event_id": "official-1",
         "candidate_event_id": "candidate-1",
-        "preferred_report": {
-            "source_id": "sgc_colombia",
-            "agency": "SGC",
-            "official_event_id": "sgc2026abc",
-            "magnitude": magnitude,
-            "place": "Los Santos, Colombia",
-            "official_url": OFFICIAL_URL,
-            "origin_time": "2026-09-12T12:00:00Z",
-        },
+        "preferred_report": preferred,
     }
 
 
@@ -53,6 +58,10 @@ def test_malformed_official_events_are_not_eligible() -> None:
     assert not eligible({**official_event(), "event_id": ""}, 2.5), "compartiría la marca de publicado"
 
 
+def test_withdrawn_reports_are_not_eligible() -> None:
+    assert not eligible(official_event(review_status="deleted"), 2.5)
+
+
 def test_drills_are_never_eligible() -> None:
     """Un simulacro publicado anunciaría en la cuenta pública un sismo que no ocurrió."""
     _candidate, drill = drill_sequence("bogota")
@@ -62,38 +71,43 @@ def test_drills_are_never_eligible() -> None:
     assert not is_simulated(official_event())
 
 
-def test_bulletin_names_the_agency_and_links_the_official_report() -> None:
+def test_the_post_text_names_the_agency_and_has_no_link() -> None:
+    """Con URL X cobra $0.200 por post en vez de $0.015; el enlace va en la imagen."""
     text = bulletin_text(official_event())
 
-    assert "M3.2" in text and "Fuente: SGC" in text
-    assert text.endswith(OFFICIAL_URL)
+    assert text.startswith("Boletín sísmico Seismik · M3.2")
+    assert "Fuente: SGC" in text
+    assert "12 de septiembre de 2026, 12:00 UTC (07:00 a. m. hora de Colombia)" in text
+    assert "http" not in text and "sgc.gov.co" not in text
     assert len(text) <= 280
 
 
-def test_a_long_place_is_trimmed_but_the_official_link_is_kept() -> None:
-    event = official_event()
-    event["preferred_report"]["place"] = "Zona rural muy extensa " * 20
+def test_preliminary_reports_say_so_in_the_post() -> None:
+    assert bulletin_text(official_event(review_status="automatic")).startswith("Boletín preliminar Seismik")
 
-    text = bulletin_text(event)
+
+def test_a_long_place_is_trimmed_to_fit_the_post() -> None:
+    text = bulletin_text(official_event(place="Zona rural muy extensa " * 20))
 
     assert len(text) <= 280
     assert "…" in text
-    assert text.endswith(OFFICIAL_URL)
+    assert text.endswith("Fuente: SGC")
 
 
 # --- Consumo del stream ------------------------------------------------------
 
 
 class FakeXResponse:
-    def __init__(self, status_code: int) -> None:
+    def __init__(self, status_code: int, body: dict[str, Any] | None = None) -> None:
         self.status_code = status_code
+        self.body = body if body is not None else {"data": {"id": "post-1"}}
 
     def raise_for_status(self) -> None:
         if self.status_code >= 400:
             raise x_publisher.requests.HTTPError(f"HTTP {self.status_code}")
 
     def json(self) -> dict[str, Any]:
-        return {"data": {"id": "post-1"}}
+        return self.body
 
 
 def rejected(*_args: object, **_kwargs: object) -> FakeXResponse:
@@ -105,10 +119,14 @@ def unreachable(*_args: object, **_kwargs: object) -> FakeXResponse:
 
 
 async def publisher(**overrides: Any) -> XPublisher:
-    settings = AppSettings(
-        x_publisher_enabled=True, x_publisher_dry_run=False, pending_claim_idle_ms=1_000, **overrides
-    )
-    pub = XPublisher(FakeRedis(decode_responses=True), settings)
+    options: dict[str, Any] = {
+        "x_publisher_enabled": True,
+        "x_publisher_dry_run": False,
+        "x_publisher_images": False,
+        "pending_claim_idle_ms": 1_000,
+        **overrides,
+    }
+    pub = XPublisher(FakeRedis(decode_responses=True), AppSettings(**options))
     await pub.ensure_group()
     return pub
 
@@ -132,8 +150,86 @@ async def pending(pub: XPublisher) -> int:
     return int(info["pending"])
 
 
+async def audit_entries(pub: XPublisher) -> list[dict[str, str]]:
+    return [fields for _id, fields in await pub.redis.xrange(AUDIT_STREAM)]
+
+
 async def audit_actions(pub: XPublisher) -> list[str]:
-    return [fields["action"] for _id, fields in await pub.redis.xrange(AUDIT_STREAM)]
+    return [entry["action"] for entry in await audit_entries(pub)]
+
+
+@pytest.mark.asyncio
+async def test_the_bulletin_is_posted_with_its_card(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[tuple[str, dict[str, Any]]] = []
+
+    def post(url: str, **kwargs: Any) -> FakeXResponse:
+        calls.append((url, kwargs))
+        if url == x_publisher.X_MEDIA_UPLOAD_URL:
+            return FakeXResponse(200, {"data": {"id": "1880028106020515840", "media_key": "3_1880028106020515840"}})
+        return FakeXResponse(201)
+
+    monkeypatch.setattr(x_publisher.requests, "post", post)
+    monkeypatch.setattr(x_publisher, "render_bulletin_card", lambda event: b"PNG del boletin")
+    pub = await publisher(x_publisher_images=True)
+
+    await deliver(pub, {"payload": json.dumps(official_event())})
+
+    (upload_url, upload), (post_url, tweet) = calls
+    assert upload_url == x_publisher.X_MEDIA_UPLOAD_URL
+    assert upload["files"]["media"][1] == b"PNG del boletin"
+    assert upload["data"] == {"media_category": "tweet_image"}
+    assert post_url == x_publisher.X_POST_URL
+    assert tweet["json"]["media"] == {"media_ids": ["1880028106020515840"]}
+    assert "http" not in tweet["json"]["text"]
+    assert await audit_actions(pub) == ["published"]
+
+
+@pytest.mark.asyncio
+async def test_a_card_that_fails_to_render_still_posts_the_text(monkeypatch: pytest.MonkeyPatch) -> None:
+    urls: list[str] = []
+
+    def broken(_event: object) -> bytes:
+        raise RuntimeError("fuente dañada")
+
+    def post(url: str, **_kwargs: Any) -> FakeXResponse:
+        urls.append(url)
+        return FakeXResponse(201)
+
+    monkeypatch.setattr(x_publisher, "render_bulletin_card", broken)
+    monkeypatch.setattr(x_publisher.requests, "post", post)
+    pub = await publisher(x_publisher_images=True)
+
+    await deliver(pub, {"payload": json.dumps(official_event())})
+
+    assert urls == [x_publisher.X_POST_URL]
+    assert [entry.get("image") for entry in await audit_entries(pub)] == ["no"]
+
+
+@pytest.mark.asyncio
+async def test_a_rejected_image_upload_is_retried_like_a_rejected_post(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(x_publisher.requests, "post", rejected)
+    monkeypatch.setattr(x_publisher, "render_bulletin_card", lambda event: b"PNG")
+    pub = await publisher(x_publisher_images=True)
+
+    await deliver(pub, {"payload": json.dumps(official_event())})
+
+    assert await pending(pub) == 1
+    assert not await pub.redis.exists("seismik:x:published:official-1")
+
+
+@pytest.mark.asyncio
+async def test_a_dry_run_renders_the_real_card_without_posting(monkeypatch: pytest.MonkeyPatch) -> None:
+    def post(*_args: object, **_kwargs: object) -> FakeXResponse:
+        raise AssertionError("en modo de prueba no se llama a X")
+
+    monkeypatch.setattr(x_publisher.requests, "post", post)
+    pub = await publisher(x_publisher_enabled=False, x_publisher_dry_run=True, x_publisher_images=True)
+
+    await deliver(pub, {"payload": json.dumps(official_event())})
+
+    [entry] = await audit_entries(pub)
+    assert entry["action"] == "dry_run"
+    assert int(entry["image_bytes"]) > 50_000
 
 
 @pytest.mark.asyncio

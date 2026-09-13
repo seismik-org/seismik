@@ -50,6 +50,8 @@ class AppSettings(BaseSettings):
     x_publisher_enabled: bool = False
     x_publisher_dry_run: bool = True
     x_publisher_minimum_magnitude: float = Field(default=2.5, ge=0, le=10)
+    # Adjunta la imagen del boletín (integrations/bulletin_card.py) a cada post.
+    x_publisher_images: bool = True
     x_publisher_stream: str = "stream:seismik:x-publisher"
     x_publisher_group: str = "x-publishers"
     x_publisher_consumer_name: str = "x-publisher-1"
