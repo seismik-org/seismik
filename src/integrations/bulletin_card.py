@@ -189,6 +189,16 @@ def country_at(latitude: float, longitude: float) -> str | None:
     return _area_at(_indexed_areas()[0], latitude, longitude)
 
 
+@lru_cache(maxsize=1)
+def _country_codes() -> list[tuple[Box, Ring, str]]:
+    return [(_bbox(ring), ring, c["iso"]) for c in load_geo()["countries"] if c["iso"] for ring in c["rings"]]
+
+
+def country_code_at(latitude: float, longitude: float) -> str | None:
+    """Código ISO del país que contiene el punto; None en el mar."""
+    return _area_at(_country_codes(), latitude, longitude)
+
+
 def sea_at(latitude: float, longitude: float) -> str | None:
     """El mar u océano más específico que contiene el punto."""
     return _area_at(_indexed_areas()[1], latitude, longitude)

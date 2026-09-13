@@ -1,24 +1,31 @@
 """Publicador seguro de boletines de Seismik en X.
 
-Sólo publica eventos oficiales reales. Las detecciones sin confirmación y los
-simulacros se auditan, pero no salen a la cuenta pública: una detección no es
-un boletín oficial, y un simulacro anunciaría un sismo que no ocurrió.
+Por defecto (`x_publisher_source="official_catalogs"`) consulta cada
+`x_publisher_poll_seconds` los catálogos de las agencias de
+official_sources.json y publica una sola vez cada sismo nuevo:
 
-Cada post lleva la imagen del boletín (integrations/bulletin_card.py). El texto
-no incluye enlace: X cobra $0.200 por post con URL y $0.015 sin ella, y el
-enlace oficial ya va escrito en la imagen.
+- sólo sismos con origen en los últimos `x_publisher_max_age_minutes`;
+- si varias agencias reportan el mismo sismo (origen a ±`x_publisher_duplicate_seconds`
+  y epicentro a menos de `x_publisher_duplicate_km`), sale una vez, con el
+  reporte de la agencia local cuando lo hay: dentro de los países de una
+  agencia local, el USGS espera `x_publisher_global_settle_minutes`;
+- las actualizaciones de un sismo ya publicado no generan otro post.
 
-Ningún mensaje detiene el servicio. Uno ilegible se audita y se descarta,
-porque reintentarlo no lo arregla. Un rechazo de X queda pendiente y se
-reintenta, también tras un reinicio, hasta `integration_delivery_max_attempts`;
-después se audita como fallido.
+El modo `seismik_detections` publica en cambio las actualizaciones oficiales de
+los sismos que detectó la red propia (stream de integraciones).
+
+Nunca publica simulacros ni eventos retirados por la agencia. Cada post lleva la
+imagen del boletín (integrations/bulletin_card.py). El texto no incluye enlace:
+X cobra $0.200 por post con URL y $0.015 sin ella, y el enlace oficial ya va
+escrito en la imagen.
 """
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any, cast
 
 import requests
@@ -27,8 +34,17 @@ from redis.exceptions import ResponseError
 from requests_oauthlib import OAuth1
 
 from api.config import AppSettings, get_settings
+from eew.models import OfficialReport
+from eew.official import OfficialApiClient, OfficialSource, load_sources
 from eew.simulation import is_drill
-from integrations.bulletin_card import bulletin_facts, is_withdrawn, render_bulletin_card, when_text
+from integrations.bulletin_card import (
+    _distance_km,
+    bulletin_facts,
+    country_code_at,
+    is_withdrawn,
+    render_bulletin_card,
+    when_text,
+)
 from runtime_health import start_health_server
 
 LOGGER = logging.getLogger(__name__)
@@ -36,6 +52,8 @@ X_POST_URL = "https://api.x.com/2/tweets"
 X_MEDIA_UPLOAD_URL = "https://api.x.com/2/media/upload"
 X_MAX_CHARS = 280
 AUDIT_STREAM = "stream:seismik:x-audit"
+RECENT_QUAKES = "seismik:x:recent-quakes"
+HANDLED_TTL_SECONDS = 2_592_000
 
 
 def _report(event: dict[str, Any]) -> dict[str, Any]:
@@ -57,6 +75,14 @@ def _parse(fields: dict[str, str] | None) -> dict[str, Any] | None:
     except (KeyError, TypeError, ValueError):
         return None
     return event if isinstance(event, dict) else None
+
+
+def _origin(report: OfficialReport) -> datetime | None:
+    try:
+        moment = datetime.fromisoformat(str(report.origin_time).replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    return moment if moment.tzinfo else moment.replace(tzinfo=timezone.utc)
 
 
 def is_simulated(event: dict[str, Any]) -> bool:
@@ -86,6 +112,17 @@ def eligible(event: dict[str, Any], minimum_magnitude: float) -> bool:
     )
 
 
+def catalog_event(source: OfficialSource, report: OfficialReport) -> dict[str, Any]:
+    """Un reporte de catálogo con el mismo contrato que las actualizaciones oficiales."""
+    return {
+        "type": "official_report_update",
+        "status": "official_report_available",
+        # Estable entre consultas: la agencia y su propio identificador del sismo.
+        "event_id": f"{source.id}:{report.official_event_id}",
+        "preferred_report": report.to_dict(),
+    }
+
+
 def bulletin_text(event: dict[str, Any]) -> str:
     facts = bulletin_facts(event)
     kind = "Boletín preliminar Seismik" if facts.preliminary else "Boletín sísmico Seismik"
@@ -104,6 +141,119 @@ class XPublisher:
         self.redis, self.settings = redis, settings
         self.stop_event = asyncio.Event()
 
+    async def run(self) -> None:
+        if self.settings.x_publisher_source == "official_catalogs":
+            await self._run_catalogs()
+        else:
+            await self._run_detections()
+
+    # --- Catálogos oficiales ----------------------------------------------------
+
+    async def _run_catalogs(self) -> None:
+        sources = tuple(source for source in load_sources(self.settings.official_sources_path) if source.enabled)
+        LOGGER.info("X publisher vigila %s catálogos oficiales", len(sources))
+        while not self.stop_event.is_set():
+            try:
+                await self.poll_catalogs(sources, datetime.now(timezone.utc))
+            except asyncio.CancelledError:
+                raise
+            except Exception:
+                LOGGER.exception("X catalog poll failed")
+            with contextlib.suppress(TimeoutError):
+                await asyncio.wait_for(self.stop_event.wait(), timeout=self.settings.x_publisher_poll_seconds)
+
+    async def poll_catalogs(self, sources: tuple[OfficialSource, ...], now: datetime) -> None:
+        start = now - timedelta(minutes=self.settings.x_publisher_max_age_minutes)
+        timeout = self.settings.official_history_timeout_seconds
+        results = await asyncio.gather(
+            *(asyncio.to_thread(self._fetch_catalog, source, start, now, timeout) for source in sources),
+            return_exceptions=True,
+        )
+        local_countries = {code for source in sources if not source.global_fallback for code in source.countries}
+        found: list[tuple[OfficialSource, OfficialReport]] = []
+        for source, result in zip(sources, results, strict=True):
+            if isinstance(result, BaseException):
+                # Un catálogo caído no frena a los demás.
+                LOGGER.warning("Catálogo oficial falló source=%s error=%s", source.id, type(result).__name__)
+                continue
+            found.extend((source, report) for report in result)
+        # Primero las agencias locales: si un sismo aparece a la vez en su
+        # catálogo y en el del USGS, el post lleva el reporte local.
+        found.sort(key=lambda item: (-item[0].priority, item[1].origin_time))
+        for source, report in found:
+            origin = _origin(report)
+            if origin is None or not start <= origin <= now + timedelta(minutes=5):
+                continue
+            event = catalog_event(source, report)
+            if not eligible(event, self.settings.x_publisher_minimum_magnitude):
+                # Sin marca: si la agencia revisa la magnitud al alza, sale en otra consulta.
+                continue
+            if self._waiting_for_local_agency(source, report, origin, now, local_countries):
+                continue
+            await self._post_catalog_event(event, report, origin)
+
+    @staticmethod
+    def _fetch_catalog(source: OfficialSource, start: datetime, end: datetime, timeout: float) -> list[OfficialReport]:
+        return OfficialApiClient(source, timeout).fetch(start, end)
+
+    def _waiting_for_local_agency(self, source: OfficialSource, report: OfficialReport, origin: datetime,
+                                  now: datetime, local_countries: set[str]) -> bool:
+        """El USGS cubre el mundo, pero un sismo en Colombia debe salir con el reporte del SGC."""
+        settle = timedelta(minutes=self.settings.x_publisher_global_settle_minutes)
+        if not source.global_fallback or now - origin >= settle:
+            return False
+        return country_code_at(report.latitude, report.longitude) in local_countries
+
+    async def _post_catalog_event(self, event: dict[str, Any], report: OfficialReport, origin: datetime) -> None:
+        event_id = str(event["event_id"])
+        handled_key = f"seismik:x:published:{event_id}"
+        if await self.redis.exists(handled_key):
+            return
+        if await self._is_known_quake(report, origin):
+            if await self.redis.set(handled_key, "duplicate", nx=True, ex=HANDLED_TTL_SECONDS):
+                await self._audit(event_id, "skipped_duplicate_quake")
+            return
+        if not await self.redis.set(handled_key, "1", nx=True, ex=HANDLED_TTL_SECONDS):
+            return
+        try:
+            await self._publish(event, handled_key)
+        except Exception as exc:
+            LOGGER.warning("Publicación en X fallida event_id=%s error=%s", event_id, type(exc).__name__)
+            await self._catalog_failure(event_id, handled_key)
+            return
+        await self._remember_quake(event_id, report, origin)
+        await self.redis.delete(self._failure_key(event_id))
+
+    async def _is_known_quake(self, report: OfficialReport, origin: datetime) -> bool:
+        """Otro reporte del mismo sismo, de cualquier agencia, ya se publicó."""
+        window = self.settings.x_publisher_duplicate_seconds
+        stamp = origin.timestamp()
+        for raw in await self.redis.zrangebyscore(RECENT_QUAKES, stamp - window, stamp + window):
+            known = json.loads(cast(str, raw))
+            distance = _distance_km(known["lat"], known["lon"], report.latitude, report.longitude)
+            if distance <= self.settings.x_publisher_duplicate_km:
+                return True
+        return False
+
+    async def _remember_quake(self, event_id: str, report: OfficialReport, origin: datetime) -> None:
+        stamp = origin.timestamp()
+        member = json.dumps({"id": event_id, "lat": report.latitude, "lon": report.longitude})
+        await self.redis.zadd(RECENT_QUAKES, {member: stamp})
+        await self.redis.zremrangebyscore(RECENT_QUAKES, "-inf", stamp - 172_800)
+
+    async def _catalog_failure(self, event_id: str, handled_key: str) -> None:
+        key = self._failure_key(event_id)
+        attempts = int(await self.redis.incr(key))
+        await self.redis.expire(key, 86_400)
+        if attempts < self.settings.integration_delivery_max_attempts:
+            await self.redis.delete(handled_key)  # La siguiente consulta lo reintenta.
+            return
+        LOGGER.critical("Boletín no publicado en X tras %s intentos event_id=%s", attempts, event_id)
+        await self.redis.set(handled_key, "failed", ex=HANDLED_TTL_SECONDS)
+        await self._audit(event_id, "failed", attempts=str(attempts))
+
+    # --- Detecciones propias (stream de integraciones) ----------------------------
+
     async def ensure_group(self) -> None:
         try:
             await self.redis.xgroup_create(self.settings.integration_stream, self.settings.x_publisher_group, id="0-0", mkstream=True)
@@ -111,7 +261,7 @@ class XPublisher:
             if "BUSYGROUP" not in str(exc):
                 raise
 
-    async def run(self) -> None:
+    async def _run_detections(self) -> None:
         await self.ensure_group()
         while not self.stop_event.is_set():
             try:
@@ -163,19 +313,37 @@ class XPublisher:
             await self._acknowledge(message_id)
             return
         event_id = str(event.get("event_id", ""))
-        published_key = f"seismik:x:published:{event_id}"
+        # Cada actualización oficial de una detección trae un event_id nuevo
+        # (uuid): el sismo es la detección, y sólo se publica una vez.
+        published_key = f"seismik:x:published:{event.get('candidate_event_id') or event_id}"
         try:
             if is_simulated(event):
                 await self._audit(event_id, "skipped_drill")
             elif not eligible(event, self.settings.x_publisher_minimum_magnitude):
                 await self._audit(event_id, "skipped_not_official_or_below_threshold")
-            elif await self.redis.set(published_key, "1", nx=True, ex=2_592_000):
+            elif await self.redis.set(published_key, "1", nx=True, ex=HANDLED_TTL_SECONDS):
                 await self._publish(event, published_key)
         except Exception as exc:
             LOGGER.warning("Publicación en X fallida event_id=%s error=%s", event_id, type(exc).__name__)
             await self._record_failure(message_id, event_id)
             return
         await self._acknowledge(message_id)
+
+    async def _record_failure(self, message_id: str, event_id: str) -> None:
+        key = self._failure_key(message_id)
+        attempts = int(await self.redis.incr(key))
+        await self.redis.expire(key, 86_400)
+        if attempts < self.settings.integration_delivery_max_attempts:
+            return  # Queda pendiente: `_recover_pending` lo reintenta.
+        LOGGER.critical("Boletín no publicado en X tras %s intentos event_id=%s", attempts, event_id)
+        await self._audit(event_id, "failed", attempts=str(attempts), source_id=message_id)
+        await self._acknowledge(message_id)
+
+    async def _acknowledge(self, message_id: str) -> None:
+        await self.redis.xack(self.settings.integration_stream, self.settings.x_publisher_group, message_id)
+        await self.redis.delete(self._failure_key(message_id))
+
+    # --- Publicación en X ---------------------------------------------------------
 
     async def _publish(self, event: dict[str, Any], published_key: str) -> None:
         event_id = str(event["event_id"])
@@ -238,20 +406,6 @@ class XPublisher:
         if not media_id:
             raise ValueError("X no devolvió el id de la imagen")
         return str(media_id)
-
-    async def _record_failure(self, message_id: str, event_id: str) -> None:
-        key = self._failure_key(message_id)
-        attempts = int(await self.redis.incr(key))
-        await self.redis.expire(key, 86_400)
-        if attempts < self.settings.integration_delivery_max_attempts:
-            return  # Queda pendiente: `_recover_pending` lo reintenta.
-        LOGGER.critical("Boletín no publicado en X tras %s intentos event_id=%s", attempts, event_id)
-        await self._audit(event_id, "failed", attempts=str(attempts), source_id=message_id)
-        await self._acknowledge(message_id)
-
-    async def _acknowledge(self, message_id: str) -> None:
-        await self.redis.xack(self.settings.integration_stream, self.settings.x_publisher_group, message_id)
-        await self.redis.delete(self._failure_key(message_id))
 
     async def _audit(self, event_id: str, action: str, **extra: str) -> None:
         entry = {"event_id": event_id, "action": action, "at": datetime.now(timezone.utc).isoformat(), **extra}

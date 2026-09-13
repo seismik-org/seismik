@@ -1,10 +1,19 @@
 from pathlib import Path
 
+import pytest
+
 
 def test_api_image_contains_official_source_catalog() -> None:
     dockerfile = Path("Dockerfile.api").read_text(encoding="utf-8")
 
     assert "COPY official_sources.json ./official_sources.json" in dockerfile
+
+
+@pytest.mark.parametrize("name", ["Dockerfile.dispatcher", "Dockerfile.x-publisher"])
+def test_x_publisher_images_contain_official_source_catalog(name: str) -> None:
+    """El publicador de X consulta esos catálogos; sin el archivo no arranca."""
+
+    assert "COPY official_sources.json ./official_sources.json" in Path(name).read_text(encoding="utf-8")
 
 
 def test_android_declares_visibility_for_maps_and_official_sources() -> None:

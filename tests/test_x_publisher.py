@@ -3,12 +3,15 @@ from __future__ import annotations
 import asyncio
 import json
 from collections.abc import Callable
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import pytest
 from fakeredis.aioredis import FakeRedis
 
 from api.config import AppSettings
+from eew.models import OfficialReport
+from eew.official import OfficialSource
 from eew.simulation import drill_sequence
 from integrations import x_publisher
 from integrations.x_publisher import (
@@ -214,7 +217,7 @@ async def test_a_rejected_image_upload_is_retried_like_a_rejected_post(monkeypat
     await deliver(pub, {"payload": json.dumps(official_event())})
 
     assert await pending(pub) == 1
-    assert not await pub.redis.exists("seismik:x:published:official-1")
+    assert not await pub.redis.exists("seismik:x:published:candidate-1")
 
 
 @pytest.mark.asyncio
@@ -230,6 +233,24 @@ async def test_a_dry_run_renders_the_real_card_without_posting(monkeypatch: pyte
     [entry] = await audit_entries(pub)
     assert entry["action"] == "dry_run"
     assert int(entry["image_bytes"]) > 50_000
+
+
+@pytest.mark.asyncio
+async def test_updates_of_the_same_detection_are_posted_once(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Cada actualización oficial de una detección trae un event_id nuevo (uuid)."""
+    posts: list[str] = []
+
+    def post(url: str, **_kwargs: Any) -> FakeXResponse:
+        posts.append(url)
+        return FakeXResponse(201)
+
+    monkeypatch.setattr(x_publisher.requests, "post", post)
+    pub = await publisher()
+
+    await deliver(pub, {"payload": json.dumps({**official_event(), "event_id": "update-1"})})
+    await deliver(pub, {"payload": json.dumps({**official_event(review_status="reviewed"), "event_id": "update-2"})})
+
+    assert posts == [x_publisher.X_POST_URL]
 
 
 @pytest.mark.asyncio
@@ -275,7 +296,7 @@ async def test_a_failed_post_stays_pending_and_is_published_after_a_restart(
     await deliver(pub, {"payload": json.dumps(official_event())})
 
     assert await pending(pub) == 1, "sin confirmar, para reintentarlo"
-    assert not await pub.redis.exists("seismik:x:published:official-1"), "no se dio por publicado"
+    assert not await pub.redis.exists("seismik:x:published:candidate-1"), "no se dio por publicado"
 
     # Tras un reinicio `xreadgroup` con ">" ya no lo entrega: lo retoma la
     # recuperación de pendientes cuando supera `pending_claim_idle_ms`.
@@ -308,7 +329,7 @@ async def test_after_the_last_attempt_the_failure_is_audited_and_acknowledged(
 async def test_a_redis_error_in_the_loop_does_not_stop_the_service(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    pub = await publisher()
+    pub = await publisher(x_publisher_source="seismik_detections")
     reads = 0
 
     async def flaky_read(*_args: object, **_kwargs: object) -> list[Any]:
@@ -324,3 +345,176 @@ async def test_a_redis_error_in_the_loop_does_not_stop_the_service(
     await asyncio.wait_for(pub.run(), timeout=5)
 
     assert reads == 2
+
+
+# --- Catálogos de las agencias oficiales ----------------------------------------
+
+NOW = datetime(2026, 9, 13, 16, 0, tzinfo=timezone.utc)
+SGC = OfficialSource(
+    id="sgc_colombia", agency="Servicio Geológico Colombiano (SGC)", jurisdiction="Colombia",
+    countries=("CO",), adapter="sgc_geojson", endpoint="", official_site="", priority=100,
+)
+USGS = OfficialSource(
+    id="usgs_global", agency="United States Geological Survey (USGS)", jurisdiction="Global fallback",
+    countries=("US",), adapter="fdsn_geojson", endpoint="", official_site="", priority=10, global_fallback=True,
+)
+SOURCES = (USGS, SGC)
+
+
+def catalog_report(source: OfficialSource, event_id: str, *, minutes_ago: float = 5, latitude: float = 4.43,
+                   longitude: float = -73.83, magnitude: float | None = 4.8, status: str = "reviewed") -> OfficialReport:
+    origin = NOW - timedelta(minutes=minutes_ago)
+    return OfficialReport(
+        source_id=source.id, agency=source.agency, jurisdiction=source.jurisdiction, official_event_id=event_id,
+        origin_time=origin.isoformat().replace("+00:00", "Z"), updated_at=None, latitude=latitude,
+        longitude=longitude, depth_km=12.0, magnitude=magnitude, magnitude_type="Mw",
+        place="Guayabetal - Cundinamarca, Colombia", review_status=status,
+        official_url=f"https://example.org/{event_id}",
+    )
+
+
+def serve_catalogs(monkeypatch: pytest.MonkeyPatch, catalogs: dict[str, Any]) -> None:
+    """`catalogs` se puede cambiar entre consultas para simular revisiones."""
+
+    def fetch(source: OfficialSource, _start: datetime, _end: datetime, _timeout: float) -> list[OfficialReport]:
+        result = catalogs.get(source.id, [])
+        if isinstance(result, Exception):
+            raise result
+        return list(result)
+
+    monkeypatch.setattr(XPublisher, "_fetch_catalog", staticmethod(fetch))
+
+
+def capture_posts(monkeypatch: pytest.MonkeyPatch, responses: list[int] | None = None) -> list[str]:
+    texts: list[str] = []
+    codes = list(responses or [])
+
+    def post(url: str, **kwargs: Any) -> FakeXResponse:
+        code = codes.pop(0) if codes else 201
+        if code < 400:
+            texts.append(kwargs["json"]["text"])
+        return FakeXResponse(code)
+
+    monkeypatch.setattr(x_publisher.requests, "post", post)
+    return texts
+
+
+@pytest.mark.asyncio
+async def test_a_new_official_quake_is_posted_once_across_polls(monkeypatch: pytest.MonkeyPatch) -> None:
+    serve_catalogs(monkeypatch, {"sgc_colombia": [catalog_report(SGC, "SGC2026a")]})
+    posts = capture_posts(monkeypatch)
+    pub = await publisher()
+
+    await pub.poll_catalogs(SOURCES, NOW)
+    await pub.poll_catalogs(SOURCES, NOW + timedelta(minutes=2))
+
+    assert len(posts) == 1 and "Fuente: SGC" in posts[0]
+    assert await audit_actions(pub) == ["published"]
+
+
+@pytest.mark.asyncio
+async def test_the_same_quake_from_two_agencies_is_posted_once_with_the_local_report(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    serve_catalogs(monkeypatch, {
+        "usgs_global": [catalog_report(USGS, "us7000abcd", minutes_ago=20.3, latitude=4.5, longitude=-73.9)],
+        "sgc_colombia": [catalog_report(SGC, "SGC2026a", minutes_ago=20)],
+    })
+    posts = capture_posts(monkeypatch)
+    pub = await publisher()
+
+    await pub.poll_catalogs(SOURCES, NOW)
+
+    assert len(posts) == 1 and "Fuente: SGC" in posts[0]
+    assert await audit_actions(pub) == ["published", "skipped_duplicate_quake"]
+
+
+@pytest.mark.asyncio
+async def test_usgs_waits_for_the_local_agency_inside_its_country(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Un sismo en Colombia debe salir con el reporte del SGC, no con el primero en llegar."""
+    serve_catalogs(monkeypatch, {"usgs_global": [catalog_report(USGS, "us7000abcd", minutes_ago=5)]})
+    posts = capture_posts(monkeypatch)
+    pub = await publisher()
+
+    await pub.poll_catalogs(SOURCES, NOW)
+    assert posts == []
+
+    await pub.poll_catalogs(SOURCES, NOW + timedelta(minutes=12))
+    assert len(posts) == 1 and "Fuente: USGS" in posts[0], "si el SGC no lo publica, sale el del USGS"
+
+
+@pytest.mark.asyncio
+async def test_usgs_does_not_wait_at_sea_or_outside_local_agencies(monkeypatch: pytest.MonkeyPatch) -> None:
+    serve_catalogs(monkeypatch, {"usgs_global": [catalog_report(USGS, "us7000kamc", latitude=52.5, longitude=160.2)]})
+    posts = capture_posts(monkeypatch)
+    pub = await publisher()
+
+    await pub.poll_catalogs(SOURCES, NOW)
+
+    assert len(posts) == 1
+
+
+@pytest.mark.asyncio
+async def test_old_quakes_are_not_news(monkeypatch: pytest.MonkeyPatch) -> None:
+    serve_catalogs(monkeypatch, {"sgc_colombia": [catalog_report(SGC, "SGC2026old", minutes_ago=90)]})
+    posts = capture_posts(monkeypatch)
+    pub = await publisher()
+
+    await pub.poll_catalogs(SOURCES, NOW)
+
+    assert posts == []
+    assert await audit_actions(pub) == []
+
+
+@pytest.mark.asyncio
+async def test_a_magnitude_revised_above_the_threshold_is_posted_later(monkeypatch: pytest.MonkeyPatch) -> None:
+    catalogs: dict[str, Any] = {"sgc_colombia": [catalog_report(SGC, "SGC2026a", magnitude=2.3)]}
+    serve_catalogs(monkeypatch, catalogs)
+    posts = capture_posts(monkeypatch)
+    pub = await publisher()
+
+    await pub.poll_catalogs(SOURCES, NOW)
+    assert posts == [] and await audit_actions(pub) == [], "bajo el umbral no se marca ni se audita"
+
+    catalogs["sgc_colombia"] = [catalog_report(SGC, "SGC2026a", magnitude=2.7)]
+    await pub.poll_catalogs(SOURCES, NOW + timedelta(minutes=2))
+    assert len(posts) == 1
+
+
+@pytest.mark.asyncio
+async def test_withdrawn_catalog_reports_are_ignored(monkeypatch: pytest.MonkeyPatch) -> None:
+    serve_catalogs(monkeypatch, {"sgc_colombia": [catalog_report(SGC, "SGC2026a", status="deleted")]})
+    posts = capture_posts(monkeypatch)
+    pub = await publisher()
+
+    await pub.poll_catalogs(SOURCES, NOW)
+
+    assert posts == []
+
+
+@pytest.mark.asyncio
+async def test_a_failed_catalog_post_is_retried_on_the_next_poll(monkeypatch: pytest.MonkeyPatch) -> None:
+    serve_catalogs(monkeypatch, {"sgc_colombia": [catalog_report(SGC, "SGC2026a")]})
+    posts = capture_posts(monkeypatch, responses=[503, 201])
+    pub = await publisher()
+
+    await pub.poll_catalogs(SOURCES, NOW)
+    assert posts == []
+
+    await pub.poll_catalogs(SOURCES, NOW + timedelta(minutes=2))
+    assert len(posts) == 1
+    assert await audit_actions(pub) == ["published"]
+
+
+@pytest.mark.asyncio
+async def test_a_failing_catalog_does_not_block_the_others(monkeypatch: pytest.MonkeyPatch) -> None:
+    serve_catalogs(monkeypatch, {
+        "usgs_global": RuntimeError("USGS no responde"),
+        "sgc_colombia": [catalog_report(SGC, "SGC2026a")],
+    })
+    posts = capture_posts(monkeypatch)
+    pub = await publisher()
+
+    await pub.poll_catalogs(SOURCES, NOW)
+
+    assert len(posts) == 1
