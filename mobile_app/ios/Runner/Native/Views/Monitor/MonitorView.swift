@@ -146,17 +146,6 @@ public struct MonitorView: View {
         .sheet(isPresented: $showDamageReport) {
             DamageReportView(preselectedEvent: state.events.first)
         }
-        // Superposición de Alerta de Emergencia Crítica
-        .overlay {
-            if let alertEvent = state.activeAlert {
-                EmergencyAlertView(
-                    event: alertEvent,
-                    onDismiss: { state.dismissAlert() },
-                    onReportSafe: { state.requestFamilyCheckIn(for: alertEvent) }
-                )
-                .transition(.opacity.combined(with: .scale(scale: 0.96)))
-            }
-        }
     }
 
     private func settleDrawer(
@@ -317,6 +306,7 @@ private struct NativeMapView: UIViewRepresentable {
         }
 
         func syncAnnotations(mapView: MKMapView, events: [SeismicEvent], stations: [SeismicStation]) {
+            syncPerimeters(mapView: mapView, events: events)
             let eventSnapshots = events.map {
                 "\($0.id)|\($0.magnitude ?? -1)|\($0.latitude ?? 999)|\($0.longitude ?? 999)|\($0.isPreliminary)"
             }
@@ -344,42 +334,26 @@ private struct NativeMapView: UIViewRepresentable {
             }
 
             mapView.addAnnotations(newAnnotations)
-            syncPreliminaryWaves(mapView: mapView, events: events)
         }
 
-        /// Dibuja la zona donde el modelo preliminar estima movimiento
-        /// perceptible. Es una guía de alcance, no un perímetro oficial.
-        private func syncPreliminaryWaves(mapView: MKMapView, events: [SeismicEvent]) {
-            let waves = events.compactMap { event -> (SeismicEvent, Double)? in
-                guard event.isPreliminary, let radius = feltWaveRadiusKm(for: event) else { return nil }
-                return (event, radius)
-            }
-            let snapshots = waves.map { "\($0.0.id)|\($0.1)" }
+        /// Alcance estimado III/VI de eventos oficiales y preliminares recientes.
+        private func syncPerimeters(mapView: MKMapView, events: [SeismicEvent]) {
+            let recent = FeltArea.recentEvents(events)
+            let snapshots = recent.map { "\($0.id)|\($0.latitude ?? 0)|\($0.longitude ?? 0)|\($0.magnitude ?? 0)|\($0.depthKm ?? 10)" }
             guard snapshots != lastWaveSnapshots else { return }
             lastWaveSnapshots = snapshots
             mapView.removeOverlays(mapView.overlays.filter { $0 is MKCircle })
-            for (event, radius) in waves {
+            for event in recent {
                 guard let coordinate = event.coordinate else { continue }
-                mapView.addOverlay(MKCircle(center: coordinate, radius: radius * 1_000))
+                for ring in FeltArea.perimeter(for: event) where ring.intensity == 3 || ring.intensity == 6 {
+                    mapView.addOverlay(FeltArea.circle(ring, center: coordinate))
+                }
             }
-        }
-
-        private func feltWaveRadiusKm(for event: SeismicEvent) -> Double? {
-            guard let magnitude = event.magnitude, event.coordinate != nil else { return nil }
-            // Inversa del modelo de selección del dispatcher (MMI III). Se
-            // limita para evitar que una estimación temprana ocupe el mundo.
-            let radius = pow(10, (1.5 * magnitude - 2.0) / 3.0) - 10.0
-            return min(800, max(15, radius))
         }
 
         func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
             if let circle = overlay as? MKCircle {
-                let renderer = MKCircleRenderer(circle: circle)
-                renderer.fillColor = UIColor.systemIndigo.withAlphaComponent(0.10)
-                renderer.strokeColor = UIColor.systemIndigo.withAlphaComponent(0.78)
-                renderer.lineWidth = 2
-                renderer.lineDashPattern = [6, 5]
-                return renderer
+                return FeltArea.renderer(for: circle)
             }
             return MKOverlayRenderer(overlay: overlay)
         }

@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+        ACF000012026091300000001 /* FeltArea.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACF000022026091300000001 /* FeltArea.swift */; };
 		79F54301D6269A7BE803A417 /* GoogleMapsBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78F54301D6269A7BE803A417 /* GoogleMapsBridge.swift */; };
 		79E41A869086290EE994EB73 /* AlertSoundPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78E41A869086290EE994EB73 /* AlertSoundPlayer.swift */; };
 		79EF7E6E6EDD113150D33A33 /* InAppBrowserView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78EF7E6E6EDD113150D33A33 /* InAppBrowserView.swift */; };
@@ -73,6 +74,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+        ACF000022026091300000001 /* FeltArea.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Native/Services/FeltArea.swift"; sourceTree = "<group>"; };
 		78F54301D6269A7BE803A417 /* GoogleMapsBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Native/Services/GoogleMapsBridge.swift"; sourceTree = "<group>"; };
 		78E41A869086290EE994EB73 /* AlertSoundPlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Native/Services/AlertSoundPlayer.swift"; sourceTree = "<group>"; };
 		78EF7E6E6EDD113150D33A33 /* InAppBrowserView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Native/Views/Components/InAppBrowserView.swift"; sourceTree = "<group>"; };
@@ -181,6 +183,7 @@
 			children = (
 				78F54301D6269A7BE803A417 /* GoogleMapsBridge.swift */,
 				78E41A869086290EE994EB73 /* AlertSoundPlayer.swift */,
+                ACF000022026091300000001 /* FeltArea.swift */,
 				78EF7E6E6EDD113150D33A33 /* InAppBrowserView.swift */,
 				7834CADE988ADED59AF21E47 /* SeismikNotificationPresenter.swift */,
 				78EAAB209FAABDFA766D88FE /* MotionDetector.swift */,
@@ -382,6 +385,7 @@
 			files = (
 				79F54301D6269A7BE803A417 /* GoogleMapsBridge.swift in Sources */,
 				79E41A869086290EE994EB73 /* AlertSoundPlayer.swift in Sources */,
+                ACF000012026091300000001 /* FeltArea.swift in Sources */,
 				79EF7E6E6EDD113150D33A33 /* InAppBrowserView.swift in Sources */,
 				7934CADE988ADED59AF21E47 /* SeismikNotificationPresenter.swift in Sources */,
 				79EAAB209FAABDFA766D88FE /* MotionDetector.swift in Sources */,
