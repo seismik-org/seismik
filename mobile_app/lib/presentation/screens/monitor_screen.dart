@@ -14,6 +14,7 @@ import '../../state/mobile_settings.dart';
 import '../../state/seismik_state.dart';
 import '../widgets/liquid_glass.dart';
 import '../widgets/map_markers.dart';
+import '../widgets/perimeter_circles.dart';
 import '../widgets/status_pill.dart';
 import 'event_detail_screen.dart';
 
@@ -37,6 +38,7 @@ class _MonitorScreenState extends State<MonitorScreen> {
 
   final DraggableScrollableController _sheet = DraggableScrollableController();
   final MarkerSetCache _markerCache = MarkerSetCache();
+  final PerimeterCircleCache _perimeterCache = PerimeterCircleCache();
   static final Set<ClusterManager> _clusterManagers = <ClusterManager>{
     stationClusterManager,
   };
@@ -104,6 +106,10 @@ class _MonitorScreenState extends State<MonitorScreen> {
         eventSnippet: _markerSnippet,
       ),
     );
+    final Set<Circle> perimeters = _perimeterCache.resolve(
+      events,
+      () => recentPerimeterCircles(events),
+    );
     final List<Widget> header = <Widget>[
       const _SheetHandle(),
       const SizedBox(height: 12),
@@ -128,6 +134,15 @@ class _MonitorScreenState extends State<MonitorScreen> {
         '${settings.minimumHistoryMagnitude.toStringAsFixed(1)} · '
         '${settings.historySources.map(_sourceLabel).join(' + ')}',
       ),
+      if (perimeters.isNotEmpty)
+        Padding(
+          padding: const EdgeInsets.only(top: 4),
+          child: Text(
+            'Los círculos muestran dónde se sintió cada sismo de las últimas '
+            '72 horas; en rojo, la sacudida fuerte.',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+        ),
       if (statusMessage != null)
         Padding(
           padding: const EdgeInsets.only(top: 8),
@@ -161,6 +176,7 @@ class _MonitorScreenState extends State<MonitorScreen> {
           GoogleMap(
             initialCameraPosition: CameraPosition(target: center, zoom: 5.8),
             markers: markers,
+            circles: perimeters,
             clusterManagers: _clusterManagers,
             onTap: (_) => state.selectEvent(null),
             myLocationEnabled: hasPosition,

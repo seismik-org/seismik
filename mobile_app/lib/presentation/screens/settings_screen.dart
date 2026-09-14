@@ -86,7 +86,8 @@ class SettingsScreen extends StatelessWidget {
                     unawaited(settings.setReceiveEarlyAlerts(value)),
                 title: const Text('Alertas tempranas'),
                 subtitle: const Text(
-                  'Avisos técnicos multiestación cercanos. Pueden llegar antes del reporte oficial.',
+                  'Suenan antes de que llegue la sacudida si se espera al menos '
+                  'sacudida ligera (intensidad IV) donde estás.',
                 ),
               ),
               SwitchListTile.adaptive(
@@ -95,10 +96,21 @@ class SettingsScreen extends StatelessWidget {
                     unawaited(settings.setReceiveOfficialUpdates(value)),
                 title: const Text('Actualizaciones oficiales'),
                 subtitle: const Text(
-                  'Magnitud, profundidad y fuente publicada por una entidad geológica.',
+                  'Aviso cuando una entidad geológica confirma un sismo que se '
+                  'sintió donde estás (intensidad III o más).',
                 ),
               ),
-              _NotificationMagnitudeSlider(settings: settings),
+              const ListTile(
+                leading: Icon(Icons.track_changes_rounded),
+                title: Text('Perímetro de sacudida'),
+                subtitle: Text(
+                  'Seismik estima con qué fuerza llega cada sismo a tu ubicación, '
+                  'según su magnitud, profundidad y distancia. Si se espera '
+                  'sacudida fuerte (intensidad VI o más), la alarma suena siempre, '
+                  'aunque hayas apagado los avisos.',
+                ),
+                isThreeLine: true,
+              ),
               _AlertRadiusSelector(settings: settings),
             ],
           ),
@@ -406,36 +418,6 @@ class _MagnitudeSlider extends StatefulWidget {
   State<_MagnitudeSlider> createState() => _MagnitudeSliderState();
 }
 
-class _NotificationMagnitudeSlider extends StatefulWidget {
-  const _NotificationMagnitudeSlider({required this.settings});
-  final MobileSettings settings;
-
-  @override
-  State<_NotificationMagnitudeSlider> createState() =>
-      _NotificationMagnitudeSliderState();
-}
-
-class _NotificationMagnitudeSliderState
-    extends State<_NotificationMagnitudeSlider> {
-  late double _value = widget.settings.minimumNotificationMagnitude;
-
-  @override
-  Widget build(BuildContext context) => ListTile(
-    title: const Text('Magnitud mínima para aviso oficial'),
-    subtitle: Slider(
-      value: _value,
-      min: 2,
-      max: 8,
-      divisions: 12,
-      label: 'M ${_value.toStringAsFixed(1)}',
-      onChanged: (value) => setState(() => _value = value),
-      onChangeEnd: (value) =>
-          unawaited(widget.settings.setMinimumNotificationMagnitude(value)),
-    ),
-    trailing: Text('M ${_value.toStringAsFixed(1)}'),
-  );
-}
-
 class _MagnitudeSliderState extends State<_MagnitudeSlider> {
   late double _value = widget.settings.minimumHistoryMagnitude;
 
@@ -464,7 +446,8 @@ class _MagnitudeSliderState extends State<_MagnitudeSlider> {
   );
 }
 
-/// Umbral de cercanía: sólo llegan avisos cuyo epicentro esté dentro del radio.
+/// Radio de respaldo: sólo decide cuando un sismo aún no tiene magnitud y, por
+/// tanto, tampoco perímetro de sacudida.
 class _AlertRadiusSelector extends StatelessWidget {
   const _AlertRadiusSelector({required this.settings});
 
@@ -472,23 +455,35 @@ class _AlertRadiusSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ListTile(
-    title: const Text('Umbral de cercanía'),
+    title: const Text('Radio para detecciones sin magnitud'),
     subtitle: Padding(
-      padding: const EdgeInsets.only(top: 8),
-      child: Wrap(
-        spacing: 8,
-        runSpacing: 4,
-        children: MobileSettings.alertRadiusOptions
-            .map(
-              (radius) => ChoiceChip(
-                label: Text('${radius.toStringAsFixed(0)} km'),
-                selected: settings.alertRadiusKm == radius,
-                onSelected: (selected) {
-                  if (selected) unawaited(settings.setAlertRadiusKm(radius));
-                },
-              ),
-            )
-            .toList(growable: false),
+      padding: const EdgeInsets.only(top: 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          const Text(
+            'Una detección preliminar sin magnitud todavía no tiene perímetro: '
+            'mientras tanto se avisa dentro de este radio.',
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 4,
+            children: MobileSettings.alertRadiusOptions
+                .map(
+                  (radius) => ChoiceChip(
+                    label: Text('${radius.toStringAsFixed(0)} km'),
+                    selected: settings.alertRadiusKm == radius,
+                    onSelected: (selected) {
+                      if (selected) {
+                        unawaited(settings.setAlertRadiusKm(radius));
+                      }
+                    },
+                  ),
+                )
+                .toList(growable: false),
+          ),
+        ],
       ),
     ),
     isThreeLine: true,

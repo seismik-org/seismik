@@ -238,3 +238,49 @@ mismo grupo de Redis: cada mensaje llega a uno solo y la marca de «publicado»
 evita duplicados. Ese servicio se puede retirar en cuanto integraciones arranque
 bien; `Dockerfile.x-publisher` queda por si algún día conviene separarlo (por
 ejemplo, como worker pool).
+
+## Alarma por perímetro de sacudida
+
+A quién le llega cada aviso lo decide la intensidad (Mercalli) que se espera en
+la ubicación de cada teléfono (`api/felt_area.py`, `dispatcher/policy.py`), no
+la magnitud mínima ni el radio que eligió la persona:
+
+- Sacudida fuerte (VI o más): alarma siempre, aunque haya apagado los avisos.
+  Un reporte oficial de un sismo con más de 30 minutos
+  (`SEISMIK_OFFICIAL_ALARM_MAX_AGE_MINUTES`) llega como aviso.
+- Alerta temprana: alarma desde sacudida ligera (IV) para quien la tiene activa.
+- Reporte oficial: aviso desde intensidad III para quien los recibe.
+- Sin magnitud o sin epicentro no hay perímetro: se usan la magnitud mínima y
+  el radio de siempre.
+- El mismo sismo reportado por otra agencia no vuelve a avisar, salvo que su
+  magnitud suba 0,5 o más.
+
+Hasta ahora el dispatcher sólo recibía reportes oficiales de sismos que SeedLink
+había detectado. `seismik-integrations` ahora puede consultar cada minuto los
+catálogos de `official_sources.json` (`integrations/catalog_alerts.py`) y dejar
+en `stream:seismik:official` cada sismo que alguien pudo sentir. Está apagado
+por defecto (`SEISMIK_CATALOG_ALERTS_ENABLED=false`). Los webhooks de
+organizaciones no reciben esos sismos. Las alertas respetan `SEISMIK_PUSH_MODE`
+del dispatcher: en `testers` sólo llegan a los teléfonos de prueba.
+
+```bash
+REGION=us-east1
+REPO=us-east1-docker.pkg.dev/seismik-15bbb/seismik
+
+# 1. Imágenes nuevas: el dispatcher decide la alarma, la API la aplica a la
+#    bitácora de alertas perdidas e integraciones consulta los catálogos.
+gcloud builds submit --config deploy/cloudbuild.worker.yaml \
+  --substitutions=_IMAGE=$REPO/worker:felt-perimeter,_DOCKERFILE=Dockerfile.dispatcher
+gcloud builds submit --config deploy/cloudbuild.api.yaml \
+  --substitutions=_IMAGE=$REPO/api:felt-perimeter
+for service in seismik-dispatcher seismik-integrations; do
+  gcloud run services update "$service" --region "$REGION" \
+    --image "$REPO/worker:felt-perimeter"
+done
+gcloud run services update seismik-api --region "$REGION" \
+  --image "$REPO/api:felt-perimeter"
+
+# 2. Alertas de los catálogos oficiales, cuando se decida.
+gcloud run services update seismik-integrations --region "$REGION" \
+  --update-env-vars=SEISMIK_CATALOG_ALERTS_ENABLED=true
+```

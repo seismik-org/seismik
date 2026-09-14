@@ -261,12 +261,21 @@ def notification_content(
             f"M {magnitude:.1f}" if isinstance(magnitude, (int, float)) else "Magnitud pendiente"
         )
         depth_text = f", profundidad {depth:.0f} km" if isinstance(depth, (int, float)) else ""
-        title = "Reporte s\u00edsmico oficial"
-        body = f"{magnitude_text}{depth_text}. {report.get('place') or report.get('agency')}"
+        place = report.get("place") or report.get("agency")
+        if critical:
+            # S\u00f3lo llega a quien qued\u00f3 dentro del per\u00edmetro de sacudida fuerte.
+            title = "Sismo fuerte en tu zona"
+            body = (
+                f"{magnitude_text}. {place}. Se estima sacudida fuerte donde est\u00e1s: "
+                "revisa a tu familia y prep\u00e1rate para r\u00e9plicas."
+            )
+        else:
+            title = "Reporte s\u00edsmico oficial"
+            body = f"{magnitude_text}{depth_text}. {place}"
         data = {
             "type": event["type"],
             "event_id": event["event_id"],
-            "candidate_event_id": event["candidate_event_id"],
+            "candidate_event_id": event.get("candidate_event_id"),
             "official_event_id": report.get("official_event_id"),
             "origin_time": report.get("origin_time"),
             "jurisdiction": report.get("jurisdiction"),
@@ -279,6 +288,8 @@ def notification_content(
             "place": report.get("place"),
             "official_url": report.get("official_url"),
         }
+        if critical:
+            data["critical"] = True
         return title, body, data
 
     title = "\u00a1ALERTA S\u00cdSMICA!"

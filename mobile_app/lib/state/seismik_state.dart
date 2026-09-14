@@ -604,11 +604,16 @@ class SeismikState extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   void _onNotification(NotificationEnvelope envelope) {
+    final SeismicEvent event = envelope.event;
     if (envelope.critical) {
-      activeAlert = envelope.event;
-    } else if (envelope.event.isOfficial) {
-      officialEvent = envelope.event;
-      recentEvents = <SeismicEvent>[envelope.event, ...recentEvents];
+      activeAlert = event;
+    } else if (event.isOfficial) {
+      officialEvent = event;
+    }
+    // Un reporte oficial entra al historial también cuando llegó como alarma
+    // de sacudida fuerte, y una sola vez aunque el aviso se abra de nuevo.
+    if (event.isOfficial && !recentEvents.any((known) => known.id == event.id)) {
+      recentEvents = <SeismicEvent>[event, ...recentEvents];
     }
     _notify();
   }

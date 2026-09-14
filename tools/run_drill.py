@@ -82,7 +82,9 @@ DEVICE_PROFILES: tuple[dict[str, Any], ...] = (
         "alert_radius_km": 250.0,
         "minimum_notification_magnitude": 7.5,
         "receive_early_alerts": True,
-        "expectation": "recibe la alerta temprana pero no la oficial",
+        # Antes del perímetro de sacudida no recibía la oficial. Ahora sí: el
+        # sismo se siente donde está y la magnitud mínima ya no decide.
+        "expectation": "recibe la alerta temprana y, porque lo siente, también la oficial",
     },
     {
         "device_id": "drill-device-silenciado",
