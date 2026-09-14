@@ -99,7 +99,7 @@ jobs:
         # El proyecto Xcode copia GoogleService-Info.plist como recurso, asi que
         # su ausencia rompe la compilacion antes de llegar al codigo. El archivo
         # real llega desde un secreto solo en el workflow de TestFlight; aqui
-        # basta un plist valido porque este job compila y nunca ejecuta la app.
+        # Los XCTest no inicializan servicios de red; AppDelegate aísla el host.
         run: |
           set -euo pipefail
           test ! -f ios/Runner/GoogleService-Info.plist
@@ -139,3 +139,19 @@ jobs:
           plutil -p "$app/Info.plist" | grep -q 'comgooglemaps'
           plutil -p "$app/Info.plist" | grep -q 'LSApplicationQueriesSchemes'
           grep -q 'usernotifications.critical-alerts' ios/Runner/Runner.entitlements
+      - name: Run native SwiftUI unit tests on iPhone simulator
+        timeout-minutes: 25
+        run: |
+          set -euo pipefail
+          simulator=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; devices=json.load(sys.stdin)["devices"]; print(next(d["udid"] for key,group in devices.items() if "iOS" in key for d in group if d["name"].startswith("iPhone")))')
+          xcodebuild test -workspace ios/Runner.xcworkspace -scheme Runner \
+            -configuration Debug -destination "platform=iOS Simulator,id=$simulator" \
+            -parallel-testing-enabled NO -resultBundlePath build/NativeTests.xcresult \
+            CODE_SIGNING_ALLOWED=NO SEISMIK_API_BASE_URL=https://api.example.invalid
+      - name: Upload native XCTest results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-ios-tests
+          path: mobile_app/build/NativeTests.xcresult
+          if-no-files-found: ignore
