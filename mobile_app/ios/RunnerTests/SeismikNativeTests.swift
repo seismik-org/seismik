@@ -387,3 +387,157 @@ final class NativeNotificationPolicyTests: XCTestCase {
         XCTAssertNil(SeismicEvent(notificationUserInfo: ["type": "family_status"]))
     }
 }
+
+/// All requests terminate in this URLProtocol; these tests never contact Seismik.
+private final class FamilyStubProtocol: URLProtocol {
+    static var handler: ((URLRequest) throws -> (Int, String))?
+    override class func canInit(with request: URLRequest) -> Bool { true }
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+    override func startLoading() {
+        do {
+            guard let handler = Self.handler else { throw URLError(.badServerResponse) }
+            let (status, body) = try handler(request)
+            let response = HTTPURLResponse(url: request.url!, statusCode: status,
+                httpVersion: nil, headerFields: ["Content-Type": "application/json"])!
+            client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+            client?.urlProtocol(self, didLoad: Data(body.utf8))
+            client?.urlProtocolDidFinishLoading(self)
+        } catch { client?.urlProtocol(self, didFailWithError: error) }
+    }
+    override func stopLoading() {}
+
+    static func body(_ request: URLRequest) throws -> [String: Any] {
+        var data = request.httpBody ?? Data()
+        if data.isEmpty, let stream = request.httpBodyStream {
+            stream.open()
+            defer { stream.close() }
+            var buffer = [UInt8](repeating: 0, count: 1024)
+            while true {
+                let count = stream.read(&buffer, maxLength: buffer.count)
+                if count <= 0 { break }
+                data.append(contentsOf: buffer.prefix(count))
+            }
+        }
+        return try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+    }
+}
+
+final class NativeFamilyContractTests: XCTestCase {
+    private var store: KeychainStore!
+    private var api: SeismikAPIClient!
+    private var session: URLSession!
+
+    override func setUpWithError() throws {
+        // A unique Keychain namespace contains only fabricated fixture values.
+        store = KeychainStore(service: "seismik.family-tests.\(UUID().uuidString)")
+        try store.set("test-account", for: "seismik.account_session_token")
+        try store.set("test-device-old", for: "seismik.device_session_token")
+        let config = URLSessionConfiguration.ephemeral
+        config.protocolClasses = [FamilyStubProtocol.self]
+        session = URLSession(configuration: config)
+        api = SeismikAPIClient(baseURL: URL(string: "https://family-tests.invalid")!, session: session, keychain: store)
+    }
+
+    override func tearDownWithError() throws {
+        FamilyStubProtocol.handler = nil
+        session.invalidateAndCancel()
+        try store.remove("seismik.account_session_token")
+        try store.remove("seismik.device_session_token")
+    }
+
+    func testCreateAndJoinMatchAndroidContract() async throws {
+        FamilyStubProtocol.handler = { request in
+            XCTAssertEqual(request.httpMethod, "POST")
+            XCTAssertEqual(request.value(forHTTPHeaderField: "X-Seismik-Account-Session"), "test-account")
+            let body = try FamilyStubProtocol.body(request)
+            XCTAssertEqual(body["display_name"] as? String, "Ana")
+            if request.url?.path == "/v1/family/circle" {
+                XCTAssertEqual(body["circle_name"] as? String, "Mi familia")
+            } else {
+                XCTAssertEqual(request.url?.path, "/v1/family/join")
+                XCTAssertEqual(body["invite_code"] as? String, "INVITE-123")
+            }
+            return (200, "{}")
+        }
+        try await api.createFamilyCircle(displayName: " Ana ", circleName: " Mi familia ")
+        try await api.joinFamilyCircle(inviteCode: " INVITE-123 ", displayName: " Ana ")
+    }
+
+    func testRotatedDeviceSessionRetriesWithoutExpiringAccount() async throws {
+        let store = try XCTUnwrap(store)
+        var attempts = 0
+        FamilyStubProtocol.handler = { request in
+            attempts += 1
+            if attempts == 1 {
+                XCTAssertEqual(request.value(forHTTPHeaderField: "X-Seismik-Device-Session"), "test-device-old")
+                try store.set("test-device-new", for: "seismik.device_session_token")
+                return (401, "Device session expired")
+            }
+            XCTAssertEqual(request.value(forHTTPHeaderField: "X-Seismik-Device-Session"), "test-device-new")
+            return (200, "{\"circle_id\":\"circle-1\",\"circle_name\":\"Familia\",\"members\":[]}")
+        }
+        let circle = try await api.fetchFamilyCircle()
+        XCTAssertEqual(circle?.circleId, "circle-1")
+        XCTAssertEqual(attempts, 2)
+        XCTAssertEqual(api.accountSessionToken, "test-account")
+    }
+
+    func testAccount401IsNotRetriedAndDevice401RemainsDistinct() async throws {
+        for message in ["Account session expired", "Device session expired"] {
+            var attempts = 0
+            FamilyStubProtocol.handler = { _ in
+                attempts += 1
+                return (401, message)
+            }
+            do {
+                _ = try await api.fetchFamilyCircle()
+                XCTFail("Expected rejected session")
+            } catch let error as SeismikAPIError {
+                XCTAssertEqual(error.isAccountSessionRejected, message.contains("Account session"))
+                XCTAssertEqual(error.isDeviceSessionRejected, !message.contains("Account session"))
+            }
+            XCTAssertEqual(attempts, 1)
+            XCTAssertEqual(api.accountSessionToken, "test-account")
+        }
+    }
+
+    func testAssociationRequiresRegisteredDevice() async throws {
+        try store.remove("seismik.device_session_token")
+        FamilyStubProtocol.handler = { _ in XCTFail("Must not associate before registration"); return (200, "{}") }
+        do {
+            try await api.linkDeviceToAccount()
+            XCTFail("Expected missing device session")
+        } catch let error as SeismikAPIError {
+            XCTAssertTrue(error.isDeviceSessionRejected)
+        }
+        try store.set("test-device-registered", for: "seismik.device_session_token")
+        FamilyStubProtocol.handler = { request in
+            XCTAssertEqual(request.url?.path, "/v1/account/device")
+            XCTAssertEqual(request.httpMethod, "POST")
+            XCTAssertEqual(request.value(forHTTPHeaderField: "X-Seismik-Device-Session"), "test-device-registered")
+            return (200, "{}")
+        }
+        try await api.linkDeviceToAccount()
+    }
+
+    func testFamilyCheckInKeepsConsentAndWorksWithoutLocation() async throws {
+        FamilyStubProtocol.handler = { request in
+            XCTAssertEqual(request.url?.path, "/v1/family/status")
+            XCTAssertEqual(request.httpMethod, "PUT")
+            let body = try FamilyStubProtocol.body(request)
+            XCTAssertEqual(body["event_id"] as? String, "quake-1")
+            XCTAssertEqual(body["share_minutes"] as? Int, 240)
+            if body["status"] as? String == "safe" {
+                XCTAssertNil(body["location"])
+            } else {
+                XCTAssertEqual(body["status"] as? String, "need_help")
+                let location = try XCTUnwrap(body["location"] as? [String: Any])
+                XCTAssertEqual(location["precision"] as? String, "approximate")
+                XCTAssertEqual(location["precise_location_consent"] as? Bool, false)
+            }
+            return (200, "{}")
+        }
+        try await api.reportFamilyStatus(needsHelp: false, eventId: "quake-1", latitude: nil, longitude: nil, precise: false)
+        try await api.reportFamilyStatus(needsHelp: true, eventId: "quake-1", latitude: 4.65, longitude: -74.05, precise: false)
+    }
+}

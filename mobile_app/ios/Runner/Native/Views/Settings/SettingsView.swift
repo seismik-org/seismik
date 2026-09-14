@@ -1052,6 +1052,11 @@ public struct FamilySafetyView: View {
             let code = try await SeismikAPIClient.shared.createFamilyInvitation(displayName: "Familiar")
             UIPasteboard.general.string = code
             message = "Invitación copiada. Vence en 24 horas y sirve una sola vez."
+        } catch let error as SeismikAPIError where error.isAccountSessionRejected {
+            appState.accountSessionExpired()
+        } catch let error as SeismikAPIError where error.isDeviceSessionRejected {
+            message = nil
+            await appState.updateRegistration()
         } catch { message = "Sólo quien creó el círculo puede invitar." }
     }
 
@@ -1059,6 +1064,11 @@ public struct FamilySafetyView: View {
         do {
             try await SeismikAPIClient.shared.stopSharingFamilyLocation()
             await reload()
+        } catch let error as SeismikAPIError where error.isAccountSessionRejected {
+            appState.accountSessionExpired()
+        } catch let error as SeismikAPIError where error.isDeviceSessionRejected {
+            message = nil
+            await appState.updateRegistration()
         } catch { message = "No se pudo borrar tu ubicación. Revisa tu conexión." }
     }
 }
