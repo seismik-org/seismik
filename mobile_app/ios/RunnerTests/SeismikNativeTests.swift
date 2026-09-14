@@ -428,8 +428,9 @@ final class NativeFamilyContractTests: XCTestCase {
     private var session: URLSession!
 
     override func setUpWithError() throws {
-        // A unique Keychain namespace contains only fabricated fixture values.
-        store = KeychainStore(service: "seismik.family-tests.\(UUID().uuidString)")
+        // CI runs unsigned on the simulator: the real Keychain answers -34018
+        // (missing entitlement). The fixtures live in memory instead.
+        store = KeychainStore.inMemory()
         try store.set("test-account", for: "seismik.account_session_token")
         try store.set("test-device-old", for: "seismik.device_session_token")
         let config = URLSessionConfiguration.ephemeral
@@ -440,9 +441,10 @@ final class NativeFamilyContractTests: XCTestCase {
 
     override func tearDownWithError() throws {
         FamilyStubProtocol.handler = nil
-        session.invalidateAndCancel()
-        try store.remove("seismik.account_session_token")
-        try store.remove("seismik.device_session_token")
+        // If setUp failed these are nil; unwrapping them crashed the test host.
+        session?.invalidateAndCancel()
+        try store?.remove("seismik.account_session_token")
+        try store?.remove("seismik.device_session_token")
     }
 
     func testCreateAndJoinMatchAndroidContract() async throws {

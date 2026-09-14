@@ -11,12 +11,27 @@ public final class KeychainStore {
     public static let shared = KeychainStore()
 
     private let service: String
+    /// Sólo en pruebas. El simulador de CI compila sin firma, así que la app no
+    /// tiene permiso de llavero y todo acceso falla con -34018
+    /// (errSecMissingEntitlement).
+    private let memory: InMemoryValues?
 
-    public init(service: String = Bundle.main.bundleIdentifier ?? "org.seismik.ios") {
+    public convenience init(service: String = Bundle.main.bundleIdentifier ?? "org.seismik.ios") {
+        self.init(service: service, memory: nil)
+    }
+
+    private init(service: String, memory: InMemoryValues?) {
         self.service = service
+        self.memory = memory
+    }
+
+    /// Misma interfaz, guardada en memoria: para XCTest, nunca para la app.
+    static func inMemory() -> KeychainStore {
+        KeychainStore(service: "seismik.in-memory", memory: InMemoryValues())
     }
 
     public func string(for account: String) throws -> String? {
+        if let memory { return memory.value(for: account) }
         var query = baseQuery(account: account)
         query[kSecReturnData as String] = true
         query[kSecMatchLimit as String] = kSecMatchLimitOne
@@ -37,6 +52,7 @@ public final class KeychainStore {
     }
 
     public func set(_ value: String, for account: String) throws {
+        if let memory { return memory.set(value, for: account) }
         guard let data = value.data(using: .utf8) else {
             throw KeychainStoreError.invalidStoredValue
         }
@@ -63,6 +79,7 @@ public final class KeychainStore {
     }
 
     public func remove(_ account: String) throws {
+        if let memory { return memory.set(nil, for: account) }
         let status = SecItemDelete(baseQuery(account: account) as CFDictionary)
         guard status == errSecSuccess || status == errSecItemNotFound else {
             throw KeychainStoreError.unexpectedStatus(status)
@@ -76,6 +93,24 @@ public final class KeychainStore {
             kSecAttrAccount as String: account,
             kSecAttrSynchronizable as String: kCFBooleanFalse as Any,
         ]
+    }
+}
+
+/// Los stubs de red de las pruebas escriben desde otro hilo mientras el cliente lee.
+private final class InMemoryValues {
+    private var values: [String: String] = [:]
+    private let lock = NSLock()
+
+    func value(for account: String) -> String? {
+        lock.lock()
+        defer { lock.unlock() }
+        return values[account]
+    }
+
+    func set(_ value: String?, for account: String) {
+        lock.lock()
+        defer { lock.unlock() }
+        values[account] = value
     }
 }
 
