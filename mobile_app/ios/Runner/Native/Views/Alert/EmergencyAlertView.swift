@@ -8,6 +8,7 @@ public struct EmergencyAlertView: View {
     public var onReportSafe: (() -> Void)? = nil
 
     @State private var isPulsing: Bool = false
+    @ObservedObject private var locationManager = LocationManager.shared
 
     public var body: some View {
         ZStack {
@@ -26,6 +27,7 @@ public struct EmergencyAlertView: View {
             .ignoresSafeArea()
             .animation(.easeInOut(duration: 1.4).repeatForever(autoreverses: true), value: isPulsing)
 
+            ScrollView {
             VStack(spacing: 24) {
                 Spacer()
 
@@ -36,10 +38,11 @@ public struct EmergencyAlertView: View {
                         .foregroundColor(SeismikColors.crimson)
                         .shadow(color: SeismikColors.crimson.opacity(0.9), radius: 18)
 
-                    Text("ALERTA SÍSMICA")
+                    Text(SeismikNotificationPresenter.alertTitle(for: event))
                         .font(.system(size: 28, weight: .black, design: .rounded))
                         .tracking(3.0)
                         .foregroundColor(.white)
+                        .multilineTextAlignment(.center)
 
                     Text(event.place ?? "Sismo detectado en tu región")
                         .font(.system(size: 16, weight: .semibold))
@@ -51,12 +54,25 @@ public struct EmergencyAlertView: View {
                 // Se evita una cuenta regresiva inventada: solo se muestra tiempo si el
                 // backend llega a calcularlo con coordenadas y velocidades verificadas.
                 VStack(spacing: 6) {
-                    Text("PROTÉGETE AHORA")
+                    Text(SeismikNotificationPresenter.alertInstruction(for: event))
                         .font(.system(size: 28, weight: .black, design: .rounded))
                         .foregroundColor(.white)
+                        .multilineTextAlignment(.center)
+
+                    if event.isCriticalOfficial {
+                        Text(SeismikNotificationPresenter.elapsedDescription(for: event))
+                            .font(.subheadline).foregroundColor(.white)
+                        if let local = FeltArea.localIntensity(for: event, at: locationManager.currentCoordinate) {
+                            Text("Intensidad local estimada \(FeltArea.roman(local)) · \(FeltArea.name(local))")
+                                .font(.subheadline.weight(.semibold)).foregroundColor(.white)
+                        } else {
+                            Text("Intensidad local no disponible sin ubicación y parámetros del sismo")
+                                .font(.caption).foregroundColor(.white.opacity(0.85))
+                        }
+                    }
 
                     if let magnitude = event.magnitude {
-                        Text("Magnitud estimada \(String(format: "%.1f", magnitude))")
+                        Text("\(event.isCriticalOfficial ? "Magnitud reportada" : "Magnitud estimada") \(String(format: "%.1f", magnitude))")
                             .font(.system(size: 15, weight: .semibold, design: .rounded))
                             .foregroundColor(.white.opacity(0.9))
                     } else {
@@ -112,6 +128,8 @@ public struct EmergencyAlertView: View {
                 .buttonStyle(.plain)
                 .padding(.horizontal, 24)
                 .padding(.bottom, 20)
+            }
+            .padding(.top, 24)
             }
         }
         .onAppear {
