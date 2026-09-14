@@ -65,6 +65,11 @@ class AppSettings(BaseSettings):
     x_publisher_stream: str = "stream:seismik:x-publisher"
     x_publisher_group: str = "x-publishers"
     x_publisher_consumer_name: str = "x-publisher-1"
+    # Alertas por perímetro para los sismos de los catálogos oficiales
+    # (integrations/catalog_alerts.py). Apagadas hasta activarlas en Cloud Run.
+    catalog_alerts_enabled: bool = False
+    catalog_alerts_poll_seconds: float = Field(default=60.0, ge=30, le=3_600)
+    catalog_alerts_max_age_minutes: float = Field(default=60.0, ge=5, le=1_440)
     x_consumer_key: SecretStr = SecretStr("")
     x_consumer_secret: SecretStr = SecretStr("")
     x_access_token: SecretStr = SecretStr("")
@@ -113,6 +118,9 @@ class AppSettings(BaseSettings):
     alert_ledger_stream: str = "stream:seismik:alert-ledger"
     alert_ledger_maxlen: int = Field(default=10_000, ge=100)
     alert_recent_limit: int = Field(default=50, ge=1, le=200)
+    # Pasado este tiempo desde el origen, un reporte oficial de sacudida fuerte
+    # llega como aviso y no como alarma: el sismo ya pasó.
+    official_alarm_max_age_minutes: float = Field(default=30.0, ge=1, le=240)
     event_zone_ttl_seconds: int = Field(default=86_400, ge=600)
     push_idempotency_seconds: int = Field(default=86_400, ge=600)
     geofence_radius_km: float = Field(default=250.0, gt=0, le=2_000)

@@ -15,6 +15,7 @@ from redis.asyncio import Redis
 from redis.exceptions import ResponseError
 
 from api.config import AppSettings, get_settings
+from integrations.catalog_alerts import CatalogAlertFeed
 from integrations.security import derive_webhook_secret
 from integrations.x_publisher import XPublisher
 from runtime_health import start_health_server
@@ -159,12 +160,18 @@ async def run_integrations() -> None:
     x_publisher = asyncio.create_task(
         keep_running("X publisher", XPublisher(redis, settings).run, X_PUBLISHER_RETRY_SECONDS)
     )
+    # Mismo motivo: consulta los catálogos oficiales en segundo plano.
+    catalog_alerts = asyncio.create_task(
+        keep_running("Catalog alerts", CatalogAlertFeed(redis, settings).run, X_PUBLISHER_RETRY_SECONDS)
+    )
+    background = (x_publisher, catalog_alerts)
     health_server = start_health_server()
     try:
         await worker.run()
     finally:
-        x_publisher.cancel()
-        await asyncio.gather(x_publisher, return_exceptions=True)
+        for task in background:
+            task.cancel()
+        await asyncio.gather(*background, return_exceptions=True)
         health_server.shutdown()
         await redis.aclose()
 

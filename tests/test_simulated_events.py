@@ -238,7 +238,7 @@ async def test_a_second_drill_in_the_same_zone_is_held_by_the_cooldown() -> None
 
 
 @pytest.mark.asyncio
-async def test_the_official_update_of_a_drill_respects_the_magnitude_threshold() -> None:
+async def test_the_official_update_of_a_drill_reaches_everyone_who_felt_it() -> None:
     redis = FakeRedis(decode_responses=True)
     settings = simulation_settings()
     await register_device(
@@ -260,9 +260,11 @@ async def test_the_official_update_of_a_drill_respects_the_magnitude_threshold()
 
     push = RecordingPush()
     await drain(redis, settings, push)
-    official_calls = [call for call in push.calls if call[2] is False]
-    assert len(official_calls) == 1
-    assert [target.device_id for target in official_calls[0][1]] == ["device-sensitive-1"]
+    official_calls = [call for call in push.calls if call[0]["type"] == "official_report_update"]
+    # Un M5.2 a 25 km bajo la Sabana se siente (MMI ~V) en los dos teléfonos:
+    # la magnitud mínima de cada uno ya no decide.
+    received = sorted(target.device_id for _event, targets, _critical in official_calls for target in targets)
+    assert received == ["device-sensitive-1", "device-strict-0002"]
 
 
 @pytest.mark.asyncio

@@ -4,9 +4,11 @@ import 'package:flutter/cupertino.dart';
 import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
 
 import 'core/constants.dart';
+import 'core/felt_area.dart';
 import 'core/platform.dart';
 import 'core/theme.dart';
 import 'data/models/seismic_event.dart';
@@ -213,6 +215,7 @@ class _SeismikShellState extends State<_SeismikShell> {
         Material(
           child: AlertOverlay(
             event: activeAlert,
+            localIntensity: _localIntensity(state, activeAlert),
             onDismiss: state.dismissAlert,
             onReportSafe: () {
               state.dismissAlert();
@@ -226,6 +229,14 @@ class _SeismikShellState extends State<_SeismikShell> {
       ],
     );
   }
+}
+
+/// Intensidad estimada donde está la persona, para mostrarla en la alarma.
+double? _localIntensity(SeismikState state, SeismicEvent event) {
+  final Position? position = state.position;
+  return position == null
+      ? null
+      : intensityAtPlace(event, position.latitude, position.longitude);
 }
 
 /// iPhone uses the native tab bar and navigation rhythm rather than the
@@ -311,6 +322,7 @@ class _IosSeismikShell extends StatelessWidget {
         Material(
           child: AlertOverlay(
             event: activeAlert,
+            localIntensity: _localIntensity(state, activeAlert),
             onDismiss: state.dismissAlert,
             onReportSafe: () {
               state.dismissAlert();

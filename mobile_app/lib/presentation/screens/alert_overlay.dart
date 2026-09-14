@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
+import '../../core/felt_area.dart';
 import '../../data/models/seismic_event.dart';
 import '../widgets/open_in_maps_button.dart';
 import '../widgets/safety_steps.dart';
@@ -14,10 +15,14 @@ class AlertOverlay extends StatefulWidget {
     required this.event,
     required this.onDismiss,
     this.onReportSafe,
+    this.localIntensity,
     super.key,
   });
   final SeismicEvent event;
   final VoidCallback onDismiss;
+
+  /// Intensidad estimada donde está la persona, si se conoce su ubicación.
+  final double? localIntensity;
 
   /// Cierra la alerta y lleva a avisar a la familia si la persona está bien.
   final VoidCallback? onReportSafe;
@@ -31,6 +36,8 @@ class _AlertOverlayState extends State<AlertOverlay>
   late final AnimationController _pulse;
   late final Timer _timer;
   int _elapsedSeconds = 0;
+
+  bool get _official => widget.event.isOfficial;
 
   @override
   void initState() {
@@ -124,10 +131,12 @@ class _AlertOverlayState extends State<AlertOverlay>
                 ),
               ),
               const SizedBox(height: 14),
-              const Text(
-                '¡SISMO DETECTADO!',
+              // Un reporte oficial llega cuando el sismo ya pasó: sólo suena
+              // para quien quedó en la zona de sacudida fuerte.
+              Text(
+                _official ? 'SISMO FUERTE EN TU ZONA' : '¡SISMO DETECTADO!',
                 textAlign: TextAlign.center,
-                style: TextStyle(
+                style: const TextStyle(
                   color: Colors.white,
                   fontSize: 30,
                   height: 1.1,
@@ -136,16 +145,32 @@ class _AlertOverlayState extends State<AlertOverlay>
                 ),
               ),
               const SizedBox(height: 4),
-              const Text(
-                'BUSCA PROTECCIÓN INMEDIATA',
+              Text(
+                _official
+                    ? 'REVISA A TU FAMILIA Y PREPÁRATE PARA RÉPLICAS'
+                    : 'BUSCA PROTECCIÓN INMEDIATA',
                 textAlign: TextAlign.center,
-                style: TextStyle(
+                style: const TextStyle(
                   color: Color(0xFFFF9E9E),
                   fontSize: 15,
                   fontWeight: FontWeight.w700,
                   letterSpacing: 0.8,
                 ),
               ),
+              if (widget.localIntensity case final double intensity
+                  when intensity >= feltIntensity) ...<Widget>[
+                const SizedBox(height: 10),
+                Text(
+                  'Intensidad estimada donde estás: '
+                  '${intensityRoman(intensity)} · sacudida ${intensityName(intensity)}',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
               const Spacer(),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 16),
@@ -167,7 +192,9 @@ class _AlertOverlayState extends State<AlertOverlay>
                 child: Column(
                   children: <Widget>[
                     Text(
-                      '$_elapsedSeconds s',
+                      _elapsedSeconds >= 120
+                          ? '${_elapsedSeconds ~/ 60} min'
+                          : '$_elapsedSeconds s',
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 64,
@@ -177,9 +204,11 @@ class _AlertOverlayState extends State<AlertOverlay>
                       ),
                     ),
                     const SizedBox(height: 4),
-                    const Text(
-                      'desde la detección de onda P',
-                      style: TextStyle(
+                    Text(
+                      _official
+                          ? 'desde el sismo'
+                          : 'desde la detección de onda P',
+                      style: const TextStyle(
                         color: Colors.white70,
                         fontSize: 13,
                         fontWeight: FontWeight.w500,

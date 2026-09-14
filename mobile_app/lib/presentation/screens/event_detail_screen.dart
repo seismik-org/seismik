@@ -1,14 +1,19 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:provider/provider.dart';
 
+import '../../core/felt_area.dart';
 import '../../core/platform.dart';
 import '../../core/theme.dart';
 import '../../data/models/seismic_event.dart';
 import '../../services/in_app_browser.dart';
+import '../../state/seismik_state.dart';
 import '../widgets/adaptive.dart';
 import '../widgets/liquid_glass.dart';
 import '../widgets/open_in_maps_button.dart';
+import '../widgets/perimeter_circles.dart';
 import 'felt_report_screen.dart';
 import 'damage_report_screen.dart';
 
@@ -22,6 +27,10 @@ class EventDetailScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final ColorScheme colors = Theme.of(context).colorScheme;
     final LatLng epicenter = LatLng(event.latitude ?? 0, event.longitude ?? 0);
+    final List<PerimeterRing> rings = feltPerimeter(event);
+    final Position? position = context.select<SeismikState, Position?>(
+      (s) => s.position,
+    );
     return AdaptiveScreen(
       title: event.isPreliminary ? 'Reporte preliminar' : 'Reporte oficial',
       onClose: onClose,
@@ -265,16 +274,26 @@ class EventDetailScreen extends StatelessWidget {
             ),
           ],
           const SizedBox(height: 22),
-          if (event.latitude != null && event.longitude != null)
+          if (event.latitude != null && event.longitude != null) ...<Widget>[
             SizedBox(
               height: 360,
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(22),
                 child: GoogleMap(
+                  // El mapa encuadra hasta donde se sintió el sismo.
                   initialCameraPosition: CameraPosition(
                     target: epicenter,
-                    zoom: 7,
+                    zoom: rings.isEmpty
+                        ? 7
+                        : perimeterZoom(
+                            radiusKm: rings.first.radiusKm,
+                            latitude: epicenter.latitude,
+                            widthPx: MediaQuery.sizeOf(context).width - 36,
+                          ),
                   ),
+                  circles: perimeterCircles(event),
+                  myLocationEnabled: position != null,
+                  myLocationButtonEnabled: false,
                   markers: <Marker>{
                     Marker(
                       markerId: MarkerId(event.id),
@@ -295,6 +314,9 @@ class EventDetailScreen extends StatelessWidget {
                 ),
               ),
             ),
+            const SizedBox(height: 12),
+            _PerimeterCard(event: event, rings: rings, position: position),
+          ],
           const SizedBox(height: 12),
           OpenInMapsButton(event: event),
           const SizedBox(height: 6),
@@ -354,6 +376,136 @@ class EventDetailScreen extends StatelessWidget {
 
   static String _time(DateTime value) =>
       value.toUtc().toIso8601String().substring(11, 19);
+}
+
+/// Explica los círculos del mapa: hasta dónde se sintió y cuánto donde estás.
+class _PerimeterCard extends StatelessWidget {
+  const _PerimeterCard({
+    required this.event,
+    required this.rings,
+    required this.position,
+  });
+
+  final SeismicEvent event;
+  final List<PerimeterRing> rings;
+  final Position? position;
+
+  @override
+  Widget build(BuildContext context) {
+    final ColorScheme colors = Theme.of(context).colorScheme;
+    final TextTheme text = Theme.of(context).textTheme;
+    final Position? here = position;
+    final double? localIntensity = here == null
+        ? null
+        : intensityAtPlace(event, here.latitude, here.longitude);
+    final double? distanceKm = here == null
+        ? null
+        : haversineKm(
+            event.latitude!,
+            event.longitude!,
+            here.latitude,
+            here.longitude,
+          );
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: colors.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Row(
+            children: <Widget>[
+              Icon(Icons.track_changes_rounded, color: colors.primary),
+              const SizedBox(width: 10),
+              Text(
+                'Perímetro de sacudida',
+                style: text.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          if (event.magnitude == null)
+            const Text(
+              'Sin magnitud todavía no se puede estimar dónde se sintió.',
+            )
+          else if (rings.isEmpty)
+            const Text(
+              'Por su magnitud y profundidad no se espera que se haya sentido '
+              'en superficie.',
+            )
+          else
+            for (final PerimeterRing ring in rings)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 3),
+                child: Row(
+                  children: <Widget>[
+                    Container(
+                      width: 14,
+                      height: 14,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: perimeterColor(
+                          ring.intensity,
+                        ).withValues(alpha: 0.35),
+                        border: Border.all(
+                          color: perimeterColor(ring.intensity),
+                          width: 2,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        '${intensityRoman(ring.intensity)} · ${ring.label}',
+                      ),
+                    ),
+                    Text(
+                      _reach(ring.radiusKm),
+                      style: const TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                  ],
+                ),
+              ),
+          if (localIntensity != null && distanceKm != null) ...<Widget>[
+            const Divider(height: 22),
+            Text(
+              localIntensity >= feltIntensity
+                  ? 'Donde estás (a ${distanceKm.toStringAsFixed(0)} km): '
+                        'intensidad ${intensityRoman(localIntensity)}, '
+                        'sacudida ${intensityName(localIntensity)}.'
+                  : 'Donde estás (a ${distanceKm.toStringAsFixed(0)} km) no se '
+                        'espera que se haya sentido.',
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
+            if (localIntensity >= strongIntensity)
+              const Padding(
+                padding: EdgeInsets.only(top: 4),
+                child: Text(
+                  'Con sacudida fuerte la alarma suena siempre, sin importar '
+                  'tu configuración.',
+                ),
+              ),
+          ],
+          const SizedBox(height: 10),
+          Text(
+            'Estimación con modelos de atenuación publicados (Allen 2012; '
+            'Zhao 2006 y Worden 2012). La sacudida real cambia con el suelo y '
+            'la construcción: si lo sentiste, repórtalo.',
+            style: text.bodySmall?.copyWith(color: colors.onSurfaceVariant),
+          ),
+        ],
+      ),
+    );
+  }
+
+  static String _reach(double radiusKm) {
+    if (radiusKm >= maxFeltRadiusKm) return 'más de 2.000 km';
+    return radiusKm < 10
+        ? 'hasta ${radiusKm.toStringAsFixed(1)} km'
+        : 'hasta ${radiusKm.toStringAsFixed(0)} km';
+  }
 }
 
 class _Metric extends StatelessWidget {

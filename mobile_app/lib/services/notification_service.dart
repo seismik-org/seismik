@@ -270,12 +270,17 @@ Future<void> _showCriticalNotification(
   FlutterLocalNotificationsPlugin plugin,
   Map<String, dynamic> data,
 ) async {
+  // Un reporte oficial sólo llega como alarma a quien quedó en la zona de
+  // sacudida fuerte; para entonces el sismo ya pasó.
+  final bool official = data['type']?.toString() == 'official_report_update';
   await plugin.show(
     id:
         data['event_id']?.hashCode ??
         DateTime.now().millisecondsSinceEpoch.remainder(1 << 31),
-    title: '¡SISMO DETECTADO!',
-    body: 'Busca protección: agáchate, cúbrete y sujétate.',
+    title: official ? 'SISMO FUERTE EN TU ZONA' : '¡SISMO DETECTADO!',
+    body: official
+        ? _strongShakingBody(data)
+        : 'Busca protección: agáchate, cúbrete y sujétate.',
     notificationDetails: const NotificationDetails(
       android: AndroidNotificationDetails(
         SeismikConstants.criticalChannelId,
@@ -302,6 +307,16 @@ Future<void> _showCriticalNotification(
     ),
     payload: jsonEncode(data),
   );
+}
+
+String _strongShakingBody(Map<String, dynamic> data) {
+  final double? magnitude = double.tryParse('${data['magnitude'] ?? ''}');
+  final String place = (data['place'] ?? data['agency'] ?? '').toString();
+  return <String>[
+    if (magnitude != null) 'M ${magnitude.toStringAsFixed(1)}',
+    if (place.isNotEmpty) place,
+    'Se estima sacudida fuerte donde estás. Prepárate para réplicas.',
+  ].join(' · ');
 }
 
 bool _isCritical(Map<String, dynamic> data) => _isCriticalStringMap(data);

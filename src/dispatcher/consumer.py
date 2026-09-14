@@ -15,7 +15,12 @@ from api.config import AppSettings, get_settings
 from api.devices_store import DeviceRepository
 from api.family import family_members_key
 from api.schemas import DeviceTarget
-from dispatcher.policy import AlertPolicy
+from dispatcher.policy import (
+    CATALOG_ORIGIN,
+    EARLY_ALARM_MMI,
+    OFFICIAL_NOTICE_MMI,
+    AlertPolicy,
+)
 from dispatcher.push import PushDispatcher, PushResult, notification_content
 from runtime_health import start_health_server
 
@@ -124,18 +129,19 @@ class StreamConsumer:
             )
             return
         await self._enqueue_integration_event(event)
+        magnitude = _as_float(event.get("magnitude_estimate"))
         try:
             targets = await self.devices.recipients(
                 zone_id=zone_id,
                 latitude=latitude,
                 longitude=longitude,
-                radius_km=self.settings.geofence_radius_km,
+                radius_km=self.policy.perimeter_search_radius_km(magnitude, None, EARLY_ALARM_MMI),
             )
             targets = self.policy.filter_critical(
                 targets,
                 latitude=latitude,
                 longitude=longitude,
-                magnitude=_as_float(event.get("magnitude_estimate")),
+                magnitude=magnitude,
             )
             result = await self.push.send(event, targets, critical=True)
             await self._record_dry_run(event, result, critical=True)
@@ -157,35 +163,59 @@ class StreamConsumer:
                 decision.reason, event["event_id"],
             )
             return
-        await self._enqueue_integration_event(event)
+        # Los sismos de los catálogos no son detecciones propias: los webhooks
+        # de organizaciones siguen recibiendo exactamente lo mismo que antes.
+        if event.get("origin") != CATALOG_ORIGIN:
+            await self._enqueue_integration_event(event)
         report = event["preferred_report"]
-        mapping_raw = await self.redis.get(f"seismik:event-zone:{event['candidate_event_id']}")
+        candidate_event_id = event.get("candidate_event_id")
+        mapping_raw = (
+            await self.redis.get(f"seismik:event-zone:{candidate_event_id}")
+            if candidate_event_id
+            else None
+        )
         mapping = json.loads(mapping_raw) if mapping_raw else {}
         latitude = report.get("latitude", mapping.get("latitude"))
         longitude = report.get("longitude", mapping.get("longitude"))
+        magnitude = _as_float(report.get("magnitude"))
+        depth_km = _as_float(report.get("depth_km"))
         try:
             targets = await self.devices.recipients(
                 zone_id=mapping.get("zone_id"),
                 latitude=latitude,
                 longitude=longitude,
-                radius_km=self.settings.geofence_radius_km,
+                radius_km=self.policy.perimeter_search_radius_km(
+                    magnitude, depth_km, OFFICIAL_NOTICE_MMI
+                ),
             )
-            targets = self.policy.filter_official(
+            alarms, notices = self.policy.split_official(
                 targets,
-                magnitude=report.get("magnitude"),
+                magnitude=magnitude,
                 latitude=latitude,
                 longitude=longitude,
+                depth_km=depth_km,
+                origin_time=report.get("origin_time"),
             )
-            result = await self.push.send(event, targets, critical=False)
+            attempted = 0
+            if alarms:
+                # Quien quedó en la zona de sacudida fuerte recibe la alarma,
+                # aunque haya apagado los avisos o subido su magnitud mínima.
+                alarm_result = await self.push.send(event, alarms, critical=True)
+                await self._record_dry_run(event, alarm_result, critical=True)
+                await self._remove_invalid(alarm_result.invalid_device_ids)
+                attempted += alarm_result.attempted
+            result = await self.push.send(event, notices, critical=False)
             await self._record_dry_run(event, result, critical=False)
-            await self._record_ledger(event, critical=False, delivered=result.attempted)
             await self._remove_invalid(result.invalid_device_ids)
+            attempted += result.attempted
+            await self._record_ledger(event, critical=bool(alarms), delivered=attempted)
+            await self.policy.remember_official_quake(report)
         except Exception:
             await self.policy.release(decision)
             raise
         LOGGER.info(
-            "Official push event_id=%s attempted=%d succeeded=%d",
-            event["event_id"], result.attempted, result.succeeded,
+            "Official push event_id=%s alarms=%d notices=%d",
+            event["event_id"], len(alarms), len(notices),
         )
 
     async def _handle_family_status(self, event: dict[str, Any]) -> None:
@@ -262,8 +292,10 @@ class StreamConsumer:
                     "zone_id": event.get("zone_id"),
                     "latitude": report.get("latitude", event.get("estimated_latitude")),
                     "longitude": report.get("longitude", event.get("estimated_longitude")),
-                    "magnitude": report.get("magnitude"),
+                    "magnitude": report.get("magnitude", event.get("magnitude_estimate")),
                     "depth_km": report.get("depth_km"),
+                    # La bitácora vuelve a decidir alarma o aviso con la edad del sismo.
+                    "origin_time": report.get("origin_time"),
                     "place": report.get("place"),
                     "agency": report.get("agency"),
                     "official_url": report.get("official_url"),

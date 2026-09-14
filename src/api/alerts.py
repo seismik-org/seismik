@@ -24,7 +24,7 @@ from api.dependencies import (
 )
 from api.devices_store import DeviceRepository
 from api.schemas import AlertLedgerEntry, AlertLedgerPage, DeviceTarget
-from dispatcher.policy import AlertPolicy
+from dispatcher.policy import ALARM, AlertPolicy
 
 router = APIRouter(
     prefix="/v1/alerts",
@@ -65,8 +65,14 @@ async def recent_alerts(
         payload = _decode_payload(entry)
         if payload is None:
             continue
-        critical = entry.get("critical") == "true"
-        if not _relevant(policy, target, payload, critical=critical):
+        critical = _delivery(
+            policy,
+            target,
+            str(entry.get("type")),
+            payload,
+            critical=entry.get("critical") == "true",
+        )
+        if critical is None:
             continue
         alerts.append(
             AlertLedgerEntry(
@@ -112,34 +118,38 @@ def _decode_payload(entry: dict[str, str]) -> dict[str, Any] | None:
     return decoded if isinstance(decoded, dict) else None
 
 
-def _relevant(
+def _delivery(
     policy: AlertPolicy,
     target: DeviceTarget,
+    event_type: str,
     payload: dict[str, Any],
     *,
     critical: bool,
-) -> bool:
-    """Reaplica los filtros del dispatcher sobre un único dispositivo."""
+) -> bool | None:
+    """Reaplica los filtros del dispatcher sobre un único dispositivo.
+
+    ``None`` si el aviso no era para él; si lo era, si sonó como alarma.
+    """
 
     latitude = _as_float(payload.get("latitude"))
     longitude = _as_float(payload.get("longitude"))
-    if critical:
-        return bool(
-            policy.filter_critical(
-                [target],
-                latitude=latitude,
-                longitude=longitude,
-                magnitude=_as_float(payload.get("magnitude")),
-            )
-        )
-    return bool(
-        policy.filter_official(
-            [target],
-            magnitude=_as_float(payload.get("magnitude")),
+    magnitude = _as_float(payload.get("magnitude"))
+    depth_km = _as_float(payload.get("depth_km"))
+    if event_type == "official_report_update":
+        delivery = policy.classify_official(
+            target,
+            magnitude=magnitude,
             latitude=latitude,
             longitude=longitude,
+            depth_km=depth_km,
+            origin_time=payload.get("origin_time"),
         )
-    )
+        return None if delivery is None else delivery == ALARM
+    if policy.filter_critical(
+        [target], latitude=latitude, longitude=longitude, magnitude=magnitude, depth_km=depth_km
+    ):
+        return critical
+    return None
 
 
 def _as_float(value: Any) -> float | None:

@@ -1,6 +1,8 @@
 """La bitácora de alertas permite que una app sin conexión recupere lo perdido."""
 from __future__ import annotations
 
+from datetime import datetime, timezone
+
 import httpx
 import pytest
 from fakeredis.aioredis import FakeRedis
@@ -160,10 +162,13 @@ async def test_cursor_returns_only_what_happened_after_the_last_sync() -> None:
 
 
 @pytest.mark.asyncio
-async def test_ledger_applies_the_magnitude_threshold_of_the_device() -> None:
+async def test_ledger_applies_the_felt_perimeter_of_the_device() -> None:
     redis = FakeRedis(decode_responses=True)
     settings = AppSettings()
-    await register(redis, minimum_magnitude=7.0)
+    # En Medellín y con los ajustes más generosos: un M5.4 en Bogotá no se sintió allí.
+    await register(
+        redis, latitude=6.25, longitude=-75.57, minimum_magnitude=0.0, alert_radius_km=2_000
+    )
     await emit(redis, settings, [official("official-1", magnitude=5.4)])
 
     async with httpx.AsyncClient(
@@ -176,6 +181,29 @@ async def test_ledger_applies_the_magnitude_threshold_of_the_device() -> None:
             headers=await session_headers(redis, settings, "device-0001"),
         )
     assert response.json()["alerts"] == []
+
+
+@pytest.mark.asyncio
+async def test_ledger_marks_a_recent_strong_report_as_an_alarm() -> None:
+    redis = FakeRedis(decode_responses=True)
+    settings = AppSettings()
+    await register(redis, minimum_magnitude=9.0)
+    strong = official("official-strong", magnitude=6.5)
+    strong["preferred_report"]["origin_time"] = datetime.now(timezone.utc).isoformat()
+    push = await emit(redis, settings, [strong])
+    assert [critical for _event, _targets, critical in push.calls] == [True, False]
+
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=build_app(redis, settings)),
+        base_url="http://test",
+    ) as client:
+        response = await client.get(
+            "/v1/alerts/recent",
+            params={"device_id": "device-0001"},
+            headers=await session_headers(redis, settings, "device-0001"),
+        )
+    [alert] = response.json()["alerts"]
+    assert alert["critical"] is True
 
 
 @pytest.mark.asyncio
