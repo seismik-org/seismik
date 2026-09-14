@@ -14,18 +14,16 @@ import SwiftUI
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
-    #if DEBUG
     // Hosted unit tests exercise pure models and contracts, not live APNs,
-    // App Check, motion sensors or account services.
-    if ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
-        || NSClassFromString("XCTestCase") != nil {
+    // App Check, motion sensors or account services. SceneDelegate applies the
+    // same check: with scenes, it is the one that mounts the SwiftUI app.
+    if SeismikLaunchEnvironment.isHostingUnitTests {
       let testWindow = UIWindow(frame: UIScreen.main.bounds)
       testWindow.rootViewController = UIViewController()
       window = testWindow
       testWindow.makeKeyAndVisible()
       return true
     }
-    #endif
     // La interfaz es SwiftUI nativa, por lo que no hay un `Firebase.initializeApp`
     // de Dart que configure App Check por nosotros. El proveedor debe instalarse
     // antes de crear la app Firebase para que el primer registro sea verificable.
@@ -86,6 +84,21 @@ import SwiftUI
       await SeismikState.shared.syncMissedAlerts()
       completionHandler(.newData)
     }
+  }
+}
+
+/// El simulador de CI lanza la app como anfitriona de XCTest con un
+/// GoogleService-Info.plist de relleno: configurar Firebase aborta
+/// (FirebaseInstallations rechaza la clave) y montar la interfaz real llama a
+/// App Check sin Firebase. En ese caso la app no arranca nada de eso.
+enum SeismikLaunchEnvironment {
+  static var isHostingUnitTests: Bool {
+    #if DEBUG
+    return ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
+      || NSClassFromString("XCTestCase") != nil
+    #else
+    return false
+    #endif
   }
 }
 

@@ -1,6 +1,7 @@
 import Foundation
 import CryptoKit
 import FirebaseAppCheck
+import FirebaseCore
 import AuthenticationServices
 import UIKit
 
@@ -853,7 +854,12 @@ public final class SeismikAPIClient {
     /// Obtiene un token efímero emitido por Firebase App Check y respaldado
     /// por DeviceCheck. Nunca se persiste ni se sustituye por texto de prueba.
     private func currentAppCheckToken() async throws -> String {
-        try await withCheckedThrowingContinuation { continuation in
+        // Sin FirebaseApp, AppCheck.appCheck() lanza una excepción de Objective-C
+        // que cierra la app. Mejor un error transitorio: el registro se reintenta.
+        guard FirebaseApp.app() != nil else {
+            throw SeismikAPIError.rejected(status: 503, message: "Firebase App Check aún no está disponible")
+        }
+        return try await withCheckedThrowingContinuation { continuation in
             AppCheck.appCheck().token(forcingRefresh: false) { token, error in
                 if let error {
                     continuation.resume(throwing: error)

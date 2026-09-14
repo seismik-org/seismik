@@ -14,7 +14,11 @@ class SceneDelegate: FlutterSceneDelegate {
     // huérfana superpuesta a la real.
     guard let windowScene = scene as? UIWindowScene else { return }
     let appWindow = self.window ?? UIWindow(windowScene: windowScene)
-    appWindow.rootViewController = UIHostingController(rootView: SeismikNativeAppRoot())
+    // Como anfitriona de XCTest la interfaz real registraría el dispositivo con
+    // App Check sin Firebase configurado y abortaría antes de las pruebas.
+    appWindow.rootViewController = SeismikLaunchEnvironment.isHostingUnitTests
+      ? UIViewController()
+      : UIHostingController(rootView: SeismikNativeAppRoot())
     self.window = appWindow
     appWindow.makeKeyAndVisible()
   }
