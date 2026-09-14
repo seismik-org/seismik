@@ -218,8 +218,13 @@ public struct SeismicEvent: Identifiable, Codable, Hashable {
         magnitudeEstimateStatus = try container.decodeIfPresent(String.self, forKey: .magnitudeEstimateStatus)
         stations = (try? container.decodeIfPresent([StationTrigger].self, forKey: .stations)) ?? []
         notificationType = try container.decodeIfPresent(String.self, forKey: .notificationType)
-        critical = (try? container.decodeIfPresent(Bool.self, forKey: .critical))
-            ?? (try? container.decodeIfPresent(String.self, forKey: .critical)).map { $0 == "true" }
+        if let value = try? container.decode(Bool.self, forKey: .critical) {
+            critical = value
+        } else if let value = try? container.decode(String.self, forKey: .critical) {
+            critical = value == "true" || value == "1"
+        } else {
+            critical = nil
+        }
 
         // Manejo flexible de fechas ISO8601 o timestamps
         // `/v1/alerts/recent` fecha cada aviso con `emitted_at`; el historial usa

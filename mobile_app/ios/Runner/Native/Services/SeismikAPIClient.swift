@@ -214,7 +214,7 @@ public final class SeismikAPIClient {
 
     private let baseURL: URL
     private let session: URLSession
-    private let keychain = KeychainStore.shared
+    private let keychain: KeychainStore
     private let queue = OfflineReportQueue.shared
     private let encoder = JSONEncoder()
 
@@ -225,9 +225,10 @@ public final class SeismikAPIClient {
     private static let accountSessionKey = "seismik.account_session_token"
     private static let accountProfileKey = "seismik.account_profile"
 
-    private init() {
+    init(baseURL: URL? = nil, session: URLSession? = nil, keychain: KeychainStore = .shared) {
         let configuredURL = Bundle.main.object(forInfoDictionaryKey: "SeismikAPIBaseURL") as? String
-        self.baseURL = URL(string: configuredURL ?? "") ?? URL(string: "https://api.seismik.org")!
+        self.baseURL = baseURL ?? URL(string: configuredURL ?? "") ?? URL(string: "https://api.seismik.org")!
+        self.keychain = keychain
         let config = URLSessionConfiguration.default
         config.timeoutIntervalForRequest = 12.0
         config.timeoutIntervalForResource = 30.0
@@ -236,7 +237,7 @@ public final class SeismikAPIClient {
             "Content-Type": "application/json",
             "User-Agent": "Seismik-iOS-Native/1.0.0"
         ]
-        self.session = URLSession(configuration: config)
+        self.session = session ?? URLSession(configuration: config)
     }
 
     /// País del dispositivo en ISO alpha-2. El backend exige dos letras, así
@@ -627,14 +628,14 @@ public final class SeismikAPIClient {
     public func linkDeviceToAccount() async throws {
         var request = try accountRequest(path: "v1/account/device", requireDevice: true)
         request.httpMethod = "POST"
-        let (data, response) = try await session.data(for: request)
+        let (data, response) = try await sendAccountRequest(request)
         try assertSuccess(response, data: data)
     }
 
     public func unlinkDeviceFromAccount() async throws {
         var request = try accountRequest(path: "v1/account/device", requireDevice: true)
         request.httpMethod = "DELETE"
-        let (data, response) = try await session.data(for: request)
+        let (data, response) = try await sendAccountRequest(request)
         if (response as? HTTPURLResponse)?.statusCode != 204 {
             try assertSuccess(response, data: data)
         }
@@ -645,7 +646,7 @@ public final class SeismikAPIClient {
     public func fetchFamilyCircle() async throws -> FamilyCircle? {
         var request = try accountRequest(path: "v1/family/circle")
         request.httpMethod = "GET"
-        let (data, response) = try await session.data(for: request)
+        let (data, response) = try await sendAccountRequest(request)
         if let http = response as? HTTPURLResponse, http.statusCode == 404,
            String(data: data, encoding: .utf8)?.contains("No family circle found") == true {
             return nil
@@ -657,7 +658,8 @@ public final class SeismikAPIClient {
     public func createFamilyCircle(displayName: String, circleName: String) async throws {
         _ = try await familySend(
             path: "v1/family/circle", method: "POST",
-            body: ["display_name": displayName, "circle_name": circleName]
+            body: ["display_name": displayName.trimmingCharacters(in: .whitespacesAndNewlines),
+                   "circle_name": circleName.trimmingCharacters(in: .whitespacesAndNewlines)]
         )
     }
 
@@ -676,7 +678,8 @@ public final class SeismikAPIClient {
     public func joinFamilyCircle(inviteCode: String, displayName: String) async throws {
         _ = try await familySend(
             path: "v1/family/join", method: "POST",
-            body: ["invite_code": inviteCode, "display_name": displayName]
+            body: ["invite_code": inviteCode.trimmingCharacters(in: .whitespacesAndNewlines),
+                   "display_name": displayName.trimmingCharacters(in: .whitespacesAndNewlines)]
         )
     }
 
@@ -698,7 +701,7 @@ public final class SeismikAPIClient {
     public func stopSharingFamilyLocation() async throws {
         var request = try accountRequest(path: "v1/family/location")
         request.httpMethod = "DELETE"
-        let (data, response) = try await session.data(for: request)
+        let (data, response) = try await sendAccountRequest(request)
         if (response as? HTTPURLResponse)?.statusCode != 204 {
             try assertSuccess(response, data: data)
         }
@@ -819,9 +822,23 @@ public final class SeismikAPIClient {
         var request = try accountRequest(path: path)
         request.httpMethod = method
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
-        let (data, response) = try await session.data(for: request)
+        let (data, response) = try await sendAccountRequest(request)
         try assertSuccess(response, data: data)
         return data
+    }
+
+    /// Retry once only when registration actually replaced the device token
+    /// while this request was in flight. Account failures are never retried.
+    private func sendAccountRequest(_ request: URLRequest) async throws -> (Data, URLResponse) {
+        let result = try await session.data(for: request)
+        guard let http = result.1 as? HTTPURLResponse, http.statusCode == 401 else { return result }
+        let failure = SeismikAPIError.rejected(status: http.statusCode,
+            message: String(data: result.0, encoding: .utf8) ?? "")
+        guard failure.isDeviceSessionRejected, let fresh = deviceSessionToken,
+              !fresh.isEmpty, fresh != request.value(forHTTPHeaderField: "X-Seismik-Device-Session") else { return result }
+        var retry = request
+        retry.setValue(fresh, forHTTPHeaderField: "X-Seismik-Device-Session")
+        return try await session.data(for: retry)
     }
 
     private func assertSuccess(_ response: URLResponse, data: Data) throws {

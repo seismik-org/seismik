@@ -249,7 +249,8 @@ public final class SeismikState: ObservableObject {
     /// que el teléfono tenía antes de exigir cuenta pasa a la persona.
     public func accountDidSignIn(_ newAccount: SeismikAccount) async {
         account = newAccount
-        await linkDeviceToAccount()
+        // Registration must finish before the account points at this phone.
+        await updateRegistration()
         familyUpdates += 1
     }
 
