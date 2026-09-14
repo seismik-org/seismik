@@ -56,6 +56,24 @@ public struct SeismikNativeAppRoot: View {
             selectedTab = tab
             state.requestedTab = nil
         }
+        .onAppear {
+            // A tapped family push can arrive before SwiftUI installs onChange.
+            if let tab = state.requestedTab {
+                selectedTab = tab
+                state.requestedTab = nil
+            }
+        }
+        .overlay {
+            // The alarm and family check-in must be reachable from every tab.
+            if let alertEvent = state.activeAlert {
+                EmergencyAlertView(
+                    event: alertEvent,
+                    onDismiss: { state.dismissAlert() },
+                    onReportSafe: { state.requestFamilyCheckIn(for: alertEvent) }
+                )
+                .transition(.opacity.combined(with: .scale(scale: 0.96)))
+            }
+        }
         .onChange(of: scenePhase) { phase in
             guard phase == .active else { return }
             Task {

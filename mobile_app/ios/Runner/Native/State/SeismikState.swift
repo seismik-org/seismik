@@ -53,6 +53,7 @@ public final class SeismikState: ObservableObject {
     /// App Check no admite dos obtenciones simultáneas durante el arranque.
     /// Centralizar el alta evita `ParallelWaitError` y registros intermitentes.
     private var registrationInProgress = false
+    private var registrationPending = false
 
     public init() {
         self.isRegistered = apiClient.isRegistered
@@ -89,9 +90,19 @@ public final class SeismikState: ObservableObject {
     /// registrar el dispositivo, un cambio de preferencia no llegaría al
     /// despachador y la persona seguiría recibiendo lo mismo que antes.
     public func updateRegistration() async {
-        guard !registrationInProgress else { return }
+        guard !registrationInProgress else {
+            // APNs/preferences may change while App Check or registration is awaiting.
+            registrationPending = true
+            return
+        }
         registrationInProgress = true
-        defer { registrationInProgress = false }
+        defer {
+            registrationInProgress = false
+            if registrationPending {
+                registrationPending = false
+                Task { await updateRegistration() }
+            }
+        }
         let coordinate = locationManager.userCoordinate
         // El despachador decide con este dato si el aviso puede sonar como
         // alerta crítica; enviarlo fijo en falso lo desactivaba siempre.
@@ -267,7 +278,7 @@ public final class SeismikState: ObservableObject {
         guard account != nil, apiClient.isRegistered else { return }
         do {
             try await apiClient.linkDeviceToAccount()
-        } catch let SeismikAPIError.rejected(status, message) where status == 401 && message.contains("Account session") {
+        } catch let error as SeismikAPIError where error.isAccountSessionRejected {
             accountSessionExpired()
         } catch {
             // Sin registro todavía: se reintenta tras el próximo alta.
@@ -310,10 +321,11 @@ public final class SeismikState: ObservableObject {
         if !events.contains(where: { $0.id == event.id }) {
             events.insert(event, at: 0)
         }
-        if event.isPreliminary || (event.magnitude ?? 0) >= 4.0 {
+        if SeismikNotificationPresenter.shouldPresentAlarm(for: event) {
             activeAlert = event
             HapticManager.heavy()
         } else {
+            if opened { requestedTab = 0 }
             selectedEvent = event
         }
     }

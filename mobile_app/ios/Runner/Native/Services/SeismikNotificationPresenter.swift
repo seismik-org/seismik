@@ -14,6 +14,25 @@ import UserNotifications
 public final class SeismikNotificationPresenter: NSObject, UNUserNotificationCenterDelegate {
     public static let shared = SeismikNotificationPresenter()
 
+    /// Respect the server's per-device decision, including stale official reports.
+    static func shouldPresentAlarm(for event: SeismicEvent) -> Bool {
+        if let critical = event.critical { return critical }
+        return event.isPreliminary // Compatibility with older early-warning payloads.
+    }
+
+    static func alertTitle(for event: SeismicEvent) -> String {
+        event.isCriticalOfficial ? "SISMO FUERTE EN TU ZONA" : "ALERTA SÍSMICA"
+    }
+
+    static func alertInstruction(for event: SeismicEvent) -> String {
+        event.isCriticalOfficial ? "Revisa a tu familia y prepárate para réplicas" : "PROTÉGETE AHORA"
+    }
+
+    static func elapsedDescription(for event: SeismicEvent, now: Date = Date()) -> String {
+        guard let origin = event.detectedAt else { return "Hora del sismo no disponible" }
+        return "Hace \(max(0, Int(now.timeIntervalSince(origin) / 60))) min · desde el sismo"
+    }
+
     private override init() {
         super.init()
     }

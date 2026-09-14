@@ -145,19 +145,8 @@ public struct SettingsView: View {
                     .tint(SeismikColors.systemBlue)
                     .onChange(of: state.receiveOfficialUpdates) { _ in saveAlertPreferences() }
 
-                    // Deslizador continuo de magnitud mínima para alerta
-                    SliderRow(
-                        title: "Magnitud mínima para aviso oficial",
-                        value: $state.minimumNotificationMagnitude,
-                        range: 2.0...8.0,
-                        step: 0.5,
-                        format: "%.1f",
-                        prefix: "M"
-                    ) {
-                        saveAlertPreferences()
-                    }
-
-                    Text("Las alertas tempranas preliminares usan una zona estimada de sacudida; una magnitud alta puede avisarte aunque esté más lejos si el movimiento podría sentirse. No reemplaza un boletín oficial.")
+                    // El valor de magnitud guardado se conserva para el registro compatible.
+                    Text("El perímetro estima la sacudida donde estás según la magnitud, profundidad y distancia. Con sacudida fuerte (VI o más) la alarma suena siempre, sin importar tu configuración. La alerta temprana avisa desde IV y el reporte oficial desde III. Un reporte oficial de más de 30 minutos llega como aviso.")
                         .font(.caption)
                         .foregroundColor(.secondary)
 
@@ -605,8 +594,10 @@ private struct ProximityRadiusChipsView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Umbral de cercanía")
+            Text("Radio para detecciones sin magnitud")
                 .font(.body)
+            Text("Una detección preliminar sin magnitud todavía no tiene perímetro: se usa este radio de respaldo. También se conserva la configuración anterior cuando falta el epicentro.")
+                .font(.caption).foregroundColor(.secondary)
 
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 85), spacing: 8)], spacing: 8) {
                 ForEach(radii, id: \.self) { r in
@@ -986,7 +977,11 @@ public struct FamilySafetyView: View {
             }
         } catch SeismikAPIError.accountRequired {
             appState.accountSessionExpired()
-        } catch let SeismikAPIError.rejected(status, _) where status == 401 {
+        } catch let error as SeismikAPIError where error.isDeviceSessionRejected {
+            // Do not discard the circle or account during device-token rotation.
+            message = nil
+            await appState.updateRegistration()
+        } catch let error as SeismikAPIError where error.isAccountSessionRejected {
             appState.accountSessionExpired()
             message = "Tu sesión venció. Inicia sesión de nuevo para ver a tu familia."
         } catch {
@@ -1016,7 +1011,11 @@ public struct FamilySafetyView: View {
                     : "Tu familia sabe que estás bien."
             }
             await reload()
-        } catch let SeismikAPIError.rejected(status, _) where status == 401 {
+        } catch let error as SeismikAPIError where error.isDeviceSessionRejected {
+            // Keep the pending check-in so the person can retry after registration.
+            message = nil
+            await appState.updateRegistration()
+        } catch let error as SeismikAPIError where error.isAccountSessionRejected {
             appState.accountSessionExpired()
             message = "Tu sesión venció. Inicia sesión de nuevo para avisar a tu familia."
         } catch {
@@ -1028,6 +1027,11 @@ public struct FamilySafetyView: View {
         do {
             try await SeismikAPIClient.shared.createFamilyCircle(displayName: displayName, circleName: circleName)
             await reload()
+        } catch let error as SeismikAPIError where error.isAccountSessionRejected {
+            appState.accountSessionExpired()
+        } catch let error as SeismikAPIError where error.isDeviceSessionRejected {
+            message = nil
+            await appState.updateRegistration()
         } catch { message = "No se pudo crear el círculo. Inténtalo otra vez." }
     }
 
@@ -1035,6 +1039,11 @@ public struct FamilySafetyView: View {
         do {
             try await SeismikAPIClient.shared.joinFamilyCircle(inviteCode: inviteCode, displayName: displayName)
             await reload()
+        } catch let error as SeismikAPIError where error.isAccountSessionRejected {
+            appState.accountSessionExpired()
+        } catch let error as SeismikAPIError where error.isDeviceSessionRejected {
+            message = nil
+            await appState.updateRegistration()
         } catch { message = "El código no es válido, ya venció o tu cuenta ya está en un círculo." }
     }
 

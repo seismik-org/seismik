@@ -77,6 +77,10 @@ public struct SeismicEvent: Identifiable, Codable, Hashable {
     public let algorithm: String?
     public let magnitudeEstimateStatus: String?
     public let stations: [StationTrigger]
+    public let notificationType: String?
+    public let critical: Bool?
+
+    public var isCriticalOfficial: Bool { notificationType == "official_report_update" && critical == true }
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -110,6 +114,8 @@ public struct SeismicEvent: Identifiable, Codable, Hashable {
         case algorithm
         case magnitudeEstimateStatus = "magnitude_estimate_status"
         case stations
+        case notificationType = "type"
+        case critical
     }
 
     public init(
@@ -136,7 +142,9 @@ public struct SeismicEvent: Identifiable, Codable, Hashable {
         countryCodes: [String] = [],
         algorithm: String? = nil,
         magnitudeEstimateStatus: String? = nil,
-        stations: [StationTrigger] = []
+        stations: [StationTrigger] = [],
+        notificationType: String? = nil,
+        critical: Bool? = nil
     ) {
         self.id = id
         self.place = place
@@ -162,6 +170,8 @@ public struct SeismicEvent: Identifiable, Codable, Hashable {
         self.algorithm = algorithm
         self.magnitudeEstimateStatus = magnitudeEstimateStatus
         self.stations = stations
+        self.notificationType = notificationType
+        self.critical = critical
     }
 
     public init(from decoder: Decoder) throws {
@@ -207,6 +217,9 @@ public struct SeismicEvent: Identifiable, Codable, Hashable {
         algorithm = try container.decodeIfPresent(String.self, forKey: .algorithm)
         magnitudeEstimateStatus = try container.decodeIfPresent(String.self, forKey: .magnitudeEstimateStatus)
         stations = (try? container.decodeIfPresent([StationTrigger].self, forKey: .stations)) ?? []
+        notificationType = try container.decodeIfPresent(String.self, forKey: .notificationType)
+        critical = (try? container.decodeIfPresent(Bool.self, forKey: .critical))
+            ?? (try? container.decodeIfPresent(String.self, forKey: .critical)).map { $0 == "true" }
 
         // Manejo flexible de fechas ISO8601 o timestamps
         // `/v1/alerts/recent` fecha cada aviso con `emitted_at`; el historial usa
@@ -257,6 +270,8 @@ public struct SeismicEvent: Identifiable, Codable, Hashable {
         try container.encodeIfPresent(algorithm, forKey: .algorithm)
         try container.encodeIfPresent(magnitudeEstimateStatus, forKey: .magnitudeEstimateStatus)
         try container.encode(stations, forKey: .stations)
+        try container.encodeIfPresent(notificationType, forKey: .notificationType)
+        try container.encodeIfPresent(critical, forKey: .critical)
     }
 
     public var utcTimeFormatted: String {
@@ -341,7 +356,9 @@ public struct SeismicEvent: Identifiable, Codable, Hashable {
             intensityMmi: nil,
             tsunamiWarning: false,
             officialUrl: text("official_url"),
-            zoneId: text("zone_id")
+            zoneId: text("zone_id"),
+            notificationType: type,
+            critical: text("critical").map { $0 == "true" || $0 == "1" }
         )
     }
 }

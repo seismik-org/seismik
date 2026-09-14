@@ -161,6 +161,17 @@ public enum SeismikAPIError: LocalizedError {
     /// Búsqueda de familiares exige iniciar sesión.
     case accountRequired
 
+    /// A device session rotates at registration; it is not the person's account.
+    public var isAccountSessionRejected: Bool {
+        guard case let .rejected(status, message) = self else { return false }
+        return status == 401 && message.contains("Account session")
+    }
+
+    public var isDeviceSessionRejected: Bool {
+        guard case let .rejected(status, _) = self else { return false }
+        return status == 401 && !isAccountSessionRejected
+    }
+
     /// 408 y 429 son transitorios; el resto de los 4xx indica un contrato
     /// inválido y reintentarlo sólo repetiría el rechazo.
     public var isPermanent: Bool {
