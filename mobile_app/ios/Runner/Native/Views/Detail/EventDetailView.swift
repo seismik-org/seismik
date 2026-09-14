@@ -10,6 +10,7 @@ public struct EventDetailView: View {
     @State private var showFeltReport = false
     @State private var showDamageReport = false
     @State private var browserDestination: BrowserDestination?
+    @ObservedObject private var locationManager = LocationManager.shared
 
     public init(event: SeismicEvent) {
         self.event = event
@@ -44,6 +45,7 @@ public struct EventDetailView: View {
                     if let coord = event.coordinate {
                         epicenterMapSection(coord)
                     }
+                    perimeterCard
 
                     // 7. Botones de Acción Ciudadana y Mapas
                     actionButtonsSection
@@ -283,7 +285,7 @@ public struct EventDetailView: View {
     }
 
     private func epicenterMapSection(_ coord: CLLocationCoordinate2D) -> some View {
-        EpicenterMapView(coordinate: coord, title: event.place, magnitude: event.magnitude, isPreliminary: event.isPreliminary)
+        EpicenterMapView(coordinate: coord, title: event.place, magnitude: event.magnitude, isPreliminary: event.isPreliminary, rings: FeltArea.perimeter(for: event))
             .frame(height: 220)
             .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
             .overlay {
@@ -291,6 +293,50 @@ public struct EventDetailView: View {
                     .strokeBorder(Color.white.opacity(0.18), lineWidth: 0.8)
             }
             .padding(.vertical, 4)
+    }
+
+    private var perimeterCard: some View {
+        let rings = FeltArea.perimeter(for: event)
+        return VStack(alignment: .leading, spacing: 12) {
+            Label("Perímetro de sacudida", systemImage: "circle.dotted.circle")
+                .font(.headline)
+            if event.magnitude == nil {
+                Text("Sin magnitud todavía no se puede estimar dónde se sintió.")
+            } else if event.coordinate == nil {
+                Text("Sin epicentro todavía no se puede estimar dónde se sintió.")
+            } else if rings.isEmpty {
+                Text("Por su magnitud y profundidad no se espera que se haya sentido en superficie.")
+            }
+            ForEach(rings) { ring in
+                HStack(alignment: .firstTextBaseline, spacing: 10) {
+                    Circle().fill(Color(uiColor: FeltArea.color(ring.intensity)))
+                        .frame(width: 12, height: 12)
+                    Text("\(FeltArea.roman(ring.intensity)) · \(ring.label)")
+                    Spacer(minLength: 4)
+                    Text("Hasta \(String(format: "%.0f", ring.radiusKm)) km")
+                        .fontWeight(.semibold)
+                }
+                .font(.subheadline)
+            }
+            if let local = FeltArea.localIntensity(for: event, at: locationManager.currentCoordinate),
+               let location = locationManager.currentCoordinate, let epicenter = event.coordinate {
+                Divider()
+                let distance = String(format: "%.0f", FeltArea.distanceKm(from: epicenter, to: location))
+                Text(local >= FeltArea.felt
+                     ? "Donde estás (a \(distance) km): intensidad \(FeltArea.roman(local)), movimiento \(FeltArea.name(local))."
+                     : "Donde estás (a \(distance) km) no se espera que se haya sentido.")
+                    .font(.subheadline.weight(.semibold))
+            } else {
+                Text("Permite la ubicación para ver la intensidad estimada donde estás.")
+                    .font(.caption).foregroundColor(.secondary)
+            }
+            Text("Con sacudida fuerte la alarma suena siempre, sin importar tu configuración.")
+                .font(.subheadline)
+            Text(FeltArea.sourceNote).font(.caption).foregroundColor(.secondary)
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .liquidGlass(cornerRadius: 20)
     }
 
     private var actionButtonsSection: some View {
@@ -522,6 +568,7 @@ private struct EpicenterMapView: UIViewRepresentable {
     let title: String?
     let magnitude: Double?
     let isPreliminary: Bool
+    let rings: [FeltArea.Ring]
 
     func makeUIView(context: Context) -> MKMapView {
         let map = MKMapView()
@@ -537,6 +584,13 @@ private struct EpicenterMapView: UIViewRepresentable {
         pin.coordinate = coordinate
         pin.title = title
         map.addAnnotation(pin)
+        for ring in rings { map.addOverlay(FeltArea.circle(ring, center: coordinate)) }
+        if let outer = rings.first {
+            let circle = FeltArea.circle(outer, center: coordinate)
+            map.setVisibleMapRect(circle.boundingMapRect,
+                                  edgePadding: UIEdgeInsets(top: 28, left: 28, bottom: 28, right: 28),
+                                  animated: false)
+        }
         return map
     }
 
@@ -553,6 +607,11 @@ private struct EpicenterMapView: UIViewRepresentable {
         init(magnitude: Double?, isPreliminary: Bool) {
             self.magnitude = magnitude
             self.isPreliminary = isPreliminary
+        }
+
+        func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
+            guard let circle = overlay as? MKCircle else { return MKOverlayRenderer(overlay: overlay) }
+            return FeltArea.renderer(for: circle)
         }
 
         func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
