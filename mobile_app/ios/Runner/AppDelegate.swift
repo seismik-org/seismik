@@ -14,6 +14,18 @@ import SwiftUI
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
+    #if DEBUG
+    // Hosted unit tests exercise pure models and contracts, not live APNs,
+    // App Check, motion sensors or account services.
+    if ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
+        || NSClassFromString("XCTestCase") != nil {
+      let testWindow = UIWindow(frame: UIScreen.main.bounds)
+      testWindow.rootViewController = UIViewController()
+      window = testWindow
+      testWindow.makeKeyAndVisible()
+      return true
+    }
+    #endif
     // La interfaz es SwiftUI nativa, por lo que no hay un `Firebase.initializeApp`
     // de Dart que configure App Check por nosotros. El proveedor debe instalarse
     // antes de crear la app Firebase para que el primer registro sea verificable.
@@ -32,7 +44,7 @@ import SwiftUI
 
     if let notification = launchOptions?[.remoteNotification] as? [AnyHashable: Any] {
       Task { @MainActor in
-        SeismikState.shared.handleRemoteNotification(notification)
+        SeismikState.shared.handleRemoteNotification(notification, opened: true)
       }
     }
 
