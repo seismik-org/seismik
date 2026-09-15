@@ -1,107 +1,57 @@
 import SwiftUI
 
-/// Vista de contenido para la hoja inferior interactiva de sismos.
+/// Lista de sismos en la hoja nativa de iOS (alturas media y completa).
+///
+/// Antes era un panel propio que se arrastraba sobre el mapa con gestos y
+/// alturas calculadas a mano. La hoja del sistema ya resuelve el arrastre, las
+/// alturas, la accesibilidad y el cierre con un gesto que la gente conoce.
 public struct SeismicSheetView: View {
     @ObservedObject var state: SeismikState
     @ObservedObject var locationManager: LocationManager
 
-    @Binding var showFeltReport: Bool
-    @Binding var showDamageReport: Bool
-    let onDrawerDragChanged: (CGFloat) -> Void
-    let onDrawerDragEnded: (CGFloat, CGFloat) -> Void
-    let onDrawerHandleTapped: () -> Void
+    // La hoja presenta sus propias hojas: desde la base no se puede presentar
+    // otra mientras ésta sigue abierta.
+    @State private var detailEvent: SeismicEvent?
+    @State private var showFeltReport = false
+    @State private var showDamageReport = false
+
+    init(state: SeismikState, locationManager: LocationManager) {
+        self.state = state
+        self.locationManager = locationManager
+    }
 
     public var body: some View {
-        // Contenedor de la hoja: la cabecera arrastrable y la lista comparten
-        // el fondo, el recorte y la sombra que se aplican más abajo.
         VStack(spacing: 0) {
             VStack(spacing: 0) {
-                // Cabecera táctil y arrastrable de la hoja (Manija, estado y título)
-                VStack(spacing: 0) {
-                    // Zona de arrastre amplia: en iPhone la manija visible
-                    // sigue siendo discreta, pero el gesto se puede iniciar
-                    // en toda esta franja y no exige acertar 38 píxeles.
-                    HStack {
-                        Spacer(minLength: 0)
-                        Capsule()
-                            .fill(Color.secondary.opacity(0.38))
-                            .frame(width: 38, height: 5)
-                        Spacer(minLength: 0)
-                    }
-                    .frame(maxWidth: .infinity, minHeight: 44)
-                    .contentShape(Rectangle())
-                    .onTapGesture { onDrawerHandleTapped() }
-                    .gesture(drawerDragGesture)
-                    .accessibilityLabel("Deslizar historial de sismos")
-                    .accessibilityHint("Desliza hacia arriba o abajo para cambiar el tamaño del historial")
-
-                    // Estado de sincronización / red exactamente como en Android
-                    HStack(spacing: 6) {
-                        Circle()
-                            .fill(state.isOnline ? SeismikColors.emerald : SeismikColors.amber)
-                            .frame(width: 8, height: 8)
-                        Text(state.isOnline ? "Sincronizado" : "Actualizando cuando vuelva la red")
-                            .font(.system(size: 12.5, weight: .medium, design: .rounded))
-                            .foregroundColor(state.isOnline ? .secondary : SeismikColors.amber)
-                        Spacer()
-                        Text("\(state.events.count) eventos")
-                            .font(.system(size: 12, weight: .medium, design: .rounded))
-                            .foregroundColor(.secondary)
-                    }
-                    .padding(.horizontal, 18)
-                    .padding(.bottom, 2)
-
-                    // Título y subtítulo con paridad total con Android
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Historial de sismos")
-                            .font(.system(size: 22, weight: .bold, design: .rounded))
-                            .foregroundColor(.primary)
-
-                        Text("\(state.historyDays) días · M ≥ \(String(format: "%.1f", state.minMagnitude)) · Oficiales + preliminares")
-                            .font(.system(size: 13, weight: .regular, design: .rounded))
-                            .foregroundColor(.secondary)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 18)
-                    .padding(.bottom, 6)
-
-                    // Vista previa del sismo más reciente para visibilidad inmediata sin abrir la hoja
-                    if let latest = state.events.first {
-                        Button {
-                            HapticManager.light()
-                            state.selectEvent(latest)
-                        } label: {
-                            HStack(spacing: 8) {
-                                Text("ÚLTIMO")
-                                    .font(.system(size: 9, weight: .bold, design: .rounded))
-                                    .padding(.horizontal, 6)
-                                    .padding(.vertical, 2)
-                                    .background(SeismikColors.severityColor(for: latest.magnitude, isPreliminary: latest.isPreliminary).opacity(0.2), in: Capsule())
-                                    .foregroundColor(SeismikColors.severityColor(for: latest.magnitude, isPreliminary: latest.isPreliminary))
-
-                                Text(latest.magnitude.map { String(format: "M %.1f", $0) } ?? "Preliminar")
-                                    .font(.system(size: 12.5, weight: .bold, design: .rounded))
-                                    .foregroundColor(.primary)
-
-                                Text(latest.place ?? "Epicentro")
-                                    .font(.system(size: 12))
-                                    .foregroundColor(.secondary)
-                                    .lineLimit(1)
-
-                                Spacer()
-
-                                Text(latest.relativeTimeFormatted)
-                                    .font(.system(size: 11, weight: .medium))
-                                    .foregroundColor(.secondary)
-                            }
-                            .padding(.horizontal, 18)
-                            .padding(.top, 2)
-                            .padding(.bottom, 6)
-                            .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-                    }
+                // Estado de sincronización / red exactamente como en Android
+                HStack(spacing: 6) {
+                    Circle()
+                        .fill(state.isOnline ? SeismikColors.emerald : SeismikColors.amber)
+                        .frame(width: 8, height: 8)
+                    Text(state.isOnline ? "Sincronizado" : "Actualizando cuando vuelva la red")
+                        .font(.system(size: 12.5, weight: .medium, design: .rounded))
+                        .foregroundColor(state.isOnline ? .secondary : SeismikColors.amber)
+                    Spacer()
+                    Text("\(state.events.count) eventos")
+                        .font(.system(size: 12, weight: .medium, design: .rounded))
+                        .foregroundColor(.secondary)
                 }
+                .padding(.horizontal, 18)
+                .padding(.bottom, 2)
+
+                // Título y subtítulo con paridad total con Android
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Historial de sismos")
+                        .font(.system(size: 22, weight: .bold, design: .rounded))
+                        .foregroundColor(.primary)
+
+                    Text("\(state.historyDays) días · M ≥ \(String(format: "%.1f", state.minMagnitude)) · Oficiales + preliminares")
+                        .font(.system(size: 13, weight: .regular, design: .rounded))
+                        .foregroundColor(.secondary)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 18)
+                .padding(.bottom, 12)
 
                 // Barra de Acciones Rápidas Comunitarias
                 HStack(spacing: 12) {
@@ -140,6 +90,7 @@ public struct SeismicSheetView: View {
                 .padding(.horizontal, 16)
                 .padding(.bottom, 12)
             }
+            .padding(.top, 22)
 
             Divider()
 
@@ -200,23 +151,27 @@ public struct SeismicSheetView: View {
                                 event: event,
                                 userDistanceKm: distance
                             ) {
-                                state.selectEvent(event)
+                                detailEvent = event
                             }
                         }
                     }
                     .padding(.horizontal, 16)
+                    .padding(.top, 12)
                     .padding(.bottom, 36)
                 }
             }
         }
-        .background(
-            RoundedRectangle(cornerRadius: 28, style: .continuous)
-                .fill(.ultraThinMaterial)
-                .ignoresSafeArea(edges: .bottom)
-        )
-        .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
-        .shadow(color: Color.black.opacity(0.16), radius: 18, x: 0, y: -4)
+        .frame(maxHeight: .infinity, alignment: .top)
         .accessibilityElement(children: .contain)
+        .sheet(item: $detailEvent) { event in
+            EventDetailView(event: event)
+        }
+        .sheet(isPresented: $showFeltReport) {
+            FeltReportView(preselectedEvent: state.events.first)
+        }
+        .sheet(isPresented: $showDamageReport) {
+            DamageReportView(preselectedEvent: state.events.first)
+        }
     }
 
     private var pendingSummary: String {
@@ -224,15 +179,48 @@ public struct SeismicSheetView: View {
             ? "1 reporte espera conexión para enviarse."
             : "\(state.pendingReportCount) reportes esperan conexión para enviarse."
     }
+}
 
-    private var drawerDragGesture: some Gesture {
-        DragGesture(minimumDistance: 8)
-            .onChanged { value in
-                onDrawerDragChanged(value.translation.height)
+/// Barra fija sobre las pestañas: resume el historial y abre la lista.
+struct HistoryBarView: View {
+    @ObservedObject var state: SeismikState
+    let onOpen: () -> Void
+
+    var body: some View {
+        Button(action: onOpen) {
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Historial de sismos")
+                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                        .foregroundColor(.primary)
+                    Text(summary)
+                        .font(.system(size: 13))
+                        .foregroundColor(.secondary)
+                        .lineLimit(1)
+                }
+                Spacer(minLength: 8)
+                HStack(spacing: 5) {
+                    Image(systemName: "list.bullet")
+                    Text("Ver lista")
+                }
+                .font(.system(size: 14, weight: .semibold, design: .rounded))
+                .foregroundColor(SeismikColors.systemBlue)
             }
-            .onEnded { value in
-                onDrawerDragEnded(value.translation.height, value.predictedEndTranslation.height)
-            }
+            .padding(.horizontal, 16)
+            .frame(maxWidth: .infinity, minHeight: 64)
+            .liquidGlass(cornerRadius: 22)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityHint("Abre la lista de sismos")
+    }
+
+    private var summary: String {
+        guard let latest = state.events.first else {
+            return state.isRefreshing ? "Sincronizando red de sismos..." : "No hay sismos con estos filtros"
+        }
+        let magnitude = latest.magnitude.map { String(format: "M %.1f", $0) } ?? "Preliminar"
+        return "\(magnitude) · \(latest.place ?? "Epicentro") · \(latest.relativeTimeFormatted)"
     }
 }
 
