@@ -92,6 +92,9 @@ class OfficialReportUpdate:
     matched_at: str
     preferred_report: OfficialReport
     reports: tuple[OfficialReport, ...]
+    # Telemetría interna para calibrar un futuro modelo. Nunca es una M que se
+    # deba presentar al usuario ni participar en la política de alertas.
+    magnitude_shadow: dict[str, Any] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         result = asdict(self)

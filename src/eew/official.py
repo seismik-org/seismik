@@ -16,6 +16,7 @@ from typing import Any, Callable
 import requests
 
 from eew.config import OfficialReportsSettings
+from eew.magnitude_shadow import observation_for_match
 from eew.models import (
     EarthquakeCandidate,
     OfficialReport,
@@ -429,6 +430,7 @@ class OfficialReportService:
                     matched_at=utc_now_iso(),
                     preferred_report=ordered[0],
                     reports=ordered,
+                    magnitude_shadow=observation_for_match(candidate, ordered[0]),
                 )
                 self.publish(update)
 
