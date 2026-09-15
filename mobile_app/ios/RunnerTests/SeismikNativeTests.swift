@@ -570,4 +570,46 @@ final class NativeFamilyContractTests: XCTestCase {
             XCTAssertFalse(error.registrationMessage.contains("503"))
         }
     }
+
+    /// Desde el 11 de septiembre el .xcconfig entregaba `https:`: `//` es un
+    /// comentario allí. Ninguna petición salía del iPhone.
+    @MainActor
+    func testTheAPIBaseURLSurvivesXcconfigCommentTruncation() {
+        let production = URL(string: "https://api.seismik.org")!
+        XCTAssertEqual(SeismikAPIClient.resolveBaseURL(configured: "https:"), production)
+        XCTAssertEqual(SeismikAPIClient.resolveBaseURL(configured: "$(SEISMIK_API_BASE_URL)"), production)
+        XCTAssertEqual(SeismikAPIClient.resolveBaseURL(configured: ""), production)
+        XCTAssertEqual(SeismikAPIClient.resolveBaseURL(configured: nil), production)
+        XCTAssertEqual(SeismikAPIClient.resolveBaseURL(configured: "http://api.seismik.org"), production)
+        XCTAssertEqual(
+            SeismikAPIClient.resolveBaseURL(configured: " https://staging.seismik.org "),
+            URL(string: "https://staging.seismik.org")!
+        )
+    }
+
+    func testAFailedHistoryDownloadIsReportedInsteadOfShownAsFresh() async throws {
+        FamilyStubProtocol.handler = { request in
+            XCTAssertEqual(request.url?.path, "/v1/events/history")
+            return (500, "{\"detail\":\"catálogo caído\"}")
+        }
+        do {
+            _ = try await api.fetchRecentEvents()
+            XCTFail("A failed download must not return the cached list as fresh")
+        } catch let error as SeismikAPIError {
+            guard case let .rejected(status, _) = error else { return XCTFail("Unexpected \(error)") }
+            XCTAssertEqual(status, 500)
+        }
+    }
+
+    func testTheHistoryReturnsWhatTheServerSent() async throws {
+        FamilyStubProtocol.handler = { _ in
+            (200, "{\"events\":[{\"event_id\":\"usgs_global:us1\",\"type\":\"official_report_update\",\"origin_time\":\"2026-09-15T02:56:51Z\",\"latitude\":4.6,\"longitude\":-74.0,\"magnitude\":3.1}]}")
+        }
+        let fresh = try await api.fetchRecentEvents()
+        XCTAssertEqual(fresh.map(\.id), ["usgs_global:us1"])
+
+        FamilyStubProtocol.handler = { _ in (200, "{\"events\":[]}") }
+        let empty = try await api.fetchRecentEvents()
+        XCTAssertTrue(empty.isEmpty, "An empty answer must not bring back the previous list")
+    }
 }

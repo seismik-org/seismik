@@ -248,9 +248,25 @@ public final class SeismikAPIClient {
     private static let accountSessionKey = "seismik.account_session_token"
     private static let accountProfileKey = "seismik.account_profile"
 
+    static let defaultBaseURL = URL(string: "https://api.seismik.org")!
+
+    /// La URL de la API llega de Info.plist, que la toma de un .xcconfig. Allí
+    /// `//` inicia un comentario: `https://api.seismik.org` quedaba como
+    /// `https:` y ninguna petición salía del iPhone. Sólo se acepta una URL
+    /// https con dominio; cualquier otra cosa usa la API de producción.
+    static func resolveBaseURL(configured: String?) -> URL {
+        guard let raw = configured?.trimmingCharacters(in: .whitespacesAndNewlines),
+              let url = URL(string: raw),
+              url.scheme?.lowercased() == "https",
+              let host = url.host, !host.isEmpty else {
+            return defaultBaseURL
+        }
+        return url
+    }
+
     init(baseURL: URL? = nil, session: URLSession? = nil, keychain: KeychainStore = .shared) {
         let configuredURL = Bundle.main.object(forInfoDictionaryKey: "SeismikAPIBaseURL") as? String
-        self.baseURL = baseURL ?? URL(string: configuredURL ?? "") ?? URL(string: "https://api.seismik.org")!
+        self.baseURL = baseURL ?? Self.resolveBaseURL(configured: configuredURL)
         self.keychain = keychain
         let config = URLSessionConfiguration.default
         config.timeoutIntervalForRequest = 12.0
@@ -424,7 +440,7 @@ public final class SeismikAPIClient {
         ]
 
         guard let url = components?.url else {
-            return loadCachedEvents()
+            throw SeismikAPIError.malformedResponse
         }
 
         var request = URLRequest(url: url)
@@ -432,35 +448,35 @@ public final class SeismikAPIClient {
             request.setValue(sessionToken, forHTTPHeaderField: "X-Seismik-Device-Session")
         }
 
-        do {
-            let (data, response) = try await session.data(for: request)
-            if let httpResponse = response as? HTTPURLResponse {
-                // Si la sesión expiró o es inválida, refrescar registro y reintentar una vez
-                if httpResponse.statusCode == 401 {
-                    try? keychain.remove(Self.sessionTokenKey)
-                    let registered = try await registerDevice()
-                    if registered, let freshToken = deviceSessionToken {
-                        request.setValue(freshToken, forHTTPHeaderField: "X-Seismik-Device-Session")
-                        let (retryData, retryResponse) = try await session.data(for: request)
-                        if let retryHttp = retryResponse as? HTTPURLResponse, (200...299).contains(retryHttp.statusCode) {
-                            return parseAndCacheEvents(retryData)
-                        }
-                    }
-                }
-                guard (200...299).contains(httpResponse.statusCode) else {
-                    let cached = loadCachedEvents()
-                    if !cached.isEmpty { return cached }
-                    let message = String(data: data, encoding: .utf8) ?? ""
-                    throw SeismikAPIError.rejected(status: httpResponse.statusCode, message: message)
+        // Un fallo se informa. Devolver aquí la copia guardada hacía que la app
+        // dijera «Sincronizado» con sismos de hace días; SeismikState la muestra
+        // marcada como sin conexión.
+        let (data, response) = try await session.data(for: request)
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw SeismikAPIError.malformedResponse
+        }
+        // Si la sesión expiró o es inválida, refrescar registro y reintentar una vez
+        if httpResponse.statusCode == 401 {
+            try? keychain.remove(Self.sessionTokenKey)
+            let registered = try await registerDevice()
+            if registered, let freshToken = deviceSessionToken {
+                request.setValue(freshToken, forHTTPHeaderField: "X-Seismik-Device-Session")
+                let (retryData, retryResponse) = try await session.data(for: request)
+                if let retryHttp = retryResponse as? HTTPURLResponse, (200...299).contains(retryHttp.statusCode) {
+                    return try parseAndCacheEvents(retryData)
                 }
             }
-
-            return parseAndCacheEvents(data)
-        } catch {
-            let cached = loadCachedEvents()
-            if !cached.isEmpty { return cached }
-            throw error
         }
+        guard (200...299).contains(httpResponse.statusCode) else {
+            let message = String(data: data, encoding: .utf8) ?? ""
+            throw SeismikAPIError.rejected(status: httpResponse.statusCode, message: message)
+        }
+        return try parseAndCacheEvents(data)
+    }
+
+    /// Última lista que llegó bien del servidor, para mostrar algo sin red.
+    public func cachedEvents() -> [SeismicEvent] {
+        loadCachedEvents()
     }
 
     // MARK: - Estaciones Sismológicas
@@ -910,23 +926,23 @@ public final class SeismikAPIClient {
         }
     }
 
-    private func parseAndCacheEvents(_ data: Data) -> [SeismicEvent] {
+    private func parseAndCacheEvents(_ data: Data) throws -> [SeismicEvent] {
         struct EventsResponse: Decodable {
             let events: [SeismicEvent]
         }
 
-        var results: [SeismicEvent] = []
+        let events: [SeismicEvent]
         if let decoded = try? JSONDecoder().decode(EventsResponse.self, from: data) {
-            results = decoded.events
+            events = decoded.events
         } else if let raw = try? JSONDecoder().decode([SeismicEvent].self, from: data) {
-            results = raw
+            events = raw
+        } else {
+            throw SeismikAPIError.malformedResponse
         }
-
-        if !results.isEmpty {
-            UserDefaults.standard.set(data, forKey: Self.eventCacheKey)
-            return results
-        }
-        return loadCachedEvents()
+        // Una lista vacía también es la respuesta vigente: con filtros que no
+        // dejan ningún sismo no debe reaparecer la lista anterior.
+        UserDefaults.standard.set(data, forKey: Self.eventCacheKey)
+        return events
     }
 
     /// Historial guardado de la última sincronización correcta.
