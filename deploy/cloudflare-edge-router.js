@@ -37,7 +37,12 @@ function targetFor(request) {
 
 function securityHeaders(host) {
   const headers = new Headers({
-    "Cache-Control": "no-store",
+    // No se guarda la respuesta API ni el acceso OAuth. El portal no contiene
+    // secretos en HTML: permitir revalidación privada conserva bfcache al ir
+    // atrás/adelante y `pageshow` vuelve a consultar la sesión.
+    "Cache-Control": host === "api.seismik.org" || host === "auth.seismik.org"
+      ? "no-store"
+      : "private, no-cache",
     "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
     "Referrer-Policy": "no-referrer",
     "Strict-Transport-Security": "max-age=31536000; includeSubDomains; preload",

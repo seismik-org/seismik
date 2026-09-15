@@ -192,17 +192,17 @@ function updateSession(user) {
 
 async function boot() {
   try {
-    portalConfig = await api("/v1/developer/config", {}, false);
+    const [configResult, sessionResult] = await Promise.allSettled([
+      api("/v1/developer/config", {}, false),
+      api("/v1/oauth/session", {}, false),
+    ]);
+    if (configResult.status === "rejected") throw configResult.reason;
+    portalConfig = configResult.value;
     const plan = portalConfig.plans[0];
     elements["minute-quota"].textContent = plan.requests_per_minute.toLocaleString("es-CO");
     elements["daily-quota"].textContent = plan.requests_per_day.toLocaleString("es-CO");
     elements["active-key-limit"].textContent = plan.max_active_keys;
-    try {
-      const session = await api("/v1/oauth/session", {}, false);
-      updateSession(session);
-    } catch (_) {
-      updateSession(null);
-    }
+    updateSession(sessionResult.status === "fulfilled" ? sessionResult.value : null);
   } catch (error) { toast(`No fue posible cargar la plataforma: ${error.message}`, true); }
 }
 
@@ -222,3 +222,9 @@ elements["copy-secret"].addEventListener("click", () => copyText(elements["secre
 elements["copy-webhook-secret"].addEventListener("click", () => copyText(elements["webhook-secret-value"].textContent));
 elements["copy-example"].addEventListener("click", () => copyText(elements["curl-example"].textContent));
 boot();
+// Una restauración desde la caché de navegación puede conservar una sesión
+// anterior. Revalidarla evita mostrar un panel desactualizado sin bloquear la
+// restauración instantánea de la página.
+window.addEventListener("pageshow", (event) => {
+  if (event.persisted) boot();
+});
