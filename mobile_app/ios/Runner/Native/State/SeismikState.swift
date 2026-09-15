@@ -228,6 +228,15 @@ public final class SeismikState: ObservableObject {
             self.lastUpdated = Date()
             HapticManager.selection()
         } catch {
+            // Sin red se muestra la última lista buena, pero marcada como no
+            // sincronizada: antes decía «Sincronizado» con sismos de hace días.
+            if self.events.isEmpty {
+                let cached = apiClient.cachedEvents()
+                let filtered = includePreliminaryEvents ? cached : cached.filter { !$0.isPreliminary }
+                self.events = filtered.sorted {
+                    ($0.detectedAt ?? Date.distantPast) > ($1.detectedAt ?? Date.distantPast)
+                }
+            }
             self.isOnline = false
         }
 
