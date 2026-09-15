@@ -5,6 +5,7 @@ import logging
 import os
 import signal
 from pathlib import Path
+from typing import Any
 
 from eew.alerts import AlertDispatcher
 from eew.config import Settings
@@ -26,9 +27,14 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     # La sonda debe responder antes de abrir SeedLink; el enlace hacia la API
     # se publica en cuanto el despachador existe.
-    link: dict[str, AlertDispatcher] = {}
+    link: dict[str, Any] = {}
     health_server = start_health_server(
-        lambda: link["dispatcher"].health() if "dispatcher" in link else {"pending": 0}
+        lambda: {
+            "dispatcher": link["dispatcher"].health(),
+            "seedlink": link["service"].coverage_snapshot(),
+        }
+        if "dispatcher" in link and "service" in link
+        else {"pending": 0}
     )
     args = parse_args()
     logging.basicConfig(
@@ -43,6 +49,7 @@ def main() -> None:
     link["dispatcher"] = dispatcher
     official_reports = OfficialReportService(settings.official_reports, dispatcher.submit)
     service = SeedLinkDetectionService(settings, dispatcher, official_reports.submit)
+    link["service"] = service
 
     def request_stop(_signum: int, _frame: object) -> None:
         logging.getLogger(__name__).info("Apagado solicitado")
