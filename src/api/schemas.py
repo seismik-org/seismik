@@ -107,6 +107,8 @@ class OfficialReportUpdate(StrictModel):
     matched_at: AwareDatetime
     preferred_report: OfficialReport
     reports: tuple[OfficialReport, ...] = Field(min_length=1)
+    # Registro interno para validación posterior. La app no lo consume.
+    magnitude_shadow: dict[str, object] | None = None
 
     @model_validator(mode="after")
     def validate_preferred_report(self) -> "OfficialReportUpdate":
