@@ -23,30 +23,21 @@ public struct MonitorView: View {
 
     @State private var cameraCommand: MapCameraCommand = .none
     @State private var showSettings = false
-    @State private var showFeltReport = false
-    @State private var showDamageReport = false
-    @State private var drawerPosition: DrawerPosition = .peek
-    @State private var drawerTranslation: CGFloat = 0
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var showEventList = false
+
+    /// Alto que ocupa la barra del historial; el mapa no centra nada debajo.
+    private static let historyBarInset: CGFloat = 92
 
     public init() {}
 
     public var body: some View {
         GeometryReader { geometry in
-            let expandedHeight = max(geometry.size.height - geometry.safeAreaInsets.top - 12, 420)
-            let visibleHeight = drawerPosition.height(in: geometry.size.height)
-            let baseOffset = expandedHeight - visibleHeight
-            let drawerOffset = min(
-                max(baseOffset + drawerTranslation, 0),
-                expandedHeight - DrawerPosition.peek.height(in: geometry.size.height)
-            )
-
             ZStack(alignment: .top) {
                 // Mapa nativo de Apple MapKit interactivo a pantalla completa
                 NativeMapView(
                     state: state,
                     cameraCommand: cameraCommand,
-                    coveredBottomInset: visibleHeight
+                    coveredBottomInset: Self.historyBarInset
                 ) { selectedEvent in
                     state.selectEvent(selectedEvent)
                 }
@@ -55,28 +46,38 @@ public struct MonitorView: View {
                 FloatingHeaderView(state: state, showSettings: $showSettings)
                     .padding(.top, max(8, geometry.safeAreaInsets.top + 4))
 
-                // Hoja inferior interactiva de sismos (Drawer)
-                SeismicSheetView(
-                    state: state,
-                    locationManager: locationManager,
-                    showFeltReport: $showFeltReport,
-                    showDamageReport: $showDamageReport,
-                    onDrawerDragChanged: { drawerTranslation = $0 },
-                    onDrawerDragEnded: { dragDistance, projectedDistance in
-                        settleDrawer(
-                            dragDistance: dragDistance,
-                            projectedDistance: projectedDistance,
-                            expandedHeight: expandedHeight,
-                            screenHeight: geometry.size.height
-                        )
-                    },
-                    onDrawerHandleTapped: cycleDrawer
-                )
-                .frame(height: expandedHeight)
-                .offset(y: drawerOffset)
-                .frame(maxHeight: .infinity, alignment: .bottom)
+                VStack(alignment: .trailing, spacing: 12) {
+                    mapControls
+                    // Una barra fija en lugar del panel arrastrable: se toca y la
+                    // lista abre en la hoja nativa de iOS. Una hoja siempre visible
+                    // taparía la barra de pestañas.
+                    HistoryBarView(state: state) {
+                        HapticManager.selection()
+                        showEventList = true
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.bottom, 12)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+            }
+        }
+        // Hoja de Detalle de Sismo Seleccionado en el mapa
+        .sheet(item: $state.selectedEvent) { event in
+            EventDetailView(event: event)
+        }
+        // Modal de Configuración
+        .sheet(isPresented: $showSettings) {
+            SettingsView(state: state)
+        }
+        // Lista de sismos en la hoja nativa (media y completa)
+        .sheet(isPresented: $showEventList) {
+            SeismicSheetView(state: state, locationManager: locationManager)
+                .modalSheetPresentation()
+        }
+    }
 
-                // Botones flotantes de control de mapa (en primer plano)
+    /// Botones flotantes de control de mapa.
+    private var mapControls: some View {
                 VStack(spacing: 12) {
                     Button {
                         HapticManager.light()
@@ -122,89 +123,6 @@ public struct MonitorView: View {
                     .contentShape(Circle())
                     .accessibilityLabel("Centrar mapa en mi ubicación")
                 }
-                .padding(.trailing, 18)
-                .padding(.bottom, DrawerPosition.peek.height(in: geometry.size.height) + 16)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
-                .zIndex(10)
-                .opacity(max(0.0, min(1.0, 1.0 - (visibleHeight - DrawerPosition.peek.height(in: geometry.size.height)) / 60.0)))
-                .allowsHitTesting(visibleHeight <= DrawerPosition.peek.height(in: geometry.size.height) + 15)
-            }
-        }
-        // Hoja de Detalle de Sismo Seleccionado
-        .sheet(item: $state.selectedEvent) { event in
-            EventDetailView(event: event)
-        }
-        // Modal de Configuración
-        .sheet(isPresented: $showSettings) {
-            SettingsView(state: state)
-        }
-        // Modal de Reporte "¿Lo sentiste?"
-        .sheet(isPresented: $showFeltReport) {
-            FeltReportView(preselectedEvent: state.events.first)
-        }
-        // Modal de Reporte de Daños
-        .sheet(isPresented: $showDamageReport) {
-            DamageReportView(preselectedEvent: state.events.first)
-        }
-    }
-
-    private func settleDrawer(
-        dragDistance: CGFloat,
-        projectedDistance: CGFloat,
-        expandedHeight: CGFloat,
-        screenHeight: CGFloat
-    ) {
-        let peekH = DrawerPosition.peek.height(in: screenHeight)
-        let medH = DrawerPosition.medium.height(in: screenHeight)
-        let expH = DrawerPosition.expanded.height(in: screenHeight)
-
-        let currentH = drawerPosition.height(in: screenHeight) - dragDistance
-        let velocity = projectedDistance - dragDistance
-        // Proyección continua con inercia según la velocidad del arrastre
-        let targetH = currentH - (velocity * 0.45)
-
-        let detents: [(DrawerPosition, CGFloat)] = [
-            (.peek, peekH),
-            (.medium, medH),
-            (.expanded, expH)
-        ]
-
-        let best = detents.min(by: { abs($0.1 - targetH) < abs($1.1 - targetH) })?.0 ?? .peek
-
-        withAnimation(drawerAnimation) {
-            drawerTranslation = 0
-            drawerPosition = best
-        }
-        HapticManager.selection()
-    }
-
-    private func cycleDrawer() {
-        withAnimation(drawerAnimation) {
-            switch drawerPosition {
-            case .peek: drawerPosition = .medium
-            case .medium: drawerPosition = .expanded
-            case .expanded: drawerPosition = .peek
-            }
-        }
-        HapticManager.selection()
-    }
-
-    private var drawerAnimation: Animation {
-        reduceMotion ? .easeOut(duration: 0.20) : .interactiveSpring(response: 0.32, dampingFraction: 0.82)
-    }
-}
-
-private enum DrawerPosition: CaseIterable {
-    case peek
-    case medium
-    case expanded
-
-    func height(in screenHeight: CGFloat) -> CGFloat {
-        switch self {
-        case .peek: return 185
-        case .medium: return max(350, screenHeight * 0.46)
-        case .expanded: return max(450, screenHeight * 0.86)
-        }
     }
 }
 
