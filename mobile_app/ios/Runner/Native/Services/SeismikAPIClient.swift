@@ -39,9 +39,16 @@ public final class SeismikOAuthSignIn: NSObject, ASWebAuthenticationPresentation
                 completion(.failure(error))
                 return
             }
-            guard let callbackURL,
-                  let code = URLComponents(url: callbackURL, resolvingAgainstBaseURL: false)?
-                    .queryItems?.first(where: { $0.name == "code" })?.value,
+            let items = callbackURL.flatMap {
+                URLComponents(url: $0, resolvingAgainstBaseURL: false)?.queryItems
+            } ?? []
+            // Cerrar la hoja de Apple vuelve con `error=cancelled`: se trata
+            // igual que cancelar la hoja del navegador, sin mostrar un error.
+            if items.contains(where: { $0.name == "error" }) {
+                completion(.failure(ASWebAuthenticationSessionError(.canceledLogin)))
+                return
+            }
+            guard let code = items.first(where: { $0.name == "code" })?.value,
                   !code.isEmpty else {
                 completion(.failure(SeismikAPIError.malformedResponse))
                 return
@@ -198,6 +205,21 @@ public enum SeismikAPIError: LocalizedError {
             return "Inicia sesión para usar Búsqueda de familiares."
         }
     }
+
+    /// Por qué el registro no terminó, dicho para la persona: los errores del
+    /// sistema llegaban en inglés, con dominios como Firebase y códigos HTTP.
+    public var registrationMessage: String {
+        switch self {
+        case .pushTokenUnavailable:
+            return "Esperando el permiso de notificaciones de iOS."
+        case let .rejected(status, _) where status == 401 || status == 403:
+            return "El servidor no reconoció este iPhone. Se reintentará automáticamente."
+        case .rejected:
+            return "El servidor no está disponible en este momento. Se reintentará automáticamente."
+        case .malformedResponse, .accountRequired:
+            return "No se pudo registrar este iPhone para alertas. Se reintentará automáticamente."
+        }
+    }
 }
 
 /// Resultado de enviar un reporte ciudadano.
@@ -314,7 +336,17 @@ public final class SeismikAPIClient {
         alertRadiusKm: Double = 250.0,
         criticalAlertsAuthorized: Bool = false
     ) async throws -> Bool {
-        let integrityToken = try await currentAppCheckToken()
+        let integrityToken: String
+        do {
+            integrityToken = try await currentAppCheckToken()
+        } catch {
+            // Sin token App Check (p. ej. DeviceCheck aún no configurado en
+            // Firebase) el iPhone no llegaba al servidor: sin registro no hay
+            // alertas ni Familia. Como el cliente Android en beta, se envía un
+            // marcador no verificado. El servidor lo acepta sólo mientras no
+            // exija App Check; con la verificación activa lo rechaza con 401.
+            integrityToken = Self.unverifiedIntegrityMarker
+        }
         let url = baseURL.appendingPathComponent("v1/devices/register")
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
@@ -851,8 +883,12 @@ public final class SeismikAPIClient {
         }
     }
 
+    /// Marcador de una instalación sin atestación. Nunca pasa la verificación
+    /// App Check del servidor; sólo sirve mientras ésta no se exige.
+    static let unverifiedIntegrityMarker = "seismik-beta-ios-unverified"
+
     /// Obtiene un token efímero emitido por Firebase App Check y respaldado
-    /// por DeviceCheck. Nunca se persiste ni se sustituye por texto de prueba.
+    /// por DeviceCheck. Nunca se persiste.
     private func currentAppCheckToken() async throws -> String {
         // Sin FirebaseApp, AppCheck.appCheck() lanza una excepción de Objective-C
         // que cierra la app. Mejor un error transitorio: el registro se reintenta.

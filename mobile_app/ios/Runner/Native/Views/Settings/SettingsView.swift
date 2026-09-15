@@ -460,6 +460,7 @@ public struct SettingsView: View {
                     .ignoresSafeArea()
             }
             .confirmationDialog("Iniciar sesión con", isPresented: $showSignInProviders) {
+                Button("Apple") { startSignIn(provider: "apple") }
                 Button("Google") { startSignIn(provider: "google") }
                 Button("GitHub") { startSignIn(provider: "github") }
                 Button("Cancelar", role: .cancel) {}
@@ -744,6 +745,18 @@ public struct FamilySafetyView: View {
                     .font(.footnote)
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
+                // Apple exige que su botón sea al menos tan visible como los demás.
+                Button {
+                    signIn(provider: "apple")
+                } label: {
+                    Label("Iniciar sesión con Apple", systemImage: "apple.logo")
+                        .font(.body.weight(.semibold))
+                        .foregroundColor(Color(UIColor.systemBackground))
+                        .frame(maxWidth: .infinity, minHeight: 50)
+                        .background(Color.primary, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                }
+                .buttonStyle(.plain)
+                .padding(.top, 8)
                 Button {
                     signIn(provider: "google")
                 } label: {
@@ -752,7 +765,6 @@ public struct FamilySafetyView: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.large)
-                .padding(.top, 8)
                 Button("Iniciar sesión con GitHub") { signIn(provider: "github") }
                     .font(.footnote)
             }

@@ -112,7 +112,11 @@ async def test_only_configured_providers_are_advertised() -> None:
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=enabled), base_url="https://devs.seismik.org") as client:
         second = await client.get("/v1/oauth/providers")
 
-    assert first.json()["providers"] == {"google": {"enabled": True}, "github": {"enabled": False}}
+    assert first.json()["providers"] == {
+        "google": {"enabled": True},
+        "github": {"enabled": False},
+        "apple": {"enabled": False},
+    }
     assert second.json()["providers"]["github"] == {"enabled": True}
 
 
