@@ -7,17 +7,26 @@ import json
 import logging
 import re
 import secrets
-from urllib.parse import urlencode, urlparse
+import time
+from typing import Any
+from urllib.parse import parse_qs, urlencode, urlparse
 
 import httpx
+import jwt
 from fastapi import APIRouter, Body, Cookie, HTTPException, Request, Response, status
 from fastapi.responses import RedirectResponse
+from jwt import PyJWK
 
 LOGGER = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/v1/oauth", tags=["oauth"])
 identity_router = APIRouter(tags=["oauth"])
 
+_PROVIDERS = frozenset({"google", "github", "apple"})
+_APPLE_ISSUER = "https://appleid.apple.com"
+_APPLE_AUTHORIZE_URL = "https://appleid.apple.com/auth/authorize"
+_APPLE_TOKEN_URL = "https://appleid.apple.com/auth/token"
+_APPLE_KEYS_URL = "https://appleid.apple.com/auth/keys"
 _MOBILE_CALLBACK = "seismik://auth/callback"
 _MOBILE_CODE_TTL_SECONDS = 60
 _IDENTITY_FLOW_TTL_SECONDS = 600
@@ -135,6 +144,7 @@ async def oauth_providers(request: Request) -> dict[str, dict[str, dict[str, boo
                 )
             },
             "github": {"enabled": _github_is_configured(settings)},
+            "apple": {"enabled": _apple_is_configured(settings)},
         }
     }
 
@@ -148,6 +158,8 @@ async def login(
         return await google_start(request, return_to=return_to)
     if provider == "github":
         return await github_start(request, return_to=return_to)
+    if provider == "apple":
+        return await apple_start(request, return_to=return_to)
     raise HTTPException(status_code=404, detail="Proveedor OAuth no disponible")
 
 
@@ -164,7 +176,7 @@ async def authorize(
     proveedor. El origen permitido decide el retorno: el portal de
     desarrolladores o el esquema de la app; no se acepta una URL arbitraria.
     """
-    if provider not in {"google", "github"}:
+    if provider not in _PROVIDERS:
         raise HTTPException(status_code=404, detail="Proveedor OAuth no disponible")
     returns = {"devs": None, "app": _MOBILE_CALLBACK}
     if origin not in returns:
@@ -199,6 +211,10 @@ async def identity_entry(request: Request, flow_id: str) -> Response:
         )
     if saved.get("provider") == "github":
         return await github_start(
+            request, return_to=saved.get("return_to"), app_challenge=saved.get("app_challenge")
+        )
+    if saved.get("provider") == "apple":
+        return await apple_start(
             request, return_to=saved.get("return_to"), app_challenge=saved.get("app_challenge")
         )
     raise HTTPException(status_code=400, detail="Solicitud de inicio de sesión inválida")
@@ -370,6 +386,174 @@ async def github_callback(
             "name": github_user.get("name") or github_user.get("login", ""),
         },
         saved.get("return_to"),
+        saved.get("app_challenge"),
+    )
+
+
+def _apple_is_configured(settings: Any) -> bool:
+    return bool(
+        getattr(settings, "oauth_apple_client_id", "")
+        and getattr(settings, "oauth_apple_team_id", "")
+        and getattr(settings, "oauth_apple_key_id", "")
+        and settings.oauth_apple_private_key.get_secret_value()
+    )
+
+
+def apple_client_secret(settings: Any, now: float | None = None) -> str:
+    """Secreto de cliente para Apple: un JWT ES256 firmado con la clave .p8.
+
+    Apple admite hasta seis meses de vigencia; basta con cinco minutos porque se
+    firma uno nuevo en cada canje y así una fuga del secreto caduca enseguida.
+    """
+    issued = int(now if now is not None else time.time())
+    private_key = settings.oauth_apple_private_key.get_secret_value().replace("\\n", "\n")
+    return jwt.encode(
+        {
+            "iss": settings.oauth_apple_team_id,
+            "iat": issued,
+            "exp": issued + 300,
+            "aud": _APPLE_ISSUER,
+            "sub": settings.oauth_apple_client_id,
+        },
+        private_key,
+        algorithm="ES256",
+        headers={"kid": settings.oauth_apple_key_id},
+    )
+
+
+def verify_apple_id_token(
+    id_token: str, jwks: dict[str, Any], *, client_id: str, nonce: str
+) -> dict[str, Any]:
+    """Firma RS256 de Apple, emisor, audiencia, vigencia y el nonce de este inicio."""
+    try:
+        kid = jwt.get_unverified_header(id_token).get("kid")
+        jwk = next(key for key in jwks.get("keys", []) if key.get("kid") == kid)
+        claims: dict[str, Any] = jwt.decode(
+            id_token,
+            PyJWK(jwk).key,
+            algorithms=["RS256"],
+            audience=client_id,
+            issuer=_APPLE_ISSUER,
+            options={"require": ["exp", "iat", "sub"]},
+            leeway=60,
+        )
+    except (StopIteration, jwt.PyJWTError) as exc:
+        raise HTTPException(status_code=401, detail="Apple no pudo validar la identidad") from exc
+    if not hmac.compare_digest(str(claims.get("nonce", "")), nonce):
+        raise HTTPException(status_code=401, detail="Apple no pudo validar la identidad")
+    return claims
+
+
+def _apple_name(raw_user: str | None, email: str) -> str:
+    """Apple sólo envía el nombre la primera vez que la persona autoriza Seismik."""
+    try:
+        user = json.loads(raw_user or "{}")
+    except ValueError:
+        user = {}
+    name = user.get("name") if isinstance(user, dict) else None
+    if not isinstance(name, dict):
+        name = {}
+    full = " ".join(
+        str(part).strip() for part in (name.get("firstName"), name.get("lastName")) if part
+    )
+    return full or email.split("@", 1)[0]
+
+
+async def _apple_token_and_keys(settings: Any, code: str) -> tuple[dict[str, Any], dict[str, Any]]:
+    async with httpx.AsyncClient(timeout=10) as client:
+        token_response = await client.post(
+            _APPLE_TOKEN_URL,
+            data={
+                "client_id": settings.oauth_apple_client_id,
+                "client_secret": apple_client_secret(settings),
+                "code": code,
+                "grant_type": "authorization_code",
+                "redirect_uri": settings.oauth_apple_redirect_uri,
+            },
+        )
+        if token_response.is_error:
+            LOGGER.warning("Apple rechazó el canje OAuth: %s", _provider_error(token_response))
+            raise HTTPException(status_code=401, detail="Apple no pudo validar el código OAuth")
+        keys = await client.get(_APPLE_KEYS_URL)
+    if keys.is_error:
+        raise HTTPException(status_code=503, detail="No se pudieron obtener las claves de Apple")
+    return token_response.json(), keys.json()
+
+
+@router.get("/apple/start")
+async def apple_start(
+    request: Request, return_to: str | None = None, app_challenge: str | None = None
+) -> Response:
+    settings = request.app.state.settings
+    if not _apple_is_configured(settings):
+        raise HTTPException(status_code=503, detail="Iniciar sesión con Apple aún no está configurado")
+    state = secrets.token_urlsafe(32)
+    nonce = secrets.token_urlsafe(32)
+    await request.app.state.redis.set(
+        f"seismik:oauth:state:{state}",
+        json.dumps(
+            {
+                "provider": "apple",
+                "nonce": nonce,
+                "return_to": _mobile_return_to(return_to),
+                "app_challenge": _app_challenge(app_challenge, return_to),
+            }
+        ),
+        ex=600,
+    )
+    params = {
+        "client_id": settings.oauth_apple_client_id,
+        "redirect_uri": settings.oauth_apple_redirect_uri,
+        "response_type": "code",
+        # Pedir nombre o correo obliga a Apple a responder con un POST de formulario.
+        "response_mode": "form_post",
+        "scope": "name email",
+        "state": state,
+        "nonce": nonce,
+    }
+    return RedirectResponse(_APPLE_AUTHORIZE_URL + "?" + urlencode(params))
+
+
+@router.post("/apple/callback")
+async def apple_callback(request: Request) -> Response:
+    """Apple vuelve con un POST de formulario desde appleid.apple.com.
+
+    No depende de cookies (Apple las omite en un POST entre sitios): el estado de
+    un solo uso guardado en Redis ata la respuesta al inicio que la pidió.
+    """
+    settings = request.app.state.settings
+    body = (await request.body()).decode("utf-8", "replace")
+    form = {key: values[0] for key, values in parse_qs(body).items()}
+    raw = await request.app.state.redis.getdel(f"seismik:oauth:state:{form.get('state', '')}")
+    saved = json.loads(raw) if raw else None
+    if not isinstance(saved, dict) or saved.get("provider") != "apple":
+        raise HTTPException(status_code=400, detail="Estado OAuth inválido o expirado")
+    return_to = saved.get("return_to")
+    if form.get("error"):
+        # Cerrar la hoja de Apple no es un error: se vuelve a donde empezó.
+        target = f"{return_to}?{urlencode({'error': 'cancelled'})}" if return_to else "/"
+        return RedirectResponse(target, status_code=status.HTTP_303_SEE_OTHER)
+    code = form.get("code")
+    if not code:
+        raise HTTPException(status_code=400, detail="Respuesta OAuth incompleta")
+    token, keys = await _apple_token_and_keys(settings, code)
+    id_token = token.get("id_token")
+    if not isinstance(id_token, str):
+        raise HTTPException(status_code=401, detail="Apple no pudo validar la identidad")
+    claims = verify_apple_id_token(
+        id_token, keys, client_id=settings.oauth_apple_client_id, nonce=str(saved.get("nonce", ""))
+    )
+    email = claims.get("email")
+    if not email or str(claims.get("email_verified")).lower() != "true":
+        raise HTTPException(status_code=403, detail="Apple no compartió un correo verificado")
+    return await _finish_login(
+        request,
+        {
+            "uid": f"apple:{claims['sub']}",
+            "email": str(email),
+            "name": _apple_name(form.get("user"), str(email)),
+        },
+        return_to,
         saved.get("app_challenge"),
     )
 

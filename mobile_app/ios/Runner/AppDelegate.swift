@@ -103,8 +103,9 @@ enum SeismikLaunchEnvironment {
 }
 
 /// DeviceCheck funciona desde iOS 11 y no exige una capacidad adicional en el
-/// perfil de distribución. Firebase entrega al backend un token App Check real;
-/// no se envían marcadores de prueba en TestFlight.
+/// perfil de distribución. Firebase entrega al backend un token App Check real.
+/// Si no lo consigue, el registro envía un marcador no verificado que el
+/// servidor rechaza en cuanto exige App Check (SeismikAPIClient.registerDevice).
 private final class SeismikAppCheckProviderFactory: NSObject, AppCheckProviderFactory {
   func createProvider(with app: FirebaseApp) -> AppCheckProvider? {
     DeviceCheckProvider(app: app)

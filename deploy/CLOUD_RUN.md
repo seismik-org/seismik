@@ -284,3 +284,67 @@ gcloud run services update seismik-api --region "$REGION" \
 gcloud run services update seismik-integrations --region "$REGION" \
   --update-env-vars=SEISMIK_CATALOG_ALERTS_ENABLED=true
 ```
+
+## Iniciar sesión con Apple
+
+`auth.seismik.org` ofrece Apple junto a Google y GitHub (`api/oauth.py`). La
+página de acceso y la app de iPhone usan el mismo flujo web; el botón sólo
+aparece cuando la API tiene los cuatro valores. Apple no da un secreto fijo: la
+API firma uno de cinco minutos con la clave `.p8` en cada inicio de sesión.
+Las cuentas de Apple son nuevas (`apple:<id>`), aunque el correo coincida con
+una cuenta de Google, y pueden usar el correo de reenvío privado de Apple.
+
+En Apple Developer, una vez:
+
+1. **Identifiers → App IDs → `com.seismik.app`**: activar *Sign In with Apple*.
+2. **Identifiers → + → Services IDs**: identificador `org.seismik.auth`.
+   Activar *Sign In with Apple* → *Configure*: App ID principal
+   `com.seismik.app`, dominio `auth.seismik.org` y Return URL
+   `https://auth.seismik.org/v1/oauth/apple/callback`.
+3. **Keys → +**: activar *Sign In with Apple* con `com.seismik.app` y descargar
+   `AuthKey_<KEY_ID>.p8` (Apple la entrega una sola vez). El Team ID está en
+   *Membership*.
+
+En Cloud Shell, tras subir el `.p8` con el menú ⋮ → Subir:
+
+```bash
+REGION=us-east1
+REPO=us-east1-docker.pkg.dev/seismik-15bbb/seismik
+
+# 1. La clave como secreto (queda en la versión 1) y acceso para la API.
+gcloud secrets create seismik-apple-private-key --replication-policy=automatic \
+  --data-file=AuthKey_KEY_ID.p8
+sa=$(gcloud run services describe seismik-api --region "$REGION" \
+  --format='value(spec.template.spec.serviceAccountName)')
+sa=${sa:-331950364408-compute@developer.gserviceaccount.com}
+gcloud secrets add-iam-policy-binding seismik-apple-private-key \
+  --member="serviceAccount:$sa" --role=roles/secretmanager.secretAccessor
+rm AuthKey_KEY_ID.p8
+
+# 2. API con Apple. Versión fija del secreto: `:latest` se resuelve al arrancar.
+gcloud builds submit --config deploy/cloudbuild.api.yaml \
+  --substitutions=_IMAGE=$REPO/api:apple-sign-in
+gcloud run services update seismik-api --region "$REGION" \
+  --image "$REPO/api:apple-sign-in" \
+  --update-env-vars=SEISMIK_OAUTH_APPLE_CLIENT_ID=org.seismik.auth,SEISMIK_OAUTH_APPLE_TEAM_ID=TEAM_ID,SEISMIK_OAUTH_APPLE_KEY_ID=KEY_ID \
+  --update-secrets=SEISMIK_OAUTH_APPLE_PRIVATE_KEY=seismik-apple-private-key:1
+
+# 3. Página de acceso con el botón de Apple.
+gcloud builds submit --config deploy/cloudbuild.worker.yaml \
+  --substitutions=_IMAGE=$REPO/web:apple-sign-in,_DOCKERFILE=Dockerfile.web
+gcloud run services update seismik-web --region "$REGION" \
+  --image "$REPO/web:apple-sign-in"
+
+# 4. Debe mostrar "apple": {"enabled": true}.
+curl -s https://auth.seismik.org/v1/oauth/providers
+```
+
+## App Check en iPhone
+
+La app de iPhone pide a Firebase App Check un token respaldado por DeviceCheck
+antes de registrarse. Si Firebase no lo entrega (DeviceCheck sin configurar en
+la consola de Firebase), el registro envía un marcador no verificado, como el
+cliente Android en beta, y el iPhone recibe alertas y usa Familia. En cuanto la
+API verifique App Check (`SEISMIK_INTEGRITY_VERIFICATION_ENABLED=true`), ese
+marcador se rechaza: antes hay que subir la clave de DeviceCheck en Firebase →
+App Check → Apps → iOS.

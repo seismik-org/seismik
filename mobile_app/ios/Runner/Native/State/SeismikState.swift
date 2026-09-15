@@ -133,10 +133,12 @@ public final class SeismikState: ObservableObject {
             self.isRegistered = false
             // Al arrancar es normal: APNs entrega el token unos instantes
             // después y AppDelegate vuelve a llamar aquí.
-            self.registrationIssue = error.errorDescription
+            self.registrationIssue = error.registrationMessage
         } catch {
+            // Los errores del sistema (Firebase, Keychain, red) llegan en inglés
+            // y con dominios técnicos que a nadie le dicen qué hacer.
             self.isRegistered = false
-            self.registrationIssue = error.localizedDescription
+            self.registrationIssue = SeismikAPIError.malformedResponse.registrationMessage
         }
     }
 

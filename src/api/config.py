@@ -86,6 +86,13 @@ class AppSettings(BaseSettings):
     oauth_github_client_id: str = ""
     oauth_github_client_secret: SecretStr = SecretStr("")
     oauth_github_redirect_uri: str = "https://auth.seismik.org/v1/oauth/github/callback"
+    # Iniciar sesión con Apple: el Services ID es el client_id web. Apple no da un
+    # secreto fijo; se firma uno de corta vida con la clave .p8 (ES256).
+    oauth_apple_client_id: str = ""
+    oauth_apple_team_id: str = ""
+    oauth_apple_key_id: str = ""
+    oauth_apple_private_key: SecretStr = SecretStr("")
+    oauth_apple_redirect_uri: str = "https://auth.seismik.org/v1/oauth/apple/callback"
     oauth_cookie_domain: str = ".seismik.org"
     oauth_session_ttl_seconds: int = Field(default=86_400, ge=300, le=2_592_000)
     # Sesión de la cuenta en la app: dura más que la del navegador y se renueva
@@ -156,7 +163,14 @@ class AppSettings(BaseSettings):
     crowd_rate_limit_per_second: int = Field(default=5, ge=1, le=100)
     report_rate_limit_per_minute: int = Field(default=10, ge=1, le=100)
 
-    @field_validator("oauth_google_client_id", "oauth_github_client_id", mode="before")
+    @field_validator(
+        "oauth_google_client_id",
+        "oauth_github_client_id",
+        "oauth_apple_client_id",
+        "oauth_apple_team_id",
+        "oauth_apple_key_id",
+        mode="before",
+    )
     @classmethod
     def strip_oauth_client_id(cls, value: object) -> object:
         return value.strip() if isinstance(value, str) else value
@@ -164,6 +178,7 @@ class AppSettings(BaseSettings):
     @field_validator(
         "oauth_google_client_secret",
         "oauth_github_client_secret",
+        "oauth_apple_private_key",
         "edge_origin_secret",
         mode="before",
     )

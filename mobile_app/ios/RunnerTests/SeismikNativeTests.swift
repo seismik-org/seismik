@@ -542,4 +542,32 @@ final class NativeFamilyContractTests: XCTestCase {
         try await api.reportFamilyStatus(needsHelp: false, eventId: "quake-1", latitude: nil, longitude: nil, precise: false)
         try await api.reportFamilyStatus(needsHelp: true, eventId: "quake-1", latitude: 4.65, longitude: -74.05, precise: false)
     }
+
+    /// El host de pruebas no configura Firebase, igual que un iPhone sin
+    /// DeviceCheck: antes el registro ni siquiera llegaba al servidor.
+    func testRegistrationWithoutAppCheckStillReachesTheServer() async throws {
+        FamilyStubProtocol.handler = { request in
+            XCTAssertEqual(request.url?.path, "/v1/devices/register")
+            let body = try FamilyStubProtocol.body(request)
+            XCTAssertEqual(body["platform"] as? String, "ios")
+            XCTAssertEqual(body["app_attest_token"] as? String, SeismikAPIClient.unverifiedIntegrityMarker)
+            return (200, "{\"device_id\":\"device-1\",\"registered\":true,\"crowd_token\":\"crowd-new\",\"device_session_token\":\"test-device-registered\"}")
+        }
+        let registered = try await api.registerDevice(latitude: 4.65, longitude: -74.05)
+        XCTAssertTrue(registered)
+        XCTAssertEqual(api.deviceSessionToken, "test-device-registered")
+    }
+
+    func testRegistrationProblemsAreExplainedWithoutSystemJargon() {
+        let errors: [SeismikAPIError] = [
+            .rejected(status: 401, message: "Device integrity verification failed"),
+            .rejected(status: 503, message: "Firebase App Check aún no está disponible"),
+            .malformedResponse,
+        ]
+        for error in errors {
+            XCTAssertFalse(error.registrationMessage.contains("Firebase"))
+            XCTAssertFalse(error.registrationMessage.contains("401"))
+            XCTAssertFalse(error.registrationMessage.contains("503"))
+        }
+    }
 }
