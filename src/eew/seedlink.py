@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 import random
 import threading
 from collections.abc import Callable
@@ -14,7 +15,13 @@ from obspy.clients.seedlink.easyseedlink import (  # type: ignore[import-untyped
 
 from eew.alerts import AlertDispatcher
 from eew.coincidence import ZoneCoincidenceRouter
-from eew.config import DetectionSettings, SeedLinkProvider, SeedLinkSettings, Settings
+from eew.config import (
+    DetectionSettings,
+    SeedLinkProvider,
+    SeedLinkSettings,
+    Settings,
+    StationSubscription,
+)
 from eew.models import EarthquakeCandidate
 from eew.processor import StationProcessor
 
@@ -295,6 +302,10 @@ class SeedLinkDetectionService:
                 "seedlink_health=%s",
                 json.dumps(self.health_snapshot(), separators=(",", ":")),
             )
+            LOGGER.info(
+                "seedlink_coverage=%s",
+                json.dumps(self.coverage_snapshot(), separators=(",", ":")),
+            )
         for thread in self._threads:
             thread.join(timeout=5)
 
@@ -305,3 +316,83 @@ class SeedLinkDetectionService:
 
     def health_snapshot(self) -> dict[str, dict[str, dict[str, object]]]:
         return {worker.provider.id: worker.health_snapshot() for worker in self.workers}
+
+    def coverage_snapshot(self, now: datetime | None = None) -> dict[str, object]:
+        """Describe cobertura *operativa*, no sólo un socket conectado.
+
+        Un proveedor puede estar accesible aunque la mayoría de sus streams no
+        entregue paquetes. Exponer ambas cosas evita presentar una red parcial
+        como cobertura nacional y no cambia ni relaja el criterio de alarma.
+        """
+
+        current = now or datetime.now(timezone.utc)
+        zones: dict[str, list[tuple[StationSubscription, dict[str, object]]]] = {}
+        for worker in self.workers:
+            health = worker.health_snapshot(current)
+            for station in worker.provider.stations:
+                key = worker._processor_key(
+                    station.network, station.station, station.channel, station.location
+                )
+                zones.setdefault(station.zone_id or station.country_code or "ZZ", []).append(
+                    (station, health[key])
+                )
+
+        zone_summary: dict[str, object] = {}
+        configured_total = healthy_total = 0
+        for zone_id, rows in zones.items():
+            configured_total += len(rows)
+            healthy = [station for station, row in rows if row["healthy"] is True]
+            healthy_total += len(healthy)
+            located = [station for station in healthy if station.latitude is not None and station.longitude is not None]
+            aperture = _station_aperture_km(located)
+            quorum = len(healthy) >= self.settings.coincidence.minimum_stations
+            location_ready = (
+                len(located) >= self.settings.coincidence.minimum_located_stations
+                and aperture >= self.settings.coincidence.minimum_network_aperture_km
+            )
+            ratio = len(healthy) / len(rows) if rows else 0.0
+            # Two thirds is an observability threshold, never an alarm rule.
+            coverage = "ready" if quorum and location_ready and ratio >= 2 / 3 else "degraded"
+            zone_summary[zone_id] = {
+                "configured_stations": len(rows),
+                "healthy_stations": len(healthy),
+                "healthy_ratio": round(ratio, 3),
+                "healthy_station_ids": [station.station_id for station in healthy],
+                "unhealthy_station_ids": [
+                    station.station_id for station, row in rows if row["healthy"] is not True
+                ],
+                "candidate_quorum_ready": quorum,
+                "located_healthy_stations": len(located),
+                "network_aperture_km": round(aperture, 3),
+                "location_ready": location_ready,
+                "coverage": coverage,
+            }
+
+        ratio = healthy_total / configured_total if configured_total else 0.0
+        return {
+            "status": "ready" if zone_summary and all(
+                isinstance(row, dict) and row.get("coverage") == "ready"
+                for row in zone_summary.values()
+            ) else "degraded",
+            "configured_stations": configured_total,
+            "healthy_stations": healthy_total,
+            "healthy_ratio": round(ratio, 3),
+            "minimum_stations": self.settings.coincidence.minimum_stations,
+            "zones": zone_summary,
+        }
+
+
+def _station_aperture_km(stations: list[StationSubscription]) -> float:
+    """Mayor separación entre estaciones sanas con coordenadas."""
+
+    maximum = 0.0
+    for index, first in enumerate(stations):
+        assert first.latitude is not None and first.longitude is not None
+        for second in stations[index + 1 :]:
+            assert second.latitude is not None and second.longitude is not None
+            lat1, lat2 = math.radians(first.latitude), math.radians(second.latitude)
+            delta_lat = lat2 - lat1
+            delta_lon = math.radians(second.longitude - first.longitude)
+            value = math.sin(delta_lat / 2) ** 2 + math.cos(lat1) * math.cos(lat2) * math.sin(delta_lon / 2) ** 2
+            maximum = max(maximum, 2 * 6371.0088 * math.atan2(math.sqrt(value), math.sqrt(1 - value)))
+    return maximum

@@ -12,11 +12,13 @@ from eew.config import (
     AlertSettings,
     CoincidenceSettings,
     DetectionSettings,
+    OfficialReportsSettings,
     SeedLinkProvider,
     SeedLinkSettings,
+    Settings,
     StationSubscription,
 )
-from eew.seedlink import SeedLinkProviderWorker, create_seedlink_client
+from eew.seedlink import SeedLinkDetectionService, SeedLinkProviderWorker, create_seedlink_client
 
 
 class FakeConnection:
@@ -163,3 +165,43 @@ def test_station_health_reports_fresh_and_stale_packets() -> None:
     row = next(iter(stale.values()))
     assert row["healthy"] is False
     assert row["reason"] == "stale"
+
+
+def test_coverage_calls_a_partial_network_degraded_without_relaxing_quorum() -> None:
+    provider = SeedLinkProvider(
+        id="test-co",
+        server="seedlink.invalid:18000",
+        country_code="CO",
+        stations=(
+            StationSubscription("CM", "A", "HHZ", "00", "00HHZ", "CO", "CO", 4.0, -74.0),
+            StationSubscription("CM", "B", "HHZ", "00", "00HHZ", "CO", "CO", 5.0, -75.0),
+            StationSubscription("CM", "C", "HHZ", "00", "00HHZ", "CO", "CO", 6.0, -76.0),
+            StationSubscription("CM", "D", "HHZ", "00", "00HHZ", "CO", "CO", 7.0, -77.0),
+            StationSubscription("CM", "E", "HHZ", "00", "00HHZ", "CO", "CO", 8.0, -78.0),
+        ),
+    )
+    settings = SeedLinkSettings(providers=(provider,), station_stale_after_seconds=10)
+    coincidence = CoincidenceSettings(
+        minimum_stations=3, minimum_located_stations=3, minimum_network_aperture_km=50
+    )
+    service = SeedLinkDetectionService(
+        Settings(settings, DetectionSettings(filter_enabled=False), coincidence, AlertSettings(), OfficialReportsSettings()),
+        AlertDispatcher(AlertSettings()),
+    )
+    worker = service.workers[0]
+    moment = datetime(2026, 1, 1, 0, 0, 2, tzinfo=timezone.utc)
+    for station in provider.stations[:3]:
+        processor = worker.processors[f"CM.{station.station}.00.HHZ"]
+        trace = Trace(data=np.zeros(100, dtype=np.float64))
+        trace.stats.network, trace.stats.station = "CM", station.station
+        trace.stats.location, trace.stats.channel = "00", "HHZ"
+        trace.stats.starttime, trace.stats.sampling_rate = UTCDateTime("2026-01-01T00:00:00Z"), 100
+        processor.process(trace, received_at=moment)
+
+    coverage = service.coverage_snapshot(datetime(2026, 1, 1, 0, 0, 3, tzinfo=timezone.utc))
+    zone = coverage["zones"]["CO"]
+    assert coverage["status"] == "degraded"
+    assert zone["healthy_stations"] == 3
+    assert zone["candidate_quorum_ready"] is True
+    assert zone["coverage"] == "degraded"
+    assert set(zone["unhealthy_station_ids"]) == {"CM.D", "CM.E"}
