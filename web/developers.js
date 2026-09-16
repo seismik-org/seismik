@@ -40,6 +40,28 @@ function formatDate(value) {
   return new Intl.DateTimeFormat("es-CO", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
 }
 
+function usdFromMicrounits(value, options = {}) {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency", currency: "USD",
+    minimumFractionDigits: options.minimumFractionDigits ?? 2,
+    maximumFractionDigits: options.maximumFractionDigits ?? 2,
+  }).format(Number(value) / portalConfig.billing.microunits_per_usd);
+}
+
+function creditPackMarkup(pack) {
+  return `<article class="credit-pack"><p class="eyebrow">${escapeHtml(pack.name)}</p><h3>Créditos prepago</h3><strong>${usdFromMicrounits(pack.usd_microunits)}</strong><p>Saldo de uso en USD; no se renueva automáticamente.</p><small>Checkout próximamente</small></article>`;
+}
+
+function requestPriceMarkup(price) {
+  return `<div class="request-price-row"><span>${escapeHtml(price.name)}<br><small>${escapeHtml(price.scope)}</small></span><strong>${usdFromMicrounits(price.usd_microunits_per_request, { minimumFractionDigits: 4, maximumFractionDigits: 4 })}</strong></div>`;
+}
+
+function renderBillingCatalog() {
+  if (!portalConfig?.billing) return;
+  elements["credit-packs"].innerHTML = portalConfig.billing.credit_packs.map(creditPackMarkup).join("");
+  elements["request-prices"].innerHTML = portalConfig.billing.request_prices.map(requestPriceMarkup).join("");
+}
+
 function keyMarkup(key) {
   const scopes = key.scopes.map((scope) => scope.replace(":read", "")).join(" · ");
   return `<article class="key-row" data-key-id="${escapeHtml(key.key_id)}">
@@ -198,6 +220,7 @@ async function boot() {
     ]);
     if (configResult.status === "rejected") throw configResult.reason;
     portalConfig = configResult.value;
+    renderBillingCatalog();
     const plan = portalConfig.plans[0];
     elements["minute-quota"].textContent = plan.requests_per_minute.toLocaleString("es-CO");
     elements["daily-quota"].textContent = plan.requests_per_day.toLocaleString("es-CO");

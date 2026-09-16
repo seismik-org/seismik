@@ -187,6 +187,33 @@ async def test_usage_is_metered_without_enabling_payments(monkeypatch: pytest.Mo
 
 
 @pytest.mark.asyncio
+async def test_portal_publishes_prepaid_credit_catalog_without_enabling_checkout(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app = developer_app(monkeypatch)
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        response = await client.get("/v1/developer/config")
+
+    assert response.status_code == 200
+    billing = response.json()["billing"]
+    assert billing["currency"] == "USD"
+    assert billing["model"] == "prepaid_credits"
+    assert billing["checkout_enabled"] is False
+    assert billing["promotional_credits_enabled"] is False
+    assert billing["credit_packs"] == [
+        {"id": "credits-5", "name": "Inicio", "usd_microunits": 5_000_000},
+        {"id": "credits-25", "name": "Equipo", "usd_microunits": 25_000_000},
+        {"id": "credits-100", "name": "Institución", "usd_microunits": 100_000_000},
+    ]
+    assert billing["request_prices"] == [
+        {"id": "events-read", "name": "Eventos sísmicos", "scope": "events:read", "usd_microunits_per_request": 500},
+        {"id": "stations-read", "name": "Red de estaciones", "scope": "stations:read", "usd_microunits_per_request": 1_000},
+    ]
+
+
+@pytest.mark.asyncio
 async def test_rotation_revokes_previous_secret(monkeypatch: pytest.MonkeyPatch) -> None:
     app = developer_app(monkeypatch)
     headers = {"Authorization": "Bearer valid-token"}

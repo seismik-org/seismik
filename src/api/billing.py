@@ -12,6 +12,28 @@ from typing import TypedDict
 from redis.asyncio import Redis
 from redis.exceptions import WatchError
 
+# Un crédito representa un dólar estadounidense y se guarda como microdólares
+# para no introducir errores de coma flotante en el libro mayor. Este catálogo
+# sólo informa precios: ``payments_enabled`` sigue apagado hasta integrar un
+# procesador y validar impuestos, reembolsos y el flujo de facturas.
+MICROUNITS_PER_USD = 1_000_000
+
+# No hay planes mensuales. Los paquetes simplemente acreditarán saldo de uso
+# cuando exista el checkout; no dan una cuota recurrente ni crédito promocional.
+CREDIT_PACKS: tuple[dict[str, int | str], ...] = (
+    {"id": "credits-5", "name": "Inicio", "usd_microunits": 5_000_000},
+    {"id": "credits-25", "name": "Equipo", "usd_microunits": 25_000_000},
+    {"id": "credits-100", "name": "Institución", "usd_microunits": 100_000_000},
+)
+
+# Precios de lista por una solicitud autenticada. La API conserva el medidor
+# separado de este catálogo: publicar precios no puede cobrar ni bloquear
+# llamadas de la beta accidentalmente.
+REQUEST_PRICES: tuple[dict[str, int | str], ...] = (
+    {"id": "events-read", "name": "Eventos sísmicos", "scope": "events:read", "usd_microunits_per_request": 500},
+    {"id": "stations-read", "name": "Red de estaciones", "scope": "stations:read", "usd_microunits_per_request": 1_000},
+)
+
 
 class BillingSummary(TypedDict):
     period: str
