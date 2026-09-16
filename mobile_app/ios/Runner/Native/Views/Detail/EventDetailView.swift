@@ -1,6 +1,5 @@
 import SwiftUI
 import MapKit
-import GoogleMaps
 
 /// Vista detallada del reporte sísmico con fidelidad total entre Reportes Oficiales y Preliminares (SeedLink).
 public struct EventDetailView: View {
@@ -286,13 +285,7 @@ public struct EventDetailView: View {
     }
 
     private func epicenterMapSection(_ coord: CLLocationCoordinate2D) -> some View {
-        Group {
-            if mapProviderInUse == .google {
-                GoogleEpicenterMapView(coordinate: coord, title: event.place, magnitude: event.magnitude, isPreliminary: event.isPreliminary, rings: FeltArea.perimeter(for: event))
-            } else {
-                EpicenterMapView(coordinate: coord, title: event.place, magnitude: event.magnitude, isPreliminary: event.isPreliminary, rings: FeltArea.perimeter(for: event))
-            }
-        }
+        EpicenterMapView(coordinate: coord, title: event.place, magnitude: event.magnitude, isPreliminary: event.isPreliminary, rings: FeltArea.perimeter(for: event))
             .frame(height: 220)
             .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
             .overlay {
@@ -448,14 +441,7 @@ public struct EventDetailView: View {
 
     // MARK: - Helpers
 
-    /// Proveedor que este build puede dibujar de verdad.
-    private var mapProviderInUse: MapProviderChoice {
-        MapProviderChoice.resolved(stored: mapProvider, googleIsReady: GoogleMapsBridge.isAvailable)
-    }
-
     private var mapButtonTitle: String {
-        // Abrir el epicentro fuera no necesita el SDK: aunque al build le falte
-        // la clave, la app de Google Maps del teléfono sí puede recibirlo.
         switch MapProviderChoice.stored(mapProvider) {
         case .google: return "Abrir epicentro en Google Maps"
         case .apple: return "Abrir epicentro en Apple Maps"
@@ -632,57 +618,5 @@ private struct EpicenterMapView: UIViewRepresentable {
             }
             return view
         }
-    }
-}
-
-// MARK: - Mini Mapa del Epicentro sobre Google Maps
-/// Misma información que `EpicenterMapView`: el epicentro y los anillos del
-/// perímetro, sin gestos, encuadrado al anillo más grande.
-private struct GoogleEpicenterMapView: UIViewRepresentable {
-    let coordinate: CLLocationCoordinate2D
-    let title: String?
-    let magnitude: Double?
-    let isPreliminary: Bool
-    let rings: [FeltArea.Ring]
-
-    func makeCoordinator() -> Coordinator {
-        Coordinator()
-    }
-
-    func makeUIView(context: Context) -> GMSMapView {
-        let camera = GMSCameraPosition.camera(
-            withLatitude: coordinate.latitude,
-            longitude: coordinate.longitude,
-            zoom: 7
-        )
-        let mapView = GoogleMapGuard.makeMapView(camera: camera)
-        mapView.settings.setAllGesturesEnabled(false)
-
-        for ring in rings {
-            let circle = GoogleMarkerIcon.circle(ring, center: coordinate)
-            circle.map = mapView
-        }
-
-        let marker = GMSMarker(position: coordinate)
-        marker.icon = GMSMarker.markerImage(
-            with: SeismikColors.severityUIColor(for: magnitude, isPreliminary: isPreliminary)
-        )
-        marker.title = title ?? "Epicentro"
-        marker.map = mapView
-        return mapView
-    }
-
-    func updateUIView(_ mapView: GMSMapView, context: Context) {
-        // El encuadre necesita el tamaño real de la vista: en `makeUIView`
-        // todavía mide cero y el mapa quedaría en un zoom cualquiera.
-        guard !context.coordinator.didFrameTheRings, mapView.bounds.width > 1 else { return }
-        guard let outer = rings.first else { return }
-        context.coordinator.didFrameTheRings = true
-        let bounds = GoogleMarkerIcon.bounds(around: coordinate, radiusKm: outer.radiusKm)
-        mapView.moveCamera(GMSCameraUpdate.fit(bounds, withPadding: 28))
-    }
-
-    class Coordinator {
-        var didFrameTheRings = false
     }
 }

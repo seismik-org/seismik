@@ -1,5 +1,4 @@
 import XCTest
-import GoogleMaps
 import MapKit
 
 @testable import Runner
@@ -615,15 +614,9 @@ final class NativeFamilyContractTests: XCTestCase {
     }
 }
 
-/// El ajuste de mapas sólo ofrece Apple y Google, y Google sólo se dibuja si el
-/// build trajo la clave del SDK: sin ella el mapa saldría gris.
+/// El ajuste de mapas sólo decide con qué app se abre el epicentro; el mapa de
+/// la app es siempre Apple Maps.
 final class MapProviderChoiceTests: XCTestCase {
-    private func event(magnitude: Double?, isPreliminary: Bool = false) -> SeismicEvent {
-        SeismicEvent(id: UUID().uuidString, place: "Los Santos", magnitude: magnitude,
-                     depthKm: 10, latitude: 6.80, longitude: -73.10, detectedAt: Date(),
-                     isPreliminary: isPreliminary)
-    }
-
     func testTheOnlyProvidersAreAppleAndGoogle() {
         XCTAssertEqual(MapProviderChoice.allCases.map(\.rawValue), ["apple", "google"])
         XCTAssertEqual(MapProviderChoice.apple.label, "Apple Maps")
@@ -631,110 +624,11 @@ final class MapProviderChoiceTests: XCTestCase {
     }
 
     func testOldPreferencesFallBackToAppleMaps() {
-        // Quien venga del build anterior tiene guardado "osm" o "system".
+        // Quien venga de un build anterior tiene guardado "osm" o "system".
         XCTAssertEqual(MapProviderChoice.stored("osm"), .apple)
         XCTAssertEqual(MapProviderChoice.stored("system"), .apple)
         XCTAssertEqual(MapProviderChoice.stored(""), .apple)
         XCTAssertEqual(MapProviderChoice.stored("google"), .google)
         XCTAssertEqual(MapProviderChoice.stored("apple"), .apple)
-    }
-
-    func testGoogleIsOnlyDrawnWhenTheBuildHasItsKey() {
-        XCTAssertEqual(MapProviderChoice.resolved(stored: "google", googleIsReady: true), .google)
-        XCTAssertEqual(
-            MapProviderChoice.resolved(stored: "google", googleIsReady: false), .apple,
-            "Sin clave, Google Maps dibuja una cuadrícula gris: es peor que Apple Maps"
-        )
-        XCTAssertEqual(MapProviderChoice.resolved(stored: "apple", googleIsReady: true), .apple)
-    }
-
-    func testEveryEarthquakeGetsItsOwnBadgeDrawnForGoogleMarkers() {
-        // Google pinta imágenes, no vistas: si el dibujo saliera vacío, el mapa
-        // se quedaría sin sismos y nadie vería el fallo hasta el teléfono.
-        for event in [event(magnitude: 6.2), event(magnitude: 2.4), event(magnitude: nil, isPreliminary: true)] {
-            XCTAssertEqual(GoogleMarkerIcon.magnitude(for: event).size, CGSize(width: 48, height: 32))
-        }
-        XCTAssertEqual(GoogleMarkerIcon.station.size, CGSize(width: 12, height: 12))
-    }
-
-    func testTheGoogleRingsKeepTheColoursOfTheAppleOnes() throws {
-        let quake = event(magnitude: 6)
-        let ring = try XCTUnwrap(FeltArea.perimeter(for: quake).first)
-        let center = try XCTUnwrap(quake.coordinate)
-        let google = GoogleMarkerIcon.circle(ring, center: center)
-        let apple = FeltArea.renderer(for: FeltArea.circle(ring, center: center))
-
-        XCTAssertEqual(google.radius, ring.radiusKm * 1_000, accuracy: 1)
-        XCTAssertEqual(google.strokeColor, apple.strokeColor)
-        XCTAssertEqual(google.fillColor, apple.fillColor)
-    }
-
-    func testTheGoogleFrameCoversTheWholeFeltRadius() {
-        let bogota = CLLocationCoordinate2D(latitude: 4.65, longitude: -74.05)
-        let frame = GoogleMarkerIcon.bounds(around: bogota, radiusKm: 120)
-
-        XCTAssertTrue(frame.isValid)
-        // Un punto a ~100 km al norte entra en el encuadre; uno a ~400 km, no.
-        XCTAssertTrue(frame.contains(CLLocationCoordinate2D(latitude: 5.55, longitude: -74.05)))
-        XCTAssertFalse(frame.contains(CLLocationCoordinate2D(latitude: 8.25, longitude: -74.05)))
-    }
-}
-
-/// Una preferencia guardada no puede dejar la app sin abrir: si el arranque
-/// anterior no sobrevivió al mapa de Google, el siguiente vuelve a Apple Maps.
-final class GoogleMapGuardTests: XCTestCase {
-    private var marker: URL!
-    private var defaults: UserDefaults!
-    private var suite: String!
-
-    override func setUp() {
-        super.setUp()
-        marker = URL(fileURLWithPath: NSTemporaryDirectory())
-            .appendingPathComponent("seismik-guard-\(UUID().uuidString)")
-        suite = "seismik.guard.\(UUID().uuidString)"
-        defaults = UserDefaults(suiteName: suite)
-    }
-
-    override func tearDown() {
-        try? FileManager.default.removeItem(at: marker)
-        defaults?.removePersistentDomain(forName: suite)
-        super.tearDown()
-    }
-
-    func testAnInterruptedGoogleMapSendsTheAppBackToAppleMaps() {
-        GoogleMapGuard.mark(at: marker)
-        XCTAssertTrue(GoogleMapGuard.isMarked(at: marker))
-
-        XCTAssertEqual(
-            GoogleMapGuard.safeProvider(stored: "google", at: marker, defaults: defaults),
-            "apple"
-        )
-        XCTAssertFalse(
-            GoogleMapGuard.isMarked(at: marker),
-            "La marca se limpia: hay que poder volver a intentarlo"
-        )
-        XCTAssertTrue(
-            defaults.bool(forKey: GoogleMapGuard.revertedKey),
-            "Configuración tiene que poder explicar por qué cambió el ajuste"
-        )
-    }
-
-    func testAMapThatSurvivedKeepsThePreference() {
-        XCTAssertEqual(
-            GoogleMapGuard.safeProvider(stored: "google", at: marker, defaults: defaults),
-            "google"
-        )
-        XCTAssertFalse(defaults.bool(forKey: GoogleMapGuard.revertedKey))
-    }
-
-    func testTheGuardStillRetiresOldPreferences() {
-        XCTAssertEqual(
-            GoogleMapGuard.safeProvider(stored: "osm", at: marker, defaults: defaults),
-            "apple"
-        )
-        XCTAssertEqual(
-            GoogleMapGuard.safeProvider(stored: "system", at: marker, defaults: defaults),
-            "apple"
-        )
     }
 }
