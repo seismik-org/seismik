@@ -22,6 +22,8 @@ public struct SettingsView: View {
     /// La preferencia vive en UserDefaults: leerla aquí hace que el mapa del
     /// monitor cambie en cuanto se elige otro proveedor.
     @AppStorage("seismik.map_provider") private var mapProviderSetting = MapProviderChoice.apple.rawValue
+    /// El vigilante la enciende cuando un arranque no sobrevivió a Google Maps.
+    @AppStorage(GoogleMapGuard.revertedKey) private var googleMapReverted = false
 
     public init(state: SeismikState, showsCloseButton: Bool = true) {
         self.state = state
@@ -179,8 +181,18 @@ public struct SettingsView: View {
                                 Text(MapProviderChoice.google.label).tag(MapProviderChoice.google.rawValue)
                             }
                             .pickerStyle(.menu)
+                            .onChange(of: mapProviderSetting) { _ in
+                                // Elegir a mano borra el aviso del intento anterior.
+                                googleMapReverted = false
+                            }
                         }
                         .padding(.top, 4)
+
+                        if googleMapReverted {
+                            Text("La última vez que la app dibujó Google Maps no llegó a terminar, así que volvió a Apple Maps. Puedes intentarlo otra vez; si se repite, quédate en Apple Maps y avísanos.")
+                                .font(.caption)
+                                .foregroundColor(.orange)
+                        }
 
                         if MapProviderChoice.stored(mapProviderSetting) == .google && !GoogleMapsBridge.isAvailable {
                             Text("Esta versión se compiló sin la clave del SDK de Google Maps, así que la app sigue dibujando Apple Maps. «Abrir epicentro» sí abre Google Maps.")
@@ -1114,7 +1126,7 @@ private struct GoogleFamilyMapView: UIViewRepresentable {
 
     func makeUIView(context: Context) -> GMSMapView {
         let camera = GMSCameraPosition.camera(withLatitude: 4.65, longitude: -74.05, zoom: 5)
-        return GMSMapView(frame: .zero, camera: camera)
+        return GoogleMapGuard.makeMapView(camera: camera)
     }
 
     func updateUIView(_ mapView: GMSMapView, context: Context) {

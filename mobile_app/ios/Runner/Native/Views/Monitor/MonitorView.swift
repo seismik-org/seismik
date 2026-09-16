@@ -28,6 +28,13 @@ public struct MonitorView: View {
     /// Se lee aquí, y no en `state`, para que el mapa cambie en cuanto se
     /// elija otro proveedor en Configuración.
     @AppStorage("seismik.map_provider") private var mapProviderSetting = MapProviderChoice.apple.rawValue
+    /// Google avisa cuando termina de pintar mosaicos. Si no avisa, es que la
+    /// clave del build no está autorizada y el mapa se queda en blanco.
+    @State private var googleTilesRendered = false
+    @State private var googleLooksStuck = false
+
+    /// Margen que se le da a Google para pintar el primer mosaico.
+    private static let tileTimeoutSeconds: UInt64 = 8
 
     /// Alto que ocupa la barra del historial; el mapa no centra nada debajo.
     private static let historyBarInset: CGFloat = 92
@@ -43,10 +50,12 @@ public struct MonitorView: View {
                         GoogleMonitorMapView(
                             state: state,
                             cameraCommand: cameraCommand,
-                            coveredBottomInset: Self.historyBarInset
-                        ) { selectedEvent in
-                            state.selectEvent(selectedEvent)
-                        }
+                            coveredBottomInset: Self.historyBarInset,
+                            onTilesRendered: { googleTilesRendered = true },
+                            onSelectEvent: { selectedEvent in
+                                state.selectEvent(selectedEvent)
+                            }
+                        )
                     } else {
                         NativeMapView(
                             state: state,
@@ -63,6 +72,9 @@ public struct MonitorView: View {
                     .padding(.top, max(8, geometry.safeAreaInsets.top + 4))
 
                 VStack(alignment: .trailing, spacing: 12) {
+                    if googleLooksStuck {
+                        googleFailureBanner
+                    }
                     mapControls
                     // Una barra fija en lugar del panel arrastrable: se toca y la
                     // lista abre en la hoja nativa de iOS. Una hoja siempre visible
@@ -77,6 +89,15 @@ public struct MonitorView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
             }
         }
+        // Un mapa en blanco no se puede distinguir de uno que todavía carga,
+        // así que se le da un margen y luego se ofrece la salida.
+        .task(id: mapProviderSetting) {
+            googleTilesRendered = false
+            googleLooksStuck = false
+            guard mapProvider == .google else { return }
+            try? await Task.sleep(nanoseconds: Self.tileTimeoutSeconds * 1_000_000_000)
+            googleLooksStuck = !googleTilesRendered
+        }
         // Hoja de Detalle de Sismo Seleccionado en el mapa
         .sheet(item: $state.selectedEvent) { event in
             EventDetailView(event: event)
@@ -90,6 +111,33 @@ public struct MonitorView: View {
             SeismicSheetView(state: state, locationManager: locationManager)
                 .modalSheetPresentation()
         }
+    }
+
+    /// Salida cuando Google no pinta nada: sin esto, el ajuste guardado deja la
+    /// app mostrando un mapa vacío en cada arranque.
+    private var googleFailureBanner: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Label("Google Maps no cargó", systemImage: "exclamationmark.triangle.fill")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundColor(.orange)
+            Text("La clave de este build no está autorizada para Maps SDK for iOS. Los sismos y las alertas siguen funcionando.")
+                .font(.caption)
+                .foregroundColor(.secondary)
+            Button {
+                HapticManager.selection()
+                mapProviderSetting = MapProviderChoice.apple.rawValue
+                googleLooksStuck = false
+            } label: {
+                Text("Volver a Apple Maps")
+                    .font(.system(size: 14, weight: .semibold))
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+        }
+        .padding(14)
+        .liquidGlass(cornerRadius: 18)
+        .frame(maxWidth: .infinity)
+        .accessibilityElement(children: .contain)
     }
 
     /// Proveedor que se puede dibujar de verdad en este build.
@@ -482,6 +530,7 @@ private struct GoogleMonitorMapView: UIViewRepresentable {
     @ObservedObject var state: SeismikState
     let cameraCommand: MapCameraCommand
     let coveredBottomInset: CGFloat
+    let onTilesRendered: () -> Void
     let onSelectEvent: (SeismicEvent) -> Void
 
     /// Equivalencias con los tramos que usa el mapa de Apple: 0.8° de alto son
@@ -500,7 +549,7 @@ private struct GoogleMonitorMapView: UIViewRepresentable {
             longitude: -74.05,
             zoom: Self.countryZoom
         )
-        let mapView = GMSMapView(frame: .zero, camera: camera)
+        let mapView = GoogleMapGuard.makeMapView(camera: camera)
         mapView.delegate = context.coordinator
         mapView.isMyLocationEnabled = true
         mapView.settings.compassButton = true
@@ -626,6 +675,12 @@ private struct GoogleMonitorMapView: UIViewRepresentable {
                     circles.append(circle)
                 }
             }
+        }
+
+        /// Con una clave no autorizada este aviso no llega nunca: es la única
+        /// señal fiable de que los mosaicos entraron.
+        func mapViewDidFinishTileRendering(_ mapView: GMSMapView) {
+            parent.onTilesRendered()
         }
 
         func mapView(_ mapView: GMSMapView, didTap marker: GMSMarker) -> Bool {

@@ -679,3 +679,62 @@ final class MapProviderChoiceTests: XCTestCase {
         XCTAssertFalse(frame.contains(CLLocationCoordinate2D(latitude: 8.25, longitude: -74.05)))
     }
 }
+
+/// Una preferencia guardada no puede dejar la app sin abrir: si el arranque
+/// anterior no sobrevivió al mapa de Google, el siguiente vuelve a Apple Maps.
+final class GoogleMapGuardTests: XCTestCase {
+    private var marker: URL!
+    private var defaults: UserDefaults!
+    private var suite: String!
+
+    override func setUp() {
+        super.setUp()
+        marker = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("seismik-guard-\(UUID().uuidString)")
+        suite = "seismik.guard.\(UUID().uuidString)"
+        defaults = UserDefaults(suiteName: suite)
+    }
+
+    override func tearDown() {
+        try? FileManager.default.removeItem(at: marker)
+        defaults?.removePersistentDomain(forName: suite)
+        super.tearDown()
+    }
+
+    func testAnInterruptedGoogleMapSendsTheAppBackToAppleMaps() {
+        GoogleMapGuard.mark(at: marker)
+        XCTAssertTrue(GoogleMapGuard.isMarked(at: marker))
+
+        XCTAssertEqual(
+            GoogleMapGuard.safeProvider(stored: "google", at: marker, defaults: defaults),
+            "apple"
+        )
+        XCTAssertFalse(
+            GoogleMapGuard.isMarked(at: marker),
+            "La marca se limpia: hay que poder volver a intentarlo"
+        )
+        XCTAssertTrue(
+            defaults.bool(forKey: GoogleMapGuard.revertedKey),
+            "Configuración tiene que poder explicar por qué cambió el ajuste"
+        )
+    }
+
+    func testAMapThatSurvivedKeepsThePreference() {
+        XCTAssertEqual(
+            GoogleMapGuard.safeProvider(stored: "google", at: marker, defaults: defaults),
+            "google"
+        )
+        XCTAssertFalse(defaults.bool(forKey: GoogleMapGuard.revertedKey))
+    }
+
+    func testTheGuardStillRetiresOldPreferences() {
+        XCTAssertEqual(
+            GoogleMapGuard.safeProvider(stored: "osm", at: marker, defaults: defaults),
+            "apple"
+        )
+        XCTAssertEqual(
+            GoogleMapGuard.safeProvider(stored: "system", at: marker, defaults: defaults),
+            "apple"
+        )
+    }
+}
