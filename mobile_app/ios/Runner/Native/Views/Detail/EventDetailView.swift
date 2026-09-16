@@ -655,7 +655,7 @@ private struct GoogleEpicenterMapView: UIViewRepresentable {
             longitude: coordinate.longitude,
             zoom: 7
         )
-        let mapView = GMSMapView(frame: .zero, camera: camera)
+        let mapView = GoogleMapGuard.makeMapView(camera: camera)
         mapView.settings.setAllGesturesEnabled(false)
 
         for ring in rings {

@@ -47,3 +47,31 @@ def test_the_build_still_carries_the_google_maps_key_and_scheme() -> None:
     plist = INFO_PLIST.read_text(encoding="utf-8")
     assert "<key>SeismikGoogleMapsAPIKey</key><string>$(SEISMIK_GOOGLE_MAPS_API_KEY)</string>" in plist
     assert "comgooglemaps" in plist
+
+
+def test_no_google_map_is_created_outside_the_watchdog() -> None:
+    """El proveedor se guarda en el teléfono.
+
+    Si dibujar el mapa de Google tumba la app, la app arranca, vuelve a
+    dibujarlo y vuelve a caerse: queda sin abrir y sin forma de cambiar el
+    ajuste desde dentro. `GoogleMapGuard` deja una marca antes de crear el
+    mapa, así que ninguna vista puede crear uno por su cuenta.
+    """
+
+    offenders = [
+        f"{path.name}:{number}"
+        for path in NATIVE.rglob("*.swift")
+        for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1)
+        # El propio vigilante es el único sitio que lo crea.
+        if "GMSMapView(" in line and path.name != "GoogleMapsBridge.swift"
+    ]
+    assert not offenders, offenders
+
+
+def test_a_blank_google_map_offers_the_way_back() -> None:
+    """Una clave no autorizada pinta un mapa vacío sin fallar: sin salida
+    visible, la app parece trabada en cada arranque."""
+
+    monitor = MONITOR.read_text(encoding="utf-8")
+    assert "func mapViewDidFinishTileRendering" in monitor
+    assert "Volver a Apple Maps" in monitor
