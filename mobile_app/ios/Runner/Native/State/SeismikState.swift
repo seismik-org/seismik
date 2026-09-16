@@ -60,11 +60,8 @@ public final class SeismikState: ObservableObject {
         self.pendingReportCount = apiClient.pendingReportCount
         // Un perfil sin sesión en Keychain no sirve para hablar con el servidor.
         self.account = apiClient.accountSessionToken == nil ? nil : apiClient.signedInAccount
-        // "system" y "osm" quedaron de versiones anteriores: ninguno dibujaba
-        // un mapa distinto dentro de la app. Y si el arranque anterior no
-        // sobrevivió al mapa de Google, se vuelve a Apple Maps: una preferencia
-        // guardada no puede dejar la app sin abrir.
-        mapProvider = GoogleMapGuard.safeProvider(stored: mapProvider)
+        // "system" y "osm" quedaron de versiones anteriores.
+        mapProvider = MapProviderChoice.stored(mapProvider).rawValue
         locationRegistration = locationManager.$userCoordinate
             .compactMap { $0 }
             .first()

@@ -1,6 +1,5 @@
 import SwiftUI
 import MapKit
-import GoogleMaps
 
 /// Comandos imperativos de cámara para mapas MapKit.
 public enum MapCameraCommand: Equatable {
@@ -25,16 +24,6 @@ public struct MonitorView: View {
     @State private var cameraCommand: MapCameraCommand = .none
     @State private var showSettings = false
     @State private var showEventList = false
-    /// Se lee aquí, y no en `state`, para que el mapa cambie en cuanto se
-    /// elija otro proveedor en Configuración.
-    @AppStorage("seismik.map_provider") private var mapProviderSetting = MapProviderChoice.apple.rawValue
-    /// Google avisa cuando termina de pintar mosaicos. Si no avisa, es que la
-    /// clave del build no está autorizada y el mapa se queda en blanco.
-    @State private var googleTilesRendered = false
-    @State private var googleLooksStuck = false
-
-    /// Margen que se le da a Google para pintar el primer mosaico.
-    private static let tileTimeoutSeconds: UInt64 = 8
 
     /// Alto que ocupa la barra del historial; el mapa no centra nada debajo.
     private static let historyBarInset: CGFloat = 92
@@ -44,27 +33,13 @@ public struct MonitorView: View {
     public var body: some View {
         GeometryReader { geometry in
             ZStack(alignment: .top) {
-                // Mapa interactivo a pantalla completa, del proveedor elegido.
-                Group {
-                    if mapProvider == .google {
-                        GoogleMonitorMapView(
-                            state: state,
-                            cameraCommand: cameraCommand,
-                            coveredBottomInset: Self.historyBarInset,
-                            onTilesRendered: { googleTilesRendered = true },
-                            onSelectEvent: { selectedEvent in
-                                state.selectEvent(selectedEvent)
-                            }
-                        )
-                    } else {
-                        NativeMapView(
-                            state: state,
-                            cameraCommand: cameraCommand,
-                            coveredBottomInset: Self.historyBarInset
-                        ) { selectedEvent in
-                            state.selectEvent(selectedEvent)
-                        }
-                    }
+                // Mapa nativo de Apple MapKit interactivo a pantalla completa
+                NativeMapView(
+                    state: state,
+                    cameraCommand: cameraCommand,
+                    coveredBottomInset: Self.historyBarInset
+                ) { selectedEvent in
+                    state.selectEvent(selectedEvent)
                 }
                 .ignoresSafeArea()
 
@@ -72,9 +47,6 @@ public struct MonitorView: View {
                     .padding(.top, max(8, geometry.safeAreaInsets.top + 4))
 
                 VStack(alignment: .trailing, spacing: 12) {
-                    if googleLooksStuck {
-                        googleFailureBanner
-                    }
                     mapControls
                     // Una barra fija en lugar del panel arrastrable: se toca y la
                     // lista abre en la hoja nativa de iOS. Una hoja siempre visible
@@ -89,15 +61,6 @@ public struct MonitorView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
             }
         }
-        // Un mapa en blanco no se puede distinguir de uno que todavía carga,
-        // así que se le da un margen y luego se ofrece la salida.
-        .task(id: mapProviderSetting) {
-            googleTilesRendered = false
-            googleLooksStuck = false
-            guard mapProvider == .google else { return }
-            try? await Task.sleep(nanoseconds: Self.tileTimeoutSeconds * 1_000_000_000)
-            googleLooksStuck = !googleTilesRendered
-        }
         // Hoja de Detalle de Sismo Seleccionado en el mapa
         .sheet(item: $state.selectedEvent) { event in
             EventDetailView(event: event)
@@ -111,38 +74,6 @@ public struct MonitorView: View {
             SeismicSheetView(state: state, locationManager: locationManager)
                 .modalSheetPresentation()
         }
-    }
-
-    /// Salida cuando Google no pinta nada: sin esto, el ajuste guardado deja la
-    /// app mostrando un mapa vacío en cada arranque.
-    private var googleFailureBanner: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Label("Google Maps no cargó", systemImage: "exclamationmark.triangle.fill")
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundColor(.orange)
-            Text("La clave de este build no está autorizada para Maps SDK for iOS. Los sismos y las alertas siguen funcionando.")
-                .font(.caption)
-                .foregroundColor(.secondary)
-            Button {
-                HapticManager.selection()
-                mapProviderSetting = MapProviderChoice.apple.rawValue
-                googleLooksStuck = false
-            } label: {
-                Text("Volver a Apple Maps")
-                    .font(.system(size: 14, weight: .semibold))
-                    .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(.borderedProminent)
-        }
-        .padding(14)
-        .liquidGlass(cornerRadius: 18)
-        .frame(maxWidth: .infinity)
-        .accessibilityElement(children: .contain)
-    }
-
-    /// Proveedor que se puede dibujar de verdad en este build.
-    private var mapProvider: MapProviderChoice {
-        MapProviderChoice.resolved(stored: mapProviderSetting, googleIsReady: GoogleMapsBridge.isAvailable)
     }
 
     /// Botones flotantes de control de mapa.
@@ -520,270 +451,4 @@ private class StationPointAnnotation: NSObject, MKAnnotation {
     }
 
     var title: String? { "Estación \(station.id)" }
-}
-
-// MARK: - Mapa de Google a pantalla completa
-/// Misma información que `NativeMapView` —sismos, estaciones y perímetro de
-/// sacudida— sobre los mosaicos de Google. Google Maps no agrupa marcadores sin
-/// la librería de utilidades, así que aquí cada sismo se dibuja por separado.
-private struct GoogleMonitorMapView: UIViewRepresentable {
-    @ObservedObject var state: SeismikState
-    let cameraCommand: MapCameraCommand
-    let coveredBottomInset: CGFloat
-    let onTilesRendered: () -> Void
-    let onSelectEvent: (SeismicEvent) -> Void
-
-    /// Equivalencias con los tramos que usa el mapa de Apple: 0.8° de alto son
-    /// unos 8.5 de zoom, y 2.2° unos 7.
-    private static let userZoom: Float = 8.5
-    private static let eventsZoom: Float = 7.0
-    private static let countryZoom: Float = 5.4
-
-    func makeCoordinator() -> Coordinator {
-        Coordinator(self)
-    }
-
-    func makeUIView(context: Context) -> GMSMapView {
-        let camera = GMSCameraPosition.camera(
-            withLatitude: 4.65,
-            longitude: -74.05,
-            zoom: Self.countryZoom
-        )
-        let mapView = GoogleMapGuard.makeMapView(camera: camera)
-        mapView.delegate = context.coordinator
-        mapView.isMyLocationEnabled = true
-        mapView.settings.compassButton = true
-        mapView.settings.myLocationButton = false
-        mapView.settings.rotateGestures = false
-        mapView.settings.tiltGestures = false
-        return mapView
-    }
-
-    func updateUIView(_ mapView: GMSMapView, context: Context) {
-        switch state.appMapType {
-        case "satellite": mapView.mapType = .satellite
-        case "hybrid": mapView.mapType = .hybrid
-        default: mapView.mapType = .normal
-        }
-
-        // El logo y la atribución de Google no pueden quedar bajo la barra del
-        // historial: la licencia del SDK exige que se vean.
-        mapView.padding = UIEdgeInsets(
-            top: 96,
-            left: 12,
-            bottom: max(coveredBottomInset + 10, 148),
-            right: 12
-        )
-
-        if let commandId = cameraCommand.id, commandId != context.coordinator.lastCommandId {
-            context.coordinator.lastCommandId = commandId
-            switch cameraCommand {
-            case .none:
-                break
-            case .centerUser:
-                let coordinate = mapView.myLocation?.coordinate ?? LocationManager.shared.currentCoordinate
-                if let coordinate {
-                    mapView.animate(with: GMSCameraUpdate.setTarget(coordinate, zoom: Self.userZoom))
-                } else {
-                    LocationManager.shared.requestPermission()
-                    LocationManager.shared.startUpdating()
-                }
-            case .centerEarthquakes:
-                if let latest = state.events.first, let coordinate = latest.coordinate {
-                    mapView.animate(with: GMSCameraUpdate.setTarget(coordinate, zoom: Self.eventsZoom))
-                } else {
-                    mapView.animate(with: GMSCameraUpdate.setTarget(
-                        CLLocationCoordinate2D(latitude: 4.65, longitude: -74.05),
-                        zoom: Self.countryZoom
-                    ))
-                }
-            }
-        }
-
-        context.coordinator.sync(mapView: mapView, events: state.events, stations: state.stations)
-    }
-
-    class Coordinator: NSObject, GMSMapViewDelegate {
-        var parent: GoogleMonitorMapView
-        var lastCommandId: UUID?
-        private var lastEventSnapshots: [String] = []
-        private var lastStationSnapshots: [String] = []
-        private var lastPerimeterSnapshots: [String] = []
-        private var markers: [GMSMarker] = []
-        private var circles: [GMSCircle] = []
-
-        init(_ parent: GoogleMonitorMapView) {
-            self.parent = parent
-        }
-
-        func sync(mapView: GMSMapView, events: [SeismicEvent], stations: [SeismicStation]) {
-            syncPerimeters(mapView: mapView, events: events)
-
-            let eventSnapshots = events.map {
-                "\($0.id)|\($0.magnitude ?? -1)|\($0.latitude ?? 999)|\($0.longitude ?? 999)|\($0.isPreliminary)"
-            }
-            let stationSnapshots = stations.map {
-                "\($0.id)|\($0.latitude)|\($0.longitude)"
-            }
-            guard eventSnapshots != lastEventSnapshots || stationSnapshots != lastStationSnapshots else { return }
-            lastEventSnapshots = eventSnapshots
-            lastStationSnapshots = stationSnapshots
-
-            for marker in markers { marker.map = nil }
-            markers.removeAll(keepingCapacity: true)
-
-            for event in events {
-                guard let coordinate = event.coordinate else { continue }
-                let marker = GMSMarker(position: coordinate)
-                marker.icon = GoogleMarkerIcon.magnitude(for: event)
-                marker.groundAnchor = CGPoint(x: 0.5, y: 0.5)
-                marker.title = event.place ?? "Sismo"
-                marker.userData = event
-                marker.zIndex = 2
-                marker.map = mapView
-                markers.append(marker)
-            }
-
-            for station in stations {
-                let marker = GMSMarker(position: station.coordinate)
-                marker.icon = GoogleMarkerIcon.station
-                marker.groundAnchor = CGPoint(x: 0.5, y: 0.5)
-                marker.title = "Estación \(station.id)"
-                marker.zIndex = 1
-                marker.map = mapView
-                markers.append(marker)
-            }
-        }
-
-        /// Alcance estimado III/VI de eventos oficiales y preliminares recientes.
-        private func syncPerimeters(mapView: GMSMapView, events: [SeismicEvent]) {
-            let recent = FeltArea.recentEvents(events)
-            let snapshots = recent.map {
-                "\($0.id)|\($0.latitude ?? 0)|\($0.longitude ?? 0)|\($0.magnitude ?? 0)|\($0.depthKm ?? 10)"
-            }
-            guard snapshots != lastPerimeterSnapshots else { return }
-            lastPerimeterSnapshots = snapshots
-
-            for circle in circles { circle.map = nil }
-            circles.removeAll(keepingCapacity: true)
-
-            for event in recent {
-                guard let coordinate = event.coordinate else { continue }
-                for ring in FeltArea.perimeter(for: event) where ring.intensity == 3 || ring.intensity == 6 {
-                    let circle = GoogleMarkerIcon.circle(ring, center: coordinate)
-                    circle.map = mapView
-                    circles.append(circle)
-                }
-            }
-        }
-
-        /// Con una clave no autorizada este aviso no llega nunca: es la única
-        /// señal fiable de que los mosaicos entraron.
-        func mapViewDidFinishTileRendering(_ mapView: GMSMapView) {
-            parent.onTilesRendered()
-        }
-
-        func mapView(_ mapView: GMSMapView, didTap marker: GMSMarker) -> Bool {
-            guard let event = marker.userData as? SeismicEvent else { return false }
-            HapticManager.light()
-            parent.onSelectEvent(event)
-            return true
-        }
-    }
-}
-
-// MARK: - Dibujos para los marcadores de Google
-/// Google Maps pinta imágenes, no vistas: la pastilla de magnitud se dibuja una
-/// vez por valor y se guarda, porque el mapa se vuelve a sincronizar con cada
-/// refresco de la lista.
-enum GoogleMarkerIcon {
-    private static var badges: [String: UIImage] = [:]
-
-    static func magnitude(for event: SeismicEvent) -> UIImage {
-        let text: String
-        let color: UIColor
-        if event.isPreliminary && event.magnitude == nil {
-            text = "P"
-            color = SeismikColors.severityUIColor(for: nil, isPreliminary: true)
-        } else {
-            text = event.magnitude.map { String(format: "%.1f", $0) } ?? "—"
-            color = SeismikColors.severityUIColor(for: event.magnitude, isPreliminary: event.isPreliminary)
-        }
-
-        // El color sale de la magnitud, así que el texto y el sello preliminar
-        // identifican el dibujo por completo.
-        let key = "\(text)|\(event.isPreliminary)"
-        if let cached = badges[key] { return cached }
-
-        let size = CGSize(width: 48, height: 32)
-        let image = UIGraphicsImageRenderer(size: size).image { _ in
-            let rect = CGRect(origin: .zero, size: size).insetBy(dx: 2, dy: 2)
-            let shape = UIBezierPath(roundedRect: rect, cornerRadius: 12)
-            color.setFill()
-            shape.fill()
-            UIColor.white.withAlphaComponent(0.8).setStroke()
-            shape.lineWidth = 1
-            shape.stroke()
-
-            let attributes: [NSAttributedString.Key: Any] = [
-                .font: UIFont.roundedForMarkers(ofSize: 14, weight: .bold),
-                .foregroundColor: UIColor.white
-            ]
-            let measured = text.size(withAttributes: attributes)
-            text.draw(
-                at: CGPoint(x: rect.midX - measured.width / 2, y: rect.midY - measured.height / 2),
-                withAttributes: attributes
-            )
-        }
-        badges[key] = image
-        return image
-    }
-
-    static let station: UIImage = {
-        let size = CGSize(width: 12, height: 12)
-        return UIGraphicsImageRenderer(size: size).image { _ in
-            let rect = CGRect(origin: .zero, size: size).insetBy(dx: 1.4, dy: 1.4)
-            let dot = UIBezierPath(ovalIn: rect)
-            UIColor(red: 0.22, green: 0.74, blue: 0.96, alpha: 0.85).setFill()
-            dot.fill()
-            UIColor.white.setStroke()
-            dot.lineWidth = 1.2
-            dot.stroke()
-        }
-    }()
-
-    /// Mismo anillo que dibuja `FeltArea` en MapKit, con los colores intactos.
-    static func circle(_ ring: FeltArea.Ring, center: CLLocationCoordinate2D) -> GMSCircle {
-        let circle = GMSCircle(position: center, radius: ring.radiusKm * 1_000)
-        let color = FeltArea.color(ring.intensity)
-        circle.strokeColor = color.withAlphaComponent(0.85)
-        circle.fillColor = color.withAlphaComponent(ring.intensity == 3 ? 0.08 : 0.14)
-        circle.strokeWidth = ring.intensity == 3 ? 2 : 1
-        return circle
-    }
-
-    /// Encuadre que cubre un radio en kilómetros alrededor de un punto.
-    static func bounds(around center: CLLocationCoordinate2D, radiusKm: Double) -> GMSCoordinateBounds {
-        let latitudeDelta = radiusKm / 110.574
-        let cosine = max(0.01, cos(center.latitude * .pi / 180))
-        let longitudeDelta = radiusKm / (111.320 * cosine)
-        let northEast = CLLocationCoordinate2D(
-            latitude: min(85, center.latitude + latitudeDelta),
-            longitude: center.longitude + longitudeDelta
-        )
-        let southWest = CLLocationCoordinate2D(
-            latitude: max(-85, center.latitude - latitudeDelta),
-            longitude: center.longitude - longitudeDelta
-        )
-        return GMSCoordinateBounds(coordinate: northEast, coordinate: southWest)
-    }
-}
-
-extension UIFont {
-    /// Tipografía redondeada de los marcadores dibujados para Google Maps.
-    static func roundedForMarkers(ofSize size: CGFloat, weight: UIFont.Weight) -> UIFont {
-        let base = UIFont.systemFont(ofSize: size, weight: weight)
-        guard let descriptor = base.fontDescriptor.withDesign(.rounded) else { return base }
-        return UIFont(descriptor: descriptor, size: size)
-    }
 }
