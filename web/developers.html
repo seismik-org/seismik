@@ -14,6 +14,7 @@
   <link rel="stylesheet" href="/styles.css">
   <link rel="stylesheet" href="/logo.css">
   <link rel="stylesheet" href="/developers.css">
+  <link rel="stylesheet" href="/developer-pricing.css">
   <link rel="stylesheet" href="/developer-endpoints.css">
 </head>
 <body class="developer-body">
@@ -63,6 +64,16 @@
         <article class="product-card"><span class="product-icon">02</span><h3>Red de estaciones</h3><p>Metadatos geográficos de estaciones abiertas y el proveedor SeedLink asociado.</p><code>stations:read</code></article>
         <article class="product-card"><span class="product-icon">03</span><h3>Webhooks institucionales</h3><p>Eventos preliminares u oficiales, firmados y entregados desde una cola durable para simulacros e investigación.</p><code>simulation_only</code></article>
       </div>
+    </section>
+
+    <section id="precios" class="developer-section pricing-section">
+      <div class="section-heading"><p class="eyebrow">CRÉDITOS DE CONSUMO</p><h2>Sin mensualidades. Paga sólo por uso.</h2><p>Los créditos se expresan y consumen en USD. El catálogo está publicado para revisión; durante la beta no se cobra, no se piden tarjetas y aún no se entregan créditos promocionales.</p></div>
+      <div id="credit-packs" class="pricing-grid" aria-live="polite"></div>
+      <article class="request-prices-card">
+        <div><p class="eyebrow">COSTO POR SOLICITUD</p><h3>Precios de lista de la API</h3></div>
+        <div id="request-prices" class="request-prices" aria-live="polite"></div>
+        <p class="fine-print">Una consulta autenticada descuenta créditos sólo cuando se active el cobro. Consultas rechazadas por autenticación, cuota o error de Seismik no serán cobrables.</p>
+      </article>
     </section>
 
     <section id="panel" class="developer-section dashboard-section">

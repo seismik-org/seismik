@@ -12,6 +12,7 @@ from fastapi import APIRouter, Cookie, Header, HTTPException, Request, status
 from firebase_admin import App, auth, credentials
 from pydantic import BaseModel, Field, field_validator
 
+from api.billing import CREDIT_PACKS, MICROUNITS_PER_USD, REQUEST_PRICES
 from api.billing import summary as billing_summary
 
 router = APIRouter(prefix="/v1/developer", tags=["developer-platform"])
@@ -33,6 +34,7 @@ class PortalConfigResponse(BaseModel):
     firebase: FirebaseWebConfig | None
     terms_version: str
     plans: list[dict[str, Any]]
+    billing: dict[str, Any]
     products: list[dict[str, Any]]
 
 
@@ -321,6 +323,15 @@ async def portal_config(request: Request) -> PortalConfigResponse:
                 "max_active_keys": settings.developer_max_active_keys,
             }
         ],
+        billing={
+            "currency": "USD",
+            "microunits_per_usd": MICROUNITS_PER_USD,
+            "model": "prepaid_credits",
+            "checkout_enabled": False,
+            "promotional_credits_enabled": False,
+            "credit_packs": list(CREDIT_PACKS),
+            "request_prices": list(REQUEST_PRICES),
+        },
         products=[
             {
                 "id": "events",
