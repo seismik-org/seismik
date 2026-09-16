@@ -10,7 +10,66 @@ permissions:
 env:
   FLUTTER_VERSION: "3.47.1"
 
+  # Valores públicos; la identidad de Google llega mediante OIDC, nunca desde
+  # una clave JSON guardada en GitHub. Las dos variables WIF se crean una vez
+  # siguiendo deploy/GITHUB_ACTIONS.md.
+  GCP_PROJECT_ID: "seismik-15bbb"
+  GCP_REGION: "us-east1"
+  GCP_ARTIFACT_REPOSITORY: "seismik"
+
 jobs:
+  changes:
+    # No se despliega todo por un cambio de iOS o de documentación. Estos
+    # indicadores sólo habilitan el servicio Cloud Run que recibió código.
+    runs-on: ubuntu-latest
+    outputs:
+      api: ${{ steps.filter.outputs.api }}
+      web: ${{ steps.filter.outputs.web }}
+      dispatcher: ${{ steps.filter.outputs.dispatcher }}
+      integrations: ${{ steps.filter.outputs.integrations }}
+      detector: ${{ steps.filter.outputs.detector }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            api:
+              - 'src/api/**'
+              - 'src/crowdsourcing/**'
+              - 'src/reporting/**'
+              - 'requirements-backend.txt'
+              - 'Dockerfile.api'
+              - 'config.global.json'
+              - 'official_sources.json'
+              - 'deploy/cloudbuild.api.yaml'
+            web:
+              - 'web/**'
+              - 'Dockerfile.web'
+              - 'deploy/Caddyfile.web'
+              - 'deploy/cloudbuild.worker.yaml'
+            dispatcher:
+              - 'src/dispatcher/**'
+              - 'src/crowdsourcing/**'
+              - 'requirements-backend.txt'
+              - 'Dockerfile.dispatcher'
+              - 'official_sources.json'
+              - 'deploy/cloudbuild.worker.yaml'
+            integrations:
+              - 'src/integrations/**'
+              - 'src/dispatcher/**'
+              - 'requirements-backend.txt'
+              - 'Dockerfile.integrations'
+              - 'official_sources.json'
+              - 'deploy/cloudbuild.worker.yaml'
+            detector:
+              - 'src/eew/**'
+              - 'requirements-detector.txt'
+              - 'Dockerfile'
+              - 'config.json'
+              - 'official_sources.json'
+              - 'deploy/cloudbuild.worker.yaml'
+
   backend:
     runs-on: ubuntu-latest
     steps:
@@ -155,3 +214,113 @@ jobs:
           name: native-ios-tests
           path: mobile_app/build/NativeTests.xcresult
           if-no-files-found: ignore
+
+  deploy-api:
+    name: Deploy API to Cloud Run
+    needs: [changes, backend, mobile, android, ios]
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      needs.changes.outputs.api == 'true' &&
+      needs.backend.result == 'success' && needs.mobile.result == 'success' &&
+      needs.android.result == 'success' && needs.ios.result == 'success' &&
+      vars.GCP_WORKLOAD_IDENTITY_PROVIDER != '' && vars.GCP_DEPLOY_SERVICE_ACCOUNT != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    concurrency:
+      group: cloud-run-api-production
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v4
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SERVICE_ACCOUNT }}
+      - uses: google-github-actions/setup-gcloud@v2
+      - name: Build immutable image
+        env:
+          IMAGE: ${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.GCP_ARTIFACT_REPOSITORY }}/api:${{ github.sha }}
+        run: gcloud builds submit --config deploy/cloudbuild.api.yaml --substitutions=_IMAGE="$IMAGE"
+      - name: Update service
+        env:
+          IMAGE: ${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.GCP_ARTIFACT_REPOSITORY }}/api:${{ github.sha }}
+        run: gcloud run services update seismik-api --project "$GCP_PROJECT_ID" --region "$GCP_REGION" --image "$IMAGE"
+
+  deploy-web:
+    name: Deploy developer web to Cloud Run
+    needs: [changes, backend, mobile, android, ios]
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      needs.changes.outputs.web == 'true' &&
+      needs.backend.result == 'success' && needs.mobile.result == 'success' &&
+      needs.android.result == 'success' && needs.ios.result == 'success' &&
+      vars.GCP_WORKLOAD_IDENTITY_PROVIDER != '' && vars.GCP_DEPLOY_SERVICE_ACCOUNT != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    concurrency:
+      group: cloud-run-web-production
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v4
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SERVICE_ACCOUNT }}
+      - uses: google-github-actions/setup-gcloud@v2
+      - name: Build immutable image
+        env:
+          IMAGE: ${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.GCP_ARTIFACT_REPOSITORY }}/web:${{ github.sha }}
+        run: gcloud builds submit --config deploy/cloudbuild.worker.yaml --substitutions=_IMAGE="$IMAGE",_DOCKERFILE=Dockerfile.web
+      - name: Update service
+        env:
+          IMAGE: ${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.GCP_ARTIFACT_REPOSITORY }}/web:${{ github.sha }}
+        run: gcloud run services update seismik-web --project "$GCP_PROJECT_ID" --region "$GCP_REGION" --image "$IMAGE"
+
+  deploy-workers:
+    name: Deploy affected workers to Cloud Run
+    needs: [changes, backend, mobile, android, ios]
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      (needs.changes.outputs.dispatcher == 'true' || needs.changes.outputs.integrations == 'true' || needs.changes.outputs.detector == 'true') &&
+      needs.backend.result == 'success' && needs.mobile.result == 'success' &&
+      needs.android.result == 'success' && needs.ios.result == 'success' &&
+      vars.GCP_WORKLOAD_IDENTITY_PROVIDER != '' && vars.GCP_DEPLOY_SERVICE_ACCOUNT != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    concurrency:
+      group: cloud-run-workers-production
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v4
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SERVICE_ACCOUNT }}
+      - uses: google-github-actions/setup-gcloud@v2
+      - name: Build and update only changed worker services
+        env:
+          DISPATCHER_CHANGED: ${{ needs.changes.outputs.dispatcher }}
+          INTEGRATIONS_CHANGED: ${{ needs.changes.outputs.integrations }}
+          DETECTOR_CHANGED: ${{ needs.changes.outputs.detector }}
+          SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          repo="$GCP_REGION-docker.pkg.dev/$GCP_PROJECT_ID/$GCP_ARTIFACT_REPOSITORY"
+          deploy_worker() {
+            local service="$1" dockerfile="$2" image="$repo/$service:$SHA"
+            gcloud builds submit --config deploy/cloudbuild.worker.yaml \
+              --substitutions=_IMAGE="$image",_DOCKERFILE="$dockerfile"
+            gcloud run services update "$service" --project "$GCP_PROJECT_ID" \
+              --region "$GCP_REGION" --image "$image"
+          }
+          [ "$DISPATCHER_CHANGED" = true ] && deploy_worker seismik-dispatcher Dockerfile.dispatcher
+          [ "$INTEGRATIONS_CHANGED" = true ] && deploy_worker seismik-integrations Dockerfile.integrations
+          [ "$DETECTOR_CHANGED" = true ] && deploy_worker seismik-detector Dockerfile
