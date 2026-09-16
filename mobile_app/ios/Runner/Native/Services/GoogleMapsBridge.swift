@@ -23,3 +23,30 @@ public enum GoogleMapsBridge {
         }
     }
 }
+
+/// Mapa que la app dibuja por dentro. La preferencia se guarda como texto en
+/// `seismik.map_provider`.
+public enum MapProviderChoice: String, CaseIterable {
+    case apple
+    case google
+
+    public var label: String {
+        switch self {
+        case .apple: return "Apple Maps"
+        case .google: return "Google Maps"
+        }
+    }
+
+    /// Versiones anteriores guardaron "system" y "osm". Ninguno de los dos
+    /// dibujaba nada distinto, así que ambos vuelven a Apple Maps.
+    public static func stored(_ raw: String) -> MapProviderChoice {
+        MapProviderChoice(rawValue: raw) ?? .apple
+    }
+
+    /// Sin clave del SDK, Google Maps sale como una cuadrícula gris. Antes de
+    /// mostrar eso, la app dibuja Apple Maps.
+    public static func resolved(stored raw: String, googleIsReady: Bool) -> MapProviderChoice {
+        let choice = stored(raw)
+        return choice == .google && !googleIsReady ? .apple : choice
+    }
+}

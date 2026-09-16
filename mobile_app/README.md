@@ -60,7 +60,13 @@ flutter build apk --debug --split-per-abi
 
 Sin esa variable el proyecto compila, pero el mapa no carga mosaicos en el
 dispositivo. La clave de iOS se suministra como build setting
-`SEISMIK_GOOGLE_MAPS_API_KEY` en Xcode.
+`SEISMIK_GOOGLE_MAPS_API_KEY` en Xcode y debe ser **otra clave**, restringida a
+Maps SDK for iOS y al identificador `com.seismik.app`.
+
+En iPhone el mapa de la app es Apple Maps salvo que la persona elija Google en
+Configuración → «Mapas y sincronización». Si el build no trae clave, el SDK
+queda inactivo y la app sigue dibujando Apple Maps en lugar de una cuadrícula
+gris; Configuración lo dice en esa misma pantalla.
 
 Añade fuera de Git `android/app/google-services.json` y
 `ios/Runner/GoogleService-Info.plist`. Las alertas críticas iOS requieren el

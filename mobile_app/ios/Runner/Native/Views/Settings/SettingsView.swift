@@ -1,5 +1,6 @@
 import AuthenticationServices
 import CoreLocation
+import GoogleMaps
 import MapKit
 import SwiftUI
 import UIKit
@@ -18,6 +19,9 @@ public struct SettingsView: View {
     @State private var showSignInProviders = false
     @State private var account: SeismikAccount? = SeismikAPIClient.shared.signedInAccount
     @State private var accountError: String?
+    /// La preferencia vive en UserDefaults: leerla aquí hace que el mapa del
+    /// monitor cambie en cuanto se elige otro proveedor.
+    @AppStorage("seismik.map_provider") private var mapProviderSetting = MapProviderChoice.apple.rawValue
 
     public init(state: SeismikState, showsCloseButton: Bool = true) {
         self.state = state
@@ -161,7 +165,7 @@ public struct SettingsView: View {
                     VStack(alignment: .leading, spacing: 6) {
                         Text("Proveedor de mapas")
                             .font(.body)
-                        Text("Apple Maps y OpenStreetMap funcionan dentro de la app. Google Maps abre los epicentros en la app oficial de Google Maps.")
+                        Text("Decide qué mapa dibuja la app. Los sismos, las estaciones y el perímetro de sacudida se ven igual en los dos, y es también el mapa con el que se abre «Abrir epicentro».")
                             .font(.caption)
                             .foregroundColor(.secondary)
 
@@ -170,14 +174,19 @@ public struct SettingsView: View {
                                 .font(.subheadline)
                                 .foregroundColor(.secondary)
                             Spacer()
-                            Picker("Proveedor de mapas", selection: $state.mapProvider) {
-                                Text("Apple Maps").tag("apple")
-                                Text("Google Maps").tag("google")
-                                Text("OpenStreetMap").tag("osm")
+                            Picker("Proveedor de mapas", selection: $mapProviderSetting) {
+                                Text(MapProviderChoice.apple.label).tag(MapProviderChoice.apple.rawValue)
+                                Text(MapProviderChoice.google.label).tag(MapProviderChoice.google.rawValue)
                             }
                             .pickerStyle(.menu)
                         }
                         .padding(.top, 4)
+
+                        if MapProviderChoice.stored(mapProviderSetting) == .google && !GoogleMapsBridge.isAvailable {
+                            Text("Esta versión se compiló sin la clave del SDK de Google Maps, así que la app sigue dibujando Apple Maps. «Abrir epicentro» sí abre Google Maps.")
+                                .font(.caption)
+                                .foregroundColor(.orange)
+                        }
                     }
                     .padding(.vertical, 4)
 
@@ -687,6 +696,12 @@ public struct FamilySafetyView: View {
         center: CLLocationCoordinate2D(latitude: 4.65, longitude: -74.05),
         span: MKCoordinateSpan(latitudeDelta: 4.0, longitudeDelta: 4.0)
     )
+    @AppStorage("seismik.map_provider") private var mapProviderSetting = MapProviderChoice.apple.rawValue
+
+    /// El mapa de la familia usa el mismo proveedor que el del monitor.
+    private var mapProviderInUse: MapProviderChoice {
+        MapProviderChoice.resolved(stored: mapProviderSetting, googleIsReady: GoogleMapsBridge.isAvailable)
+    }
 
     public init(showsCloseButton: Bool = true) {
         self.showsCloseButton = showsCloseButton
@@ -854,14 +869,20 @@ public struct FamilySafetyView: View {
             let located = circle.members.filter { $0.location != nil }
             if !located.isEmpty {
                 Section("Mapa de tu familia") {
-                    Map(coordinateRegion: $region, annotationItems: located) { member in
-                        MapMarker(
-                            coordinate: CLLocationCoordinate2D(
-                                latitude: member.location!.latitude,
-                                longitude: member.location!.longitude
-                            ),
-                            tint: member.status == nil ? .blue : statusColor(member.status)
-                        )
+                    Group {
+                        if mapProviderInUse == .google {
+                            GoogleFamilyMapView(members: located)
+                        } else {
+                            Map(coordinateRegion: $region, annotationItems: located) { member in
+                                MapMarker(
+                                    coordinate: CLLocationCoordinate2D(
+                                        latitude: member.location!.latitude,
+                                        longitude: member.location!.longitude
+                                    ),
+                                    tint: member.status == nil ? .blue : statusColor(member.status)
+                                )
+                            }
+                        }
                     }
                     .frame(height: 240)
                     .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
@@ -1082,5 +1103,53 @@ public struct FamilySafetyView: View {
             message = nil
             await appState.updateRegistration()
         } catch { message = "No se pudo borrar tu ubicación. Revisa tu conexión." }
+    }
+}
+
+// MARK: - Mapa de la familia sobre Google Maps
+/// Un alfiler por integrante que comparte ubicación, con el mismo color que la
+/// lista: rojo si pidió ayuda, verde si avisó que está bien, azul sin aviso.
+private struct GoogleFamilyMapView: UIViewRepresentable {
+    let members: [FamilyMember]
+
+    func makeUIView(context: Context) -> GMSMapView {
+        let camera = GMSCameraPosition.camera(withLatitude: 4.65, longitude: -74.05, zoom: 5)
+        return GMSMapView(frame: .zero, camera: camera)
+    }
+
+    func updateUIView(_ mapView: GMSMapView, context: Context) {
+        mapView.clear()
+        var bounds = GMSCoordinateBounds()
+        var placed: [CLLocationCoordinate2D] = []
+
+        for member in members {
+            guard let location = member.location else { continue }
+            let coordinate = CLLocationCoordinate2D(
+                latitude: location.latitude,
+                longitude: location.longitude
+            )
+            let marker = GMSMarker(position: coordinate)
+            marker.title = member.isYou ? "\(member.displayName) · Tú" : member.displayName
+            if let status = member.status {
+                marker.snippet = status.needsHelp ? "Necesita ayuda" : "Está bien"
+                marker.icon = GMSMarker.markerImage(with: status.needsHelp ? .systemRed : .systemGreen)
+            } else {
+                marker.snippet = "Sin aviso reciente"
+                marker.icon = GMSMarker.markerImage(with: .systemBlue)
+            }
+            marker.map = mapView
+            bounds = bounds.includingCoordinate(coordinate)
+            placed.append(coordinate)
+        }
+
+        // Sin tamaño todavía, encuadrar daría un zoom cualquiera.
+        guard mapView.bounds.width > 1 else { return }
+        if placed.count == 1 {
+            // Encuadrar un solo punto lleva el mapa al zoom máximo, que deja de
+            // decir dónde está esa persona.
+            mapView.animate(with: GMSCameraUpdate.setTarget(placed[0], zoom: 11))
+        } else if bounds.isValid {
+            mapView.animate(with: GMSCameraUpdate.fit(bounds, withPadding: 48))
+        }
     }
 }
