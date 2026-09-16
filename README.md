@@ -599,7 +599,10 @@ iOS sólo puede compilarse y firmarse en macOS con Xcode. El repositorio deja
 lista la configuración:
 
 - `Runner.entitlements` declara `com.apple.developer.usernotifications.critical-alerts`.
-- `Info.plist` declara `LSApplicationQueriesSchemes` con `comgooglemaps` y `maps`.
+- `Info.plist` declara `LSApplicationQueriesSchemes` con `comgooglemaps` y `maps`,
+  y publica la clave del SDK en `SeismikGoogleMapsAPIKey`. El mapa dentro de la
+  app usa esa clave cuando se elige Google Maps en Configuración; sin ella, la
+  app vuelve a Apple Maps.
 - `Flutter/Debug.xcconfig` y `Flutter/Release.xcconfig` incluyen de forma opcional
   un `Seismik.xcconfig` local, ignorado por Git.
 
