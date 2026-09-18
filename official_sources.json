@@ -62,11 +62,8 @@
       "agency": "Servicio Geológico Colombiano (SGC)",
       "jurisdiction": "Colombia",
       "countries": ["CO"],
-      "adapter": "sgc_geojson",
-      "endpoint": "https://api.sgc.gov.co/biweekly/biweekly_earthquakes",
-      "official_site": "https://www.sgc.gov.co/sismos",
-      "priority": 100,
-      "attribution": "Servicio Geológico Colombiano"
+      "adapter": "sgc_feed_v101",
+      "endpoint": "https://archive.sgc.gov.co/feed/v1.0.1/summary/five_days_all.json",
     },
     {
       "id": "igp_peru",
