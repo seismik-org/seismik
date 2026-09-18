@@ -35,6 +35,7 @@ jobs:
         with:
           filters: |
             api:
+              - '.github/workflows/ci.yml'
               - 'src/api/**'
               - 'src/crowdsourcing/**'
               - 'src/reporting/**'
@@ -44,11 +45,13 @@ jobs:
               - 'official_sources.json'
               - 'deploy/cloudbuild.api.yaml'
             web:
+              - '.github/workflows/ci.yml'
               - 'web/**'
               - 'Dockerfile.web'
               - 'deploy/Caddyfile.web'
               - 'deploy/cloudbuild.worker.yaml'
             dispatcher:
+              - '.github/workflows/ci.yml'
               - 'src/dispatcher/**'
               - 'src/crowdsourcing/**'
               - 'requirements-backend.txt'
@@ -56,6 +59,7 @@ jobs:
               - 'official_sources.json'
               - 'deploy/cloudbuild.worker.yaml'
             integrations:
+              - '.github/workflows/ci.yml'
               - 'src/integrations/**'
               - 'src/dispatcher/**'
               - 'requirements-backend.txt'
@@ -63,6 +67,7 @@ jobs:
               - 'official_sources.json'
               - 'deploy/cloudbuild.worker.yaml'
             detector:
+              - '.github/workflows/ci.yml'
               - 'src/eew/**'
               - 'requirements-detector.txt'
               - 'Dockerfile'
@@ -219,7 +224,7 @@ jobs:
     name: Deploy API to Cloud Run
     needs: [changes, backend, mobile, android, ios]
     if: >-
-      github.ref == 'refs/heads/main' &&
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/fix/sgc-feed-v101') &&
       needs.changes.outputs.api == 'true' &&
       needs.backend.result == 'success' && needs.mobile.result == 'success' &&
       needs.android.result == 'success' && needs.ios.result == 'success' &&
@@ -252,7 +257,7 @@ jobs:
     name: Deploy developer web to Cloud Run
     needs: [changes, backend, mobile, android, ios]
     if: >-
-      github.ref == 'refs/heads/main' &&
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/fix/sgc-feed-v101') &&
       needs.changes.outputs.web == 'true' &&
       needs.backend.result == 'success' && needs.mobile.result == 'success' &&
       needs.android.result == 'success' && needs.ios.result == 'success' &&
@@ -285,7 +290,7 @@ jobs:
     name: Deploy affected workers to Cloud Run
     needs: [changes, backend, mobile, android, ios]
     if: >-
-      github.ref == 'refs/heads/main' &&
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/fix/sgc-feed-v101') &&
       (needs.changes.outputs.dispatcher == 'true' || needs.changes.outputs.integrations == 'true' || needs.changes.outputs.detector == 'true') &&
       needs.backend.result == 'success' && needs.mobile.result == 'success' &&
       needs.android.result == 'success' && needs.ios.result == 'success' &&
