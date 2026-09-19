@@ -1,5 +1,9 @@
 :{$PORT:8080} {
 	encode zstd gzip
 	root * /srv
+	# Si el origen no dice nada, Cloudflare guarda .css y .js en su borde
+	# durante horas: tras un despliegue servía el HTML nuevo con los estilos
+	# viejos. `no-cache` obliga a revalidar; con ETag la respuesta es un 304.
+	header Cache-Control "no-cache"
 	file_server
 }

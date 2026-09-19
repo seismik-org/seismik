@@ -144,3 +144,25 @@ def test_no_page_relies_on_inline_styles() -> None:
         html = page.read_text(encoding="utf-8")
         assert "<style" not in html, f"{page}: bloque <style> bloqueado por la CSP"
         assert not re.search(r"\sstyle=", html), f"{page}: atributo style bloqueado por la CSP"
+
+
+def test_static_css_and_javascript_are_versioned_before_the_web_image_is_built() -> None:
+    """Impide mezclar un HTML nuevo con archivos estáticos de una caché vieja.
+
+    Dockerfile.web sustituye el marcador en cada imagen. El navegador y el CDN
+    reciben así una URL nueva para cada hoja/script sin introducir un hash que
+    deba mantenerse manualmente en todas las páginas.
+    """
+
+    static_ref = re.compile(r'(?:href|src)="/[^"?#]+\.(?:css|js)(?:\?[^\"]*)?"')
+    for page in sorted(WEB.rglob("*.html")):
+        for reference in static_ref.findall(page.read_text(encoding="utf-8")):
+            assert "?v=__ASSET_VERSION__" in reference, (
+                f"{page}: recurso estático sin versión: {reference}"
+            )
+
+    dockerfile = Path("Dockerfile.web").read_text(encoding="utf-8")
+    assert "__ASSET_VERSION__" in dockerfile
+    assert "header Cache-Control \"no-cache\"" in Path("deploy/Caddyfile.web").read_text(
+        encoding="utf-8"
+    )
