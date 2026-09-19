@@ -10,6 +10,11 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 import '../core/constants.dart';
 import '../data/models/seismic_event.dart';
+import 'alert_memory.dart';
+
+/// Marca de los avisos que llegaron en silencio porque su sismo ya sonó:
+/// abrirlos no vuelve a mostrar la pantalla de alarma.
+const String _quietKey = 'seismik_quiet';
 
 const AndroidNotificationChannel _criticalChannel = AndroidNotificationChannel(
   SeismikConstants.criticalChannelId,
@@ -38,14 +43,25 @@ Future<void> seismikFirebaseBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
   await _initializeLocalPlugin(_backgroundNotifications);
   if (_isCritical(message.data)) {
-    await _showCriticalNotification(_backgroundNotifications, message.data);
+    await _presentCritical(
+      _backgroundNotifications,
+      message.data,
+      AlertMemory(),
+    );
   }
 }
 
 class NotificationEnvelope {
-  const NotificationEnvelope({required this.event, required this.critical});
+  const NotificationEnvelope({
+    required this.event,
+    required this.critical,
+    this.followUp = false,
+  });
   final SeismicEvent event;
   final bool critical;
+
+  /// Otro aviso de un sismo que ya sonó: trae datos nuevos pero no suena.
+  final bool followUp;
 }
 
 /// Aviso de que un familiar reportó su estado tras un sismo.
@@ -78,6 +94,9 @@ class FamilyNotification {
 }
 
 class NotificationService {
+  NotificationService({AlertMemory? memory}) : _memory = memory ?? AlertMemory();
+
+  final AlertMemory _memory;
   final FlutterLocalNotificationsPlugin _local =
       FlutterLocalNotificationsPlugin();
   final StreamController<NotificationEnvelope> _events =
@@ -123,13 +142,19 @@ class NotificationService {
     await _requestPermissions();
     _subscriptions.add(
       FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
-        if (_isCritical(message.data)) {
-          await _showCriticalNotification(_local, message.data);
-        } else if (_isFamily(message.data)) {
+        final Map<String, dynamic> data = Map<String, dynamic>.from(
+          message.data,
+        );
+        if (_isCritical(data)) {
+          final bool rang = await _presentCritical(_local, data, _memory);
+          _emit(data, critical: rang, followUp: !rang);
+          return;
+        }
+        if (_isFamily(data)) {
           // Con la app abierta Android no muestra el aviso por su cuenta.
           await _showFamilyNotification(_local, message);
         }
-        _emit(Map<String, dynamic>.from(message.data));
+        _emit(data);
       }),
     );
     _subscriptions.add(
@@ -195,8 +220,29 @@ class NotificationService {
       'critical': 'true',
       'channel_id': SeismikConstants.criticalChannelId,
     };
+    // La prueba siempre suena y no se anota: no puede silenciar un sismo real.
     await _showCriticalNotification(_local, data);
     _emit(data);
+  }
+
+  /// Apaga la alarma al cerrar la pantalla roja. La notificación crítica es
+  /// fija (no se puede deslizar) y seguía en la barra, lista para sonar otra
+  /// vez; ocultar sólo la pantalla dejaba la alarma encendida.
+  Future<void> dismissCriticalAlerts() async {
+    try {
+      final List<ActiveNotification> active = await _local
+          .getActiveNotifications();
+      for (final ActiveNotification notification in active) {
+        final int? id = notification.id;
+        if (id != null &&
+            notification.channelId == SeismikConstants.criticalChannelId) {
+          await _local.cancel(id: id, tag: notification.tag);
+        }
+      }
+    } catch (_) {
+      // Sin plugin (pruebas) o sin permiso de notificaciones no hay nada que
+      // apagar; cerrar la pantalla no puede fallar por esto.
+    }
   }
 
   void _emitPayload(String? payload) {
@@ -214,7 +260,12 @@ class NotificationService {
   void handleIncomingData(Map<String, dynamic> data, {bool opened = false}) =>
       _emit(data, opened: opened);
 
-  void _emit(Map<String, dynamic> data, {bool opened = false}) {
+  void _emit(
+    Map<String, dynamic> data, {
+    bool opened = false,
+    bool? critical,
+    bool followUp = false,
+  }) {
     final String type = (data['type'] ?? '').toString();
     if (type.isEmpty) return;
     // Un aviso familiar no es un sismo: convertirlo en SeismicEvent lo metía
@@ -223,11 +274,12 @@ class NotificationService {
       _family.add(FamilyNotification.fromData(data, opened: opened));
       return;
     }
-    final bool critical = _isCriticalStringMap(data);
+    final bool quiet = data[_quietKey]?.toString() == 'true';
     _events.add(
       NotificationEnvelope(
         event: SeismicEvent.fromMap(data),
-        critical: critical,
+        critical: critical ?? (!quiet && _isCriticalStringMap(data)),
+        followUp: followUp || quiet,
       ),
     );
   }
@@ -266,6 +318,60 @@ Future<void> _initializeLocalPlugin(
   await android?.createNotificationChannel(_updatesChannel);
 }
 
+/// Suena la alarma, salvo que ya haya sonado por el mismo sismo: entonces el
+/// aviso llega como notificación normal. Devuelve si sonó.
+Future<bool> _presentCritical(
+  FlutterLocalNotificationsPlugin plugin,
+  Map<String, dynamic> data,
+  AlertMemory memory,
+) async {
+  if (await memory.alreadyRang(data)) {
+    await _showQuietFollowUp(plugin, data);
+    return false;
+  }
+  await memory.remember(data);
+  await _showCriticalNotification(plugin, data);
+  return true;
+}
+
+/// Identificador estable entre el isolate de fondo y la app: `hashCode` de un
+/// String no está garantizado entre procesos.
+int _notificationId(Map<String, dynamic> data) {
+  final String id = (data['event_id'] ?? '').toString();
+  if (id.isEmpty) return DateTime.now().millisecondsSinceEpoch.remainder(1 << 31);
+  int hash = 0x811c9dc5;
+  for (final int unit in utf8.encode(id)) {
+    hash = ((hash ^ unit) * 0x01000193) & 0xffffffff;
+  }
+  return hash & 0x7fffffff;
+}
+
+Future<void> _showQuietFollowUp(
+  FlutterLocalNotificationsPlugin plugin,
+  Map<String, dynamic> data,
+) async {
+  final bool official = data['type']?.toString() == 'official_report_update';
+  await plugin.show(
+    id: _notificationId(data),
+    title: official ? 'Reporte del sismo' : 'Nueva detección del mismo sismo',
+    body: official
+        ? _strongShakingBody(data)
+        : 'La alarma ya sonó por este sismo. Revisa la app para ver los datos.',
+    notificationDetails: const NotificationDetails(
+      android: AndroidNotificationDetails(
+        SeismikConstants.updatesChannelId,
+        'Reportes sísmicos oficiales',
+        channelDescription:
+            'Actualizaciones verificadas de servicios geológicos.',
+        importance: Importance.defaultImportance,
+        priority: Priority.defaultPriority,
+      ),
+      iOS: DarwinNotificationDetails(presentAlert: true, presentSound: false),
+    ),
+    payload: jsonEncode(<String, dynamic>{...data, _quietKey: 'true'}),
+  );
+}
+
 Future<void> _showCriticalNotification(
   FlutterLocalNotificationsPlugin plugin,
   Map<String, dynamic> data,
@@ -274,9 +380,7 @@ Future<void> _showCriticalNotification(
   // sacudida fuerte; para entonces el sismo ya pasó.
   final bool official = data['type']?.toString() == 'official_report_update';
   await plugin.show(
-    id:
-        data['event_id']?.hashCode ??
-        DateTime.now().millisecondsSinceEpoch.remainder(1 << 31),
+    id: _notificationId(data),
     title: official ? 'SISMO FUERTE EN TU ZONA' : '¡SISMO DETECTADO!',
     body: official
         ? _strongShakingBody(data)
@@ -292,6 +396,8 @@ Future<void> _showCriticalNotification(
         fullScreenIntent: true,
         ongoing: true,
         autoCancel: false,
+        // Si el mismo aviso se vuelve a publicar, actualiza el texto sin sonar.
+        onlyAlertOnce: true,
         visibility: NotificationVisibility.public,
         sound: RawResourceAndroidNotificationSound('alarm'),
         audioAttributesUsage: AudioAttributesUsage.alarm,
