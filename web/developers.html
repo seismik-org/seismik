@@ -3,92 +3,234 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="description" content="Plataforma de APIs de Seismik para investigación e integraciones seguras.">
-  <title>Seismik Developers</title>
+  <meta name="description" content="API de Seismik: historial sísmico oficial normalizado, red de estaciones y webhooks firmados, con claves revocables y cuotas claras.">
+  <title>Seismik Developers · API sísmica</title>
   <link rel="icon" href="/favicon.ico" sizes="any">
   <link rel="icon" type="image/png" sizes="16x16" href="/assets/favicon-16.png">
   <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32.png">
   <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
   <link rel="manifest" href="/site.webmanifest">
-  <meta name="theme-color" content="#0B1226">
+  <meta name="theme-color" content="#060a13" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#f5f7fb" media="(prefers-color-scheme: light)">
   <link rel="stylesheet" href="/styles.css">
   <link rel="stylesheet" href="/logo.css">
   <link rel="stylesheet" href="/developers.css">
-  <link rel="stylesheet" href="/developer-pricing.css">
-  <link rel="stylesheet" href="/developer-endpoints.css">
 </head>
 <body class="developer-body">
-  <header class="developer-nav">
-    <a class="brand" href="https://seismik.org/">
-      <img class="brand-logo" src="/assets/seismik_logo.webp" width="34" height="34" alt="">
-      SEISMIK <span>DEVELOPERS</span>
-    </a>
-    <nav aria-label="Navegación principal">
-      <a href="#productos">Productos</a>
-      <a href="#documentacion">Documentación</a>
-      <a href="https://seismik.org/terms-of-privacy">Privacidad</a>
-    </nav>
-    <div class="auth-actions">
-      <span id="user-label" class="user-label" hidden></span>
-      <button id="login-button" class="button compact" type="button">Entrar</button>
-      <button id="logout-button" class="button secondary compact" type="button" hidden>Salir</button>
+  <a class="skip-link" href="#contenido">Saltar al contenido</a>
+
+  <header class="site-header">
+    <div class="container header-inner">
+      <a class="brand" href="https://seismik.org/" aria-label="Seismik, inicio"><img class="brand-logo" src="/assets/seismik_logo.webp" width="32" height="32" alt="">SEISMIK <span class="brand-tag">DEVELOPERS</span></a>
+      <nav class="primary-nav" aria-label="Secciones del portal">
+        <a href="#productos">Productos</a>
+        <a href="#documentacion">Documentación</a>
+        <a href="#precios">Precios</a>
+        <a href="#panel">Panel</a>
+      </nav>
+      <div class="header-actions auth-actions">
+        <span id="user-label" class="user-label" hidden></span>
+        <button id="login-button" class="button compact keep" type="button">Entrar</button>
+        <button id="logout-button" class="button secondary compact keep" type="button" hidden>Salir</button>
+      </div>
+      <details class="mobile-menu">
+        <summary aria-label="Abrir menú"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></summary>
+        <nav class="menu-panel" aria-label="Menú">
+          <a href="#productos">Productos</a>
+          <a href="#documentacion">Documentación</a>
+          <a href="#precios">Precios</a>
+          <a href="#panel">Panel</a>
+          <a href="https://seismik.org/">Seismik.org</a>
+        </nav>
+      </details>
     </div>
   </header>
 
-  <main class="developer-main">
-    <section class="developer-hero">
-      <div>
-        <p class="eyebrow">SEISMIK API PLATFORM · BETA</p>
-        <h1>Datos sísmicos listos para construir.</h1>
-        <p class="lead">Consulta eventos oficiales normalizados y la red de estaciones desde una API trazable, con OAuth, claves revocables y cuotas transparentes.</p>
+  <main id="contenido">
+    <!-- Portada -->
+    <section class="dev-hero container">
+      <div class="dev-hero-copy">
+        <p class="pill"><b>Beta</b> Plan Free · sin tarjeta</p>
+        <h1>Datos sísmicos oficiales, <span class="gradient-text">listos para tu código.</span></h1>
+        <p class="lead">Una sola API para el historial normalizado de siete agencias, la red de estaciones abiertas y webhooks firmados. Claves revocables, cuotas claras y la fuente citada en cada evento.</p>
         <div class="actions">
           <a class="button" href="#panel">Crear una clave gratuita</a>
-          <a class="button secondary" href="#documentacion">Ver ejemplo</a>
+          <a class="button secondary" href="#documentacion">Leer la documentación</a>
+        </div>
+        <ul class="spec-list" aria-label="Características">
+          <li><span>Autenticación</span><strong>Clave API · OAuth 2.0</strong></li>
+          <li><span>Formato</span><strong>JSON sobre HTTPS</strong></li>
+          <li><span>Fuentes</span><strong>SGC, USGS y 5 más</strong></li>
+        </ul>
+      </div>
+
+      <div class="code-window" aria-label="Ejemplo de solicitud y respuesta">
+        <div class="code-window-bar">
+          <span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>
+          <span class="code-window-title">GET /v1/events/history</span>
+          <span class="status-badge">200 OK</span>
+        </div>
+<pre class="code-block"><code><span class="c-muted"># Solicitud</span>
+<span class="c-key">curl</span> <span class="c-str">"https://api.seismik.org/v1/events/history?days=7&amp;minimum_magnitude=4"</span> \
+  <span class="c-key">-H</span> <span class="c-str">"X-Seismik-API-Key: sk_live_…"</span>
+
+<span class="c-muted"># Respuesta (ejemplo)</span>
+{
+  <span class="c-key">"events"</span>: [{
+    <span class="c-key">"event_id"</span>: <span class="c-str">"sgc_colombia:SGC2026abcxyz"</span>,
+    <span class="c-key">"origin_time"</span>: <span class="c-str">"2026-09-17T01:12:47Z"</span>,
+    <span class="c-key">"magnitude"</span>: <span class="c-num">4.6</span>,
+    <span class="c-key">"magnitude_type"</span>: <span class="c-str">"Mw"</span>,
+    <span class="c-key">"depth_km"</span>: <span class="c-num">142.0</span>,
+    <span class="c-key">"place"</span>: <span class="c-str">"Los Santos, Santander"</span>,
+    <span class="c-key">"agency"</span>: <span class="c-str">"Servicio Geológico Colombiano"</span>,
+    <span class="c-key">"review_status"</span>: <span class="c-str">"reviewed"</span>,
+    <span class="c-key">"official_url"</span>: <span class="c-str">"https://www.sgc.gov.co/…"</span>
+  }],
+  <span class="c-key">"errors"</span>: [],
+  <span class="c-key">"cached"</span>: <span class="c-num">false</span>
+}</code></pre>
+      </div>
+    </section>
+
+    <!-- Productos -->
+    <section id="productos" class="section container">
+      <div class="section-heading">
+        <p class="eyebrow">Productos</p>
+        <h2>Empieza con lo esencial.</h2>
+        <p>Cada producto es un permiso de la clave: das sólo el acceso que tu integración necesita.</p>
+      </div>
+      <div class="grid-3">
+        <article class="card product-card">
+          <div class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12h3l2-6 4 12 3-9 2 3h6"/></svg></div>
+          <h3>Eventos sísmicos</h3>
+          <p>Historial oficial consolidado con magnitud, profundidad, epicentro, agencia, estado de revisión y enlace a la fuente.</p>
+          <code class="scope">events:read</code>
+        </article>
+        <article class="card product-card">
+          <div class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg></div>
+          <h3>Red de estaciones</h3>
+          <p>Metadatos geográficos de las estaciones sismológicas abiertas y el proveedor SeedLink de cada una.</p>
+          <code class="scope">stations:read</code>
+        </article>
+        <article class="card product-card">
+          <div class="card-icon hot"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 16.98h-5.99c-1.1 0-1.95.94-2.48 1.9A4 4 0 0 1 2 17c.01-.7.2-1.4.57-2"/><path d="m6 17 3.13-5.78c.53-.97.1-2.18-.5-3.1a4 4 0 1 1 6.89-4.06"/><path d="m12 6 3.13 5.73C15.66 12.7 16.9 13 18 13a4 4 0 0 1 0 8"/></svg></div>
+          <h3>Webhooks institucionales</h3>
+          <p>Eventos preliminares u oficiales, firmados con HMAC y entregados desde una cola durable, para simulacros e investigación.</p>
+          <code class="scope">simulation_only</code>
+        </article>
+      </div>
+    </section>
+
+    <!-- Documentación -->
+    <section id="documentacion" class="section container docs">
+      <div class="section-heading">
+        <p class="eyebrow">Documentación</p>
+        <h2>Tu primera solicitud en tres pasos.</h2>
+      </div>
+
+      <ol class="quickstart">
+        <li class="card">
+          <span class="step-number">1</span>
+          <h3>Crea una clave</h3>
+          <p>Entra con tu cuenta, elige los permisos y guarda la clave: sólo se muestra una vez.</p>
+        </li>
+        <li class="card">
+          <span class="step-number">2</span>
+          <h3>Envía el encabezado</h3>
+          <p>Cada solicitud lleva <code>X-Seismik-API-Key</code>. Nunca la pongas en una app pública ni en el navegador.</p>
+        </li>
+        <li class="card">
+          <span class="step-number">3</span>
+          <h3>Cita la fuente</h3>
+          <p>Cada evento trae <code>agency</code> y <code>official_url</code>. Muéstralos: Seismik agrega, la agencia informa.</p>
+        </li>
+      </ol>
+
+      <div class="docs-grid">
+        <div>
+          <h3 class="docs-title">Endpoints</h3>
+          <div class="endpoint-list" aria-label="Catálogo de endpoints disponibles">
+            <article class="endpoint">
+              <div class="endpoint-head"><span class="method">GET</span><code>/v1/events/history</code></div>
+              <p>Historial oficial consolidado y filtrable.</p>
+              <dl class="params">
+                <div><dt><code>days</code></dt><dd>1–30 · 7 por defecto</dd></div>
+                <div><dt><code>minimum_magnitude</code></dt><dd>0–10 · 2.5 por defecto</dd></div>
+                <div><dt><code>limit</code></dt><dd>1–500 · 200 por defecto</dd></div>
+                <div><dt><code>sources</code></dt><dd><code>sgc_colombia,usgs_global</code>…</dd></div>
+              </dl>
+              <small>Requiere <strong>events:read</strong></small>
+            </article>
+            <article class="endpoint">
+              <div class="endpoint-head"><span class="method">GET</span><code>/v1/events/recent</code></div>
+              <p>Eventos oficiales recientes, de baja latencia.</p>
+              <small>Requiere <strong>events:read</strong></small>
+            </article>
+            <article class="endpoint">
+              <div class="endpoint-head"><span class="method">GET</span><code>/v1/network/stations</code></div>
+              <p>Catálogo geográfico de estaciones abiertas.</p>
+              <small>Requiere <strong>stations:read</strong></small>
+            </article>
+          </div>
+        </div>
+
+        <div>
+          <h3 class="docs-title">Pruébalo</h3>
+          <div class="code-card">
+            <div class="code-tabs"><span>cURL</span><button id="copy-example" class="text-button" type="button">Copiar</button></div>
+            <pre><code id="curl-example">curl "https://api.seismik.org/v1/events/history?days=7&amp;minimum_magnitude=4" \
+  -H "X-Seismik-API-Key: sk_test_TU_CLAVE"</code></pre>
+          </div>
+
+          <h3 class="docs-title">Errores</h3>
+          <div class="error-table" role="table" aria-label="Códigos de error">
+            <div role="row"><code role="cell">401</code><span role="cell">Falta la clave o no es válida.</span></div>
+            <div role="row"><code role="cell">403</code><span role="cell">La clave no tiene el permiso de ese endpoint.</span></div>
+            <div role="row"><code role="cell">429</code><span role="cell">Cuota superada. <code>Retry-After</code> indica cuántos segundos esperar.</span></div>
+          </div>
+          <p class="docs-note">La API informa la agencia y el enlace oficial de cada evento. Seismik agrega y normaliza; no sustituye a las entidades sismológicas.</p>
         </div>
       </div>
-      <aside class="status-card" aria-label="Estado de la plataforma">
-        <span class="status-dot"></span>
-        <div><strong>Beta controlada</strong><small>Plan Free · sin tarjeta</small></div>
-        <dl>
-          <div><dt>Autenticación</dt><dd>OAuth 2.0</dd></div>
-          <div><dt>Formato</dt><dd>JSON</dd></div>
-          <div><dt>Transporte</dt><dd>HTTPS</dd></div>
-        </dl>
-      </aside>
     </section>
 
-    <section id="productos" class="developer-section">
-      <div class="section-heading"><p class="eyebrow">PRODUCTOS</p><h2>Empieza con lo esencial.</h2></div>
-      <div class="product-grid">
-        <article class="product-card"><span class="product-icon">01</span><h3>Eventos sísmicos</h3><p>Historial oficial consolidado, magnitud, profundidad, epicentro, fuente y estado de revisión.</p><code>events:read</code></article>
-        <article class="product-card"><span class="product-icon">02</span><h3>Red de estaciones</h3><p>Metadatos geográficos de estaciones abiertas y el proveedor SeedLink asociado.</p><code>stations:read</code></article>
-        <article class="product-card"><span class="product-icon">03</span><h3>Webhooks institucionales</h3><p>Eventos preliminares u oficiales, firmados y entregados desde una cola durable para simulacros e investigación.</p><code>simulation_only</code></article>
+    <!-- Precios -->
+    <section id="precios" class="section container pricing-section">
+      <div class="section-heading">
+        <p class="eyebrow">Créditos de consumo</p>
+        <h2>Sin mensualidades. Pagas sólo lo que usas.</h2>
+        <p>Los créditos se expresan y consumen en USD. El catálogo está publicado para revisión: durante la beta no se cobra, no se piden tarjetas y aún no se entregan créditos promocionales.</p>
       </div>
-    </section>
-
-    <section id="precios" class="developer-section pricing-section">
-      <div class="section-heading"><p class="eyebrow">CRÉDITOS DE CONSUMO</p><h2>Sin mensualidades. Paga sólo por uso.</h2><p>Los créditos se expresan y consumen en USD. El catálogo está publicado para revisión; durante la beta no se cobra, no se piden tarjetas y aún no se entregan créditos promocionales.</p></div>
       <div id="credit-packs" class="pricing-grid" aria-live="polite"></div>
-      <article class="request-prices-card">
-        <div><p class="eyebrow">COSTO POR SOLICITUD</p><h3>Precios de lista de la API</h3></div>
+      <article class="card request-prices-card">
+        <div><p class="eyebrow">Costo por solicitud</p><h3>Precios de lista de la API</h3></div>
         <div id="request-prices" class="request-prices" aria-live="polite"></div>
-        <p class="fine-print">Una consulta autenticada descuenta créditos sólo cuando se active el cobro. Consultas rechazadas por autenticación, cuota o error de Seismik no serán cobrables.</p>
+        <p class="fine-print">Una consulta autenticada descontará créditos sólo cuando se active el cobro. Las consultas rechazadas por autenticación, cuota o un error de Seismik no se cobran.</p>
       </article>
     </section>
 
-    <section id="panel" class="developer-section dashboard-section">
-      <div class="section-heading"><p class="eyebrow">TU CUENTA</p><h2>Claves y consumo.</h2><p id="panel-intro">Inicia sesión con una cuenta verificada para administrar tus credenciales.</p></div>
+    <!-- Panel -->
+    <section id="panel" class="section container dashboard-section">
+      <div class="section-heading">
+        <p class="eyebrow">Tu cuenta</p>
+        <h2>Claves, cuotas y webhooks.</h2>
+        <p id="panel-intro">Inicia sesión con una cuenta verificada para administrar tus credenciales.</p>
+      </div>
 
-      <div id="signed-out-panel" class="signin-panel">
-        <div><h3>Una cuenta, control completo.</h3><p>Las claves se muestran una sola vez. Se almacenan como hash y puedes revocarlas o rotarlas en cualquier momento.</p></div>
+      <div id="signed-out-panel" class="card signin-panel">
+        <div class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="7.5" cy="15.5" r="5.5"/><path d="M21 2l-9.6 9.6M15.5 7.5l3 3L22 7l-3-3"/></svg></div>
+        <div>
+          <h3>Una cuenta, control completo.</h3>
+          <p>Las claves se muestran una sola vez, se guardan como hash y puedes revocarlas o rotarlas cuando quieras.</p>
+        </div>
         <button id="panel-login-button" class="button" type="button">Entrar</button>
       </div>
 
       <div id="signed-in-panel" hidden>
         <div class="dashboard-grid">
-          <form id="key-form" class="dashboard-card">
-            <div class="card-title"><div><p class="eyebrow">NUEVA CREDENCIAL</p><h3>Crear clave API</h3></div><span id="key-counter" class="counter">0 / 3</span></div>
-            <label>Nombre de la clave<input id="key-name" name="name" minlength="3" maxlength="60" placeholder="Ej. Laboratorio Universidad" required></label>
+          <form id="key-form" class="card dashboard-card">
+            <div class="card-title"><div><p class="eyebrow">Nueva credencial</p><h3>Crear clave API</h3></div><span id="key-counter" class="counter">0 / 3</span></div>
+            <label class="field">Nombre de la clave<input id="key-name" name="name" minlength="3" maxlength="60" placeholder="Ej. Laboratorio Universidad" required></label>
             <fieldset><legend>Servicios autorizados</legend>
               <label class="scope-option"><input type="checkbox" name="scope" value="events:read" checked><span><strong>Eventos</strong><small>Catálogo oficial normalizado</small></span></label>
               <label class="scope-option"><input type="checkbox" name="scope" value="stations:read" checked><span><strong>Estaciones</strong><small>Red sismológica abierta</small></span></label>
@@ -97,27 +239,27 @@
             <button class="button full" type="submit">Generar clave</button>
           </form>
 
-          <article class="dashboard-card quota-card">
-            <p class="eyebrow">PLAN FREE</p><h3>Cuotas de la beta</h3>
+          <article class="card dashboard-card quota-card">
+            <p class="eyebrow">Plan Free</p><h3>Cuotas de la beta</h3>
             <div class="quota-row"><span>Por minuto</span><strong id="minute-quota">60</strong></div>
             <div class="quota-row"><span>Por día</span><strong id="daily-quota">10.000</strong></div>
             <div class="quota-row"><span>Claves activas</span><strong id="active-key-limit">3</strong></div>
-            <p class="fine-print">Sin tarjeta. Los límites protegen la disponibilidad del proyecto abierto y podrán evolucionar con aviso.</p>
+            <p class="fine-print">Sin tarjeta. Los límites protegen la disponibilidad del proyecto abierto y podrán cambiar con aviso.</p>
           </article>
         </div>
 
-        <section class="keys-section" aria-labelledby="keys-title">
-          <div class="keys-heading"><div><p class="eyebrow">CREDENCIALES</p><h3 id="keys-title">Tus claves</h3></div><button id="refresh-button" class="text-button" type="button">Actualizar</button></div>
+        <section class="card keys-section" aria-labelledby="keys-title">
+          <div class="keys-heading"><div><p class="eyebrow">Credenciales</p><h3 id="keys-title">Tus claves</h3></div><button id="refresh-button" class="text-button" type="button">Actualizar</button></div>
           <div id="keys-empty" class="empty-state">Todavía no has creado ninguna clave.</div>
           <div id="keys-list" class="keys-list" aria-live="polite"></div>
         </section>
 
-        <section class="keys-section" aria-labelledby="webhooks-title">
-          <div class="keys-heading"><div><p class="eyebrow">INTEGRACIONES</p><h3 id="webhooks-title">Webhooks institucionales</h3></div><button id="refresh-webhooks-button" class="text-button" type="button">Actualizar</button></div>
+        <section class="card keys-section" aria-labelledby="webhooks-title">
+          <div class="keys-heading"><div><p class="eyebrow">Integraciones</p><h3 id="webhooks-title">Webhooks institucionales</h3></div><button id="refresh-webhooks-button" class="text-button" type="button">Actualizar</button></div>
           <p class="fine-print">Sólo para simulación, investigación y tableros. Esta beta no autoriza el control de gas, agua, energía, ascensores ni otros equipos físicos.</p>
           <form id="webhook-form" class="webhook-form">
-            <label>Nombre de la integración<input id="webhook-name" name="name" minlength="3" maxlength="60" placeholder="Ej. Simulador universidad" required></label>
-            <label>URL HTTPS pública<input id="webhook-endpoint" name="endpoint" type="url" placeholder="https://ejemplo.org/seismik" required></label>
+            <label class="field">Nombre de la integración<input id="webhook-name" name="name" minlength="3" maxlength="60" placeholder="Ej. Simulador universidad" required></label>
+            <label class="field">URL HTTPS pública<input id="webhook-endpoint" name="endpoint" type="url" placeholder="https://ejemplo.org/seismik" required></label>
             <fieldset><legend>Eventos que deseas recibir</legend>
               <label class="scope-option"><input type="checkbox" name="webhook-event" value="official_report_update" checked><span><strong>Reporte oficial</strong><small>Confirmación o actualización de una agencia sismológica.</small></span></label>
               <label class="scope-option"><input type="checkbox" name="webhook-event" value="earthquake_candidate"><span><strong>Candidato preliminar</strong><small>Señal sin confirmar; nunca es una orden de acción física.</small></span></label>
@@ -129,37 +271,61 @@
         </section>
       </div>
     </section>
-
-    <section id="documentacion" class="developer-section docs-section">
-      <div class="section-heading"><p class="eyebrow">DOCUMENTACIÓN</p><h2>Tu primera solicitud.</h2></div>
-      <div class="endpoint-grid" aria-label="Catálogo de endpoints disponibles">
-        <article class="endpoint-card"><span>GET</span><code>/v1/events/history</code><p>Historial oficial consolidado y filtrable.</p><small>Requiere <strong>events:read</strong></small></article>
-        <article class="endpoint-card"><span>GET</span><code>/v1/events/recent</code><p>Eventos oficiales recientes de baja latencia.</p><small>Requiere <strong>events:read</strong></small></article>
-        <article class="endpoint-card"><span>GET</span><code>/v1/network/stations</code><p>Catálogo geográfico de estaciones abiertas.</p><small>Requiere <strong>stations:read</strong></small></article>
-      </div>
-      <div class="code-card"><div class="code-tabs"><span>cURL</span><button id="copy-example" class="text-button" type="button">Copiar</button></div><pre><code id="curl-example">curl "https://api.seismik.org/v1/events/history?days=7&amp;minimum_magnitude=4" \
-  -H "X-Seismik-API-Key: sk_test_TU_CLAVE"</code></pre></div>
-      <p class="docs-note">La API informa la agencia y el enlace oficial. Seismik agrega y normaliza; no sustituye a las entidades sismológicas.</p>
-    </section>
   </main>
 
-  <footer class="developer-footer"><span>© 2026 Seismik · Proyecto abierto</span><a href="https://seismik.org/">Inicio</a><a href="https://seismik.org/terms-of-privacy">Privacidad</a><a href="https://seismik.org/terms-of-service#api">Términos API</a></footer>
+  <footer class="site-footer developer-footer">
+    <div class="container footer-grid">
+      <div>
+        <a class="brand" href="https://seismik.org/"><img class="brand-logo" src="/assets/seismik_logo.webp" width="32" height="32" alt="">SEISMIK</a>
+        <p>API de datos sísmicos oficiales, normalizados y atribuidos a su fuente.</p>
+      </div>
+      <div>
+        <h4>Portal</h4>
+        <ul>
+          <li><a href="#productos">Productos</a></li>
+          <li><a href="#documentacion">Documentación</a></li>
+          <li><a href="#precios">Precios</a></li>
+          <li><a href="#panel">Panel</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Seismik</h4>
+        <ul>
+          <li><a href="https://seismik.org/">Inicio</a></li>
+          <li><a href="https://seismik.org/#como-funciona">Cómo funciona</a></li>
+          <li><a href="mailto:support@seismik.org">support@seismik.org</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Legal</h4>
+        <ul>
+          <li><a href="https://seismik.org/terms-of-privacy">Privacidad</a></li>
+          <li><a href="https://seismik.org/terms-of-service#api">Términos de la API</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="container footer-bottom">
+      <span>© 2026 Seismik · Proyecto abierto</span>
+      <span>Beta controlada</span>
+    </div>
+  </footer>
 
   <dialog id="secret-dialog">
     <form method="dialog" class="secret-card">
-      <p class="eyebrow">CLAVE CREADA</p><h2>Guárdala ahora.</h2><p>Por seguridad no podremos volver a mostrarla.</p>
+      <p class="eyebrow">Clave creada</p><h2>Guárdala ahora.</h2><p>Por seguridad no podremos volver a mostrarla.</p>
       <div class="secret-value"><code id="secret-value"></code><button id="copy-secret" class="text-button" type="button">Copiar</button></div>
       <button class="button full" value="close">Ya la guardé</button>
     </form>
   </dialog>
   <dialog id="webhook-secret-dialog">
     <form method="dialog" class="secret-card">
-      <p class="eyebrow">WEBHOOK CREADO</p><h2>Guarda el secreto de firma.</h2><p>Se muestra sólo una vez; tu servidor lo necesita para validar cada entrega.</p>
+      <p class="eyebrow">Webhook creado</p><h2>Guarda el secreto de firma.</h2><p>Se muestra sólo una vez; tu servidor lo necesita para validar cada entrega.</p>
       <div class="secret-value"><code id="webhook-secret-value"></code><button id="copy-webhook-secret" class="text-button" type="button">Copiar</button></div>
       <button class="button full" value="close">Ya lo guardé</button>
     </form>
   </dialog>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="/site.js" defer></script>
   <script type="module" src="/developers.js"></script>
 </body>
 </html>

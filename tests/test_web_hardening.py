@@ -114,3 +114,33 @@ def test_the_api_vhost_declares_a_restrictive_csp() -> None:
 
     assert "default-src 'none'" in api_block
     assert "frame-ancestors 'none'" in api_block
+
+
+def test_the_portal_markup_keeps_every_element_its_script_uses() -> None:
+    """`developers.js` busca cada elemento por `id`.
+
+    Un rediseño que renombra o pierde uno deja el portal cargando pero con un
+    botón muerto o un panel que nunca aparece, sin ningún error visible.
+    """
+
+    script = _script("developers.js")
+    html = (WEB / "developers.html").read_text(encoding="utf-8")
+    used = set(re.findall(r'elements\["([a-z0-9-]+)"\]', script))
+    used |= set(re.findall(r"elements\.([A-Za-z0-9_]+)", script))
+    present = set(re.findall(r'\bid="([^"]+)"', html))
+
+    assert used, "developers.js dejó de usar `elements`: revisa esta prueba"
+    assert not used - present, f"developers.html perdió elementos: {sorted(used - present)}"
+
+
+def test_no_page_relies_on_inline_styles() -> None:
+    """La CSP de seismik.org y devs.seismik.org es `style-src 'self'`.
+
+    Un `style=""` o un bloque `<style>` no se aplica en producción, aunque en
+    local se vea bien.
+    """
+
+    for page in sorted(WEB.rglob("*.html")):
+        html = page.read_text(encoding="utf-8")
+        assert "<style" not in html, f"{page}: bloque <style> bloqueado por la CSP"
+        assert not re.search(r"\sstyle=", html), f"{page}: atributo style bloqueado por la CSP"
