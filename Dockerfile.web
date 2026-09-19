@@ -3,4 +3,13 @@ FROM caddy:2.10.2-alpine
 COPY deploy/Caddyfile.web /etc/caddy/Caddyfile
 COPY web /srv
 
+# Cada imagen pide sus estilos y scripts con una versión propia en la URL
+# (`styles.css?v=…`). Sin ella, una caché intermedia podía servir el HTML
+# nuevo con las hojas de estilo del despliegue anterior. La marca cambia en
+# cada construcción que trae archivos nuevos: si `web/` no cambió, esta capa
+# sale de la caché de Docker y la versión se mantiene.
+RUN version="$(date -u +%Y%m%d%H%M%S)" \
+ && find /srv -name '*.html' -exec sed -i "s/__ASSET_VERSION__/${version}/g" {} + \
+ && ! grep -rq "__ASSET_VERSION__" /srv
+
 EXPOSE 8080
