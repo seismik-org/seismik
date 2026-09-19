@@ -32,7 +32,7 @@ void main() {
   });
 
   test(
-    'preliminary SeedLink source is added to existing installations',
+    'new history sources are added to existing installations once',
     () async {
       SharedPreferences.setMockInitialValues(<String, Object>{
         'settings.history_sources': <String>['sgc_colombia'],
@@ -41,10 +41,16 @@ void main() {
       await settings.load();
 
       expect(settings.historySources, contains('seismik_seedlink_preliminary'));
+      expect(settings.historySources, contains('emsc_global'));
 
       await settings.setHistorySource('sgc_colombia', false);
+      await settings.setHistorySource('emsc_global', false);
 
       expect(settings.historySources, <String>{'seismik_seedlink_preliminary'});
+
+      final MobileSettings restored = MobileSettings();
+      await restored.load();
+      expect(restored.historySources, <String>{'seismik_seedlink_preliminary'});
     },
   );
 
