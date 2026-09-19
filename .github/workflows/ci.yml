@@ -254,10 +254,16 @@ jobs:
           workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ vars.GCP_DEPLOY_SERVICE_ACCOUNT }}
       - uses: google-github-actions/setup-gcloud@v2
+      # La imagen se construye aquí y se sube directo a Artifact Registry. Con
+      # `gcloud builds submit` la cuenta necesitaría Storage Admin sobre todos
+      # los buckets del proyecto sólo para subir el código a Cloud Build.
       - name: Build immutable image
         env:
           IMAGE: ${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.GCP_ARTIFACT_REPOSITORY }}/api:${{ github.sha }}
-        run: gcloud builds submit --config deploy/cloudbuild.api.yaml --substitutions=_IMAGE="$IMAGE"
+        run: |
+          gcloud auth configure-docker "$GCP_REGION-docker.pkg.dev" --quiet
+          docker build --file Dockerfile.api --tag "$IMAGE" .
+          docker push "$IMAGE"
       - name: Update service
         env:
           IMAGE: ${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.GCP_ARTIFACT_REPOSITORY }}/api:${{ github.sha }}
@@ -290,7 +296,10 @@ jobs:
       - name: Build immutable image
         env:
           IMAGE: ${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.GCP_ARTIFACT_REPOSITORY }}/web:${{ github.sha }}
-        run: gcloud builds submit --config deploy/cloudbuild.worker.yaml --substitutions=_IMAGE="$IMAGE",_DOCKERFILE=Dockerfile.web
+        run: |
+          gcloud auth configure-docker "$GCP_REGION-docker.pkg.dev" --quiet
+          docker build --file Dockerfile.web --tag "$IMAGE" .
+          docker push "$IMAGE"
       - name: Update service
         env:
           IMAGE: ${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.GCP_ARTIFACT_REPOSITORY }}/web:${{ github.sha }}
@@ -329,17 +338,20 @@ jobs:
         run: |
           set -euo pipefail
           repo="$GCP_REGION-docker.pkg.dev/$GCP_PROJECT_ID/$GCP_ARTIFACT_REPOSITORY"
+          gcloud auth configure-docker "$GCP_REGION-docker.pkg.dev" --quiet
           deploy_worker() {
             # En un mismo `local` las expansiones ocurren antes de asignar:
             # `$service` en `image=` saldría vacía y `set -u` aborta el paso.
             local service="$1"
             local dockerfile="$2"
             local image="$repo/$service:$SHA"
-            gcloud builds submit --config deploy/cloudbuild.worker.yaml \
-              --substitutions=_IMAGE="$image",_DOCKERFILE="$dockerfile"
+            docker build --file "$dockerfile" --tag "$image" .
+            docker push "$image"
             gcloud run services update "$service" --project "$GCP_PROJECT_ID" \
               --region "$GCP_REGION" --image "$image"
           }
-          [ "$DISPATCHER_CHANGED" = true ] && deploy_worker seismik-dispatcher Dockerfile.dispatcher
-          [ "$INTEGRATIONS_CHANGED" = true ] && deploy_worker seismik-integrations Dockerfile.integrations
-          [ "$DETECTOR_CHANGED" = true ] && deploy_worker seismik-detector Dockerfile
+          # `if` y no `[ ] && …`: si el último servicio no cambió, esa prueba
+          # devolvía 1 y el paso fallaba aunque los demás se hubieran desplegado.
+          if [ "$DISPATCHER_CHANGED" = true ]; then deploy_worker seismik-dispatcher Dockerfile.dispatcher; fi
+          if [ "$INTEGRATIONS_CHANGED" = true ]; then deploy_worker seismik-integrations Dockerfile.integrations; fi
+          if [ "$DETECTOR_CHANGED" = true ]; then deploy_worker seismik-detector Dockerfile; fi

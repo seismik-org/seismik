@@ -14,9 +14,3 @@ steps:
 
 images:
   - ${_IMAGE}
-
-# Los registros van a Cloud Logging: así `gcloud builds submit` los puede
-# mostrar a la cuenta de despliegue de GitHub con `roles/logging.viewer`, sin
-# darle lectura de todo el proyecto.
-options:
-  logging: CLOUD_LOGGING_ONLY
