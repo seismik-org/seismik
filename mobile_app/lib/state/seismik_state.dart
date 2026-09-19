@@ -603,9 +603,18 @@ class SeismikState extends ChangeNotifier with WidgetsBindingObserver {
     }
   }
 
+  /// Entrada de un aviso sin pasar por Firebase, que `initialize` arranca.
+  @visibleForTesting
+  void receiveNotification(NotificationEnvelope envelope) =>
+      _onNotification(envelope);
+
   void _onNotification(NotificationEnvelope envelope) {
     final SeismicEvent event = envelope.event;
     if (envelope.critical) {
+      activeAlert = event;
+    } else if (envelope.followUp && activeAlert != null) {
+      // La pantalla de alarma sigue abierta: se actualiza con los datos nuevos,
+      // sin volver a sonar. Si ya se cerró, no se reabre.
       activeAlert = event;
     } else if (event.isOfficial) {
       officialEvent = event;
@@ -621,6 +630,9 @@ class SeismikState extends ChangeNotifier with WidgetsBindingObserver {
   void dismissAlert() {
     activeAlert = null;
     _notify();
+    // Ocultar la pantalla no bastaba: la notificación de alarma, fija en la
+    // barra, seguía activa.
+    unawaited(notifications.dismissCriticalAlerts());
   }
 
   void clearOfficialEvent() {
