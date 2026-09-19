@@ -3,22 +3,31 @@ from __future__ import annotations
 from dataclasses import replace
 from datetime import datetime
 
+import pytest
+import requests
+
 from eew.config import OfficialReportsSettings
 from eew.models import EarthquakeCandidate, OfficialReport, StationTrigger
 from eew.official import (
+    USER_AGENT,
     OfficialApiClient,
     OfficialSource,
+    SourceRejected,
     _candidate_query_window,
     match_report,
+    source_pause_remaining,
 )
 
 
 class FakeResponse:
-    def __init__(self, payload: dict):
+    def __init__(self, payload: dict, status_code: int = 200, headers: dict | None = None):
         self._payload = payload
+        self.status_code = status_code
+        self.headers = headers or {}
 
     def raise_for_status(self) -> None:
-        pass
+        if self.status_code >= 400:
+            raise requests.HTTPError(f"{self.status_code}")
 
     def json(self) -> dict:
         return self._payload
@@ -219,3 +228,82 @@ def test_sgc_rapid_feed_contract_is_normalized() -> None:
         "startdate": "2026-08-09T19:00:00",
         "enddate": "2026-08-10T19:00:00",
     }
+
+
+class RejectingSession(FakeSession):
+    """El SGC corta a Cloud Run con un 403; luego respondería normal."""
+
+    def __init__(self, status_code: int = 403, headers: dict | None = None):
+        super().__init__({"features": []})
+        self.status_code = status_code
+        self.rejection_headers = headers
+
+    def get(self, *_args, **kwargs) -> FakeResponse:
+        self.calls.append(kwargs)
+        if len(self.calls) == 1:
+            return FakeResponse({}, self.status_code, self.rejection_headers)
+        return FakeResponse(self.payload)
+
+
+def _sgc() -> OfficialSource:
+    return OfficialSource(
+        id="sgc_colombia", agency="SGC", jurisdiction="Colombia", countries=("CO",),
+        adapter="sgc_geojson", endpoint="https://example.test",
+        official_site="https://www.sgc.gov.co/sismos", priority=100,
+    )
+
+
+@pytest.mark.parametrize("status", [403, 429])
+def test_a_rejected_source_is_left_alone_instead_of_hammered(status: int) -> None:
+    session = RejectingSession(status)
+    client = OfficialApiClient(_sgc(), 1, session)
+
+    with pytest.raises(SourceRejected):
+        client.fetch(datetime(2026, 9, 18), datetime(2026, 9, 18, 1))
+    # Los siguientes intentos no salen a la red mientras dure la pausa: son
+    # los que convertían un límite de tráfico en un bloqueo de la IP.
+    for _ in range(5):
+        with pytest.raises(SourceRejected):
+            OfficialApiClient(_sgc(), 1, session).fetch(datetime(2026, 9, 18), datetime(2026, 9, 18, 1))
+    assert len(session.calls) == 1
+    assert 29 * 60 < source_pause_remaining("sgc_colombia") <= 30 * 60
+
+
+def test_the_agency_retry_after_sets_the_pause_within_limits() -> None:
+    with pytest.raises(SourceRejected):
+        OfficialApiClient(_sgc(), 1, RejectingSession(429, {"Retry-After": "120"})).fetch(
+            datetime(2026, 9, 18), datetime(2026, 9, 18, 1)
+        )
+    assert 110 < source_pause_remaining("sgc_colombia") <= 120
+
+
+def test_an_absurd_retry_after_does_not_silence_a_source_for_days() -> None:
+    with pytest.raises(SourceRejected):
+        OfficialApiClient(_sgc(), 1, RejectingSession(429, {"Retry-After": "999999"})).fetch(
+            datetime(2026, 9, 18), datetime(2026, 9, 18, 1)
+        )
+    assert source_pause_remaining("sgc_colombia") <= 6 * 3600
+
+
+def test_one_rejected_agency_does_not_pause_the_others() -> None:
+    with pytest.raises(SourceRejected):
+        OfficialApiClient(_sgc(), 1, RejectingSession()).fetch(datetime(2026, 9, 18), datetime(2026, 9, 18, 1))
+    usgs = replace(_sgc(), id="usgs_global")
+    assert source_pause_remaining("usgs_global") == 0
+    assert OfficialApiClient(usgs, 1, FakeSession({"features": []})).fetch(
+        datetime(2026, 9, 18), datetime(2026, 9, 18, 1)
+    ) == []
+
+
+def test_other_http_errors_are_not_mistaken_for_a_block() -> None:
+    session = RejectingSession(503)
+    with pytest.raises(requests.HTTPError):
+        OfficialApiClient(_sgc(), 1, session).fetch(datetime(2026, 9, 18), datetime(2026, 9, 18, 1))
+    assert source_pause_remaining("sgc_colombia") == 0
+
+
+def test_requests_identify_seismik_with_a_contact_url() -> None:
+    session = FakeSession({"features": []})
+    OfficialApiClient(_sgc(), 1, session)
+    assert session.headers["User-Agent"] == USER_AGENT
+    assert "https://seismik.org" in USER_AGENT

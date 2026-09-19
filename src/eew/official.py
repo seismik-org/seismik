@@ -5,6 +5,7 @@ import logging
 import math
 import re
 import threading
+import time
 import uuid
 import xml.etree.ElementTree as ET
 from concurrent.futures import ThreadPoolExecutor
@@ -25,7 +26,17 @@ from eew.models import (
 )
 
 LOGGER = logging.getLogger(__name__)
-USER_AGENT = "seismik-detector/0.3 (+official-report-enrichment)"
+# Con URL de contacto: si una agencia ve nuestras consultas, sabe a quién escribir.
+USER_AGENT = "Seismik/0.4 (+https://seismik.org; official-report-enrichment)"
+# Ante un 403 o un 429 se deja de consultar esa fuente un rato. Insistir cada
+# pocos segundos es lo que convierte un límite de tráfico en un bloqueo: el
+# SGC cortó a Cloud Run mientras el detector repetía la consulta con cada
+# detección y dejaba una traza completa por intento.
+REJECTION_PAUSE_SECONDS = 30 * 60
+MIN_REJECTION_PAUSE_SECONDS = 60
+MAX_REJECTION_PAUSE_SECONDS = 6 * 3600
+_paused_until: dict[str, float] = {}
+_pause_lock = threading.Lock()
 # Colombia no usa horario de verano.
 COLOMBIA_TIME = timezone(timedelta(hours=-5))
 
@@ -59,6 +70,47 @@ def load_sources(path: str | Path) -> tuple[OfficialSource, ...]:
     )
 
 
+class SourceRejected(RuntimeError):
+    """La agencia rechazó nuestras consultas y la fuente está en pausa."""
+
+
+def _retry_after_seconds(response: requests.Response) -> float | None:
+    raw = response.headers.get("Retry-After")
+    try:
+        return float(raw) if raw is not None else None
+    except ValueError:
+        # También puede ser una fecha HTTP; la pausa por defecto basta.
+        return None
+
+
+def _pause_source(source_id: str, response: requests.Response) -> float:
+    requested = _retry_after_seconds(response)
+    pause = min(
+        MAX_REJECTION_PAUSE_SECONDS,
+        max(MIN_REJECTION_PAUSE_SECONDS, requested if requested is not None else REJECTION_PAUSE_SECONDS),
+    )
+    with _pause_lock:
+        _paused_until[source_id] = time.monotonic() + pause
+    # Un solo aviso por pausa, sin traza: el motivo es la respuesta, no el código.
+    LOGGER.warning(
+        "Fuente oficial rechazó la consulta source=%s status=%s; sin consultarla %.0f s",
+        source_id,
+        response.status_code,
+        pause,
+    )
+    return pause
+
+
+def source_pause_remaining(source_id: str) -> float:
+    with _pause_lock:
+        return max(0.0, _paused_until.get(source_id, 0.0) - time.monotonic())
+
+
+def clear_source_pauses() -> None:
+    with _pause_lock:
+        _paused_until.clear()
+
+
 class OfficialApiClient:
     """Normaliza catálogos gubernamentales heterogéneos a OfficialReport."""
 
@@ -80,9 +132,17 @@ class OfficialApiClient:
         return adapter(start, end)
 
     def _get(self, url: str | None = None, **kwargs: Any) -> requests.Response:
+        remaining = source_pause_remaining(self.source.id)
+        if remaining > 0:
+            raise SourceRejected(f"{self.source.id} en pausa {remaining:.0f} s tras un rechazo")
         response = self.session.get(
             url or self.source.endpoint, timeout=self.timeout_seconds, **kwargs
         )
+        if response.status_code in (403, 429):
+            pause = _pause_source(self.source.id, response)
+            raise SourceRejected(
+                f"{self.source.id} respondió {response.status_code}; pausa de {pause:.0f} s"
+            )
         response.raise_for_status()
         return response
 
@@ -412,6 +472,9 @@ class OfficialReportService:
                                 item.distance_from_station_centroid_km or 0.0,
                             ),
                         )
+                except SourceRejected:
+                    # La pausa ya quedó en el registro una vez; no se repite.
+                    continue
                 except Exception:
                     LOGGER.warning("Consulta oficial falló source=%s", source.id, exc_info=True)
             if known:
