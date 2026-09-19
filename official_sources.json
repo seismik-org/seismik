@@ -14,6 +14,18 @@
       "attribution": "U.S. Geological Survey"
     },
     {
+      "id": "emsc_global",
+      "agency": "Euro-Mediterranean Seismological Centre (EMSC/CSEM)",
+      "jurisdiction": "Global secondary catalogue",
+      "countries": [],
+      "adapter": "emsc_fdsn_json",
+      "endpoint": "https://www.seismicportal.eu/fdsnws/event/1/query",
+      "official_site": "https://www.emsc-csem.org/Earthquake_information/",
+      "priority": 5,
+      "global_fallback": true,
+      "attribution": "EMSC/CSEM, https://www.emsc-csem.org"
+    },
+    {
       "id": "ingv_italy",
       "agency": "Istituto Nazionale di Geofisica e Vulcanologia (INGV)",
       "jurisdiction": "Italy",

@@ -199,6 +199,35 @@ def test_geonet_and_bmkg_contracts_are_normalized() -> None:
     assert rows[0].tsunami is False
 
 
+def test_emsc_fdsn_json_contract_is_normalized() -> None:
+    emsc = OfficialSource(
+        id="emsc_global", agency="EMSC/CSEM", jurisdiction="Global", countries=(),
+        adapter="emsc_fdsn_json", endpoint="https://example.test/fdsnws/event/1/query",
+        official_site="https://www.emsc-csem.org/Earthquake_information/", priority=5,
+        global_fallback=True, attribution="EMSC/CSEM, https://www.emsc-csem.org",
+    )
+    payload = {"type": "FeatureCollection", "features": [{
+        "id": "20260919_0000279",
+        "geometry": {"type": "Point", "coordinates": [-70.72, -34.54, -98.0]},
+        "properties": {
+            "source_id": "2062671", "time": "2026-09-19T23:08:01.0Z",
+            "lastupdate": "2026-09-19T23:17:44.84491Z", "flynn_region": "O'HIGGINS, CHILE",
+            "depth": 98.0, "mag": 2.5, "magtype": "ml",
+        },
+    }]}
+    session = FakeSession(payload)
+    rows = OfficialApiClient(emsc, 1, session).fetch(
+        datetime(2026, 9, 19), datetime(2026, 9, 20)
+    )
+    assert session.calls[0]["params"]["format"] == "json"
+    assert rows[0].official_event_id == "20260919_0000279"
+    assert rows[0].latitude == -34.54
+    assert rows[0].longitude == -70.72
+    assert rows[0].magnitude_type == "ml"
+    assert rows[0].place == "O'HIGGINS, CHILE"
+    assert rows[0].official_url.endswith("id=2062671")
+
+
 def test_sgc_rapid_feed_contract_is_normalized() -> None:
     sgc = OfficialSource(
         id="sgc_colombia", agency="SGC", jurisdiction="Colombia", countries=("CO",),

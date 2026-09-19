@@ -44,7 +44,8 @@ public final class SeismikState: ObservableObject {
     @AppStorage("seismik.app_map_type") public var appMapType: String = "standard"
     @AppStorage("seismik.crowdsourcing_enabled") public var crowdsourcingEnabled: Bool = true
     @AppStorage("seismik.precise_location") public var preciseLocationByDefault: Bool = false
-    @AppStorage("seismik.history_sources") public var historySourcesRaw: String = "sgc_colombia,usgs_global,seismik_seedlink_preliminary"
+    @AppStorage("seismik.history_sources") public var historySourcesRaw: String = "sgc_colombia,usgs_global,emsc_global,seismik_seedlink_preliminary"
+    @AppStorage("seismik.emsc_history_migrated") private var emscHistoryMigrated: Bool = false
 
     private let apiClient = SeismikAPIClient.shared
     private let locationManager = LocationManager.shared
@@ -62,6 +63,13 @@ public final class SeismikState: ObservableObject {
         self.account = apiClient.accountSessionToken == nil ? nil : apiClient.signedInAccount
         // "system" y "osm" quedaron de versiones anteriores.
         mapProvider = MapProviderChoice.stored(mapProvider).rawValue
+        // Instalaciones existentes ya tenían una selección persistida. EMSC se
+        // incorpora una sola vez; si la persona lo desactiva después, no vuelve.
+        if !emscHistoryMigrated {
+            let sources = Set(historySourcesRaw.split(separator: ",").map(String.init))
+            historySourcesRaw = (sources.union(["emsc_global"])).sorted().joined(separator: ",")
+            emscHistoryMigrated = true
+        }
         locationRegistration = locationManager.$userCoordinate
             .compactMap { $0 }
             .first()
@@ -402,7 +410,7 @@ public final class SeismikState: ObservableObject {
         } else {
             items.removeAll { $0 == "seismik_seedlink_preliminary" }
         }
-        if items.isEmpty { return ["sgc_colombia", "usgs_global"] }
+        if items.isEmpty { return ["sgc_colombia", "usgs_global", "emsc_global"] }
         return Array(Set(items)).sorted()
     }
 

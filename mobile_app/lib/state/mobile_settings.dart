@@ -15,6 +15,8 @@ class MobileSettings extends ChangeNotifier {
   static const String _historySourcesKey = 'settings.history_sources';
   static const String _preliminaryHistoryMigratedKey =
       'settings.preliminary_history_migrated';
+  static const String _emscHistoryMigratedKey =
+      'settings.emsc_history_migrated';
   static const String _earlyAlertsKey = 'settings.early_alerts';
   static const String _officialUpdatesKey = 'settings.official_updates';
   static const String _notificationMagnitudeKey =
@@ -41,6 +43,7 @@ class MobileSettings extends ChangeNotifier {
   Set<String> historySources = <String>{
     'sgc_colombia',
     'usgs_global',
+    'emsc_global',
     'seismik_seedlink_preliminary',
   };
   bool receiveEarlyAlerts = true;
@@ -71,6 +74,12 @@ class MobileSettings extends ChangeNotifier {
       if (!(preferences.getBool(_preliminaryHistoryMigratedKey) ?? false)) {
         historySources.add('seismik_seedlink_preliminary');
         await preferences.setBool(_preliminaryHistoryMigratedKey, true);
+      }
+      // EMSC complementa los catálogos oficiales existentes. Se añade una sola
+      // vez; tras desactivarlo, la preferencia de la persona prevalece.
+      if (!(preferences.getBool(_emscHistoryMigratedKey) ?? false)) {
+        historySources.add('emsc_global');
+        await preferences.setBool(_emscHistoryMigratedKey, true);
       }
     }
     receiveEarlyAlerts = preferences.getBool(_earlyAlertsKey) ?? true;

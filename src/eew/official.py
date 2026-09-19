@@ -103,7 +103,13 @@ def _pause_source(source_id: str, response: requests.Response) -> float:
 
 def source_pause_remaining(source_id: str) -> float:
     with _pause_lock:
-        return max(0.0, _paused_until.get(source_id, 0.0) - time.monotonic())
+        # Dos lecturas consecutivas de relojes de alta resolución pueden dar
+        # una fracción ínfima por encima del límite con el que se programó la
+        # pausa. La API expone el límite contractual, no ese ruido de reloj.
+        return min(
+            MAX_REJECTION_PAUSE_SECONDS,
+            max(0.0, _paused_until.get(source_id, 0.0) - time.monotonic()),
+        )
 
 
 def clear_source_pauses() -> None:
@@ -225,6 +231,53 @@ class OfficialApiClient:
                 official_url=detail,
                 tsunami=bool(props["tsunami"]) if props.get("tsunami") is not None else None,
                 felt=props.get("felt"),
+            )
+            if report:
+                reports.append(report)
+        return reports
+
+    def _fetch_emsc_fdsn_json(self, start: datetime, end: datetime) -> list[OfficialReport]:
+        """Normaliza el FDSN de EMSC, que llama ``json`` a su GeoJSON.
+
+        Seismic Portal no acepta ``format=geojson`` como USGS; además sus
+        propiedades están en minúsculas (``time``, ``lastupdate``, ``magtype``).
+        Mantener este contrato separado evita que una modificación del feed de
+        USGS rompa el respaldo europeo.
+        """
+
+        payload = self._get(
+            params={
+                "format": "json",
+                "starttime": start.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S"),
+                "endtime": end.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S"),
+                "limit": 200,
+            }
+        ).json()
+        reports = []
+        for feature in payload.get("features", []):
+            props = feature.get("properties", {})
+            coordinates = (feature.get("geometry") or {}).get("coordinates", [])
+            if len(coordinates) < 2:
+                continue
+            event_id = feature.get("id") or props.get("unid") or props.get("source_id")
+            source_event_id = props.get("source_id") or event_id
+            detail = (
+                f"https://www.emsc-csem.org/Earthquake_information/earthquake.php?id={source_event_id}"
+                if source_event_id
+                else self.source.official_site
+            )
+            report = self._report(
+                event_id,
+                props.get("time"),
+                coordinates[1],
+                coordinates[0],
+                depth_km=props.get("depth", coordinates[2] if len(coordinates) > 2 else None),
+                magnitude=props.get("mag"),
+                magnitude_type=props.get("magtype"),
+                place=props.get("flynn_region"),
+                review_status="automatic",
+                updated_at=props.get("lastupdate"),
+                official_url=detail,
             )
             if report:
                 reports.append(report)

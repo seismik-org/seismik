@@ -174,7 +174,10 @@ class ApiClient {
     final Map<String, dynamic> decoded = _decode(response);
     final String? crowdToken = decoded['crowd_token']?.toString();
     final String? deviceSession = decoded['device_session_token']?.toString();
-    if (crowdToken == null || crowdToken.isEmpty || deviceSession == null || deviceSession.isEmpty) {
+    if (crowdToken == null ||
+        crowdToken.isEmpty ||
+        deviceSession == null ||
+        deviceSession.isEmpty) {
       throw SeismikApiException(
         'Registration omitted device credentials',
         response.statusCode,
@@ -250,27 +253,28 @@ class ApiClient {
     String? comment,
   }) async =>
       await _reportBase(
-        latitude: latitude,
-        longitude: longitude,
-        countryCode: countryCode,
-        preciseLocation: preciseLocation,
-        shareWithOfficialAgencies: shareWithOfficialAgencies,
-        selectedAgencyIds: selectedAgencyIds,
-        earthquakeEventId: earthquakeEventId,
-        officialEventId: officialEventId,
-        comment: comment,
-      )..addAll(<String, dynamic>{
-        'type': 'seismik_felt_report',
-        'felt': felt,
-        'intensity_mmi': felt ? intensityMmi : null,
-        'indoors': indoors,
-        'floor': floor,
-        'woke_up': wokeUp,
-        'difficulty_standing': difficultyStanding,
-        'objects_moved': objectsMoved,
-        'objects_fell': objectsFell,
-        'visible_damage': visibleDamage,
-      });
+          latitude: latitude,
+          longitude: longitude,
+          countryCode: countryCode,
+          preciseLocation: preciseLocation,
+          shareWithOfficialAgencies: shareWithOfficialAgencies,
+          selectedAgencyIds: selectedAgencyIds,
+          earthquakeEventId: earthquakeEventId,
+          officialEventId: officialEventId,
+          comment: comment,
+        )
+        ..addAll(<String, dynamic>{
+          'type': 'seismik_felt_report',
+          'felt': felt,
+          'intensity_mmi': felt ? intensityMmi : null,
+          'indoors': indoors,
+          'floor': floor,
+          'woke_up': wokeUp,
+          'difficulty_standing': difficultyStanding,
+          'objects_moved': objectsMoved,
+          'objects_fell': objectsFell,
+          'visible_damage': visibleDamage,
+        });
 
   Future<Map<String, dynamic>> buildDamageReport({
     required double latitude,
@@ -290,25 +294,26 @@ class ApiClient {
     String? comment,
   }) async =>
       await _reportBase(
-        latitude: latitude,
-        longitude: longitude,
-        countryCode: countryCode,
-        preciseLocation: preciseLocation,
-        shareWithOfficialAgencies: shareWithOfficialAgencies,
-        selectedAgencyIds: const <String>{},
-        earthquakeEventId: earthquakeEventId,
-        officialEventId: officialEventId,
-        comment: comment,
-      )..addAll(<String, dynamic>{
-        'type': 'seismik_damage_report',
-        'severity': severity,
-        'hazards': hazards,
-        'building_type': _nullIfBlank(buildingType),
-        'people_trapped': peopleTrapped,
-        'injuries_observed': injuriesObserved,
-        'emergency_services_contacted': emergencyServicesContacted,
-        'safe_to_remain': safeToRemain,
-      });
+          latitude: latitude,
+          longitude: longitude,
+          countryCode: countryCode,
+          preciseLocation: preciseLocation,
+          shareWithOfficialAgencies: shareWithOfficialAgencies,
+          selectedAgencyIds: const <String>{},
+          earthquakeEventId: earthquakeEventId,
+          officialEventId: officialEventId,
+          comment: comment,
+        )
+        ..addAll(<String, dynamic>{
+          'type': 'seismik_damage_report',
+          'severity': severity,
+          'hazards': hazards,
+          'building_type': _nullIfBlank(buildingType),
+          'people_trapped': peopleTrapped,
+          'injuries_observed': injuriesObserved,
+          'emergency_services_contacted': emergencyServicesContacted,
+          'safe_to_remain': safeToRemain,
+        });
 
   /// Envía un cuerpo ya compuesto (recién creado o recuperado de la cola).
   Future<ReportResult> sendReport(
@@ -473,7 +478,9 @@ class ApiClient {
   /// [stationsCacheTtl], así abrir la app o volver a ella no lo descarga cada
   /// vez. Mientras no cambie se devuelve la misma lista, lo que permite al mapa
   /// saltarse la reconstrucción de sus marcadores.
-  Future<List<SeismicStation>> fetchStations({bool forceRefresh = false}) async {
+  Future<List<SeismicStation>> fetchStations({
+    bool forceRefresh = false,
+  }) async {
     final DateTime now = DateTime.now();
     if (!forceRefresh) {
       final List<SeismicStation> known =
@@ -576,7 +583,11 @@ class ApiClient {
   }
 
   Future<List<SeismicEvent>> fetchRecentEvents({
-    Set<String> sourceIds = const <String>{'sgc_colombia', 'usgs_global'},
+    Set<String> sourceIds = const <String>{
+      'sgc_colombia',
+      'usgs_global',
+      'emsc_global',
+    },
     int days = 7,
     double minimumMagnitude = 2.5,
   }) async {
@@ -687,7 +698,10 @@ class ApiClient {
     await _secureStorage.write(key: _accountSessionKey, value: token);
     _accountToken = token;
     final SharedPreferences preferences = await SharedPreferences.getInstance();
-    await preferences.setString(_accountProfileKey, jsonEncode(account.toMap()));
+    await preferences.setString(
+      _accountProfileKey,
+      jsonEncode(account.toMap()),
+    );
     return account;
   }
 
@@ -753,7 +767,9 @@ class ApiClient {
         .post(
           _uri('/v1/family/circle/invitations'),
           headers: await _accountHeaders(),
-          body: jsonEncode(<String, String>{'display_name': displayName.trim()}),
+          body: jsonEncode(<String, String>{
+            'display_name': displayName.trim(),
+          }),
         )
         .timeout(const Duration(seconds: 8));
     return _decode(response)['invite_code']?.toString() ?? '';
@@ -893,7 +909,8 @@ class ApiClient {
       final String encoded = events.length < 40
           ? encodeEventsCache(events)
           : await compute(encodeEventsCache, events);
-      final SharedPreferences preferences = await SharedPreferences.getInstance();
+      final SharedPreferences preferences =
+          await SharedPreferences.getInstance();
       await preferences.setString(_eventCacheKey, encoded);
       _eventsCacheSignature = signature;
     } catch (_) {
@@ -904,7 +921,8 @@ class ApiClient {
   /// Historial guardado en el teléfono, para mostrarlo antes que la red.
   Future<List<SeismicEvent>> readCachedEvents() async {
     try {
-      final SharedPreferences preferences = await SharedPreferences.getInstance();
+      final SharedPreferences preferences =
+          await SharedPreferences.getInstance();
       final String? raw = preferences.getString(_eventCacheKey);
       if (raw == null || raw.isEmpty) return const <SeismicEvent>[];
       final List<SeismicEvent> events = await _parseInBackground(

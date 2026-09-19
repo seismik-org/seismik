@@ -19,6 +19,7 @@ class SettingsScreen extends StatelessWidget {
     'seismik_seedlink_preliminary': 'Seismik / SeedLink · Preliminar',
     'sgc_colombia': 'SGC · Colombia',
     'usgs_global': 'USGS · Global',
+    'emsc_global': 'EMSC · Europa y Mediterráneo',
     'igp_peru': 'IGP · Perú',
     'ingv_italy': 'INGV · Italia',
     'geonet_new_zealand': 'GeoNet · Nueva Zelanda',
@@ -293,6 +294,9 @@ class SettingsScreen extends StatelessWidget {
                   subtitle: switch (source.key) {
                     'usgs_global' => const Text(
                       'Cobertura mundial de respaldo',
+                    ),
+                    'emsc_global' => const Text(
+                      'Centro Sismológico Euro-Mediterráneo. Fuente secundaria con atribución EMSC/CSEM.',
                     ),
                     'seismik_seedlink_preliminary' => const Text(
                       'Detección automática STA/LTA multiestación. No es un reporte oficial ni asigna magnitud sin cálculo confiable.',

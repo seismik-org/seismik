@@ -298,6 +298,7 @@ public struct SeismicEvent: Identifiable, Codable, Hashable {
             switch src {
             case "sgc_colombia": return "SGC · Colombia"
             case "usgs_global": return "USGS · Global"
+            case "emsc_global": return "EMSC · Europa y Mediterráneo"
             case "igp_peru": return "IGP · Perú"
             case "ingv_italy": return "INGV · Italia"
             case "geonet_new_zealand": return "GeoNet · N. Zelanda"
