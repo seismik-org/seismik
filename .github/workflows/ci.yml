@@ -33,9 +33,16 @@ jobs:
       - id: filter
         uses: dorny/paths-filter@v3
         with:
+          # La API, el dispatcher e integraciones se importan entre sí: el
+          # dispatcher decide la alarma con `api/felt_area.py` y la API usa
+          # `eew/official.py` y `dispatcher/policy.py`. Un cambio en cualquiera
+          # de esos paquetes redespliega los tres; el detector sólo usa `eew`.
           filters: |
             api:
               - 'src/api/**'
+              - 'src/dispatcher/**'
+              - 'src/integrations/**'
+              - 'src/eew/**'
               - 'src/crowdsourcing/**'
               - 'src/reporting/**'
               - 'requirements-backend.txt'
@@ -49,15 +56,23 @@ jobs:
               - 'deploy/Caddyfile.web'
               - 'deploy/cloudbuild.worker.yaml'
             dispatcher:
+              - 'src/api/**'
               - 'src/dispatcher/**'
+              - 'src/integrations/**'
+              - 'src/eew/**'
               - 'src/crowdsourcing/**'
+              - 'src/reporting/**'
               - 'requirements-backend.txt'
               - 'Dockerfile.dispatcher'
               - 'official_sources.json'
               - 'deploy/cloudbuild.worker.yaml'
             integrations:
-              - 'src/integrations/**'
+              - 'src/api/**'
               - 'src/dispatcher/**'
+              - 'src/integrations/**'
+              - 'src/eew/**'
+              - 'src/crowdsourcing/**'
+              - 'src/reporting/**'
               - 'requirements-backend.txt'
               - 'Dockerfile.integrations'
               - 'official_sources.json'
@@ -315,7 +330,11 @@ jobs:
           set -euo pipefail
           repo="$GCP_REGION-docker.pkg.dev/$GCP_PROJECT_ID/$GCP_ARTIFACT_REPOSITORY"
           deploy_worker() {
-            local service="$1" dockerfile="$2" image="$repo/$service:$SHA"
+            # En un mismo `local` las expansiones ocurren antes de asignar:
+            # `$service` en `image=` saldría vacía y `set -u` aborta el paso.
+            local service="$1"
+            local dockerfile="$2"
+            local image="$repo/$service:$SHA"
             gcloud builds submit --config deploy/cloudbuild.worker.yaml \
               --substitutions=_IMAGE="$image",_DOCKERFILE="$dockerfile"
             gcloud run services update "$service" --project "$GCP_PROJECT_ID" \

@@ -44,6 +44,27 @@ gcloud iam service-accounts add-iam-policy-binding \
   --member="principalSet://iam.googleapis.com/projects/$PROJECT_NUMBER/locations/global/workloadIdentityPools/$POOL/attribute.repository/seismik-org/seismik"
 ```
 
+Con sólo esos tres roles `gcloud builds submit` falla antes de construir: «The
+user is forbidden from accessing the bucket [seismik-15bbb_cloudbuild]». Para
+subir el código, usar la cuota del proyecto y mostrar el registro del build en
+GitHub, la cuenta necesita además:
+
+```bash
+PROJECT_ID=seismik-15bbb
+SA=seismik-github-deployer@$PROJECT_ID.iam.gserviceaccount.com
+
+for role in roles/serviceusage.serviceUsageConsumer roles/logging.viewer; do
+  gcloud projects add-iam-policy-binding "$PROJECT_ID"     --member="serviceAccount:$SA" --role="$role" --condition=None
+done
+
+# Sólo el bucket donde Cloud Build recibe el código, no todo Cloud Storage.
+gcloud storage buckets add-iam-policy-binding "gs://${PROJECT_ID}_cloudbuild"   --member="serviceAccount:$SA" --role=roles/storage.admin
+```
+
+`roles/logging.viewer` basta porque `deploy/cloudbuild.*.yaml` envían el
+registro a Cloud Logging (`CLOUD_LOGGING_ONLY`); con el bucket de registros por
+defecto, `gcloud` exigiría ser Viewer de todo el proyecto.
+
 Cloud Build ya debe tener permiso de escribir en Artifact Registry; se comprueba
 con una construcción existente antes de activar esto. El deployer sólo puede
 crear builds y actualizar Cloud Run: no recibe `Secret Manager Secret Accessor`
@@ -60,6 +81,19 @@ Variables**, crea estas variables de repositorio (no son secretos):
 | `GCP_DEPLOY_SERVICE_ACCOUNT` | `seismik-github-deployer@seismik-15bbb.iam.gserviceaccount.com` |
 
 Hasta que ambas existan, las tareas de deploy aparecen como **Skipped** y no
-alteran producción. Los cambios de `deploy/cloudflare-edge-router.js` no se
+alteran producción.
+
+## Qué se despliega
+
+La API, el dispatcher e integraciones se importan entre sí (el dispatcher decide
+la alarma con `api/felt_area.py`; la API usa `eew/official.py`), así que un
+cambio en `src/api`, `src/dispatcher`, `src/integrations`, `src/eew`,
+`src/crowdsourcing` o `src/reporting` los redespliega a los tres. El detector
+sólo depende de `src/eew`. Integraciones fija su comando en Cloud Run
+(`python -m dispatcher.integrations`), por eso sirve cualquiera de las dos
+imágenes de worker.
+
+Si un deploy falla por permisos, se arreglan los permisos y en GitHub se usa
+**Re-run failed jobs** en esa ejecución: no hace falta otro commit. Los cambios de `deploy/cloudflare-edge-router.js` no se
 publican automáticamente: requieren un token de Cloudflare con alcance mínimo
 y se incorporarán en un workflow separado.
