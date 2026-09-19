@@ -7,6 +7,9 @@ RUN useradd --create-home --uid 10001 appuser
 COPY requirements-backend.txt ./
 RUN pip install --no-cache-dir -r requirements-backend.txt
 COPY src ./src
+# El mismo proceso alberga el publicador de X y el sondeo de catálogos.
+# Ambos cargan este archivo desde el directorio de trabajo al iniciar.
+COPY official_sources.json ./official_sources.json
 USER appuser
 
 EXPOSE 8080

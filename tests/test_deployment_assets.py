@@ -9,7 +9,9 @@ def test_api_image_contains_official_source_catalog() -> None:
     assert "COPY official_sources.json ./official_sources.json" in dockerfile
 
 
-@pytest.mark.parametrize("name", ["Dockerfile.dispatcher", "Dockerfile.x-publisher"])
+@pytest.mark.parametrize(
+    "name", ["Dockerfile.dispatcher", "Dockerfile.integrations", "Dockerfile.x-publisher"]
+)
 def test_x_publisher_images_contain_official_source_catalog(name: str) -> None:
     """El publicador de X consulta esos catálogos; sin el archivo no arranca."""
 
