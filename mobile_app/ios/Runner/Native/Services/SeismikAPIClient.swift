@@ -425,7 +425,7 @@ public final class SeismikAPIClient {
 
     /// Obtiene el historial de sismos recientes con soporte para autorización de sesión, reintento y caché offline.
     public func fetchRecentEvents(
-        sources: [String] = ["sgc_colombia", "usgs_global"],
+        sources: [String] = ["sgc_colombia", "usgs_global", "emsc_global"],
         days: Int = 15,
         minimumMagnitude: Double = 2.5
     ) async throws -> [SeismicEvent] {

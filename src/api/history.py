@@ -142,7 +142,7 @@ async def _recent_preliminary_events(
 
 @router.get("/history")
 async def official_history(
-    sources: str = Query(default="sgc_colombia,usgs_global", max_length=300),
+    sources: str = Query(default="sgc_colombia,usgs_global,emsc_global", max_length=300),
     days: int = Query(default=7, ge=1, le=30),
     minimum_magnitude: float = Query(default=2.5, ge=0, le=10),
     limit: int = Query(default=200, ge=1, le=500),
@@ -161,7 +161,7 @@ async def official_history(
     if not selected and not include_preliminary:
         selected = [
             available[source_id]
-            for source_id in ("sgc_colombia", "usgs_global")
+            for source_id in ("sgc_colombia", "usgs_global", "emsc_global")
             if source_id in available
         ]
 

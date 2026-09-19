@@ -256,6 +256,14 @@ public struct SettingsView: View {
                     }
 
                     HistorySourceRow(
+                        title: "EMSC · Europa y Mediterráneo",
+                        subtitle: "Centro Sismológico Euro-Mediterráneo · fuente secundaria.",
+                        isActive: state.isSourceActive("emsc_global")
+                    ) {
+                        state.toggleSource("emsc_global")
+                    }
+
+                    HistorySourceRow(
                         title: "Seismik / SeedLink · Preliminar",
                         subtitle: "Detección automática STA/LTA multiestación.",
                         isActive: state.isSourceActive("seismik_seedlink_preliminary")

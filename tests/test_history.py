@@ -138,6 +138,33 @@ async def test_history_aggregates_filters_and_caches(monkeypatch: pytest.MonkeyP
 
 
 @pytest.mark.asyncio
+async def test_default_history_sources_include_emsc(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[str] = []
+
+    async def fake_fetch(source, _start, _end, _timeout_seconds):
+        calls.append(source.id)
+        return []
+
+    monkeypatch.setattr(history, "_fetch_source", fake_fetch)
+    redis = FakeRedis(decode_responses=True)
+    app = FastAPI()
+    app.include_router(history.router)
+    app.dependency_overrides[get_app_settings] = lambda: AppSettings(
+        official_sources_path="official_sources.json"
+    )
+    app.dependency_overrides[get_redis] = lambda: redis
+    app.dependency_overrides[require_mobile_events_read] = lambda: UNLIMITED_PRINCIPAL
+
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        response = await client.get("/v1/events/history")
+
+    assert response.status_code == 200
+    assert sorted(calls) == ["emsc_global", "sgc_colombia", "usgs_global"]
+
+
+@pytest.mark.asyncio
 async def test_history_cache_is_scoped_by_limit(monkeypatch: pytest.MonkeyPatch) -> None:
     calls = 0
 

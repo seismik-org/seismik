@@ -18,7 +18,6 @@ import '../widgets/perimeter_circles.dart';
 import '../widgets/status_pill.dart';
 import 'event_detail_screen.dart';
 
-
 /// Historial de sismos como mapa interactivo con panel inferior deslizable.
 ///
 /// El mapa ocupa la pantalla completa y nunca queda bloqueado: la hoja inferior
@@ -172,55 +171,55 @@ class _MonitorScreenState extends State<MonitorScreen> {
       ),
     ];
     final Widget content = Stack(
-        children: <Widget>[
-          GoogleMap(
-            initialCameraPosition: CameraPosition(target: center, zoom: 5.8),
-            markers: markers,
-            circles: perimeters,
-            clusterManagers: _clusterManagers,
-            onTap: (_) => state.selectEvent(null),
-            myLocationEnabled: hasPosition,
-            myLocationButtonEnabled: hasPosition,
-            compassEnabled: false,
-            zoomControlsEnabled: false,
-            mapToolbarEnabled: false,
-            // El padding evita que los controles nativos queden bajo la hoja.
-            padding: EdgeInsets.only(
-              bottom: MediaQuery.sizeOf(context).height * _collapsed,
+      children: <Widget>[
+        GoogleMap(
+          initialCameraPosition: CameraPosition(target: center, zoom: 5.8),
+          markers: markers,
+          circles: perimeters,
+          clusterManagers: _clusterManagers,
+          onTap: (_) => state.selectEvent(null),
+          myLocationEnabled: hasPosition,
+          myLocationButtonEnabled: hasPosition,
+          compassEnabled: false,
+          zoomControlsEnabled: false,
+          mapToolbarEnabled: false,
+          // El padding evita que los controles nativos queden bajo la hoja.
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.sizeOf(context).height * _collapsed,
+          ),
+        ),
+        DraggableScrollableSheet(
+          controller: _sheet,
+          initialChildSize: _resting,
+          minChildSize: _collapsed,
+          maxChildSize: _expanded,
+          snap: true,
+          snapSizes: const <double>[_collapsed, _resting, _expanded],
+          builder: (context, controller) => _SheetSurface(
+            onRefresh: state.refreshNetworkData,
+            // Sólo se construyen las filas visibles. Con 200 sismos, armarlas
+            // todas en cada cambio era trabajo perdido en teléfonos modestos.
+            child: ListView.builder(
+              controller: controller,
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
+              itemCount: header.length + events.length + footer.length,
+              itemBuilder: (context, index) {
+                if (index < header.length) return header[index];
+                final int eventIndex = index - header.length;
+                if (eventIndex < events.length) {
+                  final SeismicEvent event = events[eventIndex];
+                  return _EventTile(
+                    event: event,
+                    onOpenDetail: () => _openDetail(event),
+                  );
+                }
+                return footer[eventIndex - events.length];
+              },
             ),
           ),
-          DraggableScrollableSheet(
-            controller: _sheet,
-            initialChildSize: _resting,
-            minChildSize: _collapsed,
-            maxChildSize: _expanded,
-            snap: true,
-            snapSizes: const <double>[_collapsed, _resting, _expanded],
-            builder: (context, controller) => _SheetSurface(
-              onRefresh: state.refreshNetworkData,
-              // Sólo se construyen las filas visibles. Con 200 sismos, armarlas
-              // todas en cada cambio era trabajo perdido en teléfonos modestos.
-              child: ListView.builder(
-                controller: controller,
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
-                itemCount: header.length + events.length + footer.length,
-                itemBuilder: (context, index) {
-                  if (index < header.length) return header[index];
-                  final int eventIndex = index - header.length;
-                  if (eventIndex < events.length) {
-                    final SeismicEvent event = events[eventIndex];
-                    return _EventTile(
-                      event: event,
-                      onOpenDetail: () => _openDetail(event),
-                    );
-                  }
-                  return footer[eventIndex - events.length];
-                },
-              ),
-            ),
-          ),
-        ],
-      );
+        ),
+      ],
+    );
 
     if (usesCupertino) {
       // En iPhone el mapa llega hasta los bordes y la identidad flota sobre él,
@@ -273,6 +272,7 @@ class _MonitorScreenState extends State<MonitorScreen> {
   static String _sourceLabel(String id) => switch (id) {
     'sgc_colombia' => 'SGC',
     'usgs_global' => 'USGS',
+    'emsc_global' => 'EMSC',
     'igp_peru' => 'IGP',
     'ingv_italy' => 'INGV',
     'geonet_new_zealand' => 'GeoNet',
@@ -487,12 +487,18 @@ class _SyncBanner extends StatelessWidget {
                       (pending == 1
                           ? '1 reporte espera conexión.'
                           : '$pending reportes esperan conexión.'),
-                  style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w500),
+                  style: const TextStyle(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ),
               if (pending > 0)
                 CupertinoButton(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
                   minimumSize: Size.zero,
                   onPressed: () {
                     unawaited(HapticFeedback.lightImpact());
@@ -629,11 +635,11 @@ class _EventTile extends StatelessWidget {
     );
   }
 
-
   static String _agencyLabel(SeismicEvent event) => switch (event.sourceId) {
     'seismik_seedlink_preliminary' => 'Seismik / SeedLink · PRELIMINAR',
     'sgc_colombia' => 'SGC',
     'usgs_global' => 'USGS',
+    'emsc_global' => 'EMSC',
     'igp_peru' => 'IGP',
     'ingv_italy' => 'INGV',
     'geonet_new_zealand' => 'GeoNet',

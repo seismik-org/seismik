@@ -50,6 +50,7 @@ WITHDRAWN_STATUSES = frozenset({"deleted"})
 # Nombre corto y nombre en español de cada fuente de official_sources.json.
 AGENCIES: dict[str, tuple[str, str]] = {
     "usgs_global": ("USGS", "Servicio Geológico de Estados Unidos (USGS)"),
+    "emsc_global": ("EMSC", "Centro Sismológico Euro-Mediterráneo (EMSC/CSEM)"),
     "ingv_italy": ("INGV", "Instituto Nacional de Geofísica y Vulcanología de Italia (INGV)"),
     "geonet_new_zealand": ("GeoNet", "GeoNet / GNS Science (Nueva Zelanda)"),
     "bmkg_indonesia": ("BMKG", "Agencia de Meteorología, Climatología y Geofísica de Indonesia (BMKG)"),
