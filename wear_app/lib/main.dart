@@ -89,9 +89,14 @@ class _WatchHomeState extends State<WatchHome> {
       _loading = true;
       _error = null;
     });
-    // La ubicación primero: con ella el registro queda en el sitio correcto y
-    // se puede estimar la sacudida de cada sismo donde está la persona.
-    await _locate();
+    // La ubicación mejora el registro y permite estimar la sacudida, pero no
+    // puede retrasar la consulta: se pide en paralelo y la pantalla se
+    // recalcula sola cuando llega.
+    final Future<void> locating = _locate();
+    await Future.any(<Future<void>>[
+      locating,
+      Future<void>.delayed(const Duration(seconds: 3)),
+    ]);
     try {
       final List<WearEvent> events = await _api.recentEvents(
         latitude: _position?.latitude,
@@ -126,10 +131,14 @@ class _WatchHomeState extends State<WatchHome> {
           permission == LocationPermission.deniedForever) {
         return;
       }
+      // La última conocida llega al instante; el GPS de un reloj bajo techo
+      // puede tardar medio minuto en fijar posición.
+      final Position? known = await Geolocator.getLastKnownPosition();
+      if (known != null && mounted) setState(() => _position = known);
       final Position position = await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(
           accuracy: LocationAccuracy.medium,
-          timeLimit: Duration(seconds: 20),
+          timeLimit: Duration(seconds: 25),
         ),
       );
       if (mounted) setState(() => _position = position);
@@ -140,7 +149,11 @@ class _WatchHomeState extends State<WatchHome> {
 
   @override
   Widget build(BuildContext context) {
-    final WearEvent? latest = _events.isEmpty ? null : _events.first;
+    final WearEvent? latest = headlineEvent(
+      _events,
+      latitude: _position?.latitude,
+      longitude: _position?.longitude,
+    );
     return Scaffold(
       body: SafeArea(
         child: RefreshIndicator(
@@ -298,6 +311,13 @@ class _LatestCard extends StatelessWidget {
           if (intensity != null) ...<Widget>[
             const SizedBox(height: 12),
             _IntensityBadge(intensity: intensity, distanceKm: distance),
+          ] else if (position == null) ...<Widget>[
+            const SizedBox(height: 10),
+            const Text(
+              'Buscando tu ubicación para estimar la sacudida',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: _muted, fontSize: 11, height: 1.3),
+            ),
           ],
         ],
       ),
@@ -315,6 +335,17 @@ class _IntensityBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final Color color = intensityColor(intensity);
+    if (intensity < feltIntensity) {
+      // Por debajo de III no se siente: decirlo es más honesto que pintar un
+      // número de intensidad que nadie notó.
+      return Text(
+        distanceKm == null
+            ? 'No se sintió aquí'
+            : 'No se sintió aquí · a ${distanceKm!.round()} km',
+        textAlign: TextAlign.center,
+        style: const TextStyle(color: _muted, fontSize: 11),
+      );
+    }
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
