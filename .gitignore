@@ -39,3 +39,6 @@ deploy/artifacts/
 *.tmp
 *.log
 *.log.err
+
+# La configuración de Firebase del reloj es la misma del teléfono y tampoco se versiona.
+wear_app/android/app/google-services.json

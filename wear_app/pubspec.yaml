@@ -1,0 +1,39 @@
+name: seismik_wear
+description: "Seismik para Wear OS: el último sismo y la sacudida estimada en tu muñeca."
+publish_to: none
+# Los códigos del reloj van en su propia banda para no chocar con los
+# del teléfono dentro de la misma ficha de Play.
+version: 1.0.0+10001
+
+environment:
+  sdk: ">=3.11.0 <4.0.0"
+  flutter: ">=3.41.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  firebase_app_check: ^0.4.6
+  firebase_core: ^4.13.0
+  geolocator: ^14.0.3
+  http: ^1.6.0
+  shared_preferences: ^2.5.5
+  # Mismo modelo de sacudida que la app de teléfono y que el servidor.
+  seismik_shared:
+    path: ../packages/seismik_shared
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_launcher_icons: ^0.14.4
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: assets/images/seismik_logo.png
+  adaptive_icon_background: "#000000"
+  adaptive_icon_foreground: assets/images/seismik_logo.png
+  min_sdk_android: 28

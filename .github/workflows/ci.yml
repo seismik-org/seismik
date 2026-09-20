@@ -113,6 +113,14 @@ jobs:
       - run: flutter pub get
       - run: flutter analyze
       - run: flutter test
+      # La app del reloj comparte el modelo de sacudida con la del teléfono:
+      # un cambio en `packages/seismik_shared` tiene que pasar por las dos.
+      - name: Analizar y probar la app de Wear OS
+        working-directory: wear_app
+        run: |
+          flutter pub get
+          flutter analyze
+          flutter test
 
   android:
     # Comprueba que el release compila de verdad (Dart AOT, Kotlin y R8) sin

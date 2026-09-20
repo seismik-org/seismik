@@ -33,6 +33,11 @@ param(
     [ValidateSet('apk', 'appbundle', 'both')]
     [string]$Artifact = 'both',
 
+    # 'phone' compila mobile_app; 'wear' compila wear_app, la app del reloj,
+    # con la misma clave: Firebase la reconoce como la misma aplicación.
+    [ValidateSet('phone', 'wear')]
+    [string]$Project = 'phone',
+
     [switch]$SkipTests
 )
 
@@ -40,7 +45,7 @@ $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
-$mobileRoot = Join-Path $repoRoot 'mobile_app'
+$mobileRoot = Join-Path $repoRoot $(if ($Project -eq 'wear') { 'wear_app' } else { 'mobile_app' })
 
 function Resolve-RequiredPath([string]$Path, [string]$Label) {
     if (-not (Test-Path -LiteralPath $Path)) {
@@ -94,7 +99,8 @@ try {
     # La clave se incorpora sólo en el manifest de Android durante esta
     # compilación. No vive en Git ni se imprime en la consola. Debe estar
     # restringida por paquete y SHA-1/SHA-256 en Google Cloud.
-    if ([string]::IsNullOrWhiteSpace($env:SEISMIK_GOOGLE_MAPS_API_KEY)) {
+    # El reloj no dibuja mapas: no necesita la clave de Google Maps.
+    if ($Project -eq 'phone' -and [string]::IsNullOrWhiteSpace($env:SEISMIK_GOOGLE_MAPS_API_KEY)) {
         throw ('Falta SEISMIK_GOOGLE_MAPS_API_KEY. Establécela sólo para esta ' +
                'sesión antes de compilar; no la agregues a archivos del repositorio.')
     }

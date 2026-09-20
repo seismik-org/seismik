@@ -1,0 +1,7 @@
+name: seismik_shared
+description: Modelo de sacudida compartido por la app de teléfono y la de reloj.
+publish_to: none
+version: 1.0.0
+
+environment:
+  sdk: ">=3.11.0 <4.0.0"
