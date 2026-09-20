@@ -79,5 +79,7 @@ android {
 flutter { source = "../.." }
 
 dependencies {
+    // Data Layer: comparte la sesión de la cuenta con el reloj emparejado.
+    implementation("com.google.android.gms:play-services-wearable:19.0.0")
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
 }

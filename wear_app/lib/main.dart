@@ -4,11 +4,15 @@ import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:seismik_shared/felt_area.dart';
 
 import 'api.dart';
 import 'event.dart';
+import 'family.dart';
+import 'family_screen.dart';
+import 'theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -25,11 +29,6 @@ Future<void> main() async {
   runApp(const SeismikWearApp());
 }
 
-/// Fondo negro puro: en la pantalla OLED de un reloj, cada píxel negro está
-/// apagado y no gasta batería.
-const Color _background = Color(0xFF000000);
-const Color _surface = Color(0xFF14181F);
-const Color _muted = Color(0xFF9DADC8);
 
 class SeismikWearApp extends StatelessWidget {
   const SeismikWearApp({super.key});
@@ -41,10 +40,10 @@ class SeismikWearApp extends StatelessWidget {
     theme: ThemeData(
       useMaterial3: true,
       brightness: Brightness.dark,
-      scaffoldBackgroundColor: _background,
+      scaffoldBackgroundColor: wearBackground,
       colorScheme: const ColorScheme.dark(
-        surface: _background,
-        primary: Color(0xFF7CC4FF),
+        surface: wearBackground,
+        primary: wearPrimary,
       ),
       fontFamily: 'Roboto',
     ),
@@ -60,7 +59,12 @@ class WatchHome extends StatefulWidget {
 }
 
 class _WatchHomeState extends State<WatchHome> {
+  static const EventChannel _rotary = EventChannel('seismik/rotary');
+
   final SeismikWearApi _api = SeismikWearApi();
+  final WearFamily _family = WearFamily();
+  final ScrollController _scroll = ScrollController();
+  StreamSubscription<dynamic>? _rotarySubscription;
   List<WearEvent> _events = <WearEvent>[];
   Position? _position;
   bool _loading = true;
@@ -72,6 +76,8 @@ class _WatchHomeState extends State<WatchHome> {
   void initState() {
     super.initState();
     unawaited(_refresh());
+    // La corona: cada giro llega desde MainActivity como un delta en píxeles.
+    _rotarySubscription = _rotary.receiveBroadcastStream().listen(_onRotary);
     // La antigüedad («hace 4 min») envejece sola mientras la pantalla está viva.
     _clock = Timer.periodic(const Duration(seconds: 30), (_) {
       if (mounted) setState(() {});
@@ -81,7 +87,21 @@ class _WatchHomeState extends State<WatchHome> {
   @override
   void dispose() {
     _clock?.cancel();
+    unawaited(_rotarySubscription?.cancel());
+    _scroll.dispose();
     super.dispose();
+  }
+
+  /// Mueve la lista con la corona, sin pasarse de los extremos.
+  void _onRotary(dynamic delta) {
+    if (delta is! num || !_scroll.hasClients) return;
+    final ScrollPosition position = _scroll.position;
+    final double target = (position.pixels + delta.toDouble()).clamp(
+      position.minScrollExtent,
+      position.maxScrollExtent,
+    );
+    if (target == position.pixels) return;
+    _scroll.jumpTo(target);
   }
 
   Future<void> _refresh() async {
@@ -158,8 +178,9 @@ class _WatchHomeState extends State<WatchHome> {
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: _refresh,
-          backgroundColor: _surface,
+          backgroundColor: wearSurface,
           child: ListView(
+            controller: _scroll,
             // Margen generoso: en una pantalla redonda las esquinas se pierden.
             padding: const EdgeInsets.fromLTRB(20, 10, 20, 28),
             children: <Widget>[
@@ -175,6 +196,30 @@ class _WatchHomeState extends State<WatchHome> {
                   _EventRow(event: event, position: _position),
               ],
               const SizedBox(height: 10),
+              SizedBox(
+                height: 44,
+                child: FilledButton(
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (BuildContext context) => FamilyScreen(
+                        family: _family,
+                        eventId: latest?.id,
+                      ),
+                    ),
+                  ),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: wearSurface,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(22),
+                    ),
+                  ),
+                  child: const Text(
+                    'Familia',
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ),
               Center(
                 child: TextButton(
                   onPressed: _loading ? null : _refresh,
@@ -221,7 +266,7 @@ class _Header extends StatelessWidget {
               ? 'Sin conexión'
               : 'SEISMIK',
           style: const TextStyle(
-            color: _muted,
+            color: wearMuted,
             fontSize: 11,
             fontWeight: FontWeight.w800,
             letterSpacing: 1.4,
@@ -243,7 +288,7 @@ class _Message extends StatelessWidget {
     child: Text(
       text,
       textAlign: TextAlign.center,
-      style: const TextStyle(color: _muted, fontSize: 13, height: 1.4),
+      style: const TextStyle(color: wearMuted, fontSize: 13, height: 1.4),
     ),
   );
 }
@@ -271,7 +316,7 @@ class HeroCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
       decoration: BoxDecoration(
-        color: _surface,
+        color: wearSurface,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: magnitudeColor(event).withValues(alpha: 0.5)),
       ),
@@ -298,7 +343,7 @@ class HeroCard extends StatelessWidget {
                 const SizedBox(width: 8),
                 const Text(
                   'preliminar',
-                  style: TextStyle(color: _muted, fontSize: 10),
+                  style: TextStyle(color: wearMuted, fontSize: 10),
                 ),
               ],
             ],
@@ -319,7 +364,7 @@ class HeroCard extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             event.ago(),
-            style: const TextStyle(color: _muted, fontSize: 11),
+            style: const TextStyle(color: wearMuted, fontSize: 11),
           ),
           const SizedBox(height: 8),
           _ShakingLine(
@@ -352,7 +397,7 @@ class _ShakingLine extends StatelessWidget {
       return Text(
         located ? 'Sin epicentro para estimar' : 'Buscando tu ubicación…',
         textAlign: TextAlign.center,
-        style: const TextStyle(color: _muted, fontSize: 11),
+        style: const TextStyle(color: wearMuted, fontSize: 11),
       );
     }
     final String far = distanceKm == null ? '' : ' · a ${_km(distanceKm!)}';
@@ -361,7 +406,7 @@ class _ShakingLine extends StatelessWidget {
         'No se sintió aquí$far',
         textAlign: TextAlign.center,
         maxLines: 2,
-        style: const TextStyle(color: _muted, fontSize: 11, height: 1.3),
+        style: const TextStyle(color: wearMuted, fontSize: 11, height: 1.3),
       );
     }
     final Color color = intensityColor(intensity);
@@ -412,7 +457,7 @@ class _EventRow extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: _surface,
+        color: wearSurface,
         borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
@@ -442,7 +487,7 @@ class _EventRow extends StatelessWidget {
                   intensity == null
                       ? event.ago()
                       : '${event.ago()} · aquí ${intensityRoman(intensity)}',
-                  style: const TextStyle(color: _muted, fontSize: 11),
+                  style: const TextStyle(color: wearMuted, fontSize: 11),
                 ),
               ],
             ),
@@ -459,7 +504,7 @@ Color magnitudeColor(WearEvent event) {
     return const Color(0xFFBF5AF2);
   }
   final double? magnitude = event.magnitude;
-  if (magnitude == null) return _muted;
+  if (magnitude == null) return wearMuted;
   if (magnitude < 3.5) return const Color(0xFF30D158);
   if (magnitude < 4.8) return const Color(0xFF32ADE6);
   if (magnitude < 6.0) return const Color(0xFFFF9F0A);

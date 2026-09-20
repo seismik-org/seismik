@@ -1,15 +1,24 @@
 # Seismik para Wear OS
 
 App acompañante para relojes con Wear OS. Muestra el último sismo, la sacudida
-estimada donde está la persona y los eventos recientes. **No alerta por su
-cuenta**: las alarmas siguen llegando desde el teléfono emparejado, que las
-refleja en el reloj.
+estimada donde está la persona, los eventos recientes y **Familia**, para avisar
+«estoy bien» sin sacar el teléfono. **No alerta por su cuenta**: las alarmas
+siguen llegando desde el teléfono emparejado, que las refleja en el reloj.
+
+La corona mueve la lista: los eventos del codificador rotatorio se traducen a
+píxeles en `MainActivity.kt` y viajan a Dart por el canal `seismik/rotary`,
+porque Flutter no los reconoce como gesto táctil.
 
 ## Qué comparte con la app de teléfono
 
 - El **modelo de sacudida** (`packages/seismik_shared`): la intensidad que ve la
   persona en el reloj sale de las mismas fórmulas que usa el servidor para
   decidir la alarma. No hay una cuarta copia de la matemática.
+- La **sesión de la cuenta**, que el teléfono publica en `/seismik/account` por
+  el Data Layer de Wear y retira al cerrar sesión. El reloj no inicia sesión ni
+  guarda nada: sin teléfono emparejado, Familia lo explica en vez de fallar.
+  Como el puente es código nativo en ambos lados, al tocarlo hay que
+  **reinstalar también el APK del teléfono**, no sólo el del reloj.
 - El **paquete** `com.seismik.app` y la **clave de firma**. Así Firebase
   reconoce al reloj como la misma aplicación y App Check deja registrarlo; en
   Play, ambos APK conviven en una sola ficha y cada dispositivo recibe el suyo.
@@ -52,9 +61,6 @@ adb -s IP_DEL_RELOJ:5555 install -r build/app/outputs/flutter-apk/app-release.ap
 
 ## Lo que falta
 
-- **Familia** («Estoy a salvo») necesita la sesión de la cuenta, que hoy vive
-  sólo en el teléfono. Llevarla al reloj exige sincronizarla por el Data Layer
-  de Wear, con código nativo en ambos lados.
 - **Tile y complicación** para la esfera: se escriben en Kotlin con Jetpack
   Tiles; Flutter no las dibuja.
 - **Alertas propias** en el reloj: hoy llegan reflejadas del teléfono.

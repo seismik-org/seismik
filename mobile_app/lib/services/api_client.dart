@@ -19,6 +19,7 @@ import '../data/models/pending_report.dart';
 import '../data/models/seismik_account.dart';
 import '../data/models/seismic_event.dart';
 import '../data/models/station.dart';
+import 'wear_bridge.dart';
 
 class SeismikApiException implements Exception {
   const SeismikApiException(this.message, this.statusCode);
@@ -68,6 +69,9 @@ class ApiClient {
   static const String _stationsCachedAtKey = 'seismik.stations_cached_at';
   static const String _accountSessionKey = 'seismik.account_session';
   static const String _accountProfileKey = 'seismik.account_profile';
+
+  /// Comparte la sesión con el reloj; en iOS no hace nada.
+  final WearBridge _wear = const WearBridge();
 
   /// Identificadores de sismo que acepta el aviso familiar.
   static final RegExp _eventIdPattern = RegExp(r'^[A-Za-z0-9._:-]{1,128}$');
@@ -697,6 +701,8 @@ class ApiClient {
     final SeismikAccount account = SeismikAccount.fromMap(decoded);
     await _secureStorage.write(key: _accountSessionKey, value: token);
     _accountToken = token;
+    // El reloj emparejado necesita esta sesión para avisar a la familia.
+    await _wear.publishAccount(session: token, name: account.name);
     final SharedPreferences preferences = await SharedPreferences.getInstance();
     await preferences.setString(
       _accountProfileKey,
@@ -707,6 +713,7 @@ class ApiClient {
 
   Future<void> clearAccount() async {
     _accountToken = null;
+    await _wear.clearAccount();
     await _secureStorage.delete(key: _accountSessionKey);
     final SharedPreferences preferences = await SharedPreferences.getInstance();
     await preferences.remove(_accountProfileKey);
