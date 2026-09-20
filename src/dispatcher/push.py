@@ -87,7 +87,16 @@ class PushDispatcher:
         if not targets:
             return PushResult(0, 0)
         if self.apns is None:
-            raise RuntimeError("APNs credentials are not configured")
+            # Una credencial APNs pendiente no debe impedir que FCM entregue el
+            # mismo evento a Android ni provocar reintentos que lo dupliquen.
+            # Se deja una traza inequívoca para completar la configuración de
+            # iOS y el evento queda en la bitácora para que la app lo recupere.
+            LOGGER.error(
+                "APNs no configurado; se omitieron %d destinos iOS event_id=%s",
+                len(targets),
+                event.get("event_id"),
+            )
+            return PushResult(0, 0)
         title, body, data = notification_content(event, critical=critical)
         semaphore = asyncio.Semaphore(self.settings.apns_concurrency)
 

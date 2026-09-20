@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from unittest.mock import AsyncMock
 
 import pytest
 from fakeredis.aioredis import FakeRedis
@@ -119,6 +120,39 @@ async def test_dry_run_is_audited_without_claiming_push_success() -> None:
     assert fields["attempted"] == "1"
     assert json.loads(fields["target_device_ids"]) == ["device-0001"]
     assert "x" * 64 not in fields["payload"]
+
+
+@pytest.mark.asyncio
+async def test_missing_apns_does_not_block_android_delivery(caplog: pytest.LogCaptureFixture) -> None:
+    """Una configuración iOS pendiente no debe reintentar ni duplicar FCM."""
+
+    settings = AppSettings(
+        push_enabled=True,
+        push_mode="testers",
+        push_test_device_ids=("ios-1", "android-1"),
+    )
+    push = object.__new__(PushDispatcher)
+    push.settings = settings
+    push.invalid_token_handler = None
+    push.apns = None
+    push.firebase_app = None
+    push._send_fcm = AsyncMock(return_value=PushResult(attempted=1, succeeded=1))
+    event = {
+        "event_id": "istmina-candidate",
+        "type": "earthquake_candidate",
+        "zone_id": "choco",
+        "detected_at": "2026-09-19T13:44:35Z",
+    }
+    targets = [
+        DeviceTarget(device_id="ios-1", platform="ios", token="a" * 64),
+        DeviceTarget(device_id="android-1", platform="android", token="b" * 64),
+    ]
+
+    result = await push.send(event, targets, critical=True)
+
+    assert result == PushResult(attempted=1, succeeded=1, target_device_ids=("ios-1", "android-1"))
+    push._send_fcm.assert_awaited_once()
+    assert "APNs no configurado" in caplog.text
 
 
 @pytest.mark.asyncio
