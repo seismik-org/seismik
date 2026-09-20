@@ -169,7 +169,7 @@ class _WatchHomeState extends State<WatchHome> {
               else if (latest == null && !_loading)
                 const _Message(text: 'Sin sismos recientes.')
               else if (latest != null) ...<Widget>[
-                _LatestCard(event: latest, position: _position),
+                HeroCard(event: latest, position: _position),
                 const SizedBox(height: 14),
                 for (final WearEvent event in _events.skip(1).take(6))
                   _EventRow(event: event, position: _position),
@@ -249,8 +249,11 @@ class _Message extends StatelessWidget {
 }
 
 /// El último sismo: lo que una persona quiere ver de un vistazo.
-class _LatestCard extends StatelessWidget {
-  const _LatestCard({required this.event, required this.position});
+///
+/// Cabe entera en una pantalla de reloj (426 px): sin desplazarse se lee la
+/// magnitud, el lugar, cuándo fue y cuánto sacudió donde estás.
+class HeroCard extends StatelessWidget {
+  const HeroCard({required this.event, required this.position, super.key});
 
   final WearEvent event;
   final Position? position;
@@ -266,31 +269,41 @@ class _LatestCard extends StatelessWidget {
       position?.longitude,
     );
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
       decoration: BoxDecoration(
         color: _surface,
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(color: magnitudeColor(event).withValues(alpha: 0.5)),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
+        // Sólo lo que ocupa su contenido: dentro de una lista da igual, pero
+        // en cualquier otro sitio la tarjeta se estiraría a toda la pantalla.
+        mainAxisSize: MainAxisSize.min,
         children: <Widget>[
-          Text(
-            event.magnitudeLabel,
-            style: TextStyle(
-              color: magnitudeColor(event),
-              fontSize: 40,
-              height: 1,
-              fontWeight: FontWeight.w900,
-              letterSpacing: -1.5,
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: <Widget>[
+              Text(
+                event.magnitudeLabel,
+                style: TextStyle(
+                  color: magnitudeColor(event),
+                  fontSize: 34,
+                  height: 1,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: -1.2,
+                ),
+              ),
+              if (event.preliminary) ...<Widget>[
+                const SizedBox(width: 8),
+                const Text(
+                  'preliminar',
+                  style: TextStyle(color: _muted, fontSize: 10),
+                ),
+              ],
+            ],
           ),
-          const SizedBox(height: 2),
-          Text(
-            event.preliminary ? 'preliminar' : 'magnitud',
-            style: const TextStyle(color: _muted, fontSize: 11),
-          ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 6),
           Text(
             event.place ?? 'Ubicación por confirmar',
             textAlign: TextAlign.center,
@@ -298,81 +311,89 @@ class _LatestCard extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(
               color: Colors.white,
-              fontSize: 14,
-              height: 1.25,
+              fontSize: 13,
+              height: 1.2,
               fontWeight: FontWeight.w600,
             ),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 4),
           Text(
             event.ago(),
-            style: const TextStyle(color: _muted, fontSize: 12),
+            style: const TextStyle(color: _muted, fontSize: 11),
           ),
-          if (intensity != null) ...<Widget>[
-            const SizedBox(height: 12),
-            _IntensityBadge(intensity: intensity, distanceKm: distance),
-          ] else if (position == null) ...<Widget>[
-            const SizedBox(height: 10),
-            const Text(
-              'Buscando tu ubicación para estimar la sacudida',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: _muted, fontSize: 11, height: 1.3),
-            ),
-          ],
+          const SizedBox(height: 8),
+          _ShakingLine(
+            intensity: intensity,
+            distanceKm: distance,
+            located: position != null,
+          ),
         ],
       ),
     );
   }
 }
 
-/// Lo que se sintió donde está la persona, con la escala de la app.
-class _IntensityBadge extends StatelessWidget {
-  const _IntensityBadge({required this.intensity, required this.distanceKm});
+/// Una sola línea: lo que se sintió aquí, o por qué todavía no se sabe.
+class _ShakingLine extends StatelessWidget {
+  const _ShakingLine({
+    required this.intensity,
+    required this.distanceKm,
+    required this.located,
+  });
 
-  final double intensity;
+  final double? intensity;
   final double? distanceKm;
+  final bool located;
 
   @override
   Widget build(BuildContext context) {
-    final Color color = intensityColor(intensity);
-    if (intensity < feltIntensity) {
-      // Por debajo de III no se siente: decirlo es más honesto que pintar un
-      // número de intensidad que nadie notó.
+    final double? intensity = this.intensity;
+    if (intensity == null) {
       return Text(
-        distanceKm == null
-            ? 'No se sintió aquí'
-            : 'No se sintió aquí · a ${distanceKm!.round()} km',
+        located ? 'Sin epicentro para estimar' : 'Buscando tu ubicación…',
         textAlign: TextAlign.center,
         style: const TextStyle(color: _muted, fontSize: 11),
       );
     }
+    final String far = distanceKm == null ? '' : ' · a ${_km(distanceKm!)}';
+    if (intensity < feltIntensity) {
+      return Text(
+        'No se sintió aquí$far',
+        textAlign: TextAlign.center,
+        maxLines: 2,
+        style: const TextStyle(color: _muted, fontSize: 11, height: 1.3),
+      );
+    }
+    final Color color = intensityColor(intensity);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.18),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(color: color.withValues(alpha: 0.6)),
       ),
-      child: Column(
-        children: <Widget>[
-          Text(
-            'Aquí: ${intensityRoman(intensity)} · ${intensityName(intensity)}',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: color,
-              fontSize: 12,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          if (distanceKm != null)
-            Text(
-              'a ${distanceKm!.round()} km',
-              style: const TextStyle(color: _muted, fontSize: 11),
-            ),
-        ],
+      child: Text(
+        'Aquí ${intensityRoman(intensity)} · ${intensityName(intensity)}$far',
+        textAlign: TextAlign.center,
+        maxLines: 2,
+        style: TextStyle(
+          color: color,
+          fontSize: 11,
+          height: 1.3,
+          fontWeight: FontWeight.w800,
+        ),
       ),
     );
   }
+}
+
+/// «4.259 km», con el punto de miles que se usa en español.
+String _km(double kilometres) {
+  final int rounded = kilometres.round();
+  if (rounded < 1000) return '$rounded km';
+  final String digits = '$rounded';
+  final String head = digits.substring(0, digits.length - 3);
+  return '$head.${digits.substring(digits.length - 3)} km';
 }
 
 class _EventRow extends StatelessWidget {
