@@ -88,6 +88,11 @@
 }
 .agency-list strong { letter-spacing: 0.02em; }
 .agency-list span { color: var(--faint); font-size: 0.82rem; }
+.agency-list .agency-unavailable { border-color: color-mix(in srgb, var(--mmi-4) 55%, var(--line)); }
+.agency-list .agency-unavailable strong { color: var(--mmi-4); }
+.agency-list .agency-unavailable span::before {
+  content: "Estado: "; font-weight: 700; color: var(--mmi-4);
+}
 
 /* ---------- Cómo funciona ---------- */
 .timeline { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin: 0; padding: 0; list-style: none; counter-reset: step; }
