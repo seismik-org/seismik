@@ -94,3 +94,23 @@ class WearEvent {
     return haversineKm(eventLatitude, eventLongitude, latitude, longitude);
   }
 }
+
+/// El sismo que encabeza la pantalla del reloj.
+///
+/// En una muñeca lo que importa es el que te tocó: el más reciente que alcanzó
+/// al menos «se sintió» (III) donde estás. Si ninguno llegó hasta ahí —o no se
+/// conoce la ubicación— encabeza el último del catálogo, y la pantalla dice
+/// que fue lejos.
+WearEvent? headlineEvent(
+  List<WearEvent> events, {
+  double? latitude,
+  double? longitude,
+}) {
+  if (events.isEmpty) return null;
+  if (latitude == null || longitude == null) return events.first;
+  for (final WearEvent event in events) {
+    final double? intensity = event.intensityAt(latitude, longitude);
+    if (intensity != null && intensity >= feltIntensity) return event;
+  }
+  return events.first;
+}

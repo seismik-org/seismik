@@ -86,4 +86,56 @@ void main() {
     expect(event.intensityAt(4.65, -74.05), isNull);
     expect(event.ago(now: now), 'hace 1 h');
   });
+
+  group('qué sismo encabeza la pantalla', () {
+    // Bucaramanga: cerca del nido sísmico. Texas: al otro lado del continente.
+    final WearEvent lejano = WearEvent.fromMap(<String, dynamic>{
+      'event_id': 'usgs:texas',
+      'origin_time': '2026-09-19T19:58:00Z',
+      'magnitude': 2.6,
+      'depth_km': 8.0,
+      'latitude': 32.7,
+      'longitude': -101.9,
+      'place': '8 km SSE of Barstow, Texas',
+    });
+    final WearEvent cercano = WearEvent.fromMap(<String, dynamic>{
+      'event_id': 'sgc:santander',
+      'origin_time': '2026-09-19T19:30:00Z',
+      'magnitude': 4.6,
+      'depth_km': 12.0,
+      'latitude': 6.80,
+      'longitude': -73.10,
+      'place': 'Los Santos, Santander',
+    });
+
+    test('gana el que se sintió aquí, aunque sea más viejo', () {
+      final WearEvent? elegido = headlineEvent(
+        <WearEvent>[lejano, cercano],
+        latitude: 7.10,
+        longitude: -73.12,
+      );
+
+      expect(elegido?.place, 'Los Santos, Santander');
+    });
+
+    test('sin ubicación se muestra el más reciente', () {
+      final WearEvent? elegido = headlineEvent(<WearEvent>[lejano, cercano]);
+
+      expect(elegido?.place, '8 km SSE of Barstow, Texas');
+    });
+
+    test('si ninguno se sintió aquí, encabeza el más reciente', () {
+      final WearEvent? elegido = headlineEvent(
+        <WearEvent>[lejano, cercano],
+        latitude: 4.65,
+        longitude: -74.05,
+      );
+
+      expect(elegido?.place, '8 km SSE of Barstow, Texas');
+    });
+
+    test('sin sismos no hay nada que encabezar', () {
+      expect(headlineEvent(<WearEvent>[]), isNull);
+    });
+  });
 }
