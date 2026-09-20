@@ -126,8 +126,8 @@ def test_only_recent_real_quakes_that_someone_felt_are_alertable() -> None:
     assert not alertable(report(f"{DRILL_PREFIX}bogota"), START, NOW)
     assert not alertable(report(review_status="deleted"), START, NOW)
     assert not alertable(report(magnitude=2.5, depth_km=10.0), START, NOW)
-    assert not alertable(report(magnitude=4.4), START, NOW, minimum_magnitude=4.5)
-    assert alertable(report(magnitude=4.5), START, NOW, minimum_magnitude=4.5)
+    assert not alertable(report(magnitude=3.5, depth_km=10.0), START, NOW, minimum_intensity=4)
+    assert alertable(report(magnitude=4.0, depth_km=10.0), START, NOW, minimum_intensity=4)
 
 
 @pytest.mark.asyncio
@@ -217,10 +217,27 @@ def test_a_blocked_agency_leaves_the_alert_cycle() -> None:
     assert "usgs_global" in watched, "excluir una agencia no puede apagar las demás"
 
 
-def test_the_configured_threshold_reaches_the_alert_decision() -> None:
-    """El umbral del ajuste tiene que llegar a `alertable`, no quedarse escrito."""
+def test_the_alert_threshold_is_shaking_and_not_magnitude() -> None:
+    """Lo que decide es el perímetro de sacudida, no el número de la magnitud.
+
+    Un M4 somero bajo una ciudad sacude IV; el mismo M4 a 150 km de
+    profundidad, en el nido de Bucaramanga, apenas se siente. El umbral del
+    ajuste tiene que llegar a `alertable`, no quedarse escrito.
+    """
 
     settings = AppSettings()
-    assert settings.catalog_alerts_minimum_magnitude == 4.5
-    assert not alertable(report(magnitude=4.4), START, NOW, settings.catalog_alerts_minimum_magnitude)
-    assert alertable(report(magnitude=4.6), START, NOW, settings.catalog_alerts_minimum_magnitude)
+    assert settings.catalog_alerts_minimum_intensity == 4.0
+    threshold = settings.catalog_alerts_minimum_intensity
+
+    assert alertable(report(magnitude=4.0, depth_km=10.0), START, NOW, threshold)
+    assert not alertable(report(magnitude=4.0, depth_km=150.0), START, NOW, threshold)
+    # Un M4.2 somero entra, aunque el umbral por magnitud de antes (4.5) lo dejaba fuera.
+    assert alertable(report(magnitude=4.2, depth_km=8.0), START, NOW, threshold)
+    # Y un sismo profundo grande sí alcanza esa sacudida en superficie.
+    assert alertable(report(magnitude=6.5, depth_km=150.0), START, NOW, threshold)
+
+
+def test_without_a_threshold_everything_felt_still_alerts() -> None:
+    """El valor por defecto no puede endurecer a quien llame sin pasarlo."""
+
+    assert alertable(report(magnitude=4.0, depth_km=150.0), START, NOW)

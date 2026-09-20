@@ -74,7 +74,10 @@ class AppSettings(BaseSettings):
     # Alertas por perímetro para los sismos de los catálogos oficiales
     # (integrations/catalog_alerts.py). Apagadas hasta activarlas en Cloud Run.
     catalog_alerts_enabled: bool = False
-    catalog_alerts_minimum_magnitude: float = Field(default=4.5, ge=0, le=10)
+    # Filtra por la sacudida estimada, no por la magnitud: un sismo somero
+    # bajo una ciudad sacude más que uno grande y lejano. IV es donde la app
+    # empieza a alertar; el dispatcher decide después quién recibe qué.
+    catalog_alerts_minimum_intensity: float = Field(default=4.0, ge=1, le=12)
     catalog_alerts_excluded_source_ids: tuple[str, ...] = ("sgc_colombia",)
     catalog_alerts_poll_seconds: float = Field(default=60.0, ge=30, le=3_600)
     catalog_alerts_max_age_minutes: float = Field(default=60.0, ge=5, le=1_440)
