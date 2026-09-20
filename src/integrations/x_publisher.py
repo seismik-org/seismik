@@ -149,8 +149,22 @@ class XPublisher:
 
     # --- Catálogos oficiales ----------------------------------------------------
 
+    def watched_catalogs(self) -> tuple[OfficialSource, ...]:
+        """Catálogos que entran al ciclo automático de publicación.
+
+        Una agencia puede quedar fuera sin salir del catálogo público: la API
+        la sigue sirviendo y la app la sigue mostrando.
+        """
+
+        excluded = set(self.settings.x_publisher_excluded_source_ids)
+        return tuple(
+            source
+            for source in load_sources(self.settings.official_sources_path)
+            if source.enabled and source.id not in excluded
+        )
+
     async def _run_catalogs(self) -> None:
-        sources = tuple(source for source in load_sources(self.settings.official_sources_path) if source.enabled)
+        sources = self.watched_catalogs()
         LOGGER.info("X publisher vigila %s catálogos oficiales", len(sources))
         while not self.stop_event.is_set():
             try:
@@ -185,7 +199,7 @@ class XPublisher:
             if origin is None or not start <= origin <= now + timedelta(minutes=5):
                 continue
             event = catalog_event(source, report)
-            if not eligible(event, self.settings.x_publisher_minimum_magnitude):
+            if not eligible(event, self.settings.x_publisher_catalog_minimum_magnitude):
                 # Sin marca: si la agencia revisa la magnitud al alza, sale en otra consulta.
                 continue
             if self._waiting_for_local_agency(source, report, origin, now, local_countries):

@@ -126,6 +126,8 @@ def test_only_recent_real_quakes_that_someone_felt_are_alertable() -> None:
     assert not alertable(report(f"{DRILL_PREFIX}bogota"), START, NOW)
     assert not alertable(report(review_status="deleted"), START, NOW)
     assert not alertable(report(magnitude=2.5, depth_km=10.0), START, NOW)
+    assert not alertable(report(magnitude=4.4), START, NOW, minimum_magnitude=4.5)
+    assert alertable(report(magnitude=4.5), START, NOW, minimum_magnitude=4.5)
 
 
 @pytest.mark.asyncio
@@ -203,3 +205,22 @@ async def test_a_large_upward_revision_is_announced_again() -> None:
     await redis.xtrim(settings.official_stream, maxlen=1)
     push = await dispatch_stream(redis, settings)
     assert [event["preferred_report"]["magnitude"] for event, _targets, _critical in push.calls] == [7.1]
+
+
+def test_a_blocked_agency_leaves_the_alert_cycle() -> None:
+    """Misma regla que en el publicador: fuera del ciclo, no del catálogo."""
+
+    feed = feed_with(FakeRedis(decode_responses=True), {})
+    watched = {source.id for source in feed.watched_sources()}
+
+    assert "sgc_colombia" not in watched
+    assert "usgs_global" in watched, "excluir una agencia no puede apagar las demás"
+
+
+def test_the_configured_threshold_reaches_the_alert_decision() -> None:
+    """El umbral del ajuste tiene que llegar a `alertable`, no quedarse escrito."""
+
+    settings = AppSettings()
+    assert settings.catalog_alerts_minimum_magnitude == 4.5
+    assert not alertable(report(magnitude=4.4), START, NOW, settings.catalog_alerts_minimum_magnitude)
+    assert alertable(report(magnitude=4.6), START, NOW, settings.catalog_alerts_minimum_magnitude)

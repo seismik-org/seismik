@@ -52,13 +52,15 @@ def _origin(report: OfficialReport) -> datetime | None:
     return moment if moment.tzinfo else moment.replace(tzinfo=timezone.utc)
 
 
-def alertable(report: OfficialReport, start: datetime, now: datetime) -> bool:
+def alertable(
+    report: OfficialReport, start: datetime, now: datetime, minimum_magnitude: float = 0.0
+) -> bool:
     """Un sismo real y reciente, con magnitud, que alguien pudo sentir."""
 
     origin = _origin(report)
     if origin is None or not start <= origin <= now + timedelta(minutes=5):
         return False
-    if report.magnitude is None:
+    if report.magnitude is None or report.magnitude < minimum_magnitude:
         return False
     if report.source_id == "simulation" or is_drill(report.official_event_id):
         return False
@@ -95,9 +97,7 @@ class CatalogAlertFeed:
         if not self.settings.catalog_alerts_enabled:
             LOGGER.info("Alertas por catálogo apagadas (SEISMIK_CATALOG_ALERTS_ENABLED=false)")
             return
-        sources = tuple(
-            source for source in load_sources(self.settings.official_sources_path) if source.enabled
-        )
+        sources = self.watched_sources()
         LOGGER.info("Alertas por catálogo vigilan %s catálogos oficiales", len(sources))
         while not self.stop_event.is_set():
             try:
@@ -110,6 +110,20 @@ class CatalogAlertFeed:
                 await asyncio.wait_for(
                     self.stop_event.wait(), timeout=self.settings.catalog_alerts_poll_seconds
                 )
+
+    def watched_sources(self) -> tuple[OfficialSource, ...]:
+        """Catálogos que entran al ciclo automático de alertas.
+
+        Una agencia puede quedar fuera sin salir del catálogo público: la API
+        la sigue sirviendo y la app la sigue mostrando.
+        """
+
+        excluded = set(self.settings.catalog_alerts_excluded_source_ids)
+        return tuple(
+            source
+            for source in load_sources(self.settings.official_sources_path)
+            if source.enabled and source.id not in excluded
+        )
 
     async def poll(self, sources: tuple[OfficialSource, ...], now: datetime) -> int:
         """Entrega al dispatcher los sismos nuevos; devuelve cuántos entregó."""
@@ -133,7 +147,9 @@ class CatalogAlertFeed:
         found.sort(key=lambda item: (-item[0].priority, item[1].origin_time))
         delivered = 0
         for source, report in found:
-            if not alertable(report, start, now):
+            if not alertable(
+                report, start, now, self.settings.catalog_alerts_minimum_magnitude
+            ):
                 continue
             outcome = await self.bus.publish_once(
                 self.settings.official_stream, catalog_alert_event(source, report, now)
