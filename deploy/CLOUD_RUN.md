@@ -263,9 +263,14 @@ Hasta ahora el dispatcher sólo recibía reportes oficiales de sismos que SeedLi
 había detectado. `seismik-integrations` ahora puede consultar cada minuto los
 catálogos de `official_sources.json` (`integrations/catalog_alerts.py`) y dejar
 en `stream:seismik:official` cada sismo que alguien pudo sentir. Está apagado
-por defecto (`SEISMIK_CATALOG_ALERTS_ENABLED=false`). Avisan desde
-`SEISMIK_CATALOG_ALERTS_MINIMUM_MAGNITUDE` (4.5) y omiten las agencias de
-`SEISMIK_CATALOG_ALERTS_EXCLUDED_SOURCE_IDS` (hoy `["sgc_colombia"]`). Los webhooks de
+por defecto (`SEISMIK_CATALOG_ALERTS_ENABLED=false`). Avisan cuando el
+sismo alcanza `SEISMIK_CATALOG_ALERTS_MINIMUM_INTENSITY` (IV, sacudida ligera)
+en algún punto, medido con el mismo perímetro que usa la app, y omiten las
+agencias de `SEISMIK_CATALOG_ALERTS_EXCLUDED_SOURCE_IDS` (hoy
+`["sgc_colombia"]`). El filtro es por sacudida y no por magnitud: un M4 somero
+bajo una ciudad entra y un M4 a 150 km de profundidad del nido de Bucaramanga
+no. Quién recibe alarma o aviso lo sigue decidiendo el dispatcher con la
+intensidad estimada en cada teléfono. Los webhooks de
 organizaciones no reciben esos sismos. Las alertas respetan `SEISMIK_PUSH_MODE`
 del dispatcher: en `testers` sólo llegan a los teléfonos de prueba.
 

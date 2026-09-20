@@ -53,20 +53,26 @@ def _origin(report: OfficialReport) -> datetime | None:
 
 
 def alertable(
-    report: OfficialReport, start: datetime, now: datetime, minimum_magnitude: float = 0.0
+    report: OfficialReport, start: datetime, now: datetime, minimum_intensity: float = FELT
 ) -> bool:
-    """Un sismo real y reciente, con magnitud, que alguien pudo sentir."""
+    """Un sismo real y reciente que sacude al menos `minimum_intensity`.
+
+    El filtro es el perímetro de sacudida, no la magnitud: un M4 somero bajo
+    una ciudad sacude más que un M6 profundo y lejano. `radius_km` devuelve
+    `None` cuando ni en el epicentro se alcanza esa intensidad.
+    """
 
     origin = _origin(report)
     if origin is None or not start <= origin <= now + timedelta(minutes=5):
         return False
-    if report.magnitude is None or report.magnitude < minimum_magnitude:
+    if report.magnitude is None:
         return False
     if report.source_id == "simulation" or is_drill(report.official_event_id):
         return False
     if is_withdrawn({"preferred_report": {"review_status": report.review_status}}):
         return False
-    return radius_km(report.magnitude, report.depth_km, FELT) is not None
+    threshold = max(FELT, minimum_intensity)
+    return radius_km(report.magnitude, report.depth_km, threshold) is not None
 
 
 def catalog_alert_event(
@@ -148,7 +154,7 @@ class CatalogAlertFeed:
         delivered = 0
         for source, report in found:
             if not alertable(
-                report, start, now, self.settings.catalog_alerts_minimum_magnitude
+                report, start, now, self.settings.catalog_alerts_minimum_intensity
             ):
                 continue
             outcome = await self.bus.publish_once(
