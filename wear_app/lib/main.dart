@@ -89,9 +89,14 @@ class _WatchHomeState extends State<WatchHome> {
       _loading = true;
       _error = null;
     });
-    unawaited(_locate());
+    // La ubicación primero: con ella el registro queda en el sitio correcto y
+    // se puede estimar la sacudida de cada sismo donde está la persona.
+    await _locate();
     try {
-      final List<WearEvent> events = await _api.recentEvents();
+      final List<WearEvent> events = await _api.recentEvents(
+        latitude: _position?.latitude,
+        longitude: _position?.longitude,
+      );
       if (!mounted) return;
       setState(() {
         _events = events;

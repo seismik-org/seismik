@@ -71,6 +71,10 @@ class SeismikWearApi {
             'platform': 'android',
             'play_integrity_token': await _integrityToken(),
             'locale': 'es',
+            // El servidor exige coordenadas o una zona. Sin permiso de
+            // ubicación todavía, el reloj se registra en la zona global, como
+            // hace el iPhone; al llegar la ubicación se vuelve a registrar.
+            if (latitude == null || longitude == null) 'zone_id': 'global',
             'latitude': ?latitude,
             'longitude': ?longitude,
             // El reloj no muestra alarmas propias: sólo consulta.
@@ -87,7 +91,8 @@ class SeismikWearApi {
     }
     if (response.statusCode >= 400) {
       throw SeismikWearException(
-        'El servidor rechazó el registro del reloj (${response.statusCode}).',
+        'El servidor rechazó el registro del reloj (${response.statusCode}). '
+        'Vuelve a intentarlo en un momento.',
       );
     }
     final Map<String, dynamic> payload =
@@ -100,9 +105,14 @@ class SeismikWearApi {
 
   /// Últimos sismos. Si el servidor falla, lanza: quien llama decide si
   /// muestra lo guardado, para no hacer pasar lo viejo por nuevo.
-  Future<List<WearEvent>> recentEvents({int days = 3, int limit = 20}) async {
+  Future<List<WearEvent>> recentEvents({
+    int days = 3,
+    int limit = 20,
+    double? latitude,
+    double? longitude,
+  }) async {
     String? session = await _session();
-    session ??= await register();
+    session ??= await register(latitude: latitude, longitude: longitude);
 
     Future<http.Response> ask(String token) => _client
         .get(
@@ -118,7 +128,9 @@ class SeismikWearApi {
     http.Response response = await ask(session);
     if (response.statusCode == 401 || response.statusCode == 403) {
       // La sesión caducó: registrarse otra vez es barato y silencioso.
-      response = await ask(await register());
+      response = await ask(
+        await register(latitude: latitude, longitude: longitude),
+      );
     }
     if (response.statusCode >= 400) {
       throw SeismikWearException(
