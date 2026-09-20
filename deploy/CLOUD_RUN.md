@@ -196,7 +196,11 @@ sin detener los webhooks.
 Publica los sismos nuevos de las agencias de `official_sources.json`: consulta
 sus catálogos cada 2 minutos (`SEISMIK_X_PUBLISHER_POLL_SECONDS`) y publica una
 vez cada sismo con origen en la última hora y magnitud desde
-`SEISMIK_X_PUBLISHER_MINIMUM_MAGNITUDE`. Un sismo que reportan varias agencias
+`SEISMIK_X_PUBLISHER_CATALOG_MINIMUM_MAGNITUDE` (4.5). El umbral de las
+detecciones propias es otro y no cambia: `SEISMIK_X_PUBLISHER_MINIMUM_MAGNITUDE`
+(2.5). `SEISMIK_X_PUBLISHER_EXCLUDED_SOURCE_IDS` deja fuera del ciclo automático
+las agencias que se indiquen —hoy `["sgc_colombia"]`, que bloqueó al servidor—
+sin sacarlas del catálogo: la API y la app las siguen sirviendo. Un sismo que reportan varias agencias
 sale una sola vez, con el reporte local; dentro de los países de una agencia
 local, el USGS espera 15 minutos a que ésta lo publique. Las detecciones
 propias por SeedLink no se publican (`SEISMIK_X_PUBLISHER_SOURCE=official_catalogs`;
@@ -259,7 +263,9 @@ Hasta ahora el dispatcher sólo recibía reportes oficiales de sismos que SeedLi
 había detectado. `seismik-integrations` ahora puede consultar cada minuto los
 catálogos de `official_sources.json` (`integrations/catalog_alerts.py`) y dejar
 en `stream:seismik:official` cada sismo que alguien pudo sentir. Está apagado
-por defecto (`SEISMIK_CATALOG_ALERTS_ENABLED=false`). Los webhooks de
+por defecto (`SEISMIK_CATALOG_ALERTS_ENABLED=false`). Avisan desde
+`SEISMIK_CATALOG_ALERTS_MINIMUM_MAGNITUDE` (4.5) y omiten las agencias de
+`SEISMIK_CATALOG_ALERTS_EXCLUDED_SOURCE_IDS` (hoy `["sgc_colombia"]`). Los webhooks de
 organizaciones no reciben esos sismos. Las alertas respetan `SEISMIK_PUSH_MODE`
 del dispatcher: en `testers` sólo llegan a los teléfonos de prueba.
 

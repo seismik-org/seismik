@@ -468,7 +468,7 @@ async def test_old_quakes_are_not_news(monkeypatch: pytest.MonkeyPatch) -> None:
 
 @pytest.mark.asyncio
 async def test_a_magnitude_revised_above_the_threshold_is_posted_later(monkeypatch: pytest.MonkeyPatch) -> None:
-    catalogs: dict[str, Any] = {"sgc_colombia": [catalog_report(SGC, "SGC2026a", magnitude=2.3)]}
+    catalogs: dict[str, Any] = {"sgc_colombia": [catalog_report(SGC, "SGC2026a", magnitude=4.3)]}
     serve_catalogs(monkeypatch, catalogs)
     posts = capture_posts(monkeypatch)
     pub = await publisher()
@@ -476,7 +476,7 @@ async def test_a_magnitude_revised_above_the_threshold_is_posted_later(monkeypat
     await pub.poll_catalogs(SOURCES, NOW)
     assert posts == [] and await audit_actions(pub) == [], "bajo el umbral no se marca ni se audita"
 
-    catalogs["sgc_colombia"] = [catalog_report(SGC, "SGC2026a", magnitude=2.7)]
+    catalogs["sgc_colombia"] = [catalog_report(SGC, "SGC2026a", magnitude=4.7)]
     await pub.poll_catalogs(SOURCES, NOW + timedelta(minutes=2))
     assert len(posts) == 1
 
@@ -518,3 +518,34 @@ async def test_a_failing_catalog_does_not_block_the_others(monkeypatch: pytest.M
     await pub.poll_catalogs(SOURCES, NOW)
 
     assert len(posts) == 1
+
+
+@pytest.mark.asyncio
+async def test_a_blocked_agency_leaves_the_automatic_cycle(monkeypatch: pytest.MonkeyPatch) -> None:
+    """El SGC bloqueó al servidor: consultarlo en bucle sólo alarga el bloqueo.
+
+    Sale del ciclo automático, no del catálogo: la API y la app lo siguen
+    sirviendo cuando alguien lo pide.
+    """
+
+    pub = await publisher()
+    watched = {source.id for source in pub.watched_catalogs()}
+
+    assert "sgc_colombia" not in watched
+    assert "usgs_global" in watched, "excluir una agencia no puede apagar las demás"
+
+    everything = await publisher(x_publisher_excluded_source_ids=())
+    assert "sgc_colombia" in {source.id for source in everything.watched_catalogs()}
+
+
+@pytest.mark.asyncio
+async def test_the_catalog_threshold_does_not_silence_seismik_detections() -> None:
+    """Un catálogo global no es una alarma: publica desde M4.5.
+
+    Las detecciones propias conservan su umbral; son otra cosa.
+    """
+
+    pub = await publisher()
+
+    assert pub.settings.x_publisher_catalog_minimum_magnitude == 4.5
+    assert pub.settings.x_publisher_minimum_magnitude == 2.5

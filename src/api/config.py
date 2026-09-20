@@ -50,6 +50,12 @@ class AppSettings(BaseSettings):
     x_publisher_enabled: bool = False
     x_publisher_dry_run: bool = True
     x_publisher_minimum_magnitude: float = Field(default=2.5, ge=0, le=10)
+    # El catálogo global no es una alarma temprana: evita publicar todos los
+    # microeventos, sin cambiar el umbral de detecciones propias de Seismik.
+    x_publisher_catalog_minimum_magnitude: float = Field(default=4.5, ge=0, le=10)
+    # Una fuente puede quedar temporalmente fuera del ciclo automático (por
+    # ejemplo si bloquea al servidor) sin borrarla del catálogo público.
+    x_publisher_excluded_source_ids: tuple[str, ...] = ("sgc_colombia",)
     # Adjunta la imagen del boletín (integrations/bulletin_card.py) a cada post.
     x_publisher_images: bool = True
     # Qué publica: los sismos nuevos de los catálogos de official_sources.json o
@@ -68,6 +74,8 @@ class AppSettings(BaseSettings):
     # Alertas por perímetro para los sismos de los catálogos oficiales
     # (integrations/catalog_alerts.py). Apagadas hasta activarlas en Cloud Run.
     catalog_alerts_enabled: bool = False
+    catalog_alerts_minimum_magnitude: float = Field(default=4.5, ge=0, le=10)
+    catalog_alerts_excluded_source_ids: tuple[str, ...] = ("sgc_colombia",)
     catalog_alerts_poll_seconds: float = Field(default=60.0, ge=30, le=3_600)
     catalog_alerts_max_age_minutes: float = Field(default=60.0, ge=5, le=1_440)
     x_consumer_key: SecretStr = SecretStr("")
