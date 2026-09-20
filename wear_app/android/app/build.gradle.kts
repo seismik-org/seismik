@@ -76,3 +76,8 @@ kotlin {
 flutter {
     source = "../.."
 }
+
+dependencies {
+    // Data Layer: lee la sesión de la cuenta que publica el teléfono.
+    implementation("com.google.android.gms:play-services-wearable:19.0.0")
+}
