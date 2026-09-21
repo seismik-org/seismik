@@ -241,35 +241,43 @@ class StreamConsumer:
 
     async def _family_targets(self, circle_id: str, reporter: str) -> list[DeviceTarget]:
         members = {str(item) for item in await self.redis.smembers(family_members_key(circle_id))}
-        device_ids: set[str] = set()
+        linked_devices: set[str] = set()
+        unlinked_members: set[str] = set()
         for member in members - {reporter}:
             linked = await devices_for_account(self.redis, member)
             if linked:
-                device_ids.update(linked)
+                linked_devices.update(linked)
             else:
                 # Familiar que todavía no inició sesión en la versión con cuenta:
                 # su pertenencia al círculo sigue ligada al teléfono.
-                device_ids.add(member)
+                unlinked_members.add(member)
         # Tampoco se avisa en otros teléfonos de quien reportó.
-        device_ids -= await devices_for_account(self.redis, reporter)
+        device_ids = (linked_devices | unlinked_members) - await devices_for_account(
+            self.redis, reporter
+        )
         targets: list[DeviceTarget] = []
-        unreachable: list[str] = []
+        # «No me llegó» tiene dos causas muy distintas y desde fuera se ven
+        # igual: que esa cuenta no tenga ningún teléfono enlazado, o que el
+        # teléfono esté enlazado pero sin token de notificaciones, por permiso
+        # denegado o porque aún no lo entregó el sistema.
+        without_link = 0
+        without_token = 0
         for device_id in sorted(device_ids):
             target = await self.devices.resolve(device_id)
             if target is None:
-                # Miembro del círculo sin dispositivo con token: ni enlazó su
-                # cuenta a un teléfono ni concedió permiso de notificaciones.
-                # Sin esta traza, el aviso «no llegó» es indistinguible de un
-                # fallo de envío.
-                unreachable.append(device_id)
+                if device_id in unlinked_members:
+                    without_link += 1
+                else:
+                    without_token += 1
                 continue
             targets.append(target)
         LOGGER.info(
-            "Family fan-out circle=%s miembros=%d destinos=%d sin_dispositivo=%d plataformas=%s",
+            "Family fan-out circle=%s miembros=%d destinos=%d sin_enlace=%d sin_token=%d plataformas=%s",
             circle_id,
             len(members),
             len(targets),
-            len(unreachable),
+            without_link,
+            without_token,
             ",".join(sorted({target.platform.value for target in targets})) or "-",
         )
         return targets
