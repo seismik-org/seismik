@@ -251,10 +251,13 @@ class StreamConsumer:
                 # Familiar que todavía no inició sesión en la versión con cuenta:
                 # su pertenencia al círculo sigue ligada al teléfono.
                 unlinked_members.add(member)
-        # Tampoco se avisa en otros teléfonos de quien reportó.
-        device_ids = (linked_devices | unlinked_members) - await devices_for_account(
-            self.redis, reporter
-        )
+        # Tampoco se avisa en otros teléfonos de quien reportó. Un teléfono que
+        # cambió de dueño sin cerrar sesión limpiamente sigue enlazado a la
+        # cuenta anterior, y entonces se descarta aquí aunque su dueño actual
+        # sea otro miembro del círculo: por eso se cuentan.
+        own_devices = await devices_for_account(self.redis, reporter)
+        candidates = linked_devices | unlinked_members
+        device_ids = candidates - own_devices
         targets: list[DeviceTarget] = []
         # «No me llegó» tiene dos causas muy distintas y desde fuera se ven
         # igual: que esa cuenta no tenga ningún teléfono enlazado, o que el
@@ -272,12 +275,13 @@ class StreamConsumer:
                 continue
             targets.append(target)
         LOGGER.info(
-            "Family fan-out circle=%s miembros=%d destinos=%d sin_enlace=%d sin_token=%d plataformas=%s",
+            "Family fan-out circle=%s miembros=%d destinos=%d sin_enlace=%d sin_token=%d propios=%d plataformas=%s",
             circle_id,
             len(members),
             len(targets),
             without_link,
             without_token,
+            len(candidates & own_devices),
             ",".join(sorted({target.platform.value for target in targets})) or "-",
         )
         return targets
