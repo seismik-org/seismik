@@ -134,4 +134,32 @@ async def test_the_log_separates_a_missing_link_from_a_missing_token(caplog) -> 
     assert "destinos=1" in caplog.text
     assert "sin_enlace=1" in caplog.text, "la abuela no tiene cuenta enlazada"
     assert "sin_token=1" in caplog.text, "la tablet de Luis no tiene token"
+    assert "propios=0" in caplog.text
     assert "plataformas=android" in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_a_phone_still_linked_to_the_reporter_is_counted(caplog) -> None:
+    """Un teléfono que cambió de dueño sin cerrar sesión limpiamente sigue
+    enlazado a la cuenta anterior. El reparto lo descarta por «propio» aunque
+    ahora sea de otro miembro, y desaparecía del registro sin dejar rastro: ni
+    destino, ni sin_enlace, ni sin_token."""
+
+    redis = FakeRedis(decode_responses=True)
+    await redis.sadd("seismik:family:members:casa", "google-ana", "google-luis")
+    await redis.sadd("seismik:account:devices:google-ana", "iphone-prestado")
+    await redis.sadd("seismik:account:devices:google-luis", "iphone-prestado", "phone-luis")
+    consumer = StreamConsumer(
+        redis,
+        AppSettings(),
+        KnownDevices("iphone-prestado", "phone-luis"),  # type: ignore[arg-type]
+        RecordingPush(),  # type: ignore[arg-type]
+    )
+
+    with caplog.at_level("INFO"):
+        targets = await consumer._family_targets("casa", "google-ana")
+
+    assert [target.device_id for target in targets] == ["phone-luis"]
+    assert "propios=1" in caplog.text
+    assert "sin_enlace=0" in caplog.text
+    assert "sin_token=0" in caplog.text
