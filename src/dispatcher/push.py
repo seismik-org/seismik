@@ -164,7 +164,15 @@ class PushDispatcher:
         if not targets:
             return PushResult(0, 0)
         if self.firebase_app is None:
-            raise RuntimeError("Firebase credentials are not configured")
+            # Misma regla que con APNs: lo que falta es la credencial, no el
+            # evento. Tumbar el envío entero dejaría también a los iPhone sin
+            # alerta, y reintentar sólo duplicaría lo ya entregado.
+            LOGGER.error(
+                "Firebase no configurado; se omitieron %d destinos Android event_id=%s",
+                len(targets),
+                event.get("event_id"),
+            )
+            return PushResult(0, 0)
         title, body, payload = notification_content(event, critical=critical)
         data = {key: stringify(value) for key, value in payload.items()}
         data["channel_id"] = "seismic_critical_alerts" if critical else "seismic_updates"
@@ -236,7 +244,16 @@ class PushDispatcher:
         )
         if not all(required):
             return None
-        key = Path(self.settings.apns_key_path or "").read_text(encoding="utf-8")
+        try:
+            key = Path(self.settings.apns_key_path or "").read_text(encoding="utf-8")
+        except OSError:
+            # Igual que con Firebase: la clave ausente o ilegible apaga iOS, no
+            # el dispatcher entero.
+            LOGGER.exception(
+                "Clave APNs ilegible en %s; iOS se queda sin envío",
+                self.settings.apns_key_path,
+            )
+            return None
         return APNs(
             key=key,
             key_id=self.settings.apns_key_id,
@@ -249,12 +266,25 @@ class PushDispatcher:
         try:
             return firebase_admin.get_app("seismik-push")
         except ValueError:
+            pass
+        try:
             credential = (
                 credentials.Certificate(self.settings.firebase_credentials_path)
                 if self.settings.firebase_credentials_path
                 else credentials.ApplicationDefault()
             )
             return firebase_admin.initialize_app(credential, name="seismik-push")
+        except (OSError, ValueError):
+            # Una credencial ilegible tumbaba el proceso al arrancar, y Cloud
+            # Run lo reiniciaba en bucle: sin dispatcher no sale ninguna alerta,
+            # ni de sismo ni de familia, tampoco a los iPhone. Preferimos que
+            # siga vivo con Android apagado y un error imposible de pasar por
+            # alto, como ya se hace con APNs.
+            LOGGER.exception(
+                "Credencial de Firebase ilegible en %s; Android se queda sin envío",
+                self.settings.firebase_credentials_path,
+            )
+            return None
 
 
 def notification_content(

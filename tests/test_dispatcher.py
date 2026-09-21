@@ -179,3 +179,60 @@ async def test_poison_message_moves_to_dead_letter_after_bounded_retries() -> No
     assert dead_letter["attempts"] == "2"
     pending = await redis.xpending(settings.candidate_stream, settings.dispatcher_group)
     assert pending["pending"] == 0
+
+
+@pytest.mark.asyncio
+async def test_unreadable_firebase_credentials_keep_the_dispatcher_alive(
+    tmp_path, caplog
+) -> None:
+    """Un secreto vacío tumbaba el proceso al arrancar y Cloud Run lo reiniciaba
+    en bucle: sin dispatcher no salía ninguna alerta, ni de sismo ni de familia,
+    tampoco a los iPhone."""
+
+    empty = tmp_path / "firebase-admin.json"
+    empty.write_text("", encoding="utf-8")
+    settings = AppSettings(
+        push_enabled=True,
+        push_mode="testers",
+        push_test_device_ids=("android-1",),
+        firebase_credentials_path=str(empty),
+    )
+
+    with caplog.at_level("ERROR"):
+        push = PushDispatcher(settings)
+
+    assert push.firebase_app is None
+    assert "Credencial de Firebase ilegible" in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_missing_firebase_skips_android_without_dropping_ios(caplog) -> None:
+    settings = AppSettings(
+        push_enabled=True,
+        push_mode="testers",
+        push_test_device_ids=("ios-1", "android-1"),
+    )
+    push = object.__new__(PushDispatcher)
+    push.settings = settings
+    push.invalid_token_handler = None
+    push.apns = object()
+    push.firebase_app = None
+    push._send_apns = AsyncMock(return_value=PushResult(attempted=1, succeeded=1))
+    event = {
+        "event_id": "istmina-candidate",
+        "type": "earthquake_candidate",
+        "zone_id": "choco",
+        "detected_at": "2026-09-19T13:44:35Z",
+    }
+    targets = [
+        DeviceTarget(device_id="ios-1", platform="ios", token="a" * 64),
+        DeviceTarget(device_id="android-1", platform="android", token="b" * 64),
+    ]
+
+    result = await push.send(event, targets, critical=True)
+
+    assert result == PushResult(
+        attempted=1, succeeded=1, target_device_ids=("ios-1", "android-1")
+    )
+    push._send_apns.assert_awaited_once()
+    assert "Firebase no configurado" in caplog.text
