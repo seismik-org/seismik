@@ -4,7 +4,6 @@ import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:seismik_shared/felt_area.dart';
 
@@ -12,6 +11,7 @@ import 'api.dart';
 import 'event.dart';
 import 'family.dart';
 import 'family_screen.dart';
+import 'rotary.dart';
 import 'theme.dart';
 
 Future<void> main() async {
@@ -28,7 +28,6 @@ Future<void> main() async {
   }
   runApp(const SeismikWearApp());
 }
-
 
 class SeismikWearApp extends StatelessWidget {
   const SeismikWearApp({super.key});
@@ -59,12 +58,9 @@ class WatchHome extends StatefulWidget {
 }
 
 class _WatchHomeState extends State<WatchHome> {
-  static const EventChannel _rotary = EventChannel('seismik/rotary');
-
   final SeismikWearApi _api = SeismikWearApi();
   final WearFamily _family = WearFamily();
   final ScrollController _scroll = ScrollController();
-  StreamSubscription<dynamic>? _rotarySubscription;
   List<WearEvent> _events = <WearEvent>[];
   Position? _position;
   bool _loading = true;
@@ -76,8 +72,6 @@ class _WatchHomeState extends State<WatchHome> {
   void initState() {
     super.initState();
     unawaited(_refresh());
-    // La corona: cada giro llega desde MainActivity como un delta en píxeles.
-    _rotarySubscription = _rotary.receiveBroadcastStream().listen(_onRotary);
     // La antigüedad («hace 4 min») envejece sola mientras la pantalla está viva.
     _clock = Timer.periodic(const Duration(seconds: 30), (_) {
       if (mounted) setState(() {});
@@ -87,21 +81,8 @@ class _WatchHomeState extends State<WatchHome> {
   @override
   void dispose() {
     _clock?.cancel();
-    unawaited(_rotarySubscription?.cancel());
     _scroll.dispose();
     super.dispose();
-  }
-
-  /// Mueve la lista con la corona, sin pasarse de los extremos.
-  void _onRotary(dynamic delta) {
-    if (delta is! num || !_scroll.hasClients) return;
-    final ScrollPosition position = _scroll.position;
-    final double target = (position.pixels + delta.toDouble()).clamp(
-      position.minScrollExtent,
-      position.maxScrollExtent,
-    );
-    if (target == position.pixels) return;
-    _scroll.jumpTo(target);
   }
 
   Future<void> _refresh() async {
@@ -176,57 +157,61 @@ class _WatchHomeState extends State<WatchHome> {
     );
     return Scaffold(
       body: SafeArea(
-        child: RefreshIndicator(
-          onRefresh: _refresh,
-          backgroundColor: wearSurface,
-          child: ListView(
-            controller: _scroll,
-            // Margen generoso: en una pantalla redonda las esquinas se pierden.
-            padding: const EdgeInsets.fromLTRB(20, 10, 20, 28),
-            children: <Widget>[
-              _Header(offline: _offline, loading: _loading),
-              if (_error != null)
-                _Message(text: _error!)
-              else if (latest == null && !_loading)
-                const _Message(text: 'Sin sismos recientes.')
-              else if (latest != null) ...<Widget>[
-                HeroCard(event: latest, position: _position),
-                const SizedBox(height: 14),
-                for (final WearEvent event in _events.skip(1).take(6))
-                  _EventRow(event: event, position: _position),
-              ],
-              const SizedBox(height: 10),
-              SizedBox(
-                height: 44,
-                child: FilledButton(
-                  onPressed: () => Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (BuildContext context) => FamilyScreen(
-                        family: _family,
-                        eventId: latest?.id,
+        child: RotaryScroll(
+          controller: _scroll,
+          child: RefreshIndicator(
+            onRefresh: _refresh,
+            backgroundColor: wearSurface,
+            child: ListView(
+              controller: _scroll,
+              // Margen generoso: en una pantalla redonda las esquinas se pierden.
+              padding: const EdgeInsets.fromLTRB(20, 10, 20, 28),
+              children: <Widget>[
+                _Header(offline: _offline, loading: _loading),
+                if (_error != null)
+                  _Message(text: _error!)
+                else if (latest == null && !_loading)
+                  const _Message(text: 'Sin sismos recientes.')
+                else if (latest != null) ...<Widget>[
+                  HeroCard(event: latest, position: _position),
+                  const SizedBox(height: 14),
+                  for (final WearEvent event in _events.skip(1).take(6))
+                    _EventRow(event: event, position: _position),
+                ],
+                const SizedBox(height: 10),
+                SizedBox(
+                  height: 44,
+                  child: FilledButton(
+                    onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (BuildContext context) =>
+                            FamilyScreen(family: _family, eventId: latest?.id),
+                      ),
+                    ),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: wearSurface,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(22),
+                      ),
+                    ),
+                    child: const Text(
+                      'Familia',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                   ),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: wearSurface,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(22),
-                    ),
-                  ),
-                  child: const Text(
-                    'Familia',
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                ),
+                Center(
+                  child: TextButton(
+                    onPressed: _loading ? null : _refresh,
+                    child: const Text('Actualizar'),
                   ),
                 ),
-              ),
-              Center(
-                child: TextButton(
-                  onPressed: _loading ? null : _refresh,
-                  child: const Text('Actualizar'),
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
