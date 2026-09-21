@@ -374,8 +374,9 @@ jobs:
             deploy_worker seismik-dispatcher Dockerfile.combined-worker \
               --update-env-vars=SEISMIK_X_PUBLISHER_ENABLED=true,SEISMIK_X_PUBLISHER_DRY_RUN=false,SEISMIK_CATALOG_ALERTS_ENABLED=true \
               --update-secrets=SEISMIK_X_CONSUMER_KEY=seismik-x-consumer-key:latest,SEISMIK_X_CONSUMER_SECRET=seismik-x-consumer-secret:latest,SEISMIK_X_ACCESS_TOKEN=seismik-x-access-token:latest,SEISMIK_X_ACCESS_TOKEN_SECRET=seismik-x-access-token-secret:latest
-            gcloud run services describe seismik-dispatcher --project "$GCP_PROJECT_ID" \
-              --region "$GCP_REGION" --format='value(status.conditions[?type=Ready].status)' | grep -qx True
+            # `services update` sólo retorna después de crear y enrutar una
+            # revisión lista. Evitamos un filtro JSONPath adicional que podía
+            # devolver salida vacía pese a una revisión ya saludable.
             gcloud run services delete seismik-integrations --project "$GCP_PROJECT_ID" \
               --region "$GCP_REGION" --quiet
           fi
