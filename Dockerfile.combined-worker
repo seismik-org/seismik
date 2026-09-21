@@ -1,0 +1,15 @@
+FROM python:3.12-slim
+
+ENV PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=/app/src
+WORKDIR /app
+
+RUN useradd --create-home --uid 10001 appuser
+COPY requirements-backend.txt ./
+RUN pip install --no-cache-dir -r requirements-backend.txt
+COPY src ./src
+COPY official_sources.json ./official_sources.json
+RUN test -s official_sources.json
+USER appuser
+
+EXPOSE 8080
+CMD ["python", "-m", "dispatcher.combined"]
