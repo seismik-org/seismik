@@ -253,10 +253,25 @@ class StreamConsumer:
         # Tampoco se avisa en otros teléfonos de quien reportó.
         device_ids -= await devices_for_account(self.redis, reporter)
         targets: list[DeviceTarget] = []
+        unreachable: list[str] = []
         for device_id in sorted(device_ids):
             target = await self.devices.resolve(device_id)
-            if target is not None:
-                targets.append(target)
+            if target is None:
+                # Miembro del círculo sin dispositivo con token: ni enlazó su
+                # cuenta a un teléfono ni concedió permiso de notificaciones.
+                # Sin esta traza, el aviso «no llegó» es indistinguible de un
+                # fallo de envío.
+                unreachable.append(device_id)
+                continue
+            targets.append(target)
+        LOGGER.info(
+            "Family fan-out circle=%s miembros=%d destinos=%d sin_dispositivo=%d plataformas=%s",
+            circle_id,
+            len(members),
+            len(targets),
+            len(unreachable),
+            ",".join(sorted({target.platform.value for target in targets})) or "-",
+        )
         return targets
 
     async def _enqueue_integration_event(self, event: dict[str, Any]) -> None:
