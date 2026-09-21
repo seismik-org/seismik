@@ -64,8 +64,10 @@ jobs:
               - 'src/reporting/**'
               - 'requirements-backend.txt'
               - 'Dockerfile.dispatcher'
+              - 'Dockerfile.combined-worker'
               - 'official_sources.json'
               - 'deploy/cloudbuild.worker.yaml'
+              - '.github/workflows/ci.yml'
             integrations:
               - 'src/api/**'
               - 'src/dispatcher/**'
@@ -75,6 +77,7 @@ jobs:
               - 'src/reporting/**'
               - 'requirements-backend.txt'
               - 'Dockerfile.integrations'
+              - 'Dockerfile.combined-worker'
               - 'official_sources.json'
               - 'deploy/cloudbuild.worker.yaml'
             detector:
@@ -355,11 +358,25 @@ jobs:
             local image="$repo/$service:$SHA"
             docker build --file "$dockerfile" --tag "$image" .
             docker push "$image"
+            shift 2
             gcloud run services update "$service" --project "$GCP_PROJECT_ID" \
-              --region "$GCP_REGION" --image "$image"
+              --region "$GCP_REGION" --image "$image" "$@"
           }
           # `if` y no `[ ] && …`: si el último servicio no cambió, esa prueba
           # devolvía 1 y el paso fallaba aunque los demás se hubieran desplegado.
-          if [ "$DISPATCHER_CHANGED" = true ]; then deploy_worker seismik-dispatcher Dockerfile.dispatcher; fi
-          if [ "$INTEGRATIONS_CHANGED" = true ]; then deploy_worker seismik-integrations Dockerfile.integrations; fi
+          # Dispatcher e integraciones son dos bucles de larga duración que
+          # comparten el mismo proceso. El servicio conserva los volúmenes
+          # APNs/Firebase del dispatcher; aquí se añaden, por referencia, las
+          # credenciales de X que antes estaban únicamente en integrations.
+          # Esperamos la revisión lista antes de retirar el servicio anterior,
+          # para no perder alertas ni publicar dos veces durante el corte.
+          if [ "$DISPATCHER_CHANGED" = true ] || [ "$INTEGRATIONS_CHANGED" = true ]; then
+            deploy_worker seismik-dispatcher Dockerfile.combined-worker \
+              --update-env-vars=SEISMIK_X_PUBLISHER_ENABLED=true,SEISMIK_X_PUBLISHER_DRY_RUN=false,SEISMIK_CATALOG_ALERTS_ENABLED=true \
+              --update-secrets=SEISMIK_X_CONSUMER_KEY=seismik-x-consumer-key:latest,SEISMIK_X_CONSUMER_SECRET=seismik-x-consumer-secret:latest,SEISMIK_X_ACCESS_TOKEN=seismik-x-access-token:latest,SEISMIK_X_ACCESS_TOKEN_SECRET=seismik-x-access-token-secret:latest
+            gcloud run services describe seismik-dispatcher --project "$GCP_PROJECT_ID" \
+              --region "$GCP_REGION" --format='value(status.conditions[?type=Ready].status)' | grep -qx True
+            gcloud run services delete seismik-integrations --project "$GCP_PROJECT_ID" \
+              --region "$GCP_REGION" --quiet
+          fi
           if [ "$DETECTOR_CHANGED" = true ]; then deploy_worker seismik-detector Dockerfile; fi
