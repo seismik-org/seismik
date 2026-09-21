@@ -39,6 +39,34 @@ gcloud secrets create seismik-integration --data-file=integration-webhook.secret
 gcloud secrets create seismik-firebase --data-file=firebase-admin.json
 ```
 
+### Una carpeta montada, un solo secreto
+
+Cloud Run monta cada carpeta desde un único secreto. Si se añade la clave APNs
+en la misma carpeta donde ya estaba la credencial de Firebase, el volumen de
+Firebase deja de montarse y el contenedor lee el archivo equivocado: el
+dispatcher reventaba al arrancar con `JSONDecodeError` porque
+`/secrets/firebase-admin.json` contenía en realidad la clave `.p8`, y Cloud Run
+lo reiniciaba en bucle. Sin dispatcher no sale ninguna alerta.
+
+Por eso cada credencial vive en su propia carpeta, y la variable que la nombra
+apunta ahí:
+
+| Secreto | Carpeta | Variable |
+| --- | --- | --- |
+| `seismik-firebase` | `/secrets-firebase/firebase-admin.json` | `SEISMIK_FIREBASE_CREDENTIALS_PATH` |
+| `seismik-apns-private-key` | `/secrets/AuthKey.p8` | `SEISMIK_APNS_KEY_PATH` |
+
+Para comprobar que un servicio las tiene donde cree:
+
+```bash
+gcloud run services describe seismik-dispatcher --project seismik-15bbb \
+  --region us-east1 \
+  --format="yaml(spec.template.spec.volumes, spec.template.spec.containers[0].volumeMounts)"
+```
+
+Cada volumen de la lista tiene que aparecer también en `volumeMounts`; uno
+declarado y sin montar es justo el síntoma de este fallo.
+
 Concede `roles/secretmanager.secretAccessor` a las cuentas de servicio de los
 tres servicios. Después ejecuta:
 
