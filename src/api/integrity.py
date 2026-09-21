@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import logging
 from dataclasses import dataclass
 from typing import Any
 
@@ -11,6 +12,15 @@ from firebase_admin import app_check, credentials
 
 from api.config import AppSettings
 from api.schemas import DeviceRegistration, Platform
+
+LOGGER = logging.getLogger(__name__)
+
+# La app manda estos marcadores cuando el sistema no le entrega ningún token de
+# App Check. Llegan aquí como si fueran tokens y fallan la verificación igual
+# que uno inválido, pero la causa es otra y se arregla en otro sitio: el
+# proveedor -DeviceCheck en iOS, Play Integrity en Android- no está configurado
+# en Firebase para esa app.
+UNMINTED_TOKENS = frozenset({"seismik-beta-ios-unverified", "seismik-beta-android-unverified"})
 
 
 @dataclass(frozen=True)
@@ -48,11 +58,31 @@ class DeviceIntegrityVerifier:
                 token_fingerprint=hashlib.sha256(token.encode()).hexdigest(),
                 expires_at=None,
             )
+        if token in UNMINTED_TOKENS:
+            # El dispositivo no pudo pedir un token: el proveedor de App Check
+            # no está configurado para esa app en Firebase. Sin esta traza, en
+            # el registro sólo se ve un 401 idéntico al de un token inválido y
+            # se busca el fallo en el teléfono equivocado.
+            LOGGER.warning(
+                "App Check sin configurar para %s: el dispositivo %s no obtuvo token",
+                registration.platform.value,
+                registration.device_id,
+            )
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Device integrity verification failed",
+            )
         try:
             claims: dict[str, Any] = await asyncio.to_thread(
                 app_check.verify_token, token, self.firebase_app
             )
         except Exception as exc:
+            LOGGER.warning(
+                "App Check rechazó el token de %s en el dispositivo %s: %s",
+                registration.platform.value,
+                registration.device_id,
+                exc,
+            )
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Device integrity verification failed",

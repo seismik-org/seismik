@@ -83,3 +83,34 @@ async def test_invalid_remote_app_check_token_is_rejected(monkeypatch) -> None:
     with pytest.raises(HTTPException) as error:
         await verifier.verify(registration)
     assert error.value.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_a_device_that_never_got_a_token_says_so_in_the_log(monkeypatch, caplog) -> None:
+    """La app manda un marcador cuando el sistema no le entrega token de App
+    Check. Antes llegaba aquí como un token cualquiera y el 401 era idéntico al
+    de uno inválido: el fallo parecía del teléfono cuando está en la consola de
+    Firebase, con el proveedor sin configurar."""
+
+    verifier = DeviceIntegrityVerifier(AppSettings(integrity_verification_enabled=False))
+    verifier.firebase_app = object()  # type: ignore[assignment]
+
+    def explode(_token, _app):  # pragma: no cover - no debe llegar a llamarse
+        raise AssertionError("no se consulta a Firebase por un marcador")
+
+    monkeypatch.setattr(app_check, "verify_token", explode)
+    registration = DeviceRegistration(
+        device_id="iphone-de-ana",
+        platform="ios",
+        apns_token="a" * 64,
+        zone_id="andes",
+        app_attest_token="seismik-beta-ios-unverified",
+    )
+
+    with caplog.at_level("WARNING"):
+        with pytest.raises(HTTPException) as error:
+            await verifier.verify(registration)
+
+    assert error.value.status_code == 401
+    assert "App Check sin configurar para ios" in caplog.text
+    assert "iphone-de-ana" in caplog.text
