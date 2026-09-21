@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'family.dart';
+import 'rotary.dart';
 import 'theme.dart';
 
 /// Familia en la muñeca: avisar que estás bien es lo primero que se hace tras
@@ -19,6 +20,7 @@ class FamilyScreen extends StatefulWidget {
 }
 
 class _FamilyScreenState extends State<FamilyScreen> {
+  final ScrollController _scroll = ScrollController();
   FamilyCircle? _circle;
   bool _loading = true;
   bool _sending = false;
@@ -29,6 +31,12 @@ class _FamilyScreenState extends State<FamilyScreen> {
   void initState() {
     super.initState();
     _load();
+  }
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -92,53 +100,58 @@ class _FamilyScreenState extends State<FamilyScreen> {
     final FamilyCircle? circle = _circle;
     return Scaffold(
       body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(18, 10, 18, 28),
-          children: <Widget>[
-            Text(
-              circle?.name ?? 'Mi familia',
-              textAlign: TextAlign.center,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 15,
-                fontWeight: FontWeight.w800,
+        child: RotaryScroll(
+          controller: _scroll,
+          child: ListView(
+            controller: _scroll,
+            padding: const EdgeInsets.fromLTRB(18, 10, 18, 28),
+            children: <Widget>[
+              Text(
+                circle?.name ?? 'Mi familia',
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
-            ),
-            const SizedBox(height: 12),
-            if (!_signedIn)
-              const _Note(
-                text:
-                    'Inicia sesión en Seismik en tu teléfono para avisar a tu '
-                    'familia desde el reloj.',
-              )
-            else ...<Widget>[
-              _ReportButton(
-                label: 'Estoy bien',
-                color: const Color(0xFF16A34A),
-                enabled: !_sending,
-                onPressed: () => _report(needsHelp: false),
-              ),
-              const SizedBox(height: 8),
-              _ReportButton(
-                label: 'Necesito ayuda',
-                color: const Color(0xFFDC2626),
-                enabled: !_sending,
-                onPressed: () => _report(needsHelp: true),
-              ),
-              if (_message != null) ...<Widget>[
-                const SizedBox(height: 10),
-                _Note(text: _message!),
+              const SizedBox(height: 12),
+              if (!_signedIn)
+                const _Note(
+                  text:
+                      'Inicia sesión en Seismik en tu teléfono para avisar a tu '
+                      'familia desde el reloj.',
+                )
+              else ...<Widget>[
+                _ReportButton(
+                  label: 'Estoy bien',
+                  color: const Color(0xFF16A34A),
+                  enabled: !_sending,
+                  onPressed: () => _report(needsHelp: false),
+                ),
+                const SizedBox(height: 8),
+                _ReportButton(
+                  label: 'Necesito ayuda',
+                  color: const Color(0xFFDC2626),
+                  enabled: !_sending,
+                  onPressed: () => _report(needsHelp: true),
+                ),
+                if (_message != null) ...<Widget>[
+                  const SizedBox(height: 10),
+                  _Note(text: _message!),
+                ],
+                const SizedBox(height: 14),
+                if (_loading)
+                  const _Note(text: 'Consultando a tu familia…')
+                else
+                  for (final FamilyMember member
+                      in circle?.members ?? const <FamilyMember>[])
+                    _MemberRow(member: member),
               ],
-              const SizedBox(height: 14),
-              if (_loading)
-                const _Note(text: 'Consultando a tu familia…')
-              else
-                for (final FamilyMember member in circle?.members ?? const <FamilyMember>[])
-                  _MemberRow(member: member),
             ],
-          ],
+          ),
         ),
       ),
     );
@@ -167,9 +180,7 @@ class _ReportButton extends StatelessWidget {
         backgroundColor: color,
         foregroundColor: Colors.white,
         disabledBackgroundColor: color.withValues(alpha: 0.4),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(23),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(23)),
       ),
       child: Text(
         label,
