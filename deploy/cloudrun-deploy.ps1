@@ -17,6 +17,10 @@ foreach ($secret in @("seismik-webhook", "seismik-crowd", "seismik-consumer", "s
 & $gcloud config set project $Project | Out-Null
 & $gcloud services enable run.googleapis.com cloudbuild.googleapis.com artifactregistry.googleapis.com secretmanager.googleapis.com
 
+# En Cloud Run una carpeta montada pertenece a un solo secreto. Firebase va en
+# `/secrets-firebase` y no en `/secrets`, que es de la clave APNs: al montar la
+# segunda ahi, la primera pierde su sitio y el contenedor lee el archivo
+# equivocado. Eso tumbo al dispatcher en un bucle de reinicios.
 function Deploy-Service([string]$name, [string]$dockerfile, [string]$min, [string]$max) {
   & $gcloud run deploy $name `
     --source . `
@@ -28,9 +32,9 @@ function Deploy-Service([string]$name, [string]$dockerfile, [string]$min, [strin
     --max-instances $max `
     --cpu 1 `
     --memory 512Mi `
-    --set-env-vars "SEISMIK_ENVIRONMENT=production,SEISMIK_REDIS_URL=$RedisUrl,SEISMIK_INTEGRITY_VERIFICATION_ENABLED=true,SEISMIK_PUSH_ENABLED=true,SEISMIK_PUSH_MODE=production,SEISMIK_FIREBASE_CREDENTIALS_PATH=/secrets/firebase-admin.json,PORT=8080" `
+    --set-env-vars "SEISMIK_ENVIRONMENT=production,SEISMIK_REDIS_URL=$RedisUrl,SEISMIK_INTEGRITY_VERIFICATION_ENABLED=true,SEISMIK_PUSH_ENABLED=true,SEISMIK_PUSH_MODE=production,SEISMIK_FIREBASE_CREDENTIALS_PATH=/secrets-firebase/firebase-admin.json,PORT=8080" `
     --set-secrets "SEISMIK_WEBHOOK_HMAC_SECRET=seismik-webhook:latest,SEISMIK_CROWD_MASTER_SECRET=seismik-crowd:latest,SEISMIK_CONSUMER_API_KEY=seismik-consumer:latest,SEISMIK_INTEGRATION_WEBHOOK_MASTER_SECRET=seismik-integration:latest" `
-    --update-secrets "/secrets/firebase-admin.json=seismik-firebase:latest"
+    --update-secrets "/secrets-firebase/firebase-admin.json=seismik-firebase:latest"
 }
 
 Deploy-Service "seismik-api" "Dockerfile.api" "0" "2"
