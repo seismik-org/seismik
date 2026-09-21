@@ -112,10 +112,10 @@ def test_the_notification_names_the_person_and_hides_internal_ids() -> None:
 
 
 @pytest.mark.asyncio
-async def test_a_member_without_a_device_is_counted_in_the_log(caplog) -> None:
-    """«No me llegó» tiene dos causas muy distintas: que el envío falle, o que
-    esa persona no tenga ningún dispositivo con token. Desde fuera se veían
-    igual; el registro ahora las separa."""
+async def test_the_log_separates_a_missing_link_from_a_missing_token(caplog) -> None:
+    """Un aviso que no llega tiene dos causas muy distintas: que esa cuenta no
+    tenga teléfono enlazado, o que lo tenga pero sin token de notificaciones.
+    Desde fuera se veían iguales; el registro ahora las separa."""
 
     redis = FakeRedis(decode_responses=True)
     await family(redis)
@@ -132,5 +132,6 @@ async def test_a_member_without_a_device_is_counted_in_the_log(caplog) -> None:
     assert [target.device_id for target in targets] == ["phone-luis"]
     assert "miembros=3" in caplog.text
     assert "destinos=1" in caplog.text
-    assert "sin_dispositivo=2" in caplog.text, "abuela y la tablet de Luis"
+    assert "sin_enlace=1" in caplog.text, "la abuela no tiene cuenta enlazada"
+    assert "sin_token=1" in caplog.text, "la tablet de Luis no tiene token"
     assert "plataformas=android" in caplog.text
