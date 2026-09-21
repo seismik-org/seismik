@@ -387,8 +387,15 @@ class StreamConsumer:
         return f"seismik:dispatch:failures:{stream}:{message_id}"
 
 
-async def run_dispatcher() -> None:
-    health_server = start_health_server()
+async def run_dispatcher(*, serve_health: bool = True) -> None:
+    """Run mobile-push delivery.
+
+    ``serve_health`` is false only when this consumer shares a Cloud Run
+    container with another long-running worker.  A container may bind its
+    health port once, not once per coroutine.
+    """
+
+    health_server = start_health_server() if serve_health else None
     settings = get_settings()
     redis = Redis.from_url(settings.redis_url, decode_responses=True)
     devices = DeviceRepository(redis)
@@ -407,7 +414,8 @@ async def run_dispatcher() -> None:
     try:
         await worker.run()
     finally:
-        health_server.shutdown()
+        if health_server is not None:
+            health_server.shutdown()
         await redis.aclose()
 
 

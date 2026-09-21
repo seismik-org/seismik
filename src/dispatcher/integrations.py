@@ -151,7 +151,7 @@ async def keep_running(name: str, run: Callable[[], Awaitable[None]], retry_seco
             await asyncio.sleep(retry_seconds)
 
 
-async def run_integrations() -> None:
+async def run_integrations(*, serve_health: bool = True) -> None:
     settings = get_settings()
     redis = Redis.from_url(settings.redis_url, decode_responses=True)
     worker = IntegrationConsumer(redis, settings)
@@ -165,14 +165,15 @@ async def run_integrations() -> None:
         keep_running("Catalog alerts", CatalogAlertFeed(redis, settings).run, X_PUBLISHER_RETRY_SECONDS)
     )
     background = (x_publisher, catalog_alerts)
-    health_server = start_health_server()
+    health_server = start_health_server() if serve_health else None
     try:
         await worker.run()
     finally:
         for task in background:
             task.cancel()
         await asyncio.gather(*background, return_exceptions=True)
-        health_server.shutdown()
+        if health_server is not None:
+            health_server.shutdown()
         await redis.aclose()
 
 
