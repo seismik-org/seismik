@@ -978,8 +978,27 @@ class ApiClient {
     };
   }
 
-  Future<String?> _accountSession() async =>
-      _accountToken ??= await _secureStorage.read(key: _accountSessionKey);
+  /// La sesión de la cuenta, restaurada del almacén seguro la primera vez.
+  ///
+  /// Al recuperarla se le pasa al reloj: alguien puede emparejarlo meses
+  /// después de iniciar sesión, y sin esto la sesión sólo viajaría al volver a
+  /// entrar, que es justo lo que nadie hace.
+  Future<String?> _accountSession() async {
+    final String? cached = _accountToken;
+    if (cached != null) return cached;
+    final String? stored = await _secureStorage.read(key: _accountSessionKey);
+    if (stored == null || stored.isEmpty) return stored;
+    _accountToken = stored;
+    final SharedPreferences preferences = await SharedPreferences.getInstance();
+    final Object? profile = jsonDecode(
+      preferences.getString(_accountProfileKey) ?? 'null',
+    );
+    await _wear.publishAccount(
+      session: stored,
+      name: profile is Map<String, dynamic> ? '${profile['name'] ?? ''}' : null,
+    );
+    return stored;
+  }
 
   /// Búsqueda de familiares exige cuenta. La sesión del dispositivo la
   /// acompaña cuando existe, para asociar el teléfono que recibe los avisos.
