@@ -4,7 +4,7 @@ abstract final class SeismikColors {
   // Base backgrounds
   static const Color obsidian = Color(0xFF0B0E14);
   static const Color obsidianElevated = Color(0xFF141A24);
-  
+
   // Apple HIG System Accents
   static const Color systemBlue = Color(0xFF007AFF);
   static const Color emerald = Color(0xFF30D158);
@@ -89,5 +89,15 @@ abstract final class SeismikTheme {
         brightness: brightness,
         dynamicSchemeVariant: DynamicSchemeVariant.fidelity,
       );
-}
 
+  /// Usa la variante que Android haya publicado para ese modo concreto.
+  ///
+  /// Algunos fabricantes exponen primero (o solamente) una de las dos
+  /// variantes Monet. Exigir luz *y* oscuridad hacía que Seismik descartara
+  /// una paleta válida y volviera al azul de respaldo, aunque las demás apps
+  /// sí usaran Material You.
+  static ColorScheme platformScheme({
+    required ColorScheme? dynamicScheme,
+    required Brightness brightness,
+  }) => dynamicScheme ?? scheme(brightness: brightness);
+}

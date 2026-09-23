@@ -66,16 +66,17 @@ class SeismikApp extends StatelessWidget {
       builder: (ColorScheme? systemLight, ColorScheme? systemDark) {
         return Consumer<MobileSettings>(
           builder: (context, settings, _) {
-            final bool useSystem =
-                settings.useDynamicColor &&
-                systemLight != null &&
-                systemDark != null;
-            final ColorScheme light = useSystem
-                ? systemLight
-                : SeismikTheme.scheme(brightness: Brightness.light);
-            final ColorScheme dark = useSystem
-                ? systemDark
-                : SeismikTheme.scheme(brightness: Brightness.dark);
+            // Monet se resuelve por variante. En ciertos Android/One UI una
+            // variante puede no estar disponible aunque la otra sí lo esté;
+            // no se debe descartar la paleta válida por ello.
+            final ColorScheme light = SeismikTheme.platformScheme(
+              dynamicScheme: settings.useDynamicColor ? systemLight : null,
+              brightness: Brightness.light,
+            );
+            final ColorScheme dark = SeismikTheme.platformScheme(
+              dynamicScheme: settings.useDynamicColor ? systemDark : null,
+              brightness: Brightness.dark,
+            );
             return MaterialApp(
               title: SeismikConstants.appName,
               debugShowCheckedModeBanner: false,
@@ -101,7 +102,10 @@ class SeismikApp extends StatelessWidget {
                   child: child ?? const SizedBox.shrink(),
                 );
               },
-              home: _SeismikShell(dynamicColorAvailable: systemLight != null),
+              home: _SeismikShell(
+                dynamicColorAvailable:
+                    systemLight != null || systemDark != null,
+              ),
             );
           },
         );
@@ -308,9 +312,7 @@ class _IosSeismikShell extends StatelessWidget {
           1 => FeltReportScreen(event: event),
           2 => DamageReportScreen(event: event),
           3 => const FamilySafetyScreen(),
-          _ => IosSettingsScreen(
-            dynamicColorAvailable: dynamicColorAvailable,
-          ),
+          _ => IosSettingsScreen(dynamicColorAvailable: dynamicColorAvailable),
         },
       ),
     );

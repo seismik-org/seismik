@@ -147,7 +147,7 @@ class _MonitorScreenState extends State<MonitorScreen> {
           padding: const EdgeInsets.only(top: 8),
           child: Text(
             statusMessage,
-            style: const TextStyle(color: Colors.orangeAccent),
+            style: TextStyle(color: Theme.of(context).colorScheme.tertiary),
           ),
         ),
       const SizedBox(height: 14),
@@ -610,10 +610,10 @@ class _EventTile extends StatelessWidget {
       child: ListTile(
         leading: CircleAvatar(
           backgroundColor: event.isPreliminary
-              ? Colors.deepPurple.withValues(alpha: 0.20)
+              ? colors.tertiaryContainer
               : colors.errorContainer,
           foregroundColor: event.isPreliminary
-              ? Colors.deepPurple
+              ? colors.onTertiaryContainer
               : colors.onErrorContainer,
           child: Text(
             event.isPreliminary

@@ -17,7 +17,6 @@ import '../widgets/perimeter_circles.dart';
 import 'felt_report_screen.dart';
 import 'damage_report_screen.dart';
 
-
 class EventDetailScreen extends StatelessWidget {
   const EventDetailScreen({required this.event, this.onClose, super.key});
   final SeismicEvent event;
@@ -70,18 +69,22 @@ class EventDetailScreen extends StatelessWidget {
               )
             else
               Card(
-                color: Colors.deepPurple.withValues(alpha: 0.16),
-                child: const Padding(
-                  padding: EdgeInsets.all(14),
+                color: colors.tertiaryContainer,
+                child: Padding(
+                  padding: const EdgeInsets.all(14),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
-                      Icon(Icons.science_outlined, color: Colors.deepPurple),
-                      SizedBox(width: 10),
+                      Icon(
+                        Icons.science_outlined,
+                        color: colors.onTertiaryContainer,
+                      ),
+                      const SizedBox(width: 10),
                       Expanded(
                         child: Text(
                           'SEISMIK / SEEDLINK · PRELIMINAR\n'
                           'Detección automática multiestación. No es una confirmación oficial. Las ondas se miden en cada estación, pero una magnitud solo se mostrará tras calibrar su respuesta instrumental y validarla científicamente.',
+                          style: TextStyle(color: colors.onTertiaryContainer),
                         ),
                       ),
                     ],
@@ -122,7 +125,9 @@ class EventDetailScreen extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 24,
                           fontWeight: FontWeight.w600,
-                          color: CupertinoColors.secondaryLabel.resolveFrom(context),
+                          color: CupertinoColors.secondaryLabel.resolveFrom(
+                            context,
+                          ),
                         ),
                       ),
                     ],
@@ -541,7 +546,11 @@ class _Metric extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            Icon(icon, color: CupertinoColors.activeBlue.resolveFrom(context), size: 22),
+            Icon(
+              icon,
+              color: CupertinoColors.activeBlue.resolveFrom(context),
+              size: 22,
+            ),
             const SizedBox(height: 10),
             Text(
               label,
@@ -586,4 +595,3 @@ class _Metric extends StatelessWidget {
     );
   }
 }
-
