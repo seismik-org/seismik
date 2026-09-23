@@ -28,4 +28,26 @@ void main() {
     expect(theme.colorScheme.primary, samsungScheme.primary);
     expect(theme.colorScheme.surface, samsungScheme.surface);
   });
+
+  test('keeps an available dynamic variant when the other one is missing', () {
+    final ColorScheme darkMonet = ColorScheme.fromSeed(
+      seedColor: const Color(0xFF0A3D91),
+      brightness: Brightness.dark,
+    );
+
+    expect(
+      SeismikTheme.platformScheme(
+        dynamicScheme: darkMonet,
+        brightness: Brightness.dark,
+      ),
+      darkMonet,
+    );
+    expect(
+      SeismikTheme.platformScheme(
+        dynamicScheme: null,
+        brightness: Brightness.light,
+      ),
+      SeismikTheme.scheme(brightness: Brightness.light),
+    );
+  });
 }
