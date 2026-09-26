@@ -63,6 +63,7 @@ class ApiClient {
   static const String _deviceIdKey = 'seismik.device_id';
   static const String _crowdTokenKey = 'seismik.crowd_token';
   static const String _deviceSessionKey = 'seismik.device_session';
+  static const String _pushTokenKey = 'seismik.push_token';
   static const String _eventCacheKey = 'seismik.official_event_cache';
   static const String _alertCursorKey = 'seismik.alert_cursor';
   static const String _stationsCacheKey = 'seismik.stations_cache';
@@ -140,14 +141,41 @@ class ApiClient {
     // compila con SEISMIK_INTEGRITY_REQUIRED=true y nunca usa este fallback.
     integrityToken ??= 'seismik-beta-sideload-unverified';
     final FirebaseMessaging messaging = FirebaseMessaging.instance;
-    final String? pushToken = Platform.isIOS
-        ? await messaging.getAPNSToken()
-        : await messaging.getToken();
-    if (pushToken == null) {
-      throw const SeismikApiException('Push token is not available yet', null);
+    String? pushToken;
+    try {
+      pushToken = Platform.isIOS
+          ? await messaging.getAPNSToken()
+          : await messaging.getToken();
+      if (pushToken != null && pushToken.isNotEmpty) {
+        await _secureStorage.write(key: _pushTokenKey, value: pushToken);
+      } else {
+        pushToken = null;
+      }
+    } catch (_) {
+      // Firebase puede tardar unos segundos en crear/restaurar el token tras
+      // abrir la aplicación o recuperar red. El registro no depende de push.
     }
-    final NotificationSettings permission = await messaging
-        .getNotificationSettings();
+    // Si Firebase está restaurando su estado, conservar el token conocido
+    // evita sacar temporalmente este teléfono de los destinatarios de alertas.
+    final String? cachedPushToken = await _secureStorage.read(
+      key: _pushTokenKey,
+    );
+    if (pushToken == null &&
+        cachedPushToken != null &&
+        cachedPushToken.isNotEmpty) {
+      pushToken = cachedPushToken;
+    }
+
+    bool notificationsAuthorized = false;
+    try {
+      final NotificationSettings permission = await messaging
+          .getNotificationSettings();
+      notificationsAuthorized = Platform.isIOS
+          ? permission.criticalAlert == AppleNotificationSetting.enabled
+          : permission.authorizationStatus == AuthorizationStatus.authorized;
+    } catch (_) {
+      // La preferencia se puede sincronizar en el próximo registro.
+    }
     final Map<String, dynamic> payload = <String, dynamic>{
       'device_id': deviceId,
       'platform': Platform.isIOS ? 'ios' : 'android',
@@ -156,9 +184,7 @@ class ApiClient {
       'zone_id': zoneId,
       'latitude': latitude,
       'longitude': longitude,
-      'critical_alerts_authorized': Platform.isIOS
-          ? permission.criticalAlert == AppleNotificationSetting.enabled
-          : permission.authorizationStatus == AuthorizationStatus.authorized,
+      'critical_alerts_authorized': notificationsAuthorized,
       'receive_early_alerts': receiveEarlyAlerts,
       'receive_official_updates': receiveOfficialUpdates,
       'minimum_notification_magnitude': minimumNotificationMagnitude,

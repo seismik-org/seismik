@@ -32,12 +32,20 @@ class DeviceRepository:
         self, registration: DeviceRegistration, integrity_verified: bool = False
     ) -> None:
         old = cast(dict[str, str], await self.redis.hgetall(self._device_key(registration.device_id)))
+        # Firebase/APNs pueden tardar en restaurar su token después de abrir la
+        # app. Un registro sin token renueva ubicación y preferencias, pero no
+        # debe dejar de enviar alertas a un teléfono que ya tenía uno válido.
+        token = registration.token or (
+            old.get("token", "")
+            if old.get("platform") == registration.platform.value
+            else ""
+        )
         if old:
             await self._remove_indexes(registration.device_id, old)
 
-        if registration.token:
+        if token:
             token_owner = await self.redis.get(
-                self._token_key(registration.platform, registration.token)
+                self._token_key(registration.platform, token)
             )
             if token_owner and token_owner != registration.device_id:
                 await self.unregister(str(token_owner))
@@ -45,7 +53,7 @@ class DeviceRepository:
         record = {
             "device_id": registration.device_id,
             "platform": registration.platform.value,
-            "token": registration.token,
+            "token": token,
             "country_code": registration.country_code or "",
             "zone_id": registration.zone_id or "",
             "latitude": "" if registration.latitude is None else str(registration.latitude),
@@ -61,8 +69,8 @@ class DeviceRepository:
         }
         pipe = self.redis.pipeline(transaction=True)
         pipe.hset(self._device_key(registration.device_id), mapping=cast(dict[Any, Any], record))
-        if registration.token:
-            pipe.set(self._token_key(registration.platform, registration.token), registration.device_id)
+        if token:
+            pipe.set(self._token_key(registration.platform, token), registration.device_id)
         if registration.zone_id:
             pipe.sadd(self._zone_key(registration.zone_id), registration.device_id)
         if registration.latitude is not None and registration.longitude is not None:
