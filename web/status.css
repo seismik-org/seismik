@@ -1,0 +1,19 @@
+.utility-page { max-width: 860px; padding-block: clamp(48px, 10vw, 120px); }
+.utility-page .brand { margin-bottom: clamp(56px, 10vw, 112px); }
+.utility-page h1 { max-width: 720px; margin: 0 0 18px; font-size: clamp(2.6rem, 7vw, 5.3rem); letter-spacing: -0.06em; }
+.utility-page .actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 30px; }
+.status-summary { display: flex; gap: 14px; align-items: center; margin: 38px 0 18px; padding: 20px 22px; border: 1px solid var(--line-strong); border-radius: var(--radius-sm); background: var(--surface); }
+.status-summary p { margin: 3px 0 0; }
+.status-dot { width: 12px; height: 12px; border-radius: 50%; background: var(--faint); box-shadow: 0 0 0 6px color-mix(in srgb, var(--faint) 14%, transparent); }
+.status-dot.ok { background: var(--ok); box-shadow: 0 0 0 6px color-mix(in srgb, var(--ok) 14%, transparent); }
+.status-dot.degraded { background: var(--warn); box-shadow: 0 0 0 6px color-mix(in srgb, var(--warn) 14%, transparent); }
+.status-dot.checking { animation: pulse 1.2s ease-in-out infinite; }
+.status-grid { display: grid; gap: 12px; }
+.status-card { display: flex; justify-content: space-between; gap: 20px; align-items: center; padding: 22px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface); }
+.status-card h2 { margin: 0 0 5px; font-size: 1rem; letter-spacing: -0.01em; }
+.status-card p { margin: 0; color: var(--muted); font-size: .92rem; }
+.state { flex: 0 0 auto; padding: 5px 10px; border: 1px solid var(--line-strong); border-radius: 999px; color: var(--muted); font: 750 .75rem var(--mono); text-transform: uppercase; }
+.state.ok { border-color: color-mix(in srgb, var(--ok) 42%, var(--line)); color: var(--ok); }
+.state.degraded { border-color: color-mix(in srgb, var(--warn) 42%, var(--line)); color: var(--warn); }
+@keyframes pulse { 50% { opacity: .35; } }
+@media (max-width: 520px) { .status-card { align-items: flex-start; flex-direction: column; gap: 14px; } }

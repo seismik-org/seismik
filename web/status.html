@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Estado operativo de los servicios públicos de Seismik.">
+  <meta name="robots" content="noindex">
+  <title>Estado del servicio · Seismik</title>
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32.png">
+  <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+  <link rel="stylesheet" href="/styles.css?v=__ASSET_VERSION__">
+  <link rel="stylesheet" href="/logo.css?v=__ASSET_VERSION__">
+  <link rel="stylesheet" href="/status.css?v=__ASSET_VERSION__">
+  <script src="/status.js?v=__ASSET_VERSION__" defer></script>
+</head>
+<body>
+  <main class="utility-page container">
+    <a class="brand" href="https://seismik.org/" aria-label="Ir a Seismik"><img class="brand-logo" src="/assets/seismik_logo.webp" width="32" height="32" alt="">SEISMIK <span class="brand-tag">ESTADO</span></a>
+    <p class="eyebrow">Estado público</p>
+    <h1>Servicios de Seismik</h1>
+    <p class="lead">Esta página consulta el borde de Seismik y la disponibilidad real de la API. No muestra métricas internas, datos de personas ni credenciales.</p>
+    <section class="status-summary" aria-live="polite">
+      <span class="status-dot checking" aria-hidden="true"></span>
+      <div><strong id="overall-status">Comprobando servicios…</strong><p id="checked-at" class="fine-print">Actualización automática cada 60 segundos.</p></div>
+    </section>
+    <section class="status-grid" aria-label="Servicios">
+      <article class="status-card"><div><h2>API pública</h2><p>Registro, consulta de eventos y API para desarrolladores.</p></div><span id="api-state" class="state checking">Comprobando</span></article>
+      <article class="status-card"><div><h2>Sitio web</h2><p>seismik.org y sus páginas públicas.</p></div><span id="web-state" class="state checking">Comprobando</span></article>
+      <article class="status-card"><div><h2>Portal de desarrolladores</h2><p>devs.seismik.org, autenticación y claves API.</p></div><span id="developers-state" class="state checking">Comprobando</span></article>
+    </section>
+    <p class="fine-print">Un estado degradado significa que una comprobación pública no respondió. No implica por sí solo que una alerta sísmica se haya perdido.</p>
+    <div class="actions"><a class="button secondary" href="https://seismik.org/">Ir a Seismik</a><button id="refresh" class="button" type="button">Actualizar ahora</button></div>
+  </main>
+</body>
+</html>

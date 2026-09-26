@@ -6,4 +6,12 @@
 	# viejos. `no-cache` obliga a revalidar; con ETag la respuesta es un 304.
 	header Cache-Control "no-cache"
 	file_server
+
+	# Conserva el HTTP 404, pero muestra una página útil de Seismik en lugar
+	# de dejar que el navegador presente su propia página de error.
+	handle_errors {
+		@notFound expression {http.error.status_code} == 404
+		rewrite @notFound /404.html
+		file_server
+	}
 }
