@@ -27,6 +27,28 @@ async def test_device_registration_and_spatial_selection() -> None:
     assert not await repository.exists("device-0001")
 
 
+@pytest.mark.asyncio
+async def test_registration_without_a_new_fcm_token_keeps_the_previous_token() -> None:
+    """Un arranque antes de que Firebase responda no desactiva las alertas."""
+    redis = FakeRedis(decode_responses=True)
+    repository = DeviceRepository(redis)
+    await repository.register(DeviceRegistration(
+        device_id="device-token-recovery", platform="android", fcm_token="t" * 64,
+        zone_id="andes", latitude=4.65, longitude=-74.05,
+        play_integrity_token="integrity-token-android",
+    ))
+    await repository.register(DeviceRegistration(
+        device_id="device-token-recovery", platform="android",
+        zone_id="andes", latitude=4.66, longitude=-74.04,
+        play_integrity_token="integrity-token-android",
+    ))
+
+    targets = await repository.recipients(
+        zone_id="andes", latitude=4.66, longitude=-74.04, radius_km=10,
+    )
+    assert [target.token for target in targets] == ["t" * 64]
+
+
 class FakeClusterRedis:
     def __init__(self, result: list) -> None:
         self.result = result
@@ -111,5 +133,4 @@ async def test_unverified_device_blocked_from_crowdsourcing_when_integrity_enabl
         )
     assert exc.value.status_code == 403
     assert "verified device integrity" in exc.value.detail
-
 
