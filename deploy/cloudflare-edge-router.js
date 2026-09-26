@@ -13,6 +13,30 @@ const FIREBASE = "https://seismik-15bbb.firebaseapp.com";
 // vive como secreto del Worker (`EDGE_ORIGIN_SECRET`), nunca en el código.
 const ORIGIN_AUTH_HEADER = "X-Seismik-Origin-Auth";
 
+async function isAvailable(url, init = {}) {
+  try {
+    return (await fetch(url, init)).ok;
+  } catch {
+    return false;
+  }
+}
+
+// La página de estado ve únicamente disponibilidad pública. La comprobación
+// de la API sale por el mismo secreto de origen que usa el enrutador; ningún
+// secreto, métrica interna ni dato de usuarios llega al navegador.
+async function publicStatus(env) {
+  const apiHeaders = env?.EDGE_ORIGIN_SECRET ? { [ORIGIN_AUTH_HEADER]: env.EDGE_ORIGIN_SECRET } : {};
+  const [api, web, developers] = await Promise.all([
+    isAvailable(`${API}/health/ready`, { headers: apiHeaders }),
+    isAvailable(`${WEB}/`),
+    isAvailable(`${WEB}/developers.html`),
+  ]);
+  return Response.json({
+    checked_at: new Date().toISOString(),
+    services: { api, web, developers },
+  }, { headers: { "Cache-Control": "no-store" } });
+}
+
 function targetFor(request) {
   const source = new URL(request.url);
   const host = source.hostname;
@@ -23,6 +47,8 @@ function targetFor(request) {
     if (path.startsWith("/v1/")) origin = API;
     else if (path.startsWith("/__/auth/")) origin = FIREBASE;
     else if (path === "/") path = "/developers.html";
+  } else if (host === "status.seismik.org") {
+    if (path === "/") path = "/status.html";
   } else if (host === "auth.seismik.org") {
     if (path === "/") return new URL("https://devs.seismik.org/");
     else if (path === "/id" || path === "/id/") path = "/auth.html";
@@ -40,7 +66,7 @@ function securityHeaders(host) {
     // No se guarda la respuesta API ni el acceso OAuth. El portal no contiene
     // secretos en HTML: permitir revalidación privada conserva bfcache al ir
     // atrás/adelante y `pageshow` vuelve a consultar la sesión.
-    "Cache-Control": host === "api.seismik.org" || host === "auth.seismik.org"
+    "Cache-Control": host === "api.seismik.org" || host === "auth.seismik.org" || host === "status.seismik.org"
       ? "no-store"
       : "private, no-cache",
     "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
@@ -51,6 +77,7 @@ function securityHeaders(host) {
   });
   if (host === "api.seismik.org") headers.set("Content-Security-Policy", "default-src 'none'; base-uri 'none'; frame-ancestors 'none'");
   else if (host === "devs.seismik.org") headers.set("Content-Security-Policy", "default-src 'self'; script-src 'self' https://www.gstatic.com; style-src 'self'; img-src 'self' data: https://lh3.googleusercontent.com; connect-src 'self' https://api.seismik.org https://identitytoolkit.googleapis.com https://securetoken.googleapis.com; frame-src 'self' https://accounts.google.com https://seismik-15bbb.firebaseapp.com; base-uri 'none'; frame-ancestors 'none'; form-action 'self'");
+  else if (host === "status.seismik.org") headers.set("Content-Security-Policy", "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'");
   else headers.set("Content-Security-Policy", "default-src 'self'; style-src 'self'; img-src 'self' data:; base-uri 'none'; frame-ancestors 'none'; form-action 'self'");
   return headers;
 }
@@ -58,6 +85,13 @@ function securityHeaders(host) {
 export default {
   async fetch(request, env) {
     const source = new URL(request.url);
+    if (source.hostname === "status.seismik.org" && source.pathname === "/api/status") {
+      if (request.method !== "GET") return new Response("Method not allowed", { status: 405 });
+      const response = await publicStatus(env);
+      const headers = new Headers(response.headers);
+      for (const [name, value] of securityHeaders(source.hostname)) headers.set(name, value);
+      return new Response(response.body, { status: response.status, headers });
+    }
     const target = targetFor(request);
     if (target.hostname.endsWith("seismik.org")) return Response.redirect(target, 301);
     const upstreamRequest = new Request(target, request);

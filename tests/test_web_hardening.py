@@ -166,3 +166,25 @@ def test_static_css_and_javascript_are_versioned_before_the_web_image_is_built()
     assert "header Cache-Control \"no-cache\"" in Path("deploy/Caddyfile.web").read_text(
         encoding="utf-8"
     )
+
+
+def test_unknown_web_paths_render_the_seismik_404_page() -> None:
+    caddyfile = Path("deploy/Caddyfile.web").read_text(encoding="utf-8")
+    page = (WEB / "404.html").read_text(encoding="utf-8")
+
+    assert "handle_errors" in caddyfile
+    assert "rewrite @notFound /404.html" in caddyfile
+    assert "Error 404" in page
+    assert "Ir al inicio" in page
+
+
+def test_status_page_is_dynamic_and_does_not_disclose_internal_information() -> None:
+    page = (WEB / "status.html").read_text(encoding="utf-8")
+    script = (WEB / "status.js").read_text(encoding="utf-8")
+    worker = Path("deploy/cloudflare-edge-router.js").read_text(encoding="utf-8")
+
+    assert 'src="/status.js?v=__ASSET_VERSION__"' in page
+    assert 'fetch("/api/status"' in script
+    assert 'source.hostname === "status.seismik.org"' in worker
+    assert "${API}/health/ready" in worker
+    assert "EDGE_ORIGIN_SECRET" in worker
