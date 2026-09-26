@@ -103,3 +103,11 @@ def test_privacy_and_terms_pages_are_published() -> None:
         assert (WEB / route / "index.html").is_file(), (
             f"/{route} debe existir: Google comprueba que el enlace resuelve"
         )
+
+
+def test_contact_page_has_clear_support_and_status_paths() -> None:
+    html = (WEB / "contact" / "index.html").read_text(encoding="utf-8")
+
+    assert "support@seismik.org" in html
+    assert "status.seismik.org" in html
+    assert (WEB / "contact.js").is_file()
