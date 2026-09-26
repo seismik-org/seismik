@@ -76,7 +76,7 @@ function securityHeaders(host) {
     "X-Frame-Options": "DENY",
   });
   if (host === "api.seismik.org") headers.set("Content-Security-Policy", "default-src 'none'; base-uri 'none'; frame-ancestors 'none'");
-  else if (host === "devs.seismik.org") headers.set("Content-Security-Policy", "default-src 'self'; script-src 'self' https://www.gstatic.com; style-src 'self'; img-src 'self' data: https://lh3.googleusercontent.com; connect-src 'self' https://api.seismik.org https://identitytoolkit.googleapis.com https://securetoken.googleapis.com; frame-src 'self' https://accounts.google.com https://seismik-15bbb.firebaseapp.com; base-uri 'none'; frame-ancestors 'none'; form-action 'self'");
+  else if (host === "devs.seismik.org") headers.set("Content-Security-Policy", "default-src 'self'; script-src 'self' https://www.gstatic.com https://challenges.cloudflare.com; style-src 'self'; img-src 'self' data: https://lh3.googleusercontent.com; connect-src 'self' https://api.seismik.org https://identitytoolkit.googleapis.com https://securetoken.googleapis.com; frame-src 'self' https://accounts.google.com https://seismik-15bbb.firebaseapp.com https://challenges.cloudflare.com; base-uri 'none'; frame-ancestors 'none'; form-action 'self'");
   else if (host === "status.seismik.org") headers.set("Content-Security-Policy", "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'");
   else headers.set("Content-Security-Policy", "default-src 'self'; style-src 'self'; img-src 'self' data:; base-uri 'none'; frame-ancestors 'none'; form-action 'self'");
   return headers;

@@ -135,6 +135,7 @@ legend { margin-bottom: 10px; font-weight: 650; font-size: 0.92rem; }
 .scope-option small { color: var(--muted); }
 input[type="checkbox"] { width: 18px; height: 18px; margin: 2px 0 0; accent-color: var(--primary); }
 .terms-option { display: grid; grid-template-columns: auto 1fr; gap: 12px; color: var(--muted); font-size: 0.92rem; }
+.turnstile-container { min-height: 65px; }
 
 .quota-row { display: flex; justify-content: space-between; align-items: baseline; padding: 12px 0; border-bottom: 1px solid var(--line); color: var(--muted); }
 .quota-row strong { color: var(--text); font: 800 1.25rem var(--mono); }

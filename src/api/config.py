@@ -38,6 +38,12 @@ class AppSettings(BaseSettings):
     # frena, porque revocar libera un hueco de inmediato.
     developer_key_creations_per_hour: int = Field(default=10, ge=1, le=1_000)
     developer_audit_stream: str = "stream:seismik:developer-audit"
+    # Turnstile se usa únicamente al emitir una credencial del portal. La
+    # site key es pública; la secret key jamás se expone en /developer/config.
+    # Si ambas están vacías el entorno local conserva el flujo sin CAPTCHA.
+    turnstile_site_key: str = ""
+    turnstile_secret_key: SecretStr = SecretStr("")
+    turnstile_expected_hostname: str = "devs.seismik.org"
     integration_stream: str = "stream:seismik:integrations"
     integration_dead_letter_stream: str = "stream:seismik:integrations-dead-letter"
     integration_audit_stream: str = "stream:seismik:integration-audit"
