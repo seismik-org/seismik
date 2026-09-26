@@ -188,3 +188,14 @@ def test_status_page_is_dynamic_and_does_not_disclose_internal_information() -> 
     assert 'source.hostname === "status.seismik.org"' in worker
     assert "${API}/health/ready" in worker
     assert "EDGE_ORIGIN_SECRET" in worker
+
+
+def test_developer_portal_uses_turnstile_only_for_credential_issuance() -> None:
+    script = _script("developers.js")
+    page = (WEB / "developers.html").read_text(encoding="utf-8")
+    worker = Path("deploy/cloudflare-edge-router.js").read_text(encoding="utf-8")
+
+    assert 'window.location.assign(`${AUTH}/id`)' in script
+    assert "challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" in script
+    assert 'id="turnstile-container"' in page
+    assert "https://challenges.cloudflare.com" in worker

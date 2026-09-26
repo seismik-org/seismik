@@ -4,6 +4,8 @@ const AUTH = "https://auth.seismik.org";
 const elements = Object.fromEntries([...document.querySelectorAll("[id]")].map((item) => [item.id, item]));
 let currentUser = null;
 let portalConfig = null;
+let turnstileWidgetId = null;
+let turnstileApiPromise = null;
 
 function toast(message, error = false) {
   elements.toast.textContent = message;
@@ -27,7 +29,51 @@ async function api(path, options = {}, authenticated = true) {
 }
 
 function login() {
-  window.location.assign(`${AUTH}/v1/oauth/authorize?origin=devs&provider=google`);
+  window.location.assign(`${AUTH}/id`);
+}
+
+function humanVerificationEnabled() {
+  return Boolean(portalConfig?.human_verification?.enabled && portalConfig?.human_verification?.site_key);
+}
+
+function loadTurnstile() {
+  if (window.turnstile) return Promise.resolve(window.turnstile);
+  if (turnstileApiPromise) return turnstileApiPromise;
+  turnstileApiPromise = new Promise((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
+    script.async = true;
+    script.onload = () => window.turnstile ? resolve(window.turnstile) : reject(new Error("No se pudo cargar la verificación de seguridad."));
+    script.onerror = () => reject(new Error("No se pudo cargar la verificación de seguridad."));
+    document.head.append(script);
+  });
+  return turnstileApiPromise;
+}
+
+async function renderTurnstile() {
+  const enabled = Boolean(currentUser) && humanVerificationEnabled();
+  elements["turnstile-container"].hidden = !enabled;
+  if (!enabled || turnstileWidgetId !== null) return;
+  const turnstile = await loadTurnstile();
+  turnstileWidgetId = turnstile.render(elements["turnstile-container"], {
+    sitekey: portalConfig.human_verification.site_key,
+    action: portalConfig.human_verification.action,
+    language: "es",
+  });
+}
+
+function turnstileToken() {
+  if (!humanVerificationEnabled()) return null;
+  if (turnstileWidgetId === null || !window.turnstile) {
+    throw new Error("Carga la verificación de seguridad antes de continuar.");
+  }
+  const token = window.turnstile.getResponse(turnstileWidgetId);
+  if (!token) throw new Error("Completa la verificación de seguridad para continuar.");
+  return token;
+}
+
+function resetTurnstile() {
+  if (turnstileWidgetId !== null && window.turnstile) window.turnstile.reset(turnstileWidgetId);
 }
 
 async function copyText(value) {
@@ -154,6 +200,7 @@ function keyPayload() {
     name: elements["key-name"].value.trim(),
     scopes: selectedScopes(),
     accepted_terms_version: portalConfig.terms_version,
+    turnstile_token: turnstileToken(),
   };
 }
 
@@ -171,7 +218,7 @@ async function createKey(event) {
     event.target.reset();
     document.querySelectorAll('input[name="scope"]').forEach((input) => { input.checked = true; });
     await loadKeys();
-  } catch (error) { toast(error.message, true); }
+  } catch (error) { toast(error.message, true); } finally { resetTurnstile(); }
 }
 
 async function keyAction(event) {
@@ -189,12 +236,12 @@ async function keyAction(event) {
       const scopes = row.querySelector(".key-meta code").textContent.split(" · ").map((value) => `${value}:read`);
       const result = await api(`/v1/developer/keys/${keyId}/rotate`, {
         method: "POST",
-        body: JSON.stringify({ name: `${name} rotada`, scopes, accepted_terms_version: portalConfig.terms_version }),
+        body: JSON.stringify({ name: `${name} rotada`, scopes, accepted_terms_version: portalConfig.terms_version, turnstile_token: turnstileToken() }),
       });
       showSecret(result);
     } else return;
     await loadKeys();
-  } catch (error) { toast(error.message, true); }
+  } catch (error) { toast(error.message, true); } finally { resetTurnstile(); }
 }
 
 function updateSession(user) {
@@ -207,6 +254,7 @@ function updateSession(user) {
   elements["user-label"].hidden = !signedIn;
   elements["user-label"].textContent = user?.email || "";
   if (signedIn) {
+    renderTurnstile().catch((error) => toast(error.message, true));
     loadKeys();
     loadWebhooks();
   }

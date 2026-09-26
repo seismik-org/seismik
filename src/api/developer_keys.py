@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 from typing import Any, Literal, cast
 
 import firebase_admin
+import httpx
 from fastapi import APIRouter, Cookie, Header, HTTPException, Request, status
 from firebase_admin import App, auth, credentials
 from pydantic import BaseModel, Field, field_validator
@@ -36,12 +37,20 @@ class PortalConfigResponse(BaseModel):
     plans: list[dict[str, Any]]
     billing: dict[str, Any]
     products: list[dict[str, Any]]
+    human_verification: "HumanVerificationConfig"
+
+
+class HumanVerificationConfig(BaseModel):
+    enabled: bool
+    site_key: str | None = None
+    action: str | None = None
 
 
 class KeyCreateRequest(BaseModel):
     name: str = Field(min_length=3, max_length=60)
     scopes: set[str] = Field(default_factory=lambda: set(ALLOWED_SCOPES))
     accepted_terms_version: str
+    turnstile_token: str | None = Field(default=None, max_length=2_048)
 
     @field_validator("name")
     @classmethod
@@ -246,6 +255,54 @@ async def _enforce_creation_rate(request: Request, uid: str) -> None:
         )
 
 
+async def _verify_turnstile(request: Request, token: str | None) -> None:
+    """Valida una prueba de Turnstile antes de emitir una credencial.
+
+    No se valida cada llamada de la API: eso añadiría latencia y convertiría
+    un control contra abuso del portal en una barrera para clientes legítimos.
+    """
+
+    settings = request.app.state.settings
+    site_key = settings.turnstile_site_key.strip()
+    secret = settings.turnstile_secret_key.get_secret_value()
+    if not site_key and not secret:
+        return
+    if not site_key or not secret:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="La verificación de seguridad está configurándose; inténtalo de nuevo pronto",
+        )
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Completa la verificación de seguridad para crear una clave",
+        )
+
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            response = await client.post(
+                "https://challenges.cloudflare.com/turnstile/v0/siteverify",
+                data={"secret": secret, "response": token},
+            )
+            response.raise_for_status()
+            result = response.json()
+    except (httpx.HTTPError, ValueError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="No fue posible verificar la solicitud; inténtalo de nuevo",
+        ) from exc
+
+    if (
+        not result.get("success")
+        or result.get("hostname") != settings.turnstile_expected_hostname
+        or result.get("action") != "create_api_key"
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="La verificación de seguridad no fue válida; inténtalo de nuevo",
+        )
+
+
 async def _create_key_record(
     request: Request,
     uid: str,
@@ -255,6 +312,7 @@ async def _create_key_record(
     if payload.accepted_terms_version != settings.developer_terms_version:
         raise HTTPException(status_code=409, detail="The current API terms must be accepted")
 
+    await _verify_turnstile(request, payload.turnstile_token)
     await _enforce_creation_rate(request, uid)
 
     records = await _records_for_uid(request, uid)
@@ -346,6 +404,11 @@ async def portal_config(request: Request) -> PortalConfigResponse:
                 "endpoints": ["/v1/network/stations"],
             },
         ],
+        human_verification=HumanVerificationConfig(
+            enabled=bool(settings.turnstile_site_key.strip()),
+            site_key=settings.turnstile_site_key.strip() or None,
+            action="create_api_key" if settings.turnstile_site_key.strip() else None,
+        ),
     )
 
 

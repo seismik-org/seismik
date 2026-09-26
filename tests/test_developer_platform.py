@@ -214,6 +214,88 @@ async def test_portal_publishes_prepaid_credit_catalog_without_enabling_checkout
 
 
 @pytest.mark.asyncio
+async def test_turnstile_configuration_exposes_only_the_public_site_key(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app = developer_app(
+        monkeypatch,
+        turnstile_site_key="0x-public-site-key",
+        turnstile_secret_key="private-turnstile-secret",
+    )
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        response = await client.get("/v1/developer/config")
+
+    assert response.status_code == 200
+    assert response.json()["human_verification"] == {
+        "enabled": True,
+        "site_key": "0x-public-site-key",
+        "action": "create_api_key",
+    }
+    assert "private-turnstile-secret" not in response.text
+
+
+@pytest.mark.asyncio
+async def test_turnstile_rejects_key_issuance_without_a_token(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app = developer_app(
+        monkeypatch,
+        turnstile_site_key="0x-public-site-key",
+        turnstile_secret_key="private-turnstile-secret",
+    )
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        response = await client.post(
+            "/v1/developer/keys",
+            headers={"Authorization": "Bearer valid-token"},
+            json={
+                "name": "Clave protegida",
+                "scopes": ["events:read"],
+                "accepted_terms_version": "2026-08-30",
+            },
+        )
+
+    assert response.status_code == 403
+    assert "verificación" in response.json()["detail"]
+
+
+@pytest.mark.asyncio
+async def test_turnstile_token_is_checked_before_issuing_a_key(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    checked: list[str | None] = []
+
+    async def verify_turnstile(_request, token):  # type: ignore[no-untyped-def]
+        checked.append(token)
+
+    monkeypatch.setattr(developer_keys, "_verify_turnstile", verify_turnstile)
+    app = developer_app(
+        monkeypatch,
+        turnstile_site_key="0x-public-site-key",
+        turnstile_secret_key="private-turnstile-secret",
+    )
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        response = await client.post(
+            "/v1/developer/keys",
+            headers={"Authorization": "Bearer valid-token"},
+            json={
+                "name": "Clave protegida",
+                "scopes": ["events:read"],
+                "accepted_terms_version": "2026-08-30",
+                "turnstile_token": "valid-turnstile-token",
+            },
+        )
+
+    assert response.status_code == 201
+    assert checked == ["valid-turnstile-token"]
+
+
+@pytest.mark.asyncio
 async def test_rotation_revokes_previous_secret(monkeypatch: pytest.MonkeyPatch) -> None:
     app = developer_app(monkeypatch)
     headers = {"Authorization": "Bearer valid-token"}
