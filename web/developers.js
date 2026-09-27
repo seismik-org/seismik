@@ -6,12 +6,71 @@ let currentUser = null;
 let portalConfig = null;
 let turnstileWidgetId = null;
 let turnstileApiPromise = null;
+let toastTimeout = null;
 
 function toast(message, error = false) {
+  window.clearTimeout(toastTimeout);
   elements.toast.textContent = message;
+  elements.toast.setAttribute("role", error ? "alert" : "status");
+  elements.toast.setAttribute("aria-live", error ? "assertive" : "polite");
   elements.toast.classList.toggle("error", error);
   elements.toast.classList.add("visible");
-  window.setTimeout(() => elements.toast.classList.remove("visible"), 3500);
+  toastTimeout = window.setTimeout(() => elements.toast.classList.remove("visible"), 3500);
+}
+
+function confirmAction({ eyebrow = "Acción sensible", title, message, confirmLabel, destructive = true }) {
+  const dialog = elements["confirmation-dialog"];
+  const accept = elements["confirmation-accept"];
+  const cancel = elements["confirmation-cancel"];
+  elements["confirmation-eyebrow"].textContent = eyebrow;
+  elements["confirmation-title"].textContent = title;
+  elements["confirmation-message"].textContent = message;
+  accept.textContent = confirmLabel;
+  accept.classList.toggle("button-danger", destructive);
+
+  return new Promise((resolve) => {
+    let settled = false;
+    const cleanup = () => {
+      accept.removeEventListener("click", approve);
+      cancel.removeEventListener("click", dismiss);
+      dialog.removeEventListener("cancel", dismiss);
+      dialog.removeEventListener("close", onClose);
+    };
+    const finish = (confirmed) => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      if (dialog.open) dialog.close();
+      resolve(confirmed);
+    };
+    const approve = () => finish(true);
+    const dismiss = (event) => {
+      event?.preventDefault();
+      finish(false);
+    };
+    const onClose = () => finish(false);
+    accept.addEventListener("click", approve);
+    cancel.addEventListener("click", dismiss);
+    dialog.addEventListener("cancel", dismiss);
+    dialog.addEventListener("close", onClose);
+    dialog.showModal();
+    accept.focus();
+  });
+}
+
+function setButtonBusy(button, busy, label) {
+  if (!button) return;
+  if (busy) {
+    button.dataset.originalLabel = button.textContent;
+    button.disabled = true;
+    button.setAttribute("aria-busy", "true");
+    button.textContent = label;
+    return;
+  }
+  button.disabled = false;
+  button.removeAttribute("aria-busy");
+  if (button.dataset.originalLabel) button.textContent = button.dataset.originalLabel;
+  delete button.dataset.originalLabel;
 }
 
 async function api(path, options = {}, authenticated = true) {
@@ -114,7 +173,7 @@ function keyMarkup(key) {
     <div class="key-name"><strong>${escapeHtml(key.name)}</strong><small>${escapeHtml(key.prefix)}</small></div>
     <div class="key-meta"><code>${escapeHtml(scopes)}</code><br><small>${key.requests_today.toLocaleString("es-CO")} hoy · último uso: ${formatDate(key.last_used_at)}</small></div>
     <span class="key-status ${key.status === "active" ? "active" : "revoked"}">${key.status === "active" ? "Activa" : "Revocada"}</span>
-    <div class="key-actions">${key.status === "active" ? `<button class="text-button rotate-key" type="button">Rotar</button><button class="text-button danger-button revoke-key" type="button">Revocar</button>` : ""}</div>
+    <div class="key-actions">${key.status === "active" ? `<button class="text-button rotate-key" type="button" aria-label="Rotar ${escapeHtml(key.name)}">Rotar</button><button class="text-button danger-button revoke-key" type="button" aria-label="Revocar ${escapeHtml(key.name)}">Revocar</button>` : ""}</div>
   </article>`;
 }
 
@@ -144,7 +203,7 @@ function webhookMarkup(webhook) {
     <div class="key-name"><strong>${escapeHtml(webhook.name)}</strong><small>${escapeHtml(webhook.endpoint)}</small></div>
     <div class="key-meta"><code>${escapeHtml(types)}</code><br><small>Última entrega: ${formatDate(webhook.last_delivered_at)}${webhook.last_error ? ` · ${escapeHtml(webhook.last_error)}` : ""}</small></div>
     <span class="key-status ${webhook.status === "active" ? "active" : "revoked"}">${webhook.status === "active" ? "Activa" : "Desactivada"}</span>
-    <div class="key-actions">${webhook.status === "active" ? '<button class="text-button danger-button disable-webhook" type="button">Desactivar</button>' : ""}</div>
+    <div class="key-actions">${webhook.status === "active" ? `<button class="text-button danger-button disable-webhook" type="button" aria-label="Desactivar ${escapeHtml(webhook.name)}">Desactivar</button>` : ""}</div>
   </article>`;
 }
 
@@ -182,13 +241,20 @@ async function createWebhook(event) {
 
 async function webhookAction(event) {
   const row = event.target.closest("[data-webhook-id]");
-  if (!row || !event.target.classList.contains("disable-webhook")) return;
-  if (!window.confirm("¿Desactivar este webhook? Dejará de recibir entregas.")) return;
+  const button = event.target.closest(".disable-webhook");
+  if (!row || !button) return;
+  const confirmed = await confirmAction({
+    title: "¿Desactivar este webhook?",
+    message: "Dejará de recibir entregas de Seismik. Podrás crear otro webhook si más adelante vuelves a necesitarlo.",
+    confirmLabel: "Desactivar webhook",
+  });
+  if (!confirmed) return;
+  setButtonBusy(button, true, "Desactivando…");
   try {
     await api(`/v1/developer/webhooks/${row.dataset.webhookId}`, { method: "DELETE" });
     toast("Webhook desactivado.");
     await loadWebhooks();
-  } catch (error) { toast(error.message, true); }
+  } catch (error) { toast(error.message, true); } finally { setButtonBusy(button, false); }
 }
 
 function selectedScopes() {
@@ -225,13 +291,28 @@ async function keyAction(event) {
   const row = event.target.closest(".key-row");
   if (!row) return;
   const keyId = row.dataset.keyId;
+  const revokeButton = event.target.closest(".revoke-key");
+  const rotateButton = event.target.closest(".rotate-key");
   try {
-    if (event.target.classList.contains("revoke-key")) {
-      if (!window.confirm("¿Revocar esta clave? Las integraciones que la usen dejarán de funcionar.")) return;
+    if (revokeButton) {
+      const confirmed = await confirmAction({
+        title: "¿Revocar esta clave?",
+        message: "Las integraciones que la usan dejarán de funcionar inmediatamente. Esta acción no se puede deshacer.",
+        confirmLabel: "Revocar clave",
+      });
+      if (!confirmed) return;
+      setButtonBusy(revokeButton, true, "Revocando…");
       await api(`/v1/developer/keys/${keyId}`, { method: "DELETE" });
       toast("Clave revocada.");
-    } else if (event.target.classList.contains("rotate-key")) {
-      if (!window.confirm("La clave actual será revocada inmediatamente. ¿Continuar?")) return;
+    } else if (rotateButton) {
+      const confirmed = await confirmAction({
+        eyebrow: "Renovar credencial",
+        title: "¿Rotar esta clave?",
+        message: "La clave actual se revocará de inmediato. Guarda y actualiza la nueva clave en tus integraciones antes de continuar.",
+        confirmLabel: "Rotar clave",
+      });
+      if (!confirmed) return;
+      setButtonBusy(rotateButton, true, "Rotando…");
       const name = row.querySelector(".key-name strong").textContent;
       const scopes = row.querySelector(".key-meta code").textContent.split(" · ").map((value) => `${value}:read`);
       const result = await api(`/v1/developer/keys/${keyId}/rotate`, {
@@ -241,7 +322,11 @@ async function keyAction(event) {
       showSecret(result);
     } else return;
     await loadKeys();
-  } catch (error) { toast(error.message, true); } finally { resetTurnstile(); }
+  } catch (error) { toast(error.message, true); } finally {
+    setButtonBusy(revokeButton, false);
+    setButtonBusy(rotateButton, false);
+    resetTurnstile();
+  }
 }
 
 function updateSession(user) {
