@@ -136,10 +136,14 @@ class ApiClient {
     if (integrityToken == null && SeismikConstants.integrityRequired) {
       throw const SeismikApiException('App Check did not return a token', null);
     }
-    // La beta distribuida fuera de Play Store no siempre obtiene un veredicto
-    // Play Integrity. El backend beta no verifica este marcador; producción
-    // compila con SEISMIK_INTEGRITY_REQUIRED=true y nunca usa este fallback.
-    integrityToken ??= 'seismik-beta-sideload-unverified';
+    // Una instalación fuera de la pista de Play no siempre obtiene un
+    // veredicto. El marcador coincide con el que entiende el servidor: así
+    // queda un diagnóstico inequívoco en vez de intentar validar una cadena
+    // inventada como si fuese un token real. Producción lo rechaza; no es un
+    // bypass de App Check.
+    integrityToken ??= Platform.isIOS
+        ? 'seismik-beta-ios-unverified'
+        : 'seismik-beta-android-unverified';
     final FirebaseMessaging messaging = FirebaseMessaging.instance;
     String? pushToken;
     try {
@@ -204,16 +208,21 @@ class ApiClient {
     final Map<String, dynamic> decoded = _decode(response);
     final String? crowdToken = decoded['crowd_token']?.toString();
     final String? deviceSession = decoded['device_session_token']?.toString();
-    if (crowdToken == null ||
-        crowdToken.isEmpty ||
-        deviceSession == null ||
-        deviceSession.isEmpty) {
+    if (deviceSession == null || deviceSession.isEmpty) {
       throw SeismikApiException(
-        'Registration omitted device credentials',
+        'El servidor no entregó una sesión válida para el dispositivo.',
         response.statusCode,
       );
     }
-    await _secureStorage.write(key: _crowdTokenKey, value: crowdToken);
+    // Un dispositivo puede quedar registrado para recibir avisos y consultar
+    // el historial, pero no estar autorizado aún a enviar telemetría. En ese
+    // caso el servidor devuelve `crowd_token` vacío. No debe bloquear toda la
+    // aplicación ni reutilizar un token de medición de un registro anterior.
+    if (crowdToken != null && crowdToken.isNotEmpty) {
+      await _secureStorage.write(key: _crowdTokenKey, value: crowdToken);
+    } else {
+      await _secureStorage.delete(key: _crowdTokenKey);
+    }
     await _secureStorage.write(key: _deviceSessionKey, value: deviceSession);
     _sessionToken = deviceSession;
   }
@@ -1048,11 +1057,25 @@ class ApiClient {
   }
 
   Map<String, dynamic> _decode(http.Response response) {
-    final Object? decoded = response.body.isEmpty
-        ? <String, dynamic>{}
-        : jsonDecode(response.body);
+    Object? decoded;
+    try {
+      decoded = response.body.isEmpty
+          ? <String, dynamic>{}
+          : jsonDecode(response.body);
+    } on FormatException {
+      decoded = <String, dynamic>{'detail': 'Respuesta inválida del servidor'};
+    }
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw SeismikApiException(decoded.toString(), response.statusCode);
+      final String detail = decoded is Map<String, dynamic>
+          ? decoded['detail']?.toString() ?? 'Error ${response.statusCode}'
+          : 'Error ${response.statusCode}';
+      // La causa usual durante pruebas locales es una APK fuera de la pista
+      // de Play: Play Integrity no puede atestiguar esa instalación. Mostrar
+      // la acción concreta es preferible a dejar el JSON crudo en pantalla.
+      final String message = detail == 'Device integrity verification failed'
+          ? 'No se pudo verificar esta instalación. Usa la pista de pruebas de Google Play e inténtalo de nuevo.'
+          : detail;
+      throw SeismikApiException(message, response.statusCode);
     }
     if (decoded is! Map<String, dynamic>) {
       throw SeismikApiException('Unexpected API response', response.statusCode);

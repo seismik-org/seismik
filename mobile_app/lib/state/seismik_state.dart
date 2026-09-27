@@ -284,7 +284,10 @@ class SeismikState extends ChangeNotifier with WidgetsBindingObserver {
         );
         registrations.value++;
         return;
-      } catch (_) {
+      } catch (error) {
+        // Reintentar un 401/403/422 sólo demora el arranque y consume cuota:
+        // esas respuestas requieren corregir permisos, App Check o los datos.
+        if (error is SeismikApiException && error.isPermanent) rethrow;
         if (attempt == 2) rethrow;
         await Future<void>.delayed(Duration(seconds: attempt + 1));
       }
