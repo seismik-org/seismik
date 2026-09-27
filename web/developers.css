@@ -173,6 +173,17 @@ dialog::backdrop { background: rgb(3 6 12 / 0.7); backdrop-filter: blur(4px); }
 .secret-value { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; padding: 12px 12px 12px 16px; border-radius: 14px; background: #050811; border: 1px solid #1f2b45; }
 .secret-value code { flex: 1; min-width: 0; overflow-wrap: anywhere; color: #a5e3a1; font-size: 0.88rem; }
 
+.confirmation-card { display: grid; gap: 12px; padding: 30px; }
+.confirmation-card h2 { margin: 0; font-size: 1.55rem; letter-spacing: -0.02em; }
+.confirmation-card > p:not(.eyebrow) { margin: 0; color: var(--muted); line-height: 1.55; }
+.confirmation-actions { display: flex; flex-wrap: wrap-reverse; justify-content: flex-end; gap: 10px; margin-top: 12px; }
+.button.button-secondary { background: var(--surface-3); color: var(--text); box-shadow: none; }
+.button.button-secondary:hover { background: color-mix(in srgb, var(--surface-3) 75%, white); transform: none; }
+.button.button-danger { background: var(--danger); color: #fff; box-shadow: 0 10px 24px color-mix(in srgb, var(--danger) 25%, transparent); }
+.button.button-danger:hover { filter: brightness(1.08); transform: translateY(-1px); }
+.button.button-danger:disabled, .button.button-secondary:disabled { cursor: wait; opacity: 0.72; transform: none; }
+@media (max-width: 520px) { .confirmation-actions > .button { width: 100%; } }
+
 .toast {
   position: fixed; left: 50%; bottom: 24px; z-index: 200; max-width: min(92vw, 520px);
   padding: 13px 18px; border-radius: 14px; border: 1px solid var(--line-strong);

@@ -326,6 +326,17 @@
       <button class="button full" value="close">Ya lo guardé</button>
     </form>
   </dialog>
+  <dialog id="confirmation-dialog" aria-labelledby="confirmation-title" aria-describedby="confirmation-message">
+    <section class="confirmation-card">
+      <p id="confirmation-eyebrow" class="eyebrow">Acción sensible</p>
+      <h2 id="confirmation-title">Confirma la acción</h2>
+      <p id="confirmation-message"></p>
+      <div class="confirmation-actions">
+        <button id="confirmation-cancel" class="button button-secondary" type="button">Cancelar</button>
+        <button id="confirmation-accept" class="button button-danger" type="button">Continuar</button>
+      </div>
+    </section>
+  </dialog>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <script src="/site.js?v=__ASSET_VERSION__" defer></script>
   <script type="module" src="/developers.js?v=__ASSET_VERSION__"></script>

@@ -14,7 +14,7 @@ from api.app import create_app
 from api.config import AppSettings
 
 WEB = Path("web")
-PORTAL_SCRIPTS = ("developers.js", "developers-fixed.js")
+PORTAL_SCRIPTS = ("developers.js",)
 
 # Un `${...}` dentro de un atributo entre comillas: el punto donde un valor sin
 # escapar se sale del atributo y se convierte en marcado.
@@ -199,3 +199,15 @@ def test_developer_portal_uses_turnstile_only_for_credential_issuance() -> None:
     assert "challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" in script
     assert 'id="turnstile-container"' in page
     assert "https://challenges.cloudflare.com" in worker
+
+
+def test_developer_portal_uses_its_own_confirmation_dialogs() -> None:
+    """Las operaciones irreversibles no deben disparar UI nativa del navegador."""
+
+    script = _script("developers.js")
+    page = (WEB / "developers.html").read_text(encoding="utf-8")
+
+    assert "window.confirm" not in script
+    assert "function confirmAction" in script
+    assert 'id="confirmation-dialog"' in page
+    assert 'id="confirmation-accept"' in page
