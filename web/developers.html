@@ -151,6 +151,14 @@
         <div>
           <h3 class="docs-title">Endpoints</h3>
           <div class="endpoint-list" aria-label="Catálogo de endpoints disponibles">
+            <article class="endpoint endpoint-free">
+              <div class="endpoint-head"><span class="method">GET</span><code>/v1/public/showcase-events</code><span class="free-badge">Always Free · sin clave</span></div>
+              <p>Los últimos sismos oficiales de magnitud considerable (M ≥ 4.5 fija). Es lo que muestra <a href="/#asi-se-ve">el panel en vivo de seismik.org</a>: pruébala sin crear cuenta.</p>
+              <dl class="params">
+                <div><dt><code>limit</code></dt><dd>1–20 · 6 por defecto</dd></div>
+              </dl>
+              <small>Sin encabezado. Límite: <strong>30 solicitudes/min</strong> por IP.</small>
+            </article>
             <article class="endpoint">
               <div class="endpoint-head"><span class="method">GET</span><code>/v1/events/history</code></div>
               <p>Historial oficial consolidado y filtrable.</p>
@@ -190,6 +198,40 @@
             <div role="row"><code role="cell">429</code><span role="cell">Cuota superada. <code>Retry-After</code> indica cuántos segundos esperar.</span></div>
           </div>
           <p class="docs-note">La API informa la agencia y el enlace oficial de cada evento. Seismik agrega y normaliza; no sustituye a las entidades sismológicas.</p>
+        </div>
+      </div>
+
+      <div class="free-tier">
+        <div class="section-heading">
+          <p class="eyebrow">Seismik Always Free API</p>
+          <h3>La puerta de entrada: sin clave, sin registro, siempre gratis.</h3>
+          <p>Un único endpoint, pensado para probar la API o para un widget público de bajo tráfico. No es una versión recortada del plan free con clave: es otra cosa, con otro contrato.</p>
+        </div>
+        <div class="docs-grid">
+          <div>
+            <h3 class="docs-title">Llámala así</h3>
+            <div class="code-card">
+              <div class="code-tabs"><span>cURL</span></div>
+              <pre><code>curl "https://seismik.org/v1/public/showcase-events?limit=6"</code></pre>
+            </div>
+            <p class="docs-note">Sin encabezado de autenticación. Funciona igual desde <code>api.seismik.org</code> o desde <code>seismik.org</code>: el segundo es la misma API detrás del sitio.</p>
+          </div>
+          <div>
+            <h3 class="docs-title">Qué trae</h3>
+            <ul class="free-tier-list free-tier-includes">
+              <li>Sismos <strong>confirmados por una agencia oficial</strong> (USGS, EMSC/CSEM y las demás fuentes disponibles).</li>
+              <li>Sólo magnitud <strong>4.5 o mayor</strong>: lo que de verdad importa mostrar sin contexto adicional.</li>
+              <li><code>event_id</code>, <code>origin_time</code>, coordenadas, <code>magnitude</code>, <code>magnitude_type</code>, <code>depth_km</code>, <code>agency</code>, <code>place</code> y <code>official_url</code> — los mismos campos del ejemplo autenticado.</li>
+              <li>Hasta 20 eventos por solicitud con <code>limit</code>.</li>
+            </ul>
+            <h3 class="docs-title">Qué no trae</h3>
+            <ul class="free-tier-list free-tier-excludes">
+              <li>Eventos preliminares o candidatos sin confirmar: para eso, <code>events:read</code> con una clave.</li>
+              <li>Filtros por fecha, fuente o una magnitud mínima distinta a 4.5 — eso es <code>/v1/events/history</code>.</li>
+              <li>Estaciones ni webhooks: fuera del alcance de este endpoint.</li>
+              <li>Cuota por cuenta: el límite es compartido, por IP, 30 solicitudes por minuto.</li>
+            </ul>
+          </div>
         </div>
       </div>
     </section>

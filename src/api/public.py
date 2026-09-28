@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import hashlib
 import json
+from datetime import datetime, timezone
 from functools import lru_cache
 from pathlib import Path
 from typing import Any, cast
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from redis.asyncio import Redis
 
 from api.config import AppSettings
@@ -56,24 +58,56 @@ async def network_stations(
     return {"stations": list(stations)}
 
 
+async def _enforce_showcase_rate(request: Request, redis: Redis, settings: AppSettings) -> None:
+    """Ventana de un minuto por IP.
+
+    Es la Always Free API: sin clave no hay cuenta de la que colgar una cuota,
+    así que el límite va por IP. No se guarda la IP en claro, sólo su hash, y
+    sólo para contar.
+    """
+
+    client_host = request.client.host if request.client else "unknown"
+    bucket = hashlib.sha256(client_host.encode()).hexdigest()[:16]
+    window = datetime.now(timezone.utc).strftime("%Y%m%d%H%M")
+    counter = f"seismik:public-showcase:{bucket}:{window}"
+
+    pipe = redis.pipeline(transaction=True)
+    pipe.incr(counter)
+    pipe.expire(counter, 120)
+    count, _ = await pipe.execute()
+    if count > settings.public_showcase_requests_per_minute:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Demasiadas solicitudes; espera un minuto",
+            headers={"Retry-After": "60"},
+        )
+
+
 @router.get("/public/showcase-events")
 async def showcase_events(
+    request: Request,
+    limit: int | None = Query(default=None, ge=1, le=20),
     settings: AppSettings = Depends(get_app_settings),
     redis: Redis = Depends(get_redis),
 ) -> dict[str, Any]:
     """Los últimos sismos confirmados de magnitud considerable, sin clave.
 
-    Es lo que respalda el panel "Así se ve Seismik" de la portada: la misma
-    fuente que usa la app (el stream oficial ya procesado), pero público y
-    filtrado a lo que realmente importa mostrar en una página de mercadeo. No
-    expone nada que no esté ya en el ejemplo de la documentación pública.
+    Es la Seismik Always Free API: respalda el panel "Así se ve Seismik" de la
+    portada y, documentada en devs.seismik.org, sirve como puerta de entrada
+    sin registro. Misma fuente que usa la app (el stream oficial ya
+    procesado), filtrada a un piso fijo de magnitud -no negociable por
+    parámetro, a diferencia de /v1/events/history- para que siga siendo
+    barata de servir sin clave ni cuota por cuenta.
     """
+
+    await _enforce_showcase_rate(request, redis, settings)
 
     raw = cast(
         list[tuple[str, dict[str, str]]],
         await redis.xrevrange(settings.official_stream, count=settings.public_showcase_scan_limit),
     )
     minimum_magnitude = settings.public_showcase_minimum_magnitude
+    result_limit = limit or settings.public_showcase_limit
     events: list[dict[str, Any]] = []
     for _message_id, fields in raw:
         event = json.loads(fields["payload"])
@@ -95,7 +129,7 @@ async def showcase_events(
                 "official_url": report.get("official_url"),
             }
         )
-        if len(events) >= settings.public_showcase_limit:
+        if len(events) >= result_limit:
             break
     return {"events": events, "minimum_magnitude": minimum_magnitude}
 
