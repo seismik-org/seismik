@@ -118,6 +118,15 @@ async function renderTurnstile() {
     sitekey: portalConfig.human_verification.site_key,
     action: portalConfig.human_verification.action,
     language: "es",
+    // Sin esto, un widget que se cae (pasa en producción, no sólo en teoría)
+    // lanza una excepción sin capturar: el envío se pierde en silencio y
+    // Cloudflare nunca ve la verificación del lado del servidor. Cloudflare
+    // ya reintenta solo; aquí sólo se avisa y se deja continuar el reintento.
+    "error-callback": () => {
+      toast("La verificación de seguridad tuvo un problema; reintentando…", true);
+      return false;
+    },
+    "expired-callback": () => toast("La verificación de seguridad expiró; vuelve a intentarlo.", true),
   });
 }
 
