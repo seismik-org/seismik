@@ -1,0 +1,42 @@
+/* Estilos propios del formulario de eliminación: el resto de la página usa
+   las clases compartidas de styles.css (.nav, .narrow, .prose, .button). */
+
+.delete-form { display: grid; gap: 16px; margin-top: 8px; }
+.delete-form label { display: grid; gap: 7px; color: var(--text); font-size: 0.91rem; font-weight: 700; }
+.delete-form input,
+.delete-form textarea {
+  width: 100%;
+  border: 1px solid var(--line-strong);
+  border-radius: 12px;
+  background: var(--bg-soft);
+  color: var(--text);
+  font: inherit;
+  font-weight: 400;
+}
+.delete-form input { min-height: 46px; padding: 0 13px; }
+.delete-form textarea { min-height: 110px; padding: 12px 13px; resize: vertical; }
+.delete-form input:focus,
+.delete-form textarea:focus { outline: 2px solid var(--primary); outline-offset: 2px; border-color: var(--primary); }
+
+.scope-fieldset { display: grid; gap: 10px; margin: 0; padding: 0; border: 0; }
+.scope-fieldset legend { padding: 0 0 4px; color: var(--text); font-size: 0.91rem; font-weight: 700; }
+.scope-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  font-weight: 400;
+  cursor: pointer;
+}
+.scope-option:has(input:checked) { border-color: var(--primary); background: color-mix(in srgb, var(--primary) 8%, transparent); }
+.scope-option input { width: 18px; height: 18px; margin-top: 2px; accent-color: var(--primary); }
+.scope-option span { color: var(--muted); font-weight: 400; }
+
+.turnstile-container { min-height: 65px; }
+
+#delete-form-status[data-state="ok"] { color: var(--ok); }
+#delete-form-status[data-state="error"] { color: var(--danger); }
+
+.delete-form button[disabled] { opacity: 0.6; cursor: wait; }
