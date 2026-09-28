@@ -201,6 +201,22 @@ def test_developer_portal_uses_turnstile_only_for_credential_issuance() -> None:
     assert "https://challenges.cloudflare.com" in worker
 
 
+def test_turnstile_render_has_an_error_callback() -> None:
+    """Sin `error-callback`, un widget que se cae lanza una excepción sin
+    capturar: el envío se pierde en silencio y Cloudflare nunca registra la
+    verificación del lado del servidor. Ocurre en producción, no sólo en
+    teoría (visto con `TurnstileError 300031` al enviar el formulario real)."""
+
+    script = _script("developers.js")
+    render_call = script[script.index("turnstile.render("):]
+    render_call = render_call[: render_call.index("\n}")]
+
+    assert '"error-callback"' in render_call, (
+        "turnstile.render sin error-callback: un error del widget queda sin "
+        "capturar y el envío se pierde en silencio"
+    )
+
+
 def test_developer_portal_uses_its_own_confirmation_dialogs() -> None:
     """Las operaciones irreversibles no deben disparar UI nativa del navegador."""
 
