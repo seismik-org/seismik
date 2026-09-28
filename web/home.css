@@ -94,6 +94,36 @@
   content: "Estado: "; font-weight: 700; color: var(--mmi-4);
 }
 
+/* ---------- Así se ve Seismik ---------- */
+.showcase-list {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px;
+  margin: 0; padding: 0; list-style: none; min-height: 96px;
+}
+.showcase-card {
+  display: flex; gap: 14px; padding: 16px; border: 1px solid var(--line); border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--surface) 85%, transparent);
+}
+.showcase-badge {
+  flex: none; display: grid; place-items: center; min-width: 64px; height: 44px; padding: 0 10px;
+  border-radius: 10px; font: 800 0.95rem var(--mono); color: #fff;
+}
+.showcase-badge.mmi-3 { background: var(--mmi-3); color: #3a2a00; }
+.showcase-badge.mmi-4 { background: var(--mmi-4); }
+.showcase-badge.mmi-6 { background: var(--mmi-6); }
+.showcase-badge.mmi-8 { background: var(--mmi-8); }
+.showcase-body { display: grid; gap: 4px; min-width: 0; }
+.showcase-place { margin: 0; font-weight: 700; overflow-wrap: anywhere; }
+.showcase-meta { margin: 0; color: var(--muted); font-size: 0.86rem; }
+.showcase-link { justify-self: start; margin-top: 2px; color: var(--primary); font-size: 0.86rem; font-weight: 700; text-decoration: none; }
+.showcase-link:hover { text-decoration: underline; }
+.showcase-placeholder {
+  height: 76px; border-radius: var(--radius-sm); background: var(--surface-2);
+  animation: showcase-pulse 1.4s ease-in-out infinite;
+}
+@keyframes showcase-pulse { 0%, 100% { opacity: 0.6; } 50% { opacity: 1; } }
+.showcase-status { margin: 14px 0 0; color: var(--faint); font-size: 0.9rem; text-align: center; }
+.showcase-status:empty { display: none; }
+
 /* ---------- Cómo funciona ---------- */
 .timeline { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin: 0; padding: 0; list-style: none; counter-reset: step; }
 .timeline .card { padding-top: 30px; }

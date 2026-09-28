@@ -56,6 +56,50 @@ async def network_stations(
     return {"stations": list(stations)}
 
 
+@router.get("/public/showcase-events")
+async def showcase_events(
+    settings: AppSettings = Depends(get_app_settings),
+    redis: Redis = Depends(get_redis),
+) -> dict[str, Any]:
+    """Los últimos sismos confirmados de magnitud considerable, sin clave.
+
+    Es lo que respalda el panel "Así se ve Seismik" de la portada: la misma
+    fuente que usa la app (el stream oficial ya procesado), pero público y
+    filtrado a lo que realmente importa mostrar en una página de mercadeo. No
+    expone nada que no esté ya en el ejemplo de la documentación pública.
+    """
+
+    raw = cast(
+        list[tuple[str, dict[str, str]]],
+        await redis.xrevrange(settings.official_stream, count=settings.public_showcase_scan_limit),
+    )
+    minimum_magnitude = settings.public_showcase_minimum_magnitude
+    events: list[dict[str, Any]] = []
+    for _message_id, fields in raw:
+        event = json.loads(fields["payload"])
+        report = event.get("preferred_report", {})
+        magnitude = report.get("magnitude")
+        if not isinstance(magnitude, (int, float)) or magnitude < minimum_magnitude:
+            continue
+        events.append(
+            {
+                "event_id": event["event_id"],
+                "origin_time": report.get("origin_time"),
+                "latitude": report.get("latitude"),
+                "longitude": report.get("longitude"),
+                "magnitude": magnitude,
+                "magnitude_type": report.get("magnitude_type"),
+                "depth_km": report.get("depth_km"),
+                "agency": report.get("agency"),
+                "place": report.get("place"),
+                "official_url": report.get("official_url"),
+            }
+        )
+        if len(events) >= settings.public_showcase_limit:
+            break
+    return {"events": events, "minimum_magnitude": minimum_magnitude}
+
+
 @router.get("/events/recent")
 async def recent_events(
     settings: AppSettings = Depends(get_app_settings),

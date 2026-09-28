@@ -21,6 +21,7 @@
   <link rel="stylesheet" href="/styles.css?v=__ASSET_VERSION__">
   <link rel="stylesheet" href="/logo.css?v=__ASSET_VERSION__">
   <link rel="stylesheet" href="/home.css?v=__ASSET_VERSION__">
+  <script src="/showcase.js?v=__ASSET_VERSION__" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#contenido">Saltar al contenido</a>
@@ -33,6 +34,7 @@
         <a href="#perimetro">Perímetro</a>
         <a href="#familia">Familia</a>
         <a href="#fuentes">Fuentes</a>
+        <a href="#asi-se-ve">En vivo</a>
         <a href="/contact/">Contacto</a>
         <a href="https://status.seismik.org/">Estado</a>
         <a href="https://devs.seismik.org/">Desarrolladores</a>
@@ -47,6 +49,7 @@
           <a href="#perimetro">Perímetro de sacudida</a>
           <a href="#familia">Familia</a>
           <a href="#fuentes">Fuentes oficiales</a>
+          <a href="#asi-se-ve">En vivo</a>
           <a href="#beta">Unirse a la beta</a>
           <a href="/contact/">Contacto</a>
           <a href="https://status.seismik.org/">Estado del servicio</a>
@@ -131,6 +134,21 @@
         <li><strong>BMKG</strong><span>Indonesia</span></li>
         <li><strong>JMA</strong><span>Japón</span></li>
       </ul>
+    </section>
+
+    <!-- Así se ve Seismik: prueba en vivo de la API pública -->
+    <section id="asi-se-ve" class="section container showcase-section" aria-labelledby="asi-se-ve-titulo">
+      <div class="section-heading">
+        <p class="eyebrow">En vivo</p>
+        <h2 id="asi-se-ve-titulo">Así se ve Seismik.</h2>
+        <p>Los últimos sismos de magnitud considerable que confirmaron las agencias oficiales, servidos por la misma API pública que puedes consumir tú. <a href="https://devs.seismik.org/">Ver la documentación</a>.</p>
+      </div>
+      <ul id="showcase-list" class="showcase-list" aria-live="polite">
+        <li class="showcase-placeholder" aria-hidden="true"></li>
+        <li class="showcase-placeholder" aria-hidden="true"></li>
+        <li class="showcase-placeholder" aria-hidden="true"></li>
+      </ul>
+      <p id="showcase-status" class="showcase-status" role="status"></p>
     </section>
 
     <!-- Cómo funciona -->
@@ -298,6 +316,7 @@
         <ul>
           <li><a href="#como-funciona">Cómo funciona</a></li>
           <li><a href="#perimetro">Perímetro de sacudida</a></li>
+          <li><a href="#asi-se-ve">En vivo</a></li>
           <li><a href="#familia">Familia</a></li>
           <li><a href="#beta">Beta</a></li>
           <li><a href="/contact/">Contacto</a></li>
