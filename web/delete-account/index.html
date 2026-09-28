@@ -3,8 +3,11 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="description" content="Cómo solicitar la eliminación de una cuenta o datos de Seismik.">
+  <meta name="description" content="Solicita la eliminación de tu cuenta o tus datos de Seismik desde un formulario, sin necesidad de usar la aplicación.">
   <meta name="robots" content="index,follow">
+  <meta property="og:title" content="Eliminar cuenta y datos · Seismik">
+  <meta property="og:description" content="Formulario para solicitar la eliminación de una cuenta o de datos concretos de Seismik.">
+  <meta property="og:url" content="https://seismik.org/delete-account/">
   <title>Eliminar cuenta y datos · Seismik</title>
   <link rel="icon" href="/favicon.ico" sizes="any">
   <link rel="icon" type="image/png" sizes="16x16" href="/assets/favicon-16.png">
@@ -14,26 +17,38 @@
   <meta name="theme-color" content="#0B1226">
   <link rel="stylesheet" href="/styles.css?v=__ASSET_VERSION__">
   <link rel="stylesheet" href="/logo.css?v=__ASSET_VERSION__">
+  <link rel="stylesheet" href="/delete-account.css?v=__ASSET_VERSION__">
+  <script src="/delete-account.js?v=__ASSET_VERSION__" defer></script>
 </head>
 <body>
   <header class="nav">
     <a class="brand" href="/" aria-label="Seismik, inicio"><img class="brand-logo" src="/assets/seismik_logo.webp" width="34" height="34" alt="">SEISMIK</a>
-    <nav><a href="/">Inicio</a><a href="/contact">Contacto</a><a href="/terms-of-privacy">Privacidad</a></nav>
+    <nav><a href="/">Inicio</a><a href="/contact/">Contacto</a><a href="/terms-of-privacy/">Privacidad</a></nav>
   </header>
   <main class="narrow">
     <p class="eyebrow">SEISMIK · PRIVACIDAD</p>
     <h1>Eliminar tu cuenta y tus datos.</h1>
-    <p class="lead">Puedes solicitar la eliminación de tu cuenta de Seismik o de los datos personales asociados, sin necesidad de usar la aplicación.</p>
+    <p class="lead">Puedes solicitar la eliminación de tu cuenta de Seismik o de los datos personales asociados desde este formulario, sin necesidad de usar la aplicación.</p>
 
     <section class="section prose">
       <h2>Solicitar eliminación</h2>
-      <ol>
-        <li>Escribe desde el correo asociado a tu acceso de Seismik a <a href="mailto:support@seismik.org?subject=Solicitud%20de%20eliminaci%C3%B3n%20de%20cuenta%20Seismik">support@seismik.org</a>.</li>
-        <li>Usa el asunto <strong>Solicitud de eliminación de cuenta Seismik</strong>.</li>
-        <li>Indica si deseas eliminar la cuenta completa o datos concretos. Si lo tienes, incluye el correo con el que iniciaste sesión y el identificador de dispositivo que aparece en Ajustes; no envíes contraseñas, documentos ni ubicación exacta.</li>
-      </ol>
-      <p><a class="button" href="mailto:support@seismik.org?subject=Solicitud%20de%20eliminaci%C3%B3n%20de%20cuenta%20Seismik&body=Quiero%20solicitar%20la%20eliminaci%C3%B3n%20de%20mi%20cuenta%20o%20mis%20datos%20de%20Seismik.%0A%0ACorreo%20asociado%20a%20la%20cuenta%3A%0AIdentificador%20de%20dispositivo%20%28opcional%29%3A%0AAlcance%20de%20la%20solicitud%20%28cuenta%20completa%20o%20datos%20concretos%29%3A">Preparar solicitud por correo</a></p>
+      <p>Escribe el correo con el que iniciaste sesión en Seismik. Verificaremos razonablemente que la solicitud proviene de la persona titular antes de aplicar cualquier cambio, y te escribiremos a ese mismo correo para confirmarlo.</p>
+      <form id="delete-form" class="delete-form" novalidate>
+        <label>Correo asociado a tu cuenta<input name="email" type="email" autocomplete="email" maxlength="254" required></label>
+        <fieldset class="scope-fieldset">
+          <legend>¿Qué quieres eliminar?</legend>
+          <label class="scope-option"><input type="radio" name="scope" value="full" checked><span><strong>Mi cuenta completa</strong><br>Perfil, dispositivos, círculo familiar y reportes asociados.</span></label>
+          <label class="scope-option"><input type="radio" name="scope" value="partial"><span><strong>Sólo datos concretos</strong><br>Indica cuáles abajo; la cuenta sigue activa.</span></label>
+        </fieldset>
+        <label>Detalles (opcional)<textarea name="details" rows="4" maxlength="2000" placeholder="Identificador de dispositivo si lo tienes, o qué datos concretos quieres eliminar. No incluyas contraseñas ni ubicación exacta."></textarea></label>
+        <div id="turnstile-container" class="turnstile-container" hidden aria-label="Verificación de seguridad"></div>
+        <button class="button" type="submit">Enviar solicitud</button>
+        <p id="delete-form-status" role="status" aria-live="polite"></p>
+      </form>
+      <p class="fine-print">¿Prefieres escribir tú mismo? Envía un correo a <a href="mailto:support@seismik.org?subject=Solicitud%20de%20eliminaci%C3%B3n%20de%20cuenta%20Seismik">support@seismik.org</a> con el asunto <strong>Solicitud de eliminación de cuenta Seismik</strong>.</p>
+    </section>
 
+    <section class="section prose">
       <h2>Qué eliminamos</h2>
       <p>Tras verificar razonablemente que la solicitud proviene de la persona titular, eliminamos o desvinculamos, según corresponda:</p>
       <ul>
@@ -46,13 +61,13 @@
       <h2>Datos que podemos conservar</h2>
       <p>Podemos conservar durante el tiempo estrictamente necesario registros mínimos de seguridad, prevención de fraude y cumplimiento de obligaciones legales. Las observaciones y métricas que ya fueron anonimizadas o agregadas para investigación, fiabilidad sísmica o estadística no permiten identificarte y pueden conservarse. Si existen copias de respaldo, no se restaurarán para reactivar una cuenta eliminada y se depurarán conforme a su ciclo operativo de seguridad.</p>
 
-      <h2>Plazo y alternativa</h2>
-      <p>Confirmaremos la recepción y, si hace falta, pediremos información adicional para verificar la solicitud. Procuramos completar solicitudes verificadas en un plazo de hasta 30 días calendario, salvo que una obligación legal requiera otra conservación. También puedes pedir acceso, corrección, revocación de autorización o eliminación parcial escribiendo al mismo correo.</p>
+      <h2>Plazo</h2>
+      <p>Confirmaremos la recepción y, si hace falta, pediremos información adicional para verificar la solicitud. Procuramos completar solicitudes verificadas en un plazo de hasta 30 días calendario, salvo que una obligación legal requiera otra conservación. También puedes pedir acceso, corrección, revocación de autorización o eliminación parcial usando el mismo formulario o el mismo correo.</p>
 
       <h2>Si no puedes acceder al correo</h2>
       <p>Escribe a <a href="mailto:support@seismik.org?subject=No%20puedo%20acceder%20a%20mi%20correo%20de%20Seismik">support@seismik.org</a> con el asunto <strong>No puedo acceder a mi correo de Seismik</strong>. Te indicaremos una forma proporcional de verificar la titularidad sin pedir información sensible innecesaria.</p>
     </section>
   </main>
-  <footer><span>© 2026 Seismik · Proyecto abierto</span><a href="/terms-of-privacy">Privacidad</a><a href="/terms-of-service">Términos</a><a href="/contact">Contacto</a></footer>
+  <footer><span>© 2026 Seismik · Proyecto abierto</span><a href="/terms-of-privacy/">Privacidad</a><a href="/terms-of-service/">Términos</a><a href="/contact/">Contacto</a></footer>
 </body>
 </html>

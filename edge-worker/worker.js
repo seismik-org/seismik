@@ -55,8 +55,9 @@ function targetFor(request) {
     else if (path.startsWith("/v1/oauth/") || path.startsWith("/id/") || path === "/login") origin = API;
   } else if (host === "www.seismik.org") return new URL(`https://seismik.org${path}${source.search}`);
   else if (host === "seismik.org") {
-    if (path === "/privacy.html") return new URL("https://seismik.org/terms-of-privacy");
-    if (path === "/api-terms.html") return new URL("https://seismik.org/terms-of-service#api");
+    if (path.startsWith("/v1/")) origin = API;
+    else if (path === "/privacy.html") return new URL("https://seismik.org/terms-of-privacy/");
+    else if (path === "/api-terms.html") return new URL("https://seismik.org/terms-of-service/#api");
   }
   return new URL(`${path}${source.search}`, origin);
 }
@@ -78,7 +79,7 @@ function securityHeaders(host) {
   if (host === "api.seismik.org") headers.set("Content-Security-Policy", "default-src 'none'; base-uri 'none'; frame-ancestors 'none'");
   else if (host === "devs.seismik.org") headers.set("Content-Security-Policy", "default-src 'self'; script-src 'self' https://www.gstatic.com https://challenges.cloudflare.com; style-src 'self'; img-src 'self' data: https://lh3.googleusercontent.com; connect-src 'self' https://api.seismik.org https://identitytoolkit.googleapis.com https://securetoken.googleapis.com; frame-src 'self' https://accounts.google.com https://seismik-15bbb.firebaseapp.com https://challenges.cloudflare.com; base-uri 'none'; frame-ancestors 'none'; form-action 'self'");
   else if (host === "status.seismik.org") headers.set("Content-Security-Policy", "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'");
-  else headers.set("Content-Security-Policy", "default-src 'self'; style-src 'self'; img-src 'self' data:; base-uri 'none'; frame-ancestors 'none'; form-action 'self'");
+  else headers.set("Content-Security-Policy", "default-src 'self'; script-src 'self' https://challenges.cloudflare.com; style-src 'self'; img-src 'self' data:; connect-src 'self' https://api.seismik.org; frame-src https://challenges.cloudflare.com; base-uri 'none'; frame-ancestors 'none'; form-action 'self'");
   return headers;
 }
 

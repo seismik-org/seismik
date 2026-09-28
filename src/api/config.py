@@ -44,6 +44,14 @@ class AppSettings(BaseSettings):
     turnstile_site_key: str = ""
     turnstile_secret_key: SecretStr = SecretStr("")
     turnstile_expected_hostname: str = "devs.seismik.org"
+    # El formulario público de eliminación de cuenta vive en seismik.org, no en
+    # el portal de desarrolladores: comparte site key y secret key de Turnstile
+    # (el widget debe autorizar ambos dominios en el panel de Cloudflare), pero
+    # valida su propio hostname y su propia acción para que un token de un
+    # formulario no sirva en el otro.
+    turnstile_web_hostname: str = "seismik.org"
+    account_deletion_request_stream: str = "stream:seismik:account-deletion-requests"
+    account_deletion_requests_per_hour: int = Field(default=5, ge=1, le=1_000)
     integration_stream: str = "stream:seismik:integrations"
     integration_dead_letter_stream: str = "stream:seismik:integrations-dead-letter"
     integration_audit_stream: str = "stream:seismik:integration-audit"
