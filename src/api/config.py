@@ -182,6 +182,7 @@ class AppSettings(BaseSettings):
     public_showcase_minimum_magnitude: float = Field(default=4.5, ge=0, le=10)
     public_showcase_limit: int = Field(default=6, ge=1, le=20)
     public_showcase_scan_limit: int = Field(default=500, ge=10, le=5_000)
+    public_showcase_requests_per_minute: int = Field(default=30, ge=1, le=600)
     official_sources_path: str = "official_sources.json"
     official_history_timeout_seconds: float = Field(default=8.0, ge=1, le=30)
     official_history_cache_seconds: int = Field(default=120, ge=30, le=3_600)
