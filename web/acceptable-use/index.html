@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Qué está permitido y qué no al usar la API de Seismik, por qué y cómo se bloquea una clave, y el plazo máximo de respuesta a una apelación.">
+  <meta name="robots" content="index,follow">
+  <meta property="og:title" content="Uso aceptable de la API · Seismik">
+  <meta property="og:description" content="Qué está permitido y qué no al usar la API de Seismik, por qué y cómo se bloquea una clave, y el plazo máximo de respuesta.">
+  <meta property="og:url" content="https://seismik.org/acceptable-use/">
+  <title>Uso aceptable de la API · Seismik</title>
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" sizes="16x16" href="/assets/favicon-16.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32.png">
+  <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+  <link rel="manifest" href="/site.webmanifest">
+  <meta name="theme-color" content="#0B1226">
+  <link rel="stylesheet" href="/styles.css?v=__ASSET_VERSION__">
+  <link rel="stylesheet" href="/logo.css?v=__ASSET_VERSION__">
+</head>
+<body>
+  <header class="nav">
+    <a class="brand" href="/" aria-label="Seismik, inicio"><img class="brand-logo" src="/assets/seismik_logo.webp" width="34" height="34" alt="">SEISMIK</a>
+    <nav><a href="/">Inicio</a><a href="/terms-of-service/">Términos</a><a href="https://devs.seismik.org/">API</a></nav>
+  </header>
+  <main class="narrow">
+    <p class="eyebrow">SEISMIK · API</p>
+    <h1>Uso aceptable de la API.</h1>
+    <p class="lead">Qué puedes hacer con una clave de Seismik, qué no aceptamos, por qué bloqueamos una clave o una cuenta, cómo lo hacemos y en cuánto tiempo respondemos. Vigente desde el 30 de septiembre de 2026.</p>
+
+    <section class="section prose">
+      <h2>1. Alcance</h2>
+      <p>Esta política aplica a toda clave de la API —incluida la <a href="https://devs.seismik.org/#documentacion">Seismik Always Free API</a>, que no exige clave pero sí respeta este documento—, a los webhooks institucionales y a cualquier integración que consuma datos de Seismik. Se incorpora por referencia a los <a href="/terms-of-service/#api">Términos de servicio</a>: donde haya conflicto, prevalece lo más restrictivo para el uso en cuestión.</p>
+
+      <h2>2. Qué sí puedes hacer</h2>
+      <p>Consultar, mostrar y redistribuir los datos oficiales con atribución a la agencia (<code>agency</code>) y enlace a su fuente (<code>official_url</code>); construir tableros, alertas internas, investigación, educación, periodismo y prototipos; y usar la API Always Free para probarla o para un widget público de bajo tráfico, sin registro.</p>
+
+      <h2>3. Qué no aceptamos</h2>
+      <ul>
+        <li><strong>Compartir o exponer la clave.</strong> No la publiques en un repositorio, una app cliente, el navegador o cualquier lugar donde un tercero pueda leerla. No la vendas, alquiles ni se la transfieras a otra organización sin avisarnos.</li>
+        <li><strong>Evadir la autenticación o la cuota.</strong> Nada de scraping del sitio o del panel para saltarte la clave, rotar claves para esquivar un límite, ni automatizar su creación.</li>
+        <li><strong>Quitar la atribución.</strong> Presentar un dato de Seismik sin <code>agency</code> ni <code>official_url</code>, o dar a entender que Seismik —o tú— es la fuente sismológica primaria.</li>
+        <li><strong>Suplantar o insinuar una alianza.</strong> Usar el nombre, el logotipo o los datos de Seismik, del SGC, USGS u otra agencia para dar la impresión de una afiliación, aprobación o aval que no existe.</li>
+        <li><strong>Tratar la API como única fuente de decisiones críticas.</strong> Vida, seguridad, emergencia, evacuación, seguros, salud, inversión, operación industrial o control de infraestructura. Los datos pueden ser preliminares, incompletos o estar pendientes de revisión.</li>
+        <li><strong>Controlar infraestructura física con un webhook.</strong> Gas, agua, energía, puertas, ascensores o cualquier maquinaria. Los webhooks institucionales operan sólo en modo de simulación; ver la sección 6 de los <a href="/terms-of-service/#api">Términos de servicio</a>.</li>
+        <li><strong>Sobrecargar el servicio a propósito.</strong> Tráfico diseñado para agotar la cuota de otros, fuzzing agresivo o cualquier intento de explotar una falla sin reportárnosla primero a <a href="mailto:support@seismik.org">support@seismik.org</a>.</li>
+        <li><strong>Reidentificar personas.</strong> Cruzar datos agregados o reportes ciudadanos con otra fuente para identificar a quien los envió.</li>
+        <li><strong>Usos ilegales o dañinos.</strong> Desinformación presentada como dato oficial, acoso, vigilancia no consentida de una persona, o cualquier actividad contraria a la ley aplicable.</li>
+      </ul>
+
+      <h2>4. Por qué bloqueamos una clave o una cuenta</h2>
+      <p>Bloqueamos, de forma proporcional a lo ocurrido, por alguna de estas razones:</p>
+      <ul>
+        <li>Incumplir cualquier punto de la sección 3.</li>
+        <li>Riesgo de seguridad: una clave filtrada, tráfico que sugiere que fue robada, o un patrón compatible con un ataque.</li>
+        <li>Consumo anómalo que arriesgue la disponibilidad del servicio para el resto de quienes lo usan.</li>
+        <li>Datos de registro falsos o una cuenta creada para evadir un bloqueo anterior.</li>
+        <li>Uso comercial fuera de lo que permite la beta, sin haberlo conversado antes con nosotros.</li>
+        <li>Un uso que ponga en riesgo real a una persona, por ejemplo presentarse como un sistema oficial de alerta.</li>
+        <li>Una obligación legal o la solicitud de una autoridad competente.</li>
+        <li>Necesidad operativa transitoria del propio servicio, por ejemplo durante un incidente de disponibilidad; en ese caso el acceso se restablece solo en cuanto termina.</li>
+      </ul>
+
+      <h2>5. Cómo lo hacemos</h2>
+      <p>Cuando es posible, avisamos antes de actuar: te escribimos al correo de tu cuenta explicando qué vimos y te damos oportunidad de corregirlo. La respuesta es proporcional:</p>
+      <ol>
+        <li><strong>Límite temporal</strong> a la cuota, cuando basta para resolver un consumo anómalo.</li>
+        <li><strong>Suspensión de la clave</strong>, reversible, mientras se aclara o corrige la situación.</li>
+        <li><strong>Revocación</strong> de la clave o de la cuenta, cuando el incumplimiento es grave, repetido o pone en riesgo a terceros.</li>
+      </ol>
+      <p>La única excepción al aviso previo es un riesgo de seguridad activo —una clave comprometida, un ataque en curso—, donde actuamos primero y explicamos después, dentro del plazo de la sección 6. Fuera de ese caso, no bloqueamos sin decir por qué.</p>
+
+      <h2>6. Apelaciones y plazo máximo de respuesta</h2>
+      <p>Si bloqueamos tu clave, o si quieres reportar el uso indebido de otra, escribe a <a href="mailto:support@seismik.org?subject=Apelaci%C3%B3n%20o%20reporte%20-%20Uso%20de%20la%20API%20Seismik">support@seismik.org</a> con el asunto <strong>Apelación o reporte - Uso de la API Seismik</strong>.</p>
+      <ul>
+        <li>Acuse de recibo: en un plazo máximo de <strong>3 días hábiles</strong>.</li>
+        <li>Resolución: en un plazo máximo de <strong>15 días hábiles</strong> desde el acuse de recibo.</li>
+        <li>Si el caso necesita más tiempo —por ejemplo, investigar un reporte de seguridad—, te decimos por qué antes de que venza el plazo, con una nueva fecha.</li>
+        <li>Un bloqueo por riesgo de seguridad activo se explica dentro de los mismos 5 días hábiles siguientes a la acción, no después.</li>
+      </ul>
+      <p class="fine-print">Estos plazos son un compromiso de atención, no una promesa de resultado: podemos mantener un bloqueo tras revisarlo, si corresponde.</p>
+
+      <h2>7. Relación con otros documentos</h2>
+      <p>Esta política no reemplaza a los <a href="/terms-of-service/">Términos de servicio</a> ni a la <a href="/terms-of-privacy/">Política de privacidad</a>; los complementa en lo específico al uso de la API. Ante cualquier conflicto de interpretación, consulta primero los Términos de servicio.</p>
+
+      <h2>8. Cambios y contacto</h2>
+      <p>Podemos actualizar esta política al evolucionar la API o la normativa aplicable. Publicaremos una nueva fecha de vigencia ante cualquier cambio material. Consultas: <a href="mailto:support@seismik.org">support@seismik.org</a>.</p>
+    </section>
+  </main>
+  <footer><span>© 2026 Seismik · Proyecto abierto</span><a href="/terms-of-privacy/">Privacidad</a><a href="/terms-of-service/">Términos</a><a href="/delete-account/">Eliminar cuenta</a><a href="https://devs.seismik.org/">Desarrolladores</a></footer>
+</body>
+</html>
