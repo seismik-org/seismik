@@ -40,6 +40,34 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+        <!-- Tile «Último sismo»: un deslizamiento desde la esfera. -->
+        <service
+            android:name=".LatestQuakeTileService"
+            android:exported="true"
+            android:label="Último sismo"
+            android:permission="com.google.android.wearable.permission.BIND_TILE_PROVIDER">
+            <intent-filter>
+                <action android:name="androidx.wear.tiles.action.BIND_TILE_PROVIDER"/>
+            </intent-filter>
+        </service>
+
+        <!-- Complicación «Último sismo» para la esfera. -->
+        <service
+            android:name=".LatestQuakeComplicationService"
+            android:exported="true"
+            android:label="Último sismo"
+            android:permission="com.google.android.wearable.permission.BIND_COMPLICATION_PROVIDER">
+            <intent-filter>
+                <action android:name="android.support.wearable.complications.ACTION_COMPLICATION_UPDATE_REQUEST"/>
+            </intent-filter>
+            <meta-data
+                android:name="android.support.wearable.complications.SUPPORTED_TYPES"
+                android:value="SHORT_TEXT,LONG_TEXT"/>
+            <meta-data
+                android:name="android.support.wearable.complications.UPDATE_PERIOD_SECONDS"
+                android:value="900"/>
+        </service>
+
         <!-- Acompañante: los avisos llegan reflejados del teléfono, el reloj
              no alerta por su cuenta. -->
         <meta-data

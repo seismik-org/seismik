@@ -59,8 +59,13 @@ adb connect IP_DEL_RELOJ:5555
 adb -s IP_DEL_RELOJ:5555 install -r build/app/outputs/flutter-apk/app-release.apk
 ```
 
+## Tile y complicación
+
+El tile y la complicación «Último sismo» de la esfera están escritos en Kotlin
+(`LatestQuake*.kt`) porque Flutter no dibuja esas superficies. Leen la misma
+caché que la pantalla de la app y, si aún no existe, la Seismik Always Free
+API. La app los avisa cuando baja datos nuevos.
+
 ## Lo que falta
 
-- **Tile y complicación** para la esfera: se escriben en Kotlin con Jetpack
-  Tiles; Flutter no las dibuja.
 - **Alertas propias** en el reloj: hoy llegan reflejadas del teléfono.

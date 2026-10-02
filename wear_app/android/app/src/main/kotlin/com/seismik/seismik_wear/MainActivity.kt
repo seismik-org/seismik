@@ -1,9 +1,12 @@
 package com.seismik.seismik_wear
 
+import android.content.ComponentName
 import android.net.Uri
 import android.view.InputDevice
 import android.view.MotionEvent
 import android.view.ViewConfiguration
+import androidx.wear.tiles.TileService
+import androidx.wear.watchface.complications.datasource.ComplicationDataSourceUpdateRequester
 import com.google.android.gms.wearable.DataMapItem
 import com.google.android.gms.wearable.Wearable
 import io.flutter.embedding.android.FlutterActivity
@@ -44,6 +47,11 @@ class MainActivity : FlutterActivity() {
     private fun configureAccountChannel(flutterEngine: FlutterEngine) {
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, ACCOUNT_CHANNEL)
             .setMethodCallHandler { call, result ->
+                if (call.method == "refreshSurfaces") {
+                    refreshSurfaces()
+                    result.success(null)
+                    return@setMethodCallHandler
+                }
                 if (call.method != "accountSession") {
                     result.notImplemented()
                     return@setMethodCallHandler
@@ -76,6 +84,17 @@ class MainActivity : FlutterActivity() {
                         result.error("sin-datos", error.message, null)
                     }
             }
+    }
+
+    /**
+     * Cuando la app baja sismos nuevos, el tile y la complicación de la esfera
+     * se enteran en el momento en vez de esperar a su siguiente ciclo.
+     */
+    private fun refreshSurfaces() {
+        TileService.getUpdater(this).requestUpdate(LatestQuakeTileService::class.java)
+        ComplicationDataSourceUpdateRequester
+            .create(this, ComponentName(this, LatestQuakeComplicationService::class.java))
+            .requestUpdateAll()
     }
 
     // `dispatchGenericMotionEvent` y no `onGenericMotionEvent`: la corona sólo
