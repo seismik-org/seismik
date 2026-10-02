@@ -15,6 +15,7 @@ from pydantic import BaseModel, Field, field_validator
 
 from api.billing import CREDIT_PACKS, MICROUNITS_PER_USD, REQUEST_PRICES
 from api.billing import summary as billing_summary
+from api.developer_plans import account_plan, catalog
 
 router = APIRouter(prefix="/v1/developer", tags=["developer-platform"])
 
@@ -72,7 +73,7 @@ class KeySummary(BaseModel):
     key_id: str
     name: str
     prefix: str
-    plan: Literal["free"] = "free"
+    plan: Literal["free", "pay_as_you_use", "pro", "enterprise"] = "free"
     scopes: list[str]
     status: Literal["active", "revoked"]
     created_at: str
@@ -178,6 +179,7 @@ def _record_to_summary(record: dict[str, str], requests_today: int = 0) -> KeySu
         key_id=record["key_id"],
         name=record["name"],
         prefix=record["prefix"],
+        plan=cast(Literal["free", "pay_as_you_use", "pro", "enterprise"], record.get("plan", "free")),
         scopes=sorted(filter(None, record.get("scopes", "").split(","))),
         status=cast(Literal["active", "revoked"], record.get("status", "active")),
         created_at=record["created_at"],
@@ -317,7 +319,8 @@ async def _create_key_record(
 
     records = await _records_for_uid(request, uid)
     active_count = sum(record.get("status", "active") == "active" for _, record in records)
-    if active_count >= settings.developer_max_active_keys:
+    plan = await account_plan(request.app.state.redis, uid, settings)
+    if active_count >= plan["max_active_keys"]:
         raise HTTPException(status_code=409, detail="Active API key limit reached")
 
     prefix = "sk_live_" if settings.environment.lower() == "production" else "sk_test_"
@@ -333,7 +336,7 @@ async def _create_key_record(
         "created_at": now,
         "last_used_at": "",
         "revoked_at": "",
-        "plan": "free",
+        "plan": plan["id"],
         "status": "active",
         "scopes": ",".join(sorted(payload.scopes)),
         "terms_version": settings.developer_terms_version,
@@ -372,15 +375,7 @@ async def portal_config(request: Request) -> PortalConfigResponse:
         firebase_enabled=firebase is not None,
         firebase=firebase,
         terms_version=settings.developer_terms_version,
-        plans=[
-            {
-                "id": "free",
-                "name": "Free",
-                "requests_per_minute": settings.developer_free_requests_per_minute,
-                "requests_per_day": settings.developer_free_requests_per_day,
-                "max_active_keys": settings.developer_max_active_keys,
-            }
-        ],
+        plans=catalog(settings),
         billing={
             "currency": "USD",
             "microunits_per_usd": MICROUNITS_PER_USD,
@@ -412,6 +407,20 @@ async def portal_config(request: Request) -> PortalConfigResponse:
     )
 
 
+@router.get("/account")
+async def developer_account(
+    request: Request,
+    authorization: str | None = Header(default=None),
+    seismik_session: str | None = Cookie(default=None),
+) -> dict[str, Any]:
+    identity = await _request_identity(request, authorization, seismik_session)
+    uid = str(identity["uid"])
+    return {
+        "plan": await account_plan(request.app.state.redis, uid, request.app.state.settings),
+        "usage": await billing_summary(request.app.state.redis, uid),
+    }
+
+
 @router.get("/billing/summary", response_model=BillingSummaryResponse)
 async def billing_summary_for_developer(
     request: Request,
@@ -439,6 +448,7 @@ async def list_keys(
 ) -> KeyListResponse:
     identity = await _request_identity(request, authorization, seismik_session)
     uid = str(identity["uid"])
+    plan = await account_plan(request.app.state.redis, uid, request.app.state.settings)
     today = datetime.now(timezone.utc).strftime("%Y%m%d")
     summaries: list[KeySummary] = []
     for digest, record in await _records_for_uid(request, uid):
@@ -452,12 +462,12 @@ async def list_keys(
             )
             or 0
         )
-        summaries.append(_record_to_summary(record, usage))
+        summaries.append(_record_to_summary({**record, "plan": plan["id"]}, usage))
     summaries.sort(key=lambda item: item.created_at, reverse=True)
     return KeyListResponse(
         keys=summaries,
         active_count=len(summaries),
-        active_limit=request.app.state.settings.developer_max_active_keys,
+        active_limit=plan["max_active_keys"],
     )
 
 

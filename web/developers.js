@@ -3,6 +3,8 @@ const API = window.location.origin;
 const AUTH = "https://auth.seismik.org";
 const elements = Object.fromEntries([...document.querySelectorAll("[id]")].map((item) => [item.id, item]));
 let currentUser = null;
+let currentAccount = null;
+let sessionVersion = 0;
 let portalConfig = null;
 let turnstileWidgetId = null;
 let turnstileApiPromise = null;
@@ -170,10 +172,58 @@ function requestPriceMarkup(price) {
   return `<div class="request-price-row"><span>${escapeHtml(price.name)}<br><small>${escapeHtml(price.scope)}</small></span><strong>${usdFromMicrounits(price.usd_microunits_per_request, { minimumFractionDigits: 4, maximumFractionDigits: 4 })}</strong></div>`;
 }
 
+function planMarkup(plan) {
+    const isFree = plan.id === "free";
+    const action = isFree ? "#panel" : `mailto:support@seismik.org?subject=${encodeURIComponent(`Plan ${plan.name} para la API de Seismik`)}`;
+    const quota = plan.requests_per_minute != null ? `<p>${plan.requests_per_minute.toLocaleString("es-CO")} solicitudes/min · ${plan.requests_per_day.toLocaleString("es-CO")} al día · ${plan.max_active_keys} claves activas</p>` : "<p>Volumen, cuotas y soporte por acuerdo. Sin promesa de uso ilimitado.</p>";
+    return `<article class="credit-pack plan-card" data-plan-id="${escapeHtml(plan.id)}"><p class="eyebrow">${escapeHtml(plan.name)}</p><h3>${escapeHtml(plan.price_label)}</h3><p>${escapeHtml(plan.description)}</p>${quota}<span class="plan-selection" hidden>Tu plan actual</span><a class="button button-secondary" href="${escapeHtml(action)}">${isFree ? "Crear una clave" : plan.id === "enterprise" ? "Negociar Enterprise" : "Consultar condiciones"}</a></article>`;
+}
+
 function renderBillingCatalog() {
   if (!portalConfig?.billing) return;
+  elements["plan-catalog"].innerHTML = portalConfig.plans.map(planMarkup).join("");
   elements["credit-packs"].innerHTML = portalConfig.billing.credit_packs.map(creditPackMarkup).join("");
   elements["request-prices"].innerHTML = portalConfig.billing.request_prices.map(requestPriceMarkup).join("");
+}
+
+function markCurrentPlan() {
+  document.querySelectorAll("[data-plan-id]").forEach((card) => {
+    const selected = card.dataset.planId === currentAccount?.plan.id;
+    card.classList.toggle("current-plan", selected);
+    card.querySelector(".plan-selection").hidden = !selected;
+  });
+}
+
+async function loadAccount() {
+  const version = sessionVersion;
+  const button = elements["refresh-account-button"];
+  setButtonBusy(button, true, "Consultando…");
+  try {
+    const account = await api("/v1/developer/account");
+    if (version !== sessionVersion) return;
+    currentAccount = account;
+    const plan = account.plan;
+    elements["account-plan-name"].textContent = plan.name;
+    elements["account-plan-description"].textContent = plan.description;
+    elements["account-plan-status"].textContent = "Activo";
+    elements["account-plan-status"].classList.add("active");
+    elements["minute-quota"].textContent = plan.requests_per_minute.toLocaleString("es-CO");
+    elements["daily-quota"].textContent = plan.requests_per_day.toLocaleString("es-CO");
+    elements["active-key-limit"].textContent = plan.max_active_keys;
+    elements["account-monthly-usage"].textContent = account.usage.requests.toLocaleString("es-CO");
+    elements["account-plan-billing"].textContent = "Cobros desactivados. No hay cargos automáticos ni medios de pago registrados en este portal.";
+    markCurrentPlan();
+  } catch (error) {
+    if (version !== sessionVersion) return;
+    currentAccount = null;
+    elements["account-plan-name"].textContent = "No se pudo consultar el plan";
+    elements["account-plan-description"].textContent = "Vuelve a consultar para ver las condiciones actuales de tu cuenta.";
+    elements["account-plan-status"].textContent = "Consulta pendiente";
+    elements["account-plan-status"].classList.remove("active");
+    ["minute-quota", "daily-quota", "active-key-limit", "account-monthly-usage"].forEach((id) => { elements[id].textContent = "—"; });
+    markCurrentPlan();
+    toast(error.message, true);
+  } finally { if (version === sessionVersion) setButtonBusy(button, false); }
 }
 
 function keyMarkup(key) {
@@ -339,6 +389,9 @@ async function keyAction(event) {
 }
 
 function updateSession(user) {
+  sessionVersion += 1;
+  currentAccount = null;
+  markCurrentPlan();
   currentUser = user;
   const signedIn = Boolean(user);
   elements["signed-out-panel"].hidden = signedIn;
@@ -348,6 +401,12 @@ function updateSession(user) {
   elements["user-label"].hidden = !signedIn;
   elements["user-label"].textContent = user?.email || "";
   if (signedIn) {
+    elements["account-plan-name"].textContent = "Consultando…";
+    elements["account-plan-description"].textContent = "";
+    elements["account-plan-status"].textContent = "";
+    elements["account-plan-status"].classList.remove("active");
+    ["minute-quota", "daily-quota", "active-key-limit", "account-monthly-usage"].forEach((id) => { elements[id].textContent = "—"; });
+    loadAccount();
     renderTurnstile().catch((error) => toast(error.message, true));
     loadKeys();
     loadWebhooks();
@@ -363,10 +422,6 @@ async function boot() {
     if (configResult.status === "rejected") throw configResult.reason;
     portalConfig = configResult.value;
     renderBillingCatalog();
-    const plan = portalConfig.plans[0];
-    elements["minute-quota"].textContent = plan.requests_per_minute.toLocaleString("es-CO");
-    elements["daily-quota"].textContent = plan.requests_per_day.toLocaleString("es-CO");
-    elements["active-key-limit"].textContent = plan.max_active_keys;
     updateSession(sessionResult.status === "fulfilled" ? sessionResult.value : null);
   } catch (error) { toast(`No fue posible cargar la plataforma: ${error.message}`, true); }
 }
@@ -379,6 +434,7 @@ elements["logout-button"].addEventListener("click", async () => {
 });
 elements["key-form"].addEventListener("submit", createKey);
 elements["refresh-button"].addEventListener("click", loadKeys);
+elements["refresh-account-button"].addEventListener("click", loadAccount);
 elements["keys-list"].addEventListener("click", keyAction);
 elements["webhook-form"].addEventListener("submit", createWebhook);
 elements["webhooks-list"].addEventListener("click", webhookAction);

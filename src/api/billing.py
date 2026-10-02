@@ -18,7 +18,7 @@ from redis.exceptions import WatchError
 # procesador y validar impuestos, reembolsos y el flujo de facturas.
 MICROUNITS_PER_USD = 1_000_000
 
-# No hay planes mensuales. Los paquetes simplemente acreditarán saldo de uso
+# Estos paquetes no son suscripciones. Simplemente acreditarán saldo de uso
 # cuando exista el checkout; no dan una cuota recurrente ni crédito promocional.
 CREDIT_PACKS: tuple[dict[str, int | str], ...] = (
     {"id": "credits-5", "name": "Inicio", "usd_microunits": 5_000_000},

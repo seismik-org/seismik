@@ -8,6 +8,95 @@ from fastapi import Depends, FastAPI
 from api import developer_keys
 from api.config import AppSettings
 from api.dependencies import ApiPrincipal, require_events_read, require_stations_read
+from api.developer_plans import assign_plan
+
+
+@pytest.mark.asyncio
+async def test_plan_catalog_and_account_default(monkeypatch: pytest.MonkeyPatch) -> None:
+    app = developer_app(monkeypatch)
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
+        config = (await client.get("/v1/developer/config")).json()
+        assert [plan["id"] for plan in config["plans"]] == ["free", "pay_as_you_use", "pro", "enterprise"]
+        assert config["plans"][3]["price_label"] == "A negociar"
+        assert config["plans"][2]["monthly_price_microunits"] == 19_000_000
+        assert config["plans"][2]["requests_per_day"] == 20_000
+        account = (await client.get("/v1/developer/account", headers={"Authorization": "Bearer valid-token"})).json()
+        assert account["plan"]["name"] == "Always Free with API Key"
+        assert account["plan"]["requests_per_day"] == 10_000
+        assert account["usage"]["payments_enabled"] is False
+
+
+@pytest.mark.asyncio
+async def test_plan_changes_apply_to_existing_keys_and_not_other_accounts(monkeypatch: pytest.MonkeyPatch) -> None:
+    app = developer_app(monkeypatch)
+    headers = {"Authorization": "Bearer valid-token"}
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
+        key = (await client.post("/v1/developer/keys", headers=headers, json={"name": "First key", "accepted_terms_version": "2026-08-30"})).json()
+        await assign_plan(app.state.redis, "developer-1", "pro", actor="test-admin", reason="Approved pilot", requests_per_minute=2, max_active_keys=5)
+        account = (await client.get("/v1/developer/account", headers=headers)).json()
+        assert account["plan"]["id"] == "pro"
+        assert account["plan"]["max_active_keys"] == 5
+        listed = (await client.get("/v1/developer/keys", headers=headers)).json()
+        assert listed["keys"][0]["plan"] == "pro"
+        assert listed["active_limit"] == 5
+        await assign_plan(app.state.redis, "another-user", "enterprise", actor="test-admin", reason="Separate agreement", requests_per_minute=999)
+        assert (await client.get("/v1/developer/account", headers=headers)).json()["plan"]["id"] == "pro"
+        assert (await client.get("/events", headers={"X-Seismik-API-Key": key["key"]})).status_code == 200
+        assert len(await app.state.redis.xrange("stream:seismik:developer-plan-audit")) == 2
+        await assign_plan(app.state.redis, "developer-1", "free", actor="test-admin", reason="Pilot ended")
+        account = (await client.get("/v1/developer/account", headers=headers)).json()
+        assert account["plan"]["requests_per_minute"] == 60
+        assert account["plan"]["max_active_keys"] == 3
+
+
+@pytest.mark.asyncio
+async def test_multiple_keys_share_account_quota_and_cannot_self_upgrade(monkeypatch: pytest.MonkeyPatch) -> None:
+    app = developer_app(monkeypatch, developer_free_requests_per_minute=1)
+    headers = {"Authorization": "Bearer valid-token"}
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
+        keys = []
+        for name in ("First key", "Second key"):
+            response = await client.post("/v1/developer/keys", headers=headers, json={"name": name, "accepted_terms_version": "2026-08-30", "plan": "enterprise"})
+            assert response.json()["plan"] == "free"
+            keys.append(response.json()["key"])
+        assert (await client.get("/events", headers={"X-Seismik-API-Key": keys[0]})).status_code == 200
+        assert (await client.get("/events", headers={"X-Seismik-API-Key": keys[1]})).status_code == 429
+        assert (await client.post("/v1/developer/account", headers=headers, json={"plan": "enterprise"})).status_code == 405
+        assert (await client.get("/v1/developer/account", headers=headers)).json()["usage"]["requests"] == 1
+
+
+@pytest.mark.asyncio
+async def test_account_endpoint_requires_login_and_does_not_accept_target_uid() -> None:
+    app = FastAPI()
+    app.state.redis = FakeRedis(decode_responses=True)
+    app.state.settings = AppSettings()
+    app.include_router(developer_keys.router)
+    await app.state.redis.set("seismik:oauth:session:session-one", '{"uid":"user-one"}')
+    await assign_plan(app.state.redis, "user-two", "enterprise", actor="test-admin", reason="Private account")
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
+        assert (await client.get("/v1/developer/account")).status_code == 401
+        response = await client.get("/v1/developer/account?uid=user-two", headers={"Cookie": "seismik_session=session-one"})
+        assert response.status_code == 200
+        assert response.json()["plan"]["id"] == "free"
+
+
+@pytest.mark.asyncio
+async def test_plan_assignment_rejects_unknown_plans_and_bad_limits() -> None:
+    redis = FakeRedis(decode_responses=True)
+    for plan, limit in (("unknown", 1), ("pro", 0), ("pro", -1)):
+        with pytest.raises(ValueError):
+            await assign_plan(redis, "dev", plan, actor="admin", reason="test", requests_per_minute=limit)
+    assert await redis.keys("*") == []
+
+
+@pytest.mark.asyncio
+async def test_pro_activation_uses_published_limits(monkeypatch: pytest.MonkeyPatch) -> None:
+    app = developer_app(monkeypatch)
+    await assign_plan(app.state.redis, "developer-1", "pro", actor="admin", reason="Approved pilot")
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
+        plan = (await client.get("/v1/developer/account", headers={"Authorization": "Bearer valid-token"})).json()["plan"]
+        assert (plan["requests_per_minute"], plan["requests_per_day"], plan["max_active_keys"]) == (120, 20_000, 10)
+        assert plan["payments_enabled"] is False
 
 
 async def verified_identity(request, authorization):  # type: ignore[no-untyped-def]

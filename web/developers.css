@@ -97,6 +97,11 @@
 /* ---------- Precios (marcado generado por developers.js) ---------- */
 .pricing-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 18px; }
 .pricing-grid:empty { display: none; }
+.plan-card { display: flex; flex-direction: column; }
+.plan-card .button { margin-top: auto; text-align: center; }
+.credit-pack.plan-card h3 { font-size: 1.5rem; color: var(--text); }
+.plan-card.current-plan { border-color: var(--primary); box-shadow: 0 0 0 2px var(--primary); }
+.plan-selection { margin-bottom: 16px; color: var(--primary); font-weight: 700; }
 .credit-pack {
   position: relative; padding: 26px; border: 1px solid var(--line); border-radius: var(--radius);
   background: linear-gradient(180deg, var(--surface-2), var(--surface));
