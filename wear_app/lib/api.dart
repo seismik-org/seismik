@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:firebase_app_check/firebase_app_check.dart';
+import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -145,7 +146,21 @@ class SeismikWearApi {
     ];
     final SharedPreferences preferences = await SharedPreferences.getInstance();
     await preferences.setString(_cacheKey, jsonEncode(payload['events']));
+    await _refreshSurfaces();
     return events;
+  }
+
+  /// Avisa al tile y a la complicación de la esfera de que hay datos nuevos. Un
+  /// fallo aquí no puede romper la carga: son extras, y en las pruebas no hay
+  /// parte nativa.
+  Future<void> _refreshSurfaces() async {
+    try {
+      await const MethodChannel('seismik/wear').invokeMethod<void>('refreshSurfaces');
+    } on PlatformException {
+      // Sin tile ni complicación instalados no hay nada que actualizar.
+    } on MissingPluginException {
+      // Prueba o plataforma sin la parte nativa.
+    }
   }
 
   /// Lo último que se descargó, para tener algo que mostrar sin red.

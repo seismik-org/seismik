@@ -80,4 +80,9 @@ flutter {
 dependencies {
     // Data Layer: lee la sesión de la cuenta que publica el teléfono.
     implementation("com.google.android.gms:play-services-wearable:19.0.0")
+    // Tile y complicación: superficies de la esfera que Flutter no dibuja.
+    implementation("androidx.wear.tiles:tiles:1.4.1")
+    implementation("androidx.wear.protolayout:protolayout:1.2.1")
+    implementation("androidx.wear.watchface:watchface-complications-data-source:1.2.1")
+    implementation("com.google.guava:guava:33.4.0-android")
 }
