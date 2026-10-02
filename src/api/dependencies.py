@@ -12,6 +12,7 @@ from redis.asyncio import Redis
 from api.billing import record_usage
 from api.bus import RedisEventBus
 from api.config import AppSettings
+from api.developer_plans import account_plan
 from api.device_sessions import DeviceSessionRepository
 from api.devices_store import DeviceRepository
 from api.integrity import DeviceIntegrityVerifier
@@ -113,6 +114,7 @@ async def _authorize_developer_key(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="API key scope is insufficient")
 
     resolved_settings = settings or request.app.state.settings
+    plan = await account_plan(resolved_redis, record["uid"], resolved_settings)
     now = datetime.now(timezone.utc)
     minute_key = f"seismik:developer-usage:minute:{digest}:{now:%Y%m%d%H%M}"
     day_key = f"seismik:developer-usage:day:{digest}:{now:%Y%m%d}"
@@ -122,16 +124,21 @@ async def _authorize_developer_key(
     pipe.incr(day_key)
     pipe.expire(day_key, 172_800)
     pipe.hset(f"seismik:developer-key:{digest}", mapping={"last_used_at": now.isoformat()})
+    # Quotas belong to the account; multiple keys cannot multiply its allowance.
+    pipe.incr(f"seismik:developer-account-usage:minute:{record['uid']}:{now:%Y%m%d%H%M}")
+    pipe.expire(f"seismik:developer-account-usage:minute:{record['uid']}:{now:%Y%m%d%H%M}", 120)
+    pipe.incr(f"seismik:developer-account-usage:day:{record['uid']}:{now:%Y%m%d}")
+    pipe.expire(f"seismik:developer-account-usage:day:{record['uid']}:{now:%Y%m%d}", 172_800)
     results = await pipe.execute()
-    minute_count = int(results[0])
-    day_count = int(results[2])
-    if minute_count > resolved_settings.developer_free_requests_per_minute:
+    minute_count = int(results[5])
+    day_count = int(results[7])
+    if minute_count > plan["requests_per_minute"]:
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail="Per-minute API quota exceeded",
             headers={"Retry-After": "60"},
         )
-    if day_count > resolved_settings.developer_free_requests_per_day:
+    if day_count > plan["requests_per_day"]:
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail="Daily API quota exceeded",
@@ -141,7 +148,7 @@ async def _authorize_developer_key(
     return ApiPrincipal(
         subject=record["uid"],
         key_id=record.get("key_id"),
-        plan=record.get("plan", "free"),
+        plan=plan["id"],
         scopes=scopes,
     )
 

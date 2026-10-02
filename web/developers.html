@@ -239,15 +239,18 @@
     <!-- Precios -->
     <section id="precios" class="section container pricing-section">
       <div class="section-heading">
-        <p class="eyebrow">Créditos de consumo</p>
-        <h2>Sin mensualidades. Pagas sólo lo que usas.</h2>
-        <p>Los créditos se expresan y consumen en USD. El catálogo está publicado para revisión: durante la beta no se cobra, no se piden tarjetas y aún no se entregan créditos promocionales.</p>
+        <p class="eyebrow">Planes de la API</p>
+        <h2>Desde tu primera clave hasta una integración empresarial.</h2>
+        <p>Always Free es gratuito con cuotas. Pay-as-you-use desde US$5 de saldo y Pro a US$19 al mes requieren activación por Seismik. Enterprise se negocia. Precios en dólares estadounidenses antes de los impuestos aplicables. Durante la beta no se cobra ni se piden tarjetas.</p>
       </div>
+      <div id="plan-catalog" class="pricing-grid" aria-live="polite"></div>
+      <p class="fine-print">El endpoint público sin clave es independiente de estos planes. Ningún plan garantiza predicción sísmica, certificación de seguridad o un SLA no contratado.</p>
+      <h3>Paquetes de saldo para Pay-as-you-use</h3>
       <div id="credit-packs" class="pricing-grid" aria-live="polite"></div>
       <article class="card request-prices-card">
         <div><p class="eyebrow">Costo por solicitud</p><h3>Precios de lista de la API</h3></div>
         <div id="request-prices" class="request-prices" aria-live="polite"></div>
-        <p class="fine-print">Una consulta autenticada descontará créditos sólo cuando se active el cobro. Las consultas rechazadas por autenticación, cuota o un error de Seismik no se cobran.</p>
+        <p class="fine-print">Los precios por consulta corresponden sólo a Pay-as-you-use y se aplicarán tras activar expresamente el cobro. Pro incluye las consultas dentro de sus cuotas, sin cargo adicional automático; al alcanzar el límite la API rechaza solicitudes hasta su renovación. Always Free no descuenta saldo ni genera cargos. Enterprise se contrata por acuerdo. Los límites diarios se reinician a las 00:00 UTC. No incluye SLA garantizado, archivo histórico permanente ni servicios de emergencia.</p>
       </article>
     </section>
 
@@ -283,11 +286,17 @@
           </form>
 
           <article class="card dashboard-card quota-card">
-            <p class="eyebrow">Plan Free</p><h3>Cuotas de la beta</h3>
+            <p class="eyebrow">Tu plan actual</p><h3 id="account-plan-name">Consultando…</h3>
+            <p id="account-plan-description"></p>
+            <span id="account-plan-status" class="key-status"></span>
             <div class="quota-row"><span>Por minuto</span><strong id="minute-quota">60</strong></div>
             <div class="quota-row"><span>Por día</span><strong id="daily-quota">10.000</strong></div>
             <div class="quota-row"><span>Claves activas</span><strong id="active-key-limit">3</strong></div>
-            <p class="fine-print">Sin tarjeta. Los límites protegen la disponibilidad del proyecto abierto y podrán cambiar con aviso.</p>
+            <div class="quota-row"><span>Consultas del mes (UTC)</span><strong id="account-monthly-usage">—</strong></div>
+            <p id="account-plan-billing" class="fine-print">Cobros desactivados.</p>
+            <p class="fine-print">Cuotas compartidas por todas las claves de tu cuenta. Los planes de pago no se activan automáticamente.</p>
+            <button id="refresh-account-button" class="text-button" type="button">Consultar mi plan</button>
+            <a class="text-button" href="#precios">Comparar planes</a>
           </article>
         </div>
 
