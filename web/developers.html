@@ -259,7 +259,7 @@
       <article class="card request-prices-card">
         <div><p class="eyebrow">Costo por solicitud</p><h3>Precios de lista de la API</h3></div>
         <div id="request-prices" class="request-prices" aria-live="polite"></div>
-        <p class="fine-print">Los precios por consulta corresponden sólo a Pay-as-you-go y se aplicarán tras activar expresamente el cobro. Pro, Max y Ultra incluyen las consultas dentro de sus cuotas, sin cargo adicional automático; al alcanzar el límite la API rechaza solicitudes hasta el reinicio de la cuota correspondiente. Todos los planes tienen límites por minuto, día y mes, compartidos entre las claves de la cuenta. Always Free no descuenta saldo ni genera cargos. Enterprise se contrata por acuerdo. Los límites diarios se reinician a las 00:00 UTC y los mensuales el día 1 a las 00:00 UTC; las consultas no utilizadas no se acumulan. El pago por uso tiene un límite operativo de 200.000 consultas/mes; un mayor volumen requiere un acuerdo. No incluye SLA garantizado, archivo histórico permanente ni servicios de emergencia.</p>
+        <p class="fine-print">Los precios por consulta corresponden sólo a Pay-as-you-go y se aplicarán tras activar expresamente el cobro. Pro, Max y Ultra incluyen las consultas dentro de sus cuotas, sin cargo adicional automático; al alcanzar el límite la API rechaza solicitudes hasta el reinicio de la cuota correspondiente. Todos los planes tienen límites por minuto, día y mes, compartidos entre las claves de la cuenta. Always Free no descuenta saldo ni genera cargos. Enterprise se contrata por acuerdo. Los límites diarios se reinician a las 00:00 UTC y los mensuales el día 1 a las 00:00 UTC; las consultas no utilizadas no se acumulan. El pago por uso tiene un límite operativo de 1.000.000 consultas/mes; un mayor volumen requiere un acuerdo. No incluye SLA garantizado, archivo histórico permanente ni servicios de emergencia.</p>
       </article>
     </section>
 
@@ -303,6 +303,8 @@
             <div class="quota-row"><span>Por mes (UTC)</span><strong id="monthly-quota">—</strong></div>
             <div class="quota-row"><span>Claves activas</span><strong id="active-key-limit">3</strong></div>
             <div class="quota-row"><span>Consultas del mes (UTC)</span><strong id="account-monthly-usage">—</strong></div>
+            <div id="account-consumption" aria-live="polite"></div>
+            <p class="fine-print">Minuto y día incluyen intentos autenticados rechazados por cuota. El mes cuenta solicitudes que pasan las cuotas; no garantiza una respuesta exitosa. Este medidor no representa cargos.</p>
             <p id="account-plan-billing" class="fine-print">Cobros desactivados.</p>
             <p class="fine-print">Cuotas compartidas por todas las claves de tu cuenta. Los planes de pago no se activan automáticamente.</p>
             <button id="refresh-account-button" class="text-button" type="button">Consultar mi plan</button>

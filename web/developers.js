@@ -182,6 +182,12 @@ function planFeatures(plan) {
   else if (plan.billing_model === "usage") features.push("Sin mensualidad; saldo desde US$5");
   else if (plan.billing_model === "free") features.push("Sin tarjeta ni cargos");
   else features.push("Volumen y soporte bajo acuerdo");
+  if (plan.billing_model !== "free") {
+    features.push("Desglose de consumo de eventos y estaciones", "Panel con cuota utilizada y disponible", "Credenciales separadas para tus integraciones");
+    if (plan.billing_model === "usage") features.push("Hasta 1 millón de consultas/mes; pagas según uso");
+    else if (plan.billing_model === "subscription") features.push("Presupuesto mensual fijo", "Soporte por correo, sin SLA garantizado");
+    else features.push("Límites personalizados por contrato", "Coordinación de integración y soporte por acuerdo");
+  }
   return features;
 }
 
@@ -267,6 +273,25 @@ function markCurrentPlan() {
   });
 }
 
+function quotaUsageMarkup(account) {
+  if (!account?.quota_usage) return "";
+  const labels = {minute: "Este minuto", day: "Hoy (UTC)", month: "Este mes (UTC)"};
+  const fields = {minute: "requests_per_minute", day: "requests_per_day", month: "requests_per_month"};
+  return Object.entries(labels).map(([period, label]) => {
+    const item = account.quota_usage[period];
+    const limit = account.plan[fields[period]];
+    const used = item.used;
+    const percent = Math.min(100, used / limit * 100);
+    const remaining = Math.max(0, limit - used);
+    const reset = new Date(item.resets_at).toLocaleString("es-CO", {timeZone: "UTC"});
+    return `<div class="consumption-period"><div class="quota-row"><span>${escapeHtml(label)}</span><strong>${escapeHtml(used.toLocaleString("es-CO"))} / ${escapeHtml(limit.toLocaleString("es-CO"))}</strong></div><progress aria-label="Consumo: ${escapeHtml(label)}" max="${escapeHtml(limit)}" value="${escapeHtml(Math.min(used, limit))}"></progress><small>${escapeHtml(percent.toLocaleString("es-CO", {maximumFractionDigits: 1}))}% utilizado · ${escapeHtml(remaining.toLocaleString("es-CO"))} disponibles<br>Reinicio: ${escapeHtml(reset)} UTC</small></div>`;
+  }).join("") + `<p class="fine-print">Desglose del mes: ${account.usage.events_read.toLocaleString("es-CO")} de eventos · ${account.usage.stations_read.toLocaleString("es-CO")} de estaciones. Actualizado: ${escapeHtml(formatDate(account.quota_usage.updated_at))}.</p>`;
+}
+
+function renderQuotaUsage(account) {
+  elements["account-consumption"].innerHTML = quotaUsageMarkup(account);
+}
+
 async function loadAccount() {
   const version = sessionVersion;
   const button = elements["refresh-account-button"];
@@ -275,6 +300,7 @@ async function loadAccount() {
     const account = await api("/v1/developer/account");
     if (version !== sessionVersion) return;
     currentAccount = account;
+    renderQuotaUsage(account);
     const plan = account.plan;
     elements["account-plan-name"].textContent = plan.name;
     elements["account-plan-description"].textContent = plan.description;
@@ -292,6 +318,7 @@ async function loadAccount() {
   } catch (error) {
     if (version !== sessionVersion) return;
     currentAccount = null;
+    renderQuotaUsage(null);
     elements["account-plan-name"].textContent = "No se pudo consultar el plan";
     elements["account-plan-description"].textContent = "Vuelve a consultar para ver las condiciones actuales de tu cuenta.";
     elements["account-plan-status"].textContent = "Consulta pendiente";
@@ -467,6 +494,7 @@ async function keyAction(event) {
 function updateSession(user) {
   sessionVersion += 1;
   currentAccount = null;
+  renderQuotaUsage(null);
   elements["plan-selection-message"].textContent = "Inicia sesión para guardar tu selección. No se activa ni cobra un plan al elegirlo.";
   markCurrentPlan();
   currentUser = user;

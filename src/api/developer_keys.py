@@ -15,7 +15,7 @@ from pydantic import BaseModel, Field, field_validator
 
 from api.billing import CREDIT_PACKS, MICROUNITS_PER_USD, REQUEST_PRICES
 from api.billing import summary as billing_summary
-from api.developer_plans import PLAN_NAMES, account_plan, catalog
+from api.developer_plans import PLAN_NAMES, account_plan, catalog, quota_usage
 
 router = APIRouter(prefix="/v1/developer", tags=["developer-platform"])
 
@@ -422,6 +422,7 @@ async def developer_account(
     return {
         "plan": await account_plan(request.app.state.redis, uid, request.app.state.settings),
         "usage": await billing_summary(request.app.state.redis, uid),
+        "quota_usage": await quota_usage(request.app.state.redis, uid),
         "selected_plan_id": await request.app.state.redis.hget(
             f"seismik:developer-profile:{uid}", "selected_plan_id"
         ),

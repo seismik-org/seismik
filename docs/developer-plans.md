@@ -7,7 +7,7 @@ sigue separado. Precios USD antes de impuestos; los cobros están desactivados.
 | Plan | Precio | Minuto / día / mes / claves |
 | --- | --- | --- |
 | Always Free | US$0 | 60 / 10.000 / 30.000 / 3 (minuto, día y claves configurables) |
-| Pay-as-you-go | saldo US$5, US$25 o US$100; eventos US$0,0005 y estaciones US$0,001 por consulta | 120 / 20.000 / 200.000 / 5 |
+| Pay-as-you-go | saldo US$5, US$25 o US$100; eventos US$0,0005 y estaciones US$0,001 por consulta | 300 / 100.000 / 1.000.000 / 10 |
 | Pro | US$19/mes | 120 / 10.000 / 50.000 / 5 |
 | Max | US$49/mes | 240 / 20.000 / 150.000 / 10 |
 | Ultra | US$129/mes | 360 / 40.000 / 400.000 / 20 |

@@ -14,7 +14,7 @@ por lo que solicitudes concurrentes no multiplican la capacidad contratada.
 Al superar una cuota se devuelve 429: no hay excedentes automáticos ni paso
 implícito a pago por uso. Cambiar de plan no reinicia el consumo del mes.
 Los meses son calendario UTC, sin acumulación; no existe aún un ciclo asociado
-a una renovación de pago. Pay-as-you-go tiene 200.000 consultas/mes como
+a una renovación de pago. Pay-as-you-go tiene 1.000.000 consultas/mes como
 límite operativo beta, independiente del saldo. Enterprise requiere cuotas
 acordadas; sin ellas usa límites gratuitos finitos.
 

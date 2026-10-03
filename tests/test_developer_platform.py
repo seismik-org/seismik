@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import datetime, timezone
+
 import httpx
 import pytest
 from fakeredis.aioredis import FakeRedis
@@ -8,7 +10,23 @@ from fastapi import Depends, FastAPI
 from api import developer_keys
 from api.config import AppSettings
 from api.dependencies import ApiPrincipal, require_events_read, require_stations_read
-from api.developer_plans import assign_plan
+from api.developer_plans import assign_plan, catalog, quota_usage
+
+
+@pytest.mark.asyncio
+async def test_quota_consumption_uses_account_counters_and_utc_boundaries() -> None:
+    redis = FakeRedis(decode_responses=True)
+    now = datetime(2026, 12, 31, 23, 59, 30, tzinfo=timezone.utc)
+    await redis.set("seismik:developer-account-usage:minute:one:202612312359", 7)
+    await redis.set("seismik:developer-account-usage:day:one:20261231", 42)
+    await redis.hset("seismik:billing:meter:one:202612", "requests", 99)
+    usage = await quota_usage(redis, "one", now)
+    assert [usage[p]["used"] for p in ("minute", "day", "month")] == [7, 42, 99]
+    assert all(usage[p]["resets_at"] == "2027-01-01T00:00:00+00:00" for p in ("minute", "day", "month"))
+    assert (await quota_usage(redis, "two", now))["day"]["used"] == 0
+    assert (await quota_usage(redis, "one", datetime(2027, 1, 1, tzinfo=timezone.utc)))["month"]["used"] == 0
+    plan = catalog(AppSettings())[1]
+    assert (plan["requests_per_minute"], plan["requests_per_day"], plan["requests_per_month"], plan["max_active_keys"]) == (300, 100_000, 1_000_000, 10)
 
 
 @pytest.mark.asyncio
@@ -63,6 +81,10 @@ async def test_multiple_keys_share_account_quota_and_cannot_self_upgrade(monkeyp
         assert (await client.get("/events", headers={"X-Seismik-API-Key": keys[1]})).status_code == 429
         assert (await client.post("/v1/developer/account", headers=headers, json={"plan": "enterprise"})).status_code == 405
         assert (await client.get("/v1/developer/account", headers=headers)).json()["usage"]["requests"] == 1
+        consumption = (await client.get("/v1/developer/account", headers=headers)).json()["quota_usage"]
+        assert consumption["minute"]["used"] == 2
+        assert consumption["day"]["used"] == 2
+        assert consumption["month"]["used"] == 1
 
 
 @pytest.mark.asyncio
