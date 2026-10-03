@@ -15,7 +15,7 @@ from pydantic import BaseModel, Field, field_validator
 
 from api.billing import CREDIT_PACKS, MICROUNITS_PER_USD, REQUEST_PRICES
 from api.billing import summary as billing_summary
-from api.developer_plans import account_plan, catalog
+from api.developer_plans import PLAN_NAMES, account_plan, catalog
 
 router = APIRouter(prefix="/v1/developer", tags=["developer-platform"])
 
@@ -69,11 +69,15 @@ class KeyCreateRequest(BaseModel):
         return value
 
 
+class PlanSelectionRequest(BaseModel):
+    plan_id: Literal["free", "pay_as_you_use", "pro", "max", "ultra", "enterprise"]
+
+
 class KeySummary(BaseModel):
     key_id: str
     name: str
     prefix: str
-    plan: Literal["free", "pay_as_you_use", "pro", "enterprise"] = "free"
+    plan: Literal["free", "pay_as_you_use", "pro", "max", "ultra", "enterprise"] = "free"
     scopes: list[str]
     status: Literal["active", "revoked"]
     created_at: str
@@ -179,7 +183,7 @@ def _record_to_summary(record: dict[str, str], requests_today: int = 0) -> KeySu
         key_id=record["key_id"],
         name=record["name"],
         prefix=record["prefix"],
-        plan=cast(Literal["free", "pay_as_you_use", "pro", "enterprise"], record.get("plan", "free")),
+        plan=cast(Literal["free", "pay_as_you_use", "pro", "max", "ultra", "enterprise"], record.get("plan", "free")),
         scopes=sorted(filter(None, record.get("scopes", "").split(","))),
         status=cast(Literal["active", "revoked"], record.get("status", "active")),
         created_at=record["created_at"],
@@ -418,6 +422,30 @@ async def developer_account(
     return {
         "plan": await account_plan(request.app.state.redis, uid, request.app.state.settings),
         "usage": await billing_summary(request.app.state.redis, uid),
+        "selected_plan_id": await request.app.state.redis.hget(
+            f"seismik:developer-profile:{uid}", "selected_plan_id"
+        ),
+    }
+
+
+@router.post("/plan-selection")
+async def select_plan(
+    payload: PlanSelectionRequest,
+    request: Request,
+    authorization: str | None = Header(default=None),
+    seismik_session: str | None = Cookie(default=None),
+) -> dict[str, Any]:
+    """Save the owner's preference; only administrative activation grants quotas."""
+    identity = await _request_identity(request, authorization, seismik_session)
+    uid = str(identity["uid"])
+    await request.app.state.redis.hset(
+        f"seismik:developer-profile:{uid}",
+        mapping={"selected_plan_id": payload.plan_id},
+    )
+    return {
+        "selected_plan_id": payload.plan_id,
+        "payments_enabled": False,
+        "message": f"Selección guardada: {PLAN_NAMES[payload.plan_id]}. Tu plan activo no cambia. Contacta a support@seismik.org para acordar la activación.",
     }
 
 

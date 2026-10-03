@@ -16,10 +16,10 @@ async def test_plan_catalog_and_account_default(monkeypatch: pytest.MonkeyPatch)
     app = developer_app(monkeypatch)
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
         config = (await client.get("/v1/developer/config")).json()
-        assert [plan["id"] for plan in config["plans"]] == ["free", "pay_as_you_use", "pro", "enterprise"]
-        assert config["plans"][3]["price_label"] == "A negociar"
+        assert [plan["id"] for plan in config["plans"]] == ["free", "pay_as_you_use", "pro", "max", "ultra", "enterprise"]
+        assert config["plans"][5]["price_label"] == "A negociar"
         assert config["plans"][2]["monthly_price_microunits"] == 19_000_000
-        assert config["plans"][2]["requests_per_day"] == 20_000
+        assert config["plans"][2]["requests_per_day"] == 10_000
         account = (await client.get("/v1/developer/account", headers={"Authorization": "Bearer valid-token"})).json()
         assert account["plan"]["name"] == "Always Free with API Key"
         assert account["plan"]["requests_per_day"] == 10_000
@@ -95,7 +95,7 @@ async def test_pro_activation_uses_published_limits(monkeypatch: pytest.MonkeyPa
     await assign_plan(app.state.redis, "developer-1", "pro", actor="admin", reason="Approved pilot")
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
         plan = (await client.get("/v1/developer/account", headers={"Authorization": "Bearer valid-token"})).json()["plan"]
-        assert (plan["requests_per_minute"], plan["requests_per_day"], plan["max_active_keys"]) == (120, 20_000, 10)
+        assert (plan["requests_per_minute"], plan["requests_per_day"], plan["max_active_keys"]) == (120, 10_000, 5)
         assert plan["payments_enabled"] is False
 
 
@@ -482,3 +482,76 @@ async def test_rotating_a_key_also_counts_against_the_creation_limit(
             f"/v1/developer/keys/{replacement}/rotate", json=payload, headers=headers
         )
         assert blocked.status_code == 429
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("plan_id,price,monthly,minute,day,keys", [
+    ("pro", 19, 50_000, 120, 10_000, 5),
+    ("max", 49, 150_000, 240, 20_000, 10),
+    ("ultra", 129, 400_000, 360, 40_000, 20),
+])
+async def test_subscription_activation_updates_existing_keys(
+    monkeypatch, plan_id, price, monthly, minute, day, keys,
+) -> None:
+    app = developer_app(monkeypatch)
+    headers = {"Authorization": "Bearer valid-token"}
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
+        key = (await client.post("/v1/developer/keys", headers=headers, json={"name": "Existing key", "accepted_terms_version": "2026-08-30"})).json()
+        await assign_plan(app.state.redis, "developer-1", plan_id, actor="admin", reason="Pilot")
+        account = (await client.get("/v1/developer/account", headers=headers)).json()
+        plan = account["plan"]
+        assert plan["monthly_price_microunits"] == price * 1_000_000
+        assert (plan["requests_per_month"], plan["requests_per_minute"], plan["requests_per_day"], plan["max_active_keys"]) == (monthly, minute, day, keys)
+        assert (await client.get("/v1/developer/keys", headers=headers)).json()["keys"][0]["plan"] == plan_id
+        assert (await client.get("/events", headers={"X-Seismik-API-Key": key["key"]})).status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_selection_is_owned_persistent_and_never_grants_a_plan(monkeypatch) -> None:
+    app = developer_app(monkeypatch)
+    headers = {"Authorization": "Bearer valid-token"}
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
+        for plan_id in ("pro", "max", "ultra", "pay_as_you_use", "free", "enterprise"):
+            response = await client.post("/v1/developer/plan-selection", headers=headers, json={"plan_id": plan_id, "uid": "other-user"})
+            assert response.status_code == 200
+            account = (await client.get("/v1/developer/account", headers=headers)).json()
+            assert account["selected_plan_id"] == plan_id
+            assert account["plan"]["id"] == "free"
+            assert account["plan"]["payments_enabled"] is False
+            assert await app.state.redis.exists("seismik:developer-profile:other-user") == 0
+        assert (await client.post("/v1/developer/plan-selection", headers=headers, json={"plan_id": "unknown"})).status_code == 422
+        assert await app.state.redis.xlen("stream:seismik:developer-plan-audit") == 0
+
+
+@pytest.mark.asyncio
+async def test_selection_requires_login() -> None:
+    app = FastAPI()
+    app.state.redis = FakeRedis(decode_responses=True)
+    app.state.settings = AppSettings()
+    app.include_router(developer_keys.router)
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
+        assert (await client.post("/v1/developer/plan-selection", json={"plan_id": "ultra"})).status_code == 401
+        assert await app.state.redis.keys("*") == []
+
+
+@pytest.mark.asyncio
+async def test_monthly_cap_survives_daily_reset_and_downgrade(monkeypatch) -> None:
+    from api.billing import period_for
+
+    app = developer_app(monkeypatch)
+    headers = {"Authorization": "Bearer valid-token"}
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
+        key = (await client.post("/v1/developer/keys", headers=headers, json={"name": "Monthly key", "accepted_terms_version": "2026-08-30"})).json()
+        await assign_plan(app.state.redis, "developer-1", "ultra", actor="admin", reason="Pilot", requests_per_month=1)
+        assert (await client.get("/events", headers={"X-Seismik-API-Key": key["key"]})).status_code == 200
+        response = await client.get("/events", headers={"X-Seismik-API-Key": key["key"]})
+        assert response.status_code == 429
+        assert response.json()["detail"] == "Monthly API quota exceeded"
+        assert int(response.headers["Retry-After"]) > 0
+        await assign_plan(app.state.redis, "developer-1", "free", actor="admin", reason="Pilot ended")
+        plan = (await client.get("/v1/developer/account", headers=headers)).json()["plan"]
+        assert plan["requests_per_month"] == 30_000
+        await app.state.redis.hset(f"seismik:billing:meter:developer-1:{period_for()}", "requests", 30_000)
+        for counter in await app.state.redis.keys("seismik:developer-account-usage:*"):
+            await app.state.redis.delete(counter)
+        assert (await client.get("/events", headers={"X-Seismik-API-Key": key["key"]})).status_code == 429

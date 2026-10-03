@@ -241,16 +241,25 @@
       <div class="section-heading">
         <p class="eyebrow">Planes de la API</p>
         <h2>Desde tu primera clave hasta una integración empresarial.</h2>
-        <p>Always Free es gratuito con cuotas. Pay-as-you-use desde US$5 de saldo y Pro a US$19 al mes requieren activación por Seismik. Enterprise se negocia. Precios en dólares estadounidenses antes de los impuestos aplicables. Durante la beta no se cobra ni se piden tarjetas.</p>
+        <p>Elige una mensualidad fija: Pro US$19, Max US$49 o Ultra US$129, o paga por uso con Pay-as-you-go desde US$5 de saldo. Always Free permite empezar gratis y Enterprise se negocia. Precios en dólares estadounidenses antes de los impuestos aplicables. Durante la beta no se cobra ni se piden tarjetas.</p>
       </div>
       <div id="plan-catalog" class="pricing-grid" aria-live="polite"></div>
+      <p id="plan-selection-message" class="fine-print" role="status">Inicia sesión para guardar tu selección. No se activa ni cobra un plan al elegirlo.</p>
+      <a class="text-button" href="mailto:support@seismik.org?subject=Activaci%C3%B3n%20de%20plan%20API">Contactar para activar mi plan</a>
       <p class="fine-print">El endpoint público sin clave es independiente de estos planes. Ningún plan garantiza predicción sísmica, certificación de seguridad o un SLA no contratado.</p>
-      <h3>Paquetes de saldo para Pay-as-you-use</h3>
+      <div class="plan-comparison-heading">
+        <p class="eyebrow">Cada límite, a la vista</p>
+        <h3 id="plan-comparison-title">Compara lo que incluye cada plan.</h3>
+        <p>Todos incluyen acceso a eventos recientes, historial de hasta 30 días y catálogo de estaciones mediante claves con alcances, rotación y revocación. Elige según tu volumen y tu forma de pago.</p>
+      </div>
+      <p id="plan-comparison-hint" class="fine-print">En pantallas pequeñas, desliza la tabla para ver todos los planes.</p>
+      <div id="plan-comparison" class="plan-comparison-scroll" role="region" aria-labelledby="plan-comparison-title" aria-describedby="plan-comparison-hint" tabindex="0"></div>
+      <h3>Paquetes de saldo para Pay-as-you-go</h3>
       <div id="credit-packs" class="pricing-grid" aria-live="polite"></div>
       <article class="card request-prices-card">
         <div><p class="eyebrow">Costo por solicitud</p><h3>Precios de lista de la API</h3></div>
         <div id="request-prices" class="request-prices" aria-live="polite"></div>
-        <p class="fine-print">Los precios por consulta corresponden sólo a Pay-as-you-use y se aplicarán tras activar expresamente el cobro. Pro incluye las consultas dentro de sus cuotas, sin cargo adicional automático; al alcanzar el límite la API rechaza solicitudes hasta su renovación. Always Free no descuenta saldo ni genera cargos. Enterprise se contrata por acuerdo. Los límites diarios se reinician a las 00:00 UTC. No incluye SLA garantizado, archivo histórico permanente ni servicios de emergencia.</p>
+        <p class="fine-print">Los precios por consulta corresponden sólo a Pay-as-you-go y se aplicarán tras activar expresamente el cobro. Pro, Max y Ultra incluyen las consultas dentro de sus cuotas, sin cargo adicional automático; al alcanzar el límite la API rechaza solicitudes hasta el reinicio de la cuota correspondiente. Todos los planes tienen límites por minuto, día y mes, compartidos entre las claves de la cuenta. Always Free no descuenta saldo ni genera cargos. Enterprise se contrata por acuerdo. Los límites diarios se reinician a las 00:00 UTC y los mensuales el día 1 a las 00:00 UTC; las consultas no utilizadas no se acumulan. El pago por uso tiene un límite operativo de 200.000 consultas/mes; un mayor volumen requiere un acuerdo. No incluye SLA garantizado, archivo histórico permanente ni servicios de emergencia.</p>
       </article>
     </section>
 
@@ -291,6 +300,7 @@
             <span id="account-plan-status" class="key-status"></span>
             <div class="quota-row"><span>Por minuto</span><strong id="minute-quota">60</strong></div>
             <div class="quota-row"><span>Por día</span><strong id="daily-quota">10.000</strong></div>
+            <div class="quota-row"><span>Por mes (UTC)</span><strong id="monthly-quota">—</strong></div>
             <div class="quota-row"><span>Claves activas</span><strong id="active-key-limit">3</strong></div>
             <div class="quota-row"><span>Consultas del mes (UTC)</span><strong id="account-monthly-usage">—</strong></div>
             <p id="account-plan-billing" class="fine-print">Cobros desactivados.</p>

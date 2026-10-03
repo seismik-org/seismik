@@ -2123,6 +2123,84 @@
           }
         }
       }
+    },
+    "/v1/developer/plan-selection": {
+      "post": {
+        "tags": [
+          "developer-platform"
+        ],
+        "summary": "Select Plan",
+        "description": "Save the owner's preference; only administrative activation grants quotas.",
+        "operationId": "select_plan_v1_developer_plan_selection_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "seismik_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Seismik Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlanSelectionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Select Plan V1 Developer Plan Selection Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -2683,7 +2761,14 @@
           },
           "plan": {
             "type": "string",
-            "const": "free",
+            "enum": [
+              "free",
+              "pay_as_you_use",
+              "pro",
+              "max",
+              "ultra",
+              "enterprise"
+            ],
             "title": "Plan",
             "default": "free"
           },
@@ -2771,7 +2856,14 @@
           },
           "plan": {
             "type": "string",
-            "const": "free",
+            "enum": [
+              "free",
+              "pay_as_you_use",
+              "pro",
+              "max",
+              "ultra",
+              "enterprise"
+            ],
             "title": "Plan",
             "default": "free"
           },
@@ -3248,6 +3340,27 @@
           "created_at"
         ],
         "title": "WebhookSummary"
+      },
+      "PlanSelectionRequest": {
+        "properties": {
+          "plan_id": {
+            "type": "string",
+            "enum": [
+              "free",
+              "pay_as_you_use",
+              "pro",
+              "max",
+              "ultra",
+              "enterprise"
+            ],
+            "title": "Plan Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "plan_id"
+        ],
+        "title": "PlanSelectionRequest"
       }
     }
   }

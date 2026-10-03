@@ -144,7 +144,7 @@ async def _authorize_developer_key(
             detail="Daily API quota exceeded",
             headers={"Retry-After": "86400"},
         )
-    await record_usage(resolved_redis, record["uid"], required_scope or "unscoped", record.get("key_id"))
+    await record_usage(resolved_redis, record["uid"], required_scope or "unscoped", record.get("key_id"), monthly_limit=plan["requests_per_month"])
     return ApiPrincipal(
         subject=record["uid"],
         key_id=record.get("key_id"),
