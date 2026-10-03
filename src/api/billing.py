@@ -6,9 +6,10 @@ movimientos; nunca como la fuente de verdad para autorizar una solicitud.
 """
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import TypedDict
 
+from fastapi import HTTPException
 from redis.asyncio import Redis
 from redis.exceptions import WatchError
 
@@ -56,24 +57,47 @@ def _balance_key(uid: str) -> str:
     return f"seismik:billing:balance:{uid}"
 
 
-async def record_usage(redis: Redis, uid: str, scope: str, key_id: str | None) -> None:
-    """Registra unidades medibles después de pasar autenticación y cuota.
+async def record_usage(
+    redis: Redis, uid: str, scope: str, key_id: str | None,
+    *, monthly_limit: int,
+) -> None:
+    """Reserve one monthly unit atomically across all keys and API workers.
 
-    La unidad es una solicitud autenticada, no una promesa de precio. Se
-    conserva un agregado mensual de bajo costo hasta que exista facturación.
+    Rejected requests never enter the meter. WATCH also protects against
+    concurrent updates to other scopes; no balance is debited during beta.
     """
     period = period_for()
     key = _meter_key(uid, period)
-    pipe = redis.pipeline(transaction=True)
-    pipe.hincrby(key, "requests", 1)
-    pipe.hincrby(key, f"scope:{scope}", 1)
-    pipe.hsetnx(key, "period", period)
-    pipe.hsetnx(key, "first_recorded_at", datetime.now(timezone.utc).isoformat())
-    if key_id:
-        pipe.sadd(f"seismik:billing:keys:{uid}:{period}", key_id)
-        pipe.expire(f"seismik:billing:keys:{uid}:{period}", 34_560_000)
-    pipe.expire(key, 34_560_000)  # 400 días: suficiente para conciliación beta.
-    await pipe.execute()
+    for _ in range(10):
+        pipe = redis.pipeline(transaction=True)
+        try:
+            await pipe.watch(key)
+            count = int(await pipe.hget(key, "requests") or 0)
+            if count >= monthly_limit:
+                now = datetime.now(timezone.utc)
+                renewal = now.replace(day=28) + timedelta(days=4)
+                renewal = renewal.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+                raise HTTPException(
+                    status_code=429, detail="Monthly API quota exceeded",
+                    headers={"Retry-After": str(max(1, int((renewal - now).total_seconds())))},
+                )
+            pipe.multi()
+            pipe.hincrby(key, "requests", 1)
+            pipe.hincrby(key, f"scope:{scope}", 1)
+            pipe.hsetnx(key, "period", period)
+            pipe.hsetnx(key, "first_recorded_at", datetime.now(timezone.utc).isoformat())
+            if key_id:
+                pipe.sadd(f"seismik:billing:keys:{uid}:{period}", key_id)
+                pipe.expire(f"seismik:billing:keys:{uid}:{period}", 34_560_000)
+            pipe.expire(key, 34_560_000)
+            await pipe.execute()
+            return
+        except WatchError:
+            continue
+        finally:
+            await pipe.reset()
+
+    raise HTTPException(status_code=503, detail="Usage meter busy; retry shortly", headers={"Retry-After": "1"})
 
 
 async def summary(redis: Redis, uid: str) -> BillingSummary:

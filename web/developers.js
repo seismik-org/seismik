@@ -172,16 +172,83 @@ function requestPriceMarkup(price) {
   return `<div class="request-price-row"><span>${escapeHtml(price.name)}<br><small>${escapeHtml(price.scope)}</small></span><strong>${usdFromMicrounits(price.usd_microunits_per_request, { minimumFractionDigits: 4, maximumFractionDigits: 4 })}</strong></div>`;
 }
 
+function planFeatures(plan) {
+  const features = [
+    "Eventos recientes e historial de hasta 30 días",
+    "Catálogo de estaciones sísmicas",
+    plan.max_active_keys == null ? "Claves y cuotas acordadas con tu equipo" : `${plan.max_active_keys} claves con alcances, rotación y revocación`,
+  ];
+  if (plan.billing_model === "subscription") features.push("Consultas incluidas; sin cargos por excedentes");
+  else if (plan.billing_model === "usage") features.push("Sin mensualidad; saldo desde US$5");
+  else if (plan.billing_model === "free") features.push("Sin tarjeta ni cargos");
+  else features.push("Volumen y soporte bajo acuerdo");
+  return features;
+}
+
 function planMarkup(plan) {
-    const isFree = plan.id === "free";
-    const action = isFree ? "#panel" : `mailto:support@seismik.org?subject=${encodeURIComponent(`Plan ${plan.name} para la API de Seismik`)}`;
-    const quota = plan.requests_per_minute != null ? `<p>${plan.requests_per_minute.toLocaleString("es-CO")} solicitudes/min · ${plan.requests_per_day.toLocaleString("es-CO")} al día · ${plan.max_active_keys} claves activas</p>` : "<p>Volumen, cuotas y soporte por acuerdo. Sin promesa de uso ilimitado.</p>";
-    return `<article class="credit-pack plan-card" data-plan-id="${escapeHtml(plan.id)}"><p class="eyebrow">${escapeHtml(plan.name)}</p><h3>${escapeHtml(plan.price_label)}</h3><p>${escapeHtml(plan.description)}</p>${quota}<span class="plan-selection" hidden>Tu plan actual</span><a class="button button-secondary" href="${escapeHtml(action)}">${isFree ? "Crear una clave" : plan.id === "enterprise" ? "Negociar Enterprise" : "Consultar condiciones"}</a></article>`;
+  const featured = plan.id === "max";
+  const allowance = plan.requests_per_month == null ? "Cuotas a medida" : plan.requests_per_month.toLocaleString("es-CO");
+  const allowanceLabel = plan.billing_model === "usage" ? "consultas / mes · límite operativo" : "consultas / mes (UTC)";
+  const quota = plan.requests_per_minute == null ? "Capacidad definida por contrato" : `${plan.requests_per_minute.toLocaleString("es-CO")} solicitudes/min · ${plan.requests_per_day.toLocaleString("es-CO")} al día`;
+  const features = planFeatures(plan).map((feature) => `<li>${escapeHtml(feature)}</li>`).join("");
+  return `<article class="credit-pack plan-card ${featured ? "featured-plan" : "standard-plan"}" data-plan-id="${escapeHtml(plan.id)}">
+    <div class="plan-heading"><h3>${escapeHtml(plan.name)}</h3>${featured ? '<span class="plan-badge">Para crecer</span>' : ""}</div>
+    <p class="plan-price">${escapeHtml(plan.price_label)}</p>
+    <p class="plan-description">${escapeHtml(plan.description)}</p>
+    <div class="plan-allowance"><strong>${escapeHtml(allowance)}</strong><span>${plan.requests_per_month == null ? "Según tu integración" : allowanceLabel}</span></div>
+    <p class="plan-rate">${escapeHtml(quota)}</p>
+    <ul class="plan-features">${features}</ul>
+    <span class="plan-selection" hidden>Tu plan actual</span>
+    <span class="plan-preference" hidden>Selección guardada · pendiente de activación</span>
+    <button class="button ${featured ? "button-primary" : "button-secondary"} select-plan" type="button" data-select-plan="${escapeHtml(plan.id)}">Elegir ${escapeHtml(plan.name)}</button>
+  </article>`;
+}
+
+function planComparisonMarkup(plans) {
+  const quota = (plan, field) => plan[field] == null ? "Por acuerdo" : plan[field].toLocaleString("es-CO");
+  const rows = [
+    ["Precio antes de impuestos", (plan) => plan.price_label],
+    ["Consultas por mes (UTC)", (plan) => quota(plan, "requests_per_month")],
+    ["Solicitudes por minuto", (plan) => quota(plan, "requests_per_minute")],
+    ["Solicitudes por día (UTC)", (plan) => quota(plan, "requests_per_day")],
+    ["Claves activas", (plan) => quota(plan, "max_active_keys")],
+    ["Forma de pago", (plan) => ({free: "Gratis", usage: "Saldo por uso", subscription: "Mensualidad fija", negotiated: "Por contrato"})[plan.billing_model]],
+    ["Consultas incluidas", (plan) => plan.billing_model === "usage" ? "Precio por consulta" : plan.billing_model === "negotiated" ? "Por acuerdo" : "Hasta las cuotas"],
+  ];
+  const headers = plans.map((plan) => `<th scope="col">${escapeHtml(plan.name)}</th>`).join("");
+  const body = rows.map(([label, value]) => `<tr><th scope="row">${escapeHtml(label)}</th>${plans.map((plan) => `<td>${escapeHtml(value(plan))}</td>`).join("")}</tr>`).join("");
+  return `<table class="plan-comparison-table"><caption class="visually-hidden">Precios, capacidad y forma de pago de todos los planes de Seismik</caption><thead><tr><th scope="col">Qué incluye</th>${headers}</tr></thead><tbody>${body}</tbody></table>`;
+}
+
+async function selectPlan(event) {
+  const button = event.target.closest("[data-select-plan]");
+  if (!button) return;
+  if (!currentUser) {
+    toast("Inicia sesión para guardar tu selección de plan.");
+    elements["panel-login-button"].focus();
+    elements["panel"].scrollIntoView({ behavior: "smooth" });
+    return;
+  }
+  const version = sessionVersion;
+  setButtonBusy(button, true, "Guardando…");
+  try {
+    const result = await api("/v1/developer/plan-selection", {
+      method: "POST", body: JSON.stringify({ plan_id: button.dataset.selectPlan }),
+    });
+    if (version !== sessionVersion) return;
+    await loadAccount();
+    if (version !== sessionVersion) return;
+    elements["plan-selection-message"].textContent = result.message;
+    toast("Selección guardada. No se ha activado ni cobrado el plan.");
+  } catch (error) {
+    if (version === sessionVersion) toast(error.message, true);
+  } finally { setButtonBusy(button, false); markCurrentPlan(); }
 }
 
 function renderBillingCatalog() {
   if (!portalConfig?.billing) return;
   elements["plan-catalog"].innerHTML = portalConfig.plans.map(planMarkup).join("");
+  elements["plan-comparison"].innerHTML = planComparisonMarkup(portalConfig.plans);
   elements["credit-packs"].innerHTML = portalConfig.billing.credit_packs.map(creditPackMarkup).join("");
   elements["request-prices"].innerHTML = portalConfig.billing.request_prices.map(requestPriceMarkup).join("");
 }
@@ -191,6 +258,12 @@ function markCurrentPlan() {
     const selected = card.dataset.planId === currentAccount?.plan.id;
     card.classList.toggle("current-plan", selected);
     card.querySelector(".plan-selection").hidden = !selected;
+    const preferred = card.dataset.planId === currentAccount?.selected_plan_id;
+    card.classList.toggle("preferred-plan", preferred);
+    card.querySelector(".plan-preference").hidden = !preferred || selected;
+    const button = card.querySelector("[data-select-plan]");
+    button.disabled = preferred;
+    button.setAttribute("aria-pressed", String(preferred));
   });
 }
 
@@ -209,8 +282,11 @@ async function loadAccount() {
     elements["account-plan-status"].classList.add("active");
     elements["minute-quota"].textContent = plan.requests_per_minute.toLocaleString("es-CO");
     elements["daily-quota"].textContent = plan.requests_per_day.toLocaleString("es-CO");
+    elements["monthly-quota"].textContent = plan.requests_per_month.toLocaleString("es-CO");
     elements["active-key-limit"].textContent = plan.max_active_keys;
     elements["account-monthly-usage"].textContent = account.usage.requests.toLocaleString("es-CO");
+    const preference = portalConfig.plans.find((item) => item.id === account.selected_plan_id);
+    elements["plan-selection-message"].textContent = preference ? `Selección guardada: ${preference.name}. Tu plan activo no cambia. Contacta a support@seismik.org para acordar la activación.` : "Elige un plan para guardar tu preferencia. La activación se acuerda con Seismik; no hay cobros automáticos.";
     elements["account-plan-billing"].textContent = "Cobros desactivados. No hay cargos automáticos ni medios de pago registrados en este portal.";
     markCurrentPlan();
   } catch (error) {
@@ -220,7 +296,7 @@ async function loadAccount() {
     elements["account-plan-description"].textContent = "Vuelve a consultar para ver las condiciones actuales de tu cuenta.";
     elements["account-plan-status"].textContent = "Consulta pendiente";
     elements["account-plan-status"].classList.remove("active");
-    ["minute-quota", "daily-quota", "active-key-limit", "account-monthly-usage"].forEach((id) => { elements[id].textContent = "—"; });
+    ["minute-quota", "daily-quota", "monthly-quota", "active-key-limit", "account-monthly-usage"].forEach((id) => { elements[id].textContent = "—"; });
     markCurrentPlan();
     toast(error.message, true);
   } finally { if (version === sessionVersion) setButtonBusy(button, false); }
@@ -391,6 +467,7 @@ async function keyAction(event) {
 function updateSession(user) {
   sessionVersion += 1;
   currentAccount = null;
+  elements["plan-selection-message"].textContent = "Inicia sesión para guardar tu selección. No se activa ni cobra un plan al elegirlo.";
   markCurrentPlan();
   currentUser = user;
   const signedIn = Boolean(user);
@@ -405,7 +482,7 @@ function updateSession(user) {
     elements["account-plan-description"].textContent = "";
     elements["account-plan-status"].textContent = "";
     elements["account-plan-status"].classList.remove("active");
-    ["minute-quota", "daily-quota", "active-key-limit", "account-monthly-usage"].forEach((id) => { elements[id].textContent = "—"; });
+    ["minute-quota", "daily-quota", "monthly-quota", "active-key-limit", "account-monthly-usage"].forEach((id) => { elements[id].textContent = "—"; });
     loadAccount();
     renderTurnstile().catch((error) => toast(error.message, true));
     loadKeys();
@@ -426,6 +503,7 @@ async function boot() {
   } catch (error) { toast(`No fue posible cargar la plataforma: ${error.message}`, true); }
 }
 
+elements["plan-catalog"].addEventListener("click", selectPlan);
 elements["login-button"].addEventListener("click", login);
 elements["panel-login-button"].addEventListener("click", login);
 elements["logout-button"].addEventListener("click", async () => {
