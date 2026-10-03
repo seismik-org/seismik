@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from redis.asyncio import Redis
@@ -22,7 +22,7 @@ PLAN_NAMES = {
 
 # USD/month, minute, day, month, active keys. Finite caps bound compute/egress.
 PLAN_LIMITS = {
-    "pay_as_you_use": (None, 120, 20_000, 200_000, 5),
+    "pay_as_you_use": (None, 300, 100_000, 1_000_000, 10),
     "pro": (19, 120, 10_000, 50_000, 5),
     "max": (49, 240, 20_000, 150_000, 10),
     "ultra": (129, 360, 40_000, 400_000, 20),
@@ -98,6 +98,25 @@ async def account_plan(redis: Redis, uid: str, settings: AppSettings) -> dict[st
     plan["assigned_at"] = profile.get("plan_assigned_at")
     plan["payments_enabled"] = False
     return plan
+
+
+async def quota_usage(redis: Redis, uid: str, moment: datetime | None = None) -> dict[str, Any]:
+    """Read the account counters used by authorization, not per-key sums."""
+    now = (moment or datetime.now(timezone.utc)).astimezone(timezone.utc)
+    minute = now.replace(second=0, microsecond=0)
+    day = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    month_reset = (day.replace(day=28) + timedelta(days=4)).replace(day=1)
+    pipe = redis.pipeline(transaction=True)
+    pipe.get(f"seismik:developer-account-usage:minute:{uid}:{now:%Y%m%d%H%M}")
+    pipe.get(f"seismik:developer-account-usage:day:{uid}:{now:%Y%m%d}")
+    pipe.hget(f"seismik:billing:meter:{uid}:{now:%Y%m}", "requests")
+    counts = await pipe.execute()
+    return {
+        "minute": {"used": int(counts[0] or 0), "resets_at": (minute + timedelta(minutes=1)).isoformat()},
+        "day": {"used": int(counts[1] or 0), "resets_at": (day + timedelta(days=1)).isoformat()},
+        "month": {"used": int(counts[2] or 0), "resets_at": month_reset.isoformat()},
+        "updated_at": now.isoformat(),
+    }
 
 
 async def assign_plan(
