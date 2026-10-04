@@ -14,3 +14,12 @@ for (const menu of document.querySelectorAll(".mobile-menu")) {
     }
   });
 }
+
+// Instalación silenciosa: el respaldo funciona tras una primera visita en línea.
+if ("serviceWorker" in navigator && window.isSecureContext) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js", { updateViaCache: "none" }).catch(() => {
+      // Si el navegador no permite almacenamiento, el respaldo del borde sigue disponible.
+    });
+  });
+}

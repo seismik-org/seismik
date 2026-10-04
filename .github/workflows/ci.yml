@@ -101,6 +101,15 @@ jobs:
       - run: ruff check src tests
       - run: mypy src
 
+  web-fallback:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: node --test tests/web_fallback.test.mjs
+
   mobile:
     runs-on: ubuntu-latest
     defaults:
@@ -282,10 +291,11 @@ jobs:
 
   deploy-web:
     name: Deploy developer web to Cloud Run
-    needs: [changes, backend, mobile, android, ios]
+    needs: [changes, backend, mobile, android, ios, web-fallback]
     if: >-
       github.ref == 'refs/heads/main' &&
       needs.changes.outputs.web == 'true' &&
+      needs.web-fallback.result == 'success' &&
       needs.backend.result == 'success' && needs.mobile.result == 'success' &&
       needs.android.result == 'success' && needs.ios.result == 'success' &&
       vars.GCP_WORKLOAD_IDENTITY_PROVIDER != '' && vars.GCP_DEPLOY_SERVICE_ACCOUNT != ''

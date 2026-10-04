@@ -1,3 +1,5 @@
+import { FALLBACK_ASSETS } from "../deploy/fallback-assets.js";
+
 /**
  * Reemplaza al Caddy de la VM como origen de los dominios públicos.
  *
@@ -15,7 +17,7 @@ const ORIGIN_AUTH_HEADER = "X-Seismik-Origin-Auth";
 
 async function isAvailable(url, init = {}) {
   try {
-    return (await fetch(url, init)).ok;
+    return (await fetch(url, { ...init, signal: AbortSignal.timeout(5000) })).ok;
   } catch {
     return false;
   }
@@ -83,6 +85,33 @@ function securityHeaders(host) {
   return headers;
 }
 
+// Se sirve desde el Worker, incluso si el servidor estático está caído.
+function fallbackResponse(request, outage = false) {
+  const url = new URL(request.url);
+  const path = outage ? "/offline.html" : url.pathname;
+  const body = FALLBACK_ASSETS[path];
+  const headers = securityHeaders(url.hostname);
+  headers.set("Content-Type", path.endsWith(".css") ? "text/css; charset=utf-8" : path.endsWith(".js") ? "application/javascript; charset=utf-8" : "text/html; charset=utf-8");
+  headers.set("Cache-Control", "no-store");
+  if (outage) {
+    headers.set("Retry-After", "60");
+    headers.set("X-Seismik-Fallback", "1");
+  }
+  return new Response(request.method === "HEAD" ? null : body, { status: outage ? 503 : 200, headers });
+}
+
+function unavailableResponse(request, target) {
+  const acceptsHTML = request.headers.get("Accept")?.includes("text/html");
+  if (target.origin === WEB && ["GET", "HEAD"].includes(request.method) && acceptsHTML) {
+    return fallbackResponse(request, true);
+  }
+  // Los clientes API y OAuth mantienen respuestas de error, nunca HTML.
+  const headers = securityHeaders(new URL(request.url).hostname);
+  headers.set("Content-Type", "application/json; charset=utf-8");
+  headers.set("Retry-After", "60");
+  return new Response(request.method === "HEAD" ? null : JSON.stringify({ detail: "Service temporarily unavailable" }), { status: 503, headers });
+}
+
 export default {
   async fetch(request, env) {
     const source = new URL(request.url);
@@ -93,14 +122,25 @@ export default {
       for (const [name, value] of securityHeaders(source.hostname)) headers.set(name, value);
       return new Response(response.body, { status: response.status, headers });
     }
+    if (["GET", "HEAD"].includes(request.method) && Object.hasOwn(FALLBACK_ASSETS, source.pathname) && source.hostname !== "api.seismik.org" && source.hostname !== "auth.seismik.org") {
+      return fallbackResponse(request);
+    }
     const target = targetFor(request);
     if (target.hostname.endsWith("seismik.org")) return Response.redirect(target, 301);
-    const upstreamRequest = new Request(target, request);
+    const upstreamRequest = new Request(new Request(target, request), { signal: AbortSignal.timeout(8000) });
     // Un cliente no puede fijar la cabecera por su cuenta, y el secreto sólo
     // viaja hacia la API: ni el sitio estático ni Firebase deben verlo.
     upstreamRequest.headers.delete(ORIGIN_AUTH_HEADER);
     if (target.origin === API && env?.EDGE_ORIGIN_SECRET) upstreamRequest.headers.set(ORIGIN_AUTH_HEADER, env.EDGE_ORIGIN_SECRET);
-    const upstream = await fetch(upstreamRequest);
+    let upstream;
+    try {
+      upstream = await fetch(upstreamRequest);
+    } catch {
+      return unavailableResponse(request, target);
+    }
+    if (upstream.status >= 500 && target.origin === WEB && ["GET", "HEAD"].includes(request.method) && request.headers.get("Accept")?.includes("text/html")) {
+      return fallbackResponse(request, true);
+    }
     const headers = new Headers(upstream.headers);
     for (const [name, value] of securityHeaders(source.hostname)) headers.set(name, value);
     headers.delete("Server");
