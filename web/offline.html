@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex">
+  <meta name="theme-color" content="#060a13">
+  <title>Conexión interrumpida · Seismik</title>
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32.png">
+  <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+  <link rel="stylesheet" href="/offline.css?v=__ASSET_VERSION__">
+  <script src="/offline.js?v=__ASSET_VERSION__" defer></script>
+  <script src="/site.js?v=__ASSET_VERSION__" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#contenido">Saltar al contenido</a>
+  <header><a class="brand" href="/" aria-label="Seismik, inicio"><svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="9"/><path d="M5 17h5l3-8 5 15 3-7h6"/></svg>SEISMIK</a><span class="header-note">Contigo, incluso en la pausa.</span></header>
+  <main id="contenido">
+    <div class="signal" aria-hidden="true"><svg viewBox="0 0 240 160"><circle cx="120" cy="80" r="70"/><circle cx="120" cy="80" r="48"/><circle cx="120" cy="80" r="25"/><path d="M15 80h47l12-18 14 38 13-20h11m17 0h13l10-14 13 27 10-13h50"/><path class="break" d="m125 65-10 30"/></svg></div>
+    <p class="eyebrow" id="connection-label">Conexión interrumpida</p>
+    <h1 id="connection-title">Hagamos una pausa.<br>Volveremos a conectar.</h1>
+    <p class="lead" id="connection-description">No pudimos cargar Seismik. Puede que tu conexión se haya interrumpido o que el servicio no esté disponible temporalmente.</p>
+    <div class="actions"><a class="button" id="retry" href="/">Volver a intentar <span aria-hidden="true">↻</span></a><a class="button secondary" href="https://status.seismik.org/">Ver estado del servicio <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M7 17 17 7M7 7h10v10"/></svg></a></div>
+    <p class="connection-note" id="connection-note" role="status" aria-live="polite">El estado del servicio requiere conexión a internet.</p>
+    <section class="safety" aria-labelledby="safety-title"><div class="safety-heading"><span aria-hidden="true">!</span><h2 id="safety-title">Tu seguridad no espera a la conexión.</h2></div><p>Los sismos y las alertas en vivo no están disponibles en esta página. No interpretes la falta de datos como ausencia de actividad sísmica.</p><div class="tips"><div><b>Si está temblando</b><p>Agáchate, cúbrete y sujétate. Aléjate de ventanas y no uses ascensores.</p></div><div><b>Si necesitas ayuda</b><p>Sigue las indicaciones de las autoridades. En Colombia, llama al <a href="tel:123">123</a> para emergencias.</p></div></div></section>
+  </main>
+  <footer><span>Monitoreo sísmico abierto.</span><a href="mailto:support@seismik.org">support@seismik.org</a></footer>
+</body>
+</html>
