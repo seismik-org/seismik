@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -7,7 +8,9 @@ import 'package:provider/provider.dart';
 
 import '../../data/models/family_circle.dart';
 import '../../data/models/seismic_event.dart';
+import '../../core/platform.dart';
 import '../../state/family_state.dart';
+import '../widgets/adaptive.dart';
 
 /// Búsqueda de familiares.
 ///
@@ -387,7 +390,9 @@ class _CheckInCardState extends State<_CheckInCard> {
     final FamilyStatus? last = widget.family.circle?.you?.status;
     final bool busy = widget.family.reporting;
     return Card(
-      color: event != null ? colors.errorContainer : colors.surfaceContainerHigh,
+      color: event != null
+          ? colors.errorContainer
+          : colors.surfaceContainerHigh,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -491,7 +496,7 @@ class _FamilyMap extends StatelessWidget {
                   member.location!.longitude,
                 ),
                 infoWindow: InfoWindow(
-                  title: member.displayName,
+                  title: context.watch<FamilyState>().nameFor(member),
                   snippet: member.status == null
                       ? 'Sin aviso reciente'
                       : member.status!.needsHelp
@@ -523,6 +528,8 @@ class _MemberTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ColorScheme colors = Theme.of(context).colorScheme;
+    final family = context.watch<FamilyState>();
+    final name = family.nameFor(member);
     final FamilyStatus? status = member.status;
     final Color accent = status == null
         ? colors.outline
@@ -530,6 +537,7 @@ class _MemberTile extends StatelessWidget {
         ? colors.error
         : Colors.green.shade700;
     final List<String> details = <String>[
+      if (name != member.displayName) member.displayName,
       if (status == null)
         'Sin aviso reciente'
       else
@@ -546,22 +554,100 @@ class _MemberTile extends StatelessWidget {
       leading: CircleAvatar(
         backgroundColor: accent.withValues(alpha: 0.15),
         foregroundColor: accent,
-        child: Text(member.initial),
+        child: Text(
+          name.isEmpty
+              ? '?'
+              : String.fromCharCode(name.runes.first).toUpperCase(),
+        ),
       ),
-      title: Text(
-        member.isYou ? '${member.displayName} (tú)' : member.displayName,
-      ),
+      title: Text(member.isYou ? '$name (tú)' : name),
       subtitle: Text(details.join('\n')),
       isThreeLine: details.length > 2,
-      trailing: Icon(
-        status == null
-            ? Icons.help_outline_rounded
-            : status.needsHelp
-            ? Icons.sos_rounded
-            : Icons.check_circle_rounded,
-        color: accent,
+      trailing: IconButton(
+        tooltip: 'Editar sobrenombre en este celular',
+        icon: const Icon(Icons.edit_outlined),
+        onPressed: () => _editNickname(context, family),
       ),
     );
+  }
+
+  Future<void> _editNickname(BuildContext context, FamilyState family) async {
+    final controller = TextEditingController(text: family.nicknameFor(member));
+    final String? result = usesCupertino
+        ? await showCupertinoDialog<String>(
+            context: context,
+            builder: (dialogContext) => CupertinoAlertDialog(
+              title: const Text('Sobrenombre privado'),
+              content: Column(
+                children: <Widget>[
+                  const Text(
+                    'Sólo cambia en este celular. Deja vacío para usar el nombre original.',
+                  ),
+                  const SizedBox(height: 12),
+                  CupertinoTextField(
+                    controller: controller,
+                    maxLength: 40,
+                    placeholder: member.displayName,
+                  ),
+                ],
+              ),
+              actions: <Widget>[
+                CupertinoDialogAction(
+                  onPressed: () => Navigator.pop(dialogContext),
+                  child: const Text('Cancelar'),
+                ),
+                CupertinoDialogAction(
+                  onPressed: () =>
+                      Navigator.pop(dialogContext, controller.text),
+                  child: const Text('Guardar'),
+                ),
+              ],
+            ),
+          )
+        : await showDialog<String>(
+            context: context,
+            builder: (dialogContext) => AlertDialog(
+              title: const Text('Sobrenombre privado'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  const Text(
+                    'Sólo cambia en este celular. Deja vacío para usar el nombre original.',
+                  ),
+                  TextField(
+                    controller: controller,
+                    maxLength: 40,
+                    decoration: InputDecoration(hintText: member.displayName),
+                  ),
+                ],
+              ),
+              actions: <Widget>[
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext),
+                  child: const Text('Cancelar'),
+                ),
+                FilledButton(
+                  onPressed: () =>
+                      Navigator.pop(dialogContext, controller.text),
+                  child: const Text('Guardar'),
+                ),
+              ],
+            ),
+          );
+    // Dialog transitions can still reference the controller after pop.
+    await Future<void>.delayed(const Duration(milliseconds: 350));
+    controller.dispose();
+    if (result == null || !context.mounted) return;
+    try {
+      await family.setNickname(member, result);
+    } catch (_) {
+      if (context.mounted) {
+        await showAdaptiveNotice(
+          context,
+          message: 'No se pudo guardar el sobrenombre. Inténtalo de nuevo.',
+        );
+      }
+    }
   }
 }
 
@@ -584,11 +670,10 @@ class _FieldsDialog extends StatefulWidget {
 }
 
 class _FieldsDialogState extends State<_FieldsDialog> {
-  late final List<TextEditingController> _controllers =
-      <TextEditingController>[
-        for (final (String, String) field in widget.fields)
-          TextEditingController(text: field.$2),
-      ];
+  late final List<TextEditingController> _controllers = <TextEditingController>[
+    for (final (String, String) field in widget.fields)
+      TextEditingController(text: field.$2),
+  ];
 
   @override
   void dispose() {

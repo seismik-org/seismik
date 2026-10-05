@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 
 import '../../core/platform.dart';
 import '../widgets/adaptive.dart';
+import '../widgets/report_event_picker.dart';
 
 import '../../data/models/citizen_report.dart';
 import '../../data/models/pending_report.dart';
@@ -27,7 +28,8 @@ class FeltReportScreen extends StatefulWidget {
 class _FeltReportScreenState extends State<FeltReportScreen> {
   final TextEditingController _comment = TextEditingController();
   final TextEditingController _country = TextEditingController();
-  bool _felt = true;
+  bool? _felt;
+  SeismicEvent? _selectedEvent;
   double _intensity = 3;
   bool _indoors = true;
   bool _wokeUp = false;
@@ -43,6 +45,8 @@ class _FeltReportScreenState extends State<FeltReportScreen> {
   Set<String> _selectedAgencyIds = <String>{};
   String? _agencyLoadWarning;
   bool _settingsLoaded = false;
+  int _agencyRequest = 0;
+  int _pickerRevision = 0;
 
   static const AgencyPreferenceStore _agencyPreferences =
       AgencyPreferenceStore();
@@ -73,6 +77,13 @@ class _FeltReportScreenState extends State<FeltReportScreen> {
   }
 
   Future<void> _submit() async {
+    if (_selectedEvent == null || _felt == null) {
+      await showAdaptiveNotice(
+        context,
+        message: 'Selecciona el sismo y responde si lo sentiste o no.',
+      );
+      return;
+    }
     if (_country.text.trim().length != 2) {
       await showAdaptiveNotice(
         context,
@@ -104,16 +115,16 @@ class _FeltReportScreenState extends State<FeltReportScreen> {
         preciseLocation: _precise,
         shareWithOfficialAgencies: _official && _selectedAgencyIds.isNotEmpty,
         selectedAgencyIds: _official ? _selectedAgencyIds : <String>{},
-        felt: _felt,
-        intensityMmi: _felt ? _intensity.round() : null,
-        earthquakeEventId: widget.event?.id,
-        officialEventId: widget.event?.officialEventId,
+        felt: _felt!,
+        intensityMmi: _felt == true ? _intensity.round() : null,
+        earthquakeEventId: _selectedEvent!.id,
+        officialEventId: _selectedEvent!.officialEventId,
         indoors: _indoors,
-        wokeUp: _wokeUp,
-        difficultyStanding: _difficultyStanding,
-        objectsMoved: _objectsMoved,
-        objectsFell: _objectsFell,
-        visibleDamage: _visibleDamage,
+        wokeUp: _felt == true && _wokeUp,
+        difficultyStanding: _felt == true && _difficultyStanding,
+        objectsMoved: _felt == true && _objectsMoved,
+        objectsFell: _felt == true && _objectsFell,
+        visibleDamage: _felt == true && _visibleDamage,
         comment: _comment.text,
       );
       final ReportResult result = await state.submitReport(
@@ -122,12 +133,19 @@ class _FeltReportScreenState extends State<FeltReportScreen> {
         preciseLocation: _precise,
       );
       if (!mounted) return;
-      await Navigator.of(context).pushReplacement(
+      await Navigator.of(context).push(
         adaptiveRoute<void>(
           (_) => ReportResultScreen(result: result),
           title: 'Reporte',
         ),
       );
+      if (mounted) {
+        setState(() {
+          _selectedEvent = null;
+          _felt = null;
+          _pickerRevision++;
+        });
+      }
     } catch (error) {
       if (mounted) {
         await showAdaptiveNotice(context, message: 'No se pudo enviar: $error');
@@ -138,9 +156,10 @@ class _FeltReportScreenState extends State<FeltReportScreen> {
   }
 
   String get _preferenceKey =>
-      widget.event?.id ?? 'manual-${_country.text.trim().toUpperCase()}';
+      _selectedEvent?.id ?? 'manual-${_country.text.trim().toUpperCase()}';
 
   Future<void> _loadAgencies() async {
+    final request = ++_agencyRequest;
     final String country = _country.text.trim().toUpperCase();
     if (country.length != 2) return;
     if (mounted) {
@@ -151,7 +170,7 @@ class _FeltReportScreenState extends State<FeltReportScreen> {
     }
     List<AgencyRoute> agencies = OfficialAgencyCatalog.fallbackFor(
       countryCode: country,
-      officialEventId: widget.event?.officialEventId,
+      officialEventId: _selectedEvent?.officialEventId,
     );
     try {
       final List<AgencyRoute> remote = await context
@@ -159,7 +178,7 @@ class _FeltReportScreenState extends State<FeltReportScreen> {
           .api
           .fetchReportingAgencies(
             countryCode: country,
-            officialEventId: widget.event?.officialEventId,
+            officialEventId: _selectedEvent?.officialEventId,
           );
       if (remote.isNotEmpty) agencies = remote;
     } catch (_) {
@@ -172,7 +191,7 @@ class _FeltReportScreenState extends State<FeltReportScreen> {
     if (selected.isEmpty && agencies.isNotEmpty) {
       selected.add(agencies.first.agencyId);
     }
-    if (!mounted) return;
+    if (!mounted || request != _agencyRequest) return;
     setState(() {
       _agencies = agencies;
       _selectedAgencyIds = selected;
@@ -188,20 +207,12 @@ class _FeltReportScreenState extends State<FeltReportScreen> {
         child: ListView(
           padding: const EdgeInsets.only(bottom: 32),
           children: <Widget>[
+            _eventPicker(),
+            _feltChoice(),
             CupertinoListSection.insetGrouped(
               header: const Text('EXPERIENCIA'),
               children: <Widget>[
-                CupertinoFormRow(
-                  prefix: const Text('¿Lo sentiste?', style: TextStyle(fontWeight: FontWeight.w500)),
-                  child: CupertinoSwitch(
-                    value: _felt,
-                    onChanged: (value) {
-                      unawaited(HapticFeedback.lightImpact());
-                      setState(() => _felt = value);
-                    },
-                  ),
-                ),
-                if (_felt) ...<Widget>[
+                if (_felt == true) ...<Widget>[
                   CupertinoFormRow(
                     prefix: Text(
                       'Intensidad (${_intensity.round()}/10)',
@@ -227,7 +238,7 @@ class _FeltReportScreenState extends State<FeltReportScreen> {
                 ],
               ],
             ),
-            if (_felt) ...<Widget>[
+            if (_felt == true) ...<Widget>[
               CupertinoListSection.insetGrouped(
                 header: const Text('EFECTOS PERCIBIDOS'),
                 children: <Widget>[
@@ -243,7 +254,11 @@ class _FeltReportScreenState extends State<FeltReportScreen> {
                     _objectsMoved,
                     (v) => _objectsMoved = v,
                   ),
-                  _check('Cayeron objetos', _objectsFell, (v) => _objectsFell = v),
+                  _check(
+                    'Cayeron objetos',
+                    _objectsFell,
+                    (v) => _objectsFell = v,
+                  ),
                   _check('Vi daños', _visibleDamage, (v) => _visibleDamage = v),
                 ],
               ),
@@ -252,7 +267,10 @@ class _FeltReportScreenState extends State<FeltReportScreen> {
               header: const Text('DESCRIPCIÓN ADICIONAL'),
               children: <Widget>[
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 8,
+                  ),
                   child: CupertinoTextField(
                     controller: _comment,
                     maxLength: 1000,
@@ -268,7 +286,7 @@ class _FeltReportScreenState extends State<FeltReportScreen> {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 18),
               child: AdaptiveButton(
-                onPressed: _submitting ? null : _submit,
+                onPressed: _canSubmit ? _submit : null,
                 icon: Icons.send,
                 label: _submitting ? 'Enviando…' : 'Enviar a Seismik',
               ),
@@ -283,15 +301,9 @@ class _FeltReportScreenState extends State<FeltReportScreen> {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(18, 18, 18, 28),
         children: <Widget>[
-          SwitchListTile.adaptive(
-            value: _felt,
-            onChanged: (value) => setState(() => _felt = value),
-            title: Text(_felt ? 'Sí, lo sentí' : 'No lo sentí'),
-            subtitle: const Text(
-              'Los reportes negativos también ayudan a estimar la intensidad.',
-            ),
-          ),
-          if (_felt) ...<Widget>[
+          _eventPicker(),
+          _feltChoice(),
+          if (_felt == true) ...<Widget>[
             const SizedBox(height: 10),
             Text(
               'Intensidad percibida: ${_intensity.round()} / 10',
@@ -341,7 +353,7 @@ class _FeltReportScreenState extends State<FeltReportScreen> {
           _privacyControls(),
           const SizedBox(height: 18),
           AdaptiveButton(
-            onPressed: _submitting ? null : _submit,
+            onPressed: _canSubmit ? _submit : null,
             icon: Icons.send,
             label: _submitting ? 'Enviando…' : 'Enviar a Seismik',
           ),
@@ -351,15 +363,60 @@ class _FeltReportScreenState extends State<FeltReportScreen> {
     );
   }
 
+  bool get _canSubmit =>
+      !_submitting &&
+      !_loadingAgencies &&
+      _selectedEvent != null &&
+      _felt != null;
+
+  Widget _eventPicker() => ReportEventPicker(
+    key: ValueKey<int>(_pickerRevision),
+    suggested: widget.event,
+    enabled: !_submitting,
+    onSelected: (event) {
+      setState(() {
+        _selectedEvent = event;
+        _felt = null;
+        _country.text = event.countryCode ?? _country.text;
+      });
+      unawaited(_loadAgencies());
+    },
+  );
+
+  Widget _feltChoice() => Padding(
+    padding: const EdgeInsets.all(16),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        const Text(
+          '2. ¿Lo sentiste?',
+          style: TextStyle(fontWeight: FontWeight.w600),
+        ),
+        const Text('Elige una respuesta. No sentirlo también ayuda.'),
+        for (final felt in <bool>[true, false])
+          AdaptiveButton(
+            label:
+                '${_felt == felt ? '✓ ' : ''}${felt ? 'Sí, lo sentí' : 'No lo sentí'}',
+            kind: _felt == felt
+                ? AdaptiveButtonKind.primary
+                : AdaptiveButtonKind.tinted,
+            onPressed: _selectedEvent == null || _submitting
+                ? null
+                : () => setState(() => _felt = felt),
+          ),
+      ],
+    ),
+  );
+
   Widget _check(String label, bool value, ValueChanged<bool> update) {
     if (usesCupertino) {
       return CupertinoListTile(
         title: Text(label),
         trailing: Icon(
-          value
-              ? CupertinoIcons.checkmark_circle_fill
-              : CupertinoIcons.circle,
-          color: value ? CupertinoColors.activeBlue : CupertinoColors.tertiaryLabel,
+          value ? CupertinoIcons.checkmark_circle_fill : CupertinoIcons.circle,
+          color: value
+              ? CupertinoColors.activeBlue
+              : CupertinoColors.tertiaryLabel,
           size: 22,
         ),
         onTap: () {
@@ -463,7 +520,9 @@ class _FeltReportScreenState extends State<FeltReportScreen> {
               controller: _country,
               maxLength: 2,
               textCapitalization: TextCapitalization.characters,
-              decoration: const InputDecoration(labelText: 'País (ISO, ej. CO)'),
+              decoration: const InputDecoration(
+                labelText: 'País (ISO, ej. CO)',
+              ),
               onSubmitted: (_) => _loadAgencies(),
             ),
             SwitchListTile.adaptive(
@@ -538,7 +597,6 @@ class _FeltReportScreenState extends State<FeltReportScreen> {
       ),
     );
   }
-
 
   static String _intensityDescription(int value) => switch (value) {
     <= 2 => 'Muy débil: pocas personas lo perciben.',

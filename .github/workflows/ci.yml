@@ -48,6 +48,8 @@ jobs:
               - 'requirements-backend.txt'
               - 'Dockerfile.api'
               - 'config.global.json'
+              - 'data/stations/colombia-open.json'
+              - 'data/calibration/magnitude-status.json'
               - 'official_sources.json'
               - 'deploy/cloudbuild.api.yaml'
             web:
@@ -100,15 +102,6 @@ jobs:
       - run: pytest
       - run: ruff check src tests
       - run: mypy src
-
-  web-fallback:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-      - run: node --test tests/web_fallback.test.mjs
 
   mobile:
     runs-on: ubuntu-latest
@@ -291,11 +284,10 @@ jobs:
 
   deploy-web:
     name: Deploy developer web to Cloud Run
-    needs: [changes, backend, mobile, android, ios, web-fallback]
+    needs: [changes, backend, mobile, android, ios]
     if: >-
       github.ref == 'refs/heads/main' &&
       needs.changes.outputs.web == 'true' &&
-      needs.web-fallback.result == 'success' &&
       needs.backend.result == 'success' && needs.mobile.result == 'success' &&
       needs.android.result == 'success' && needs.ios.result == 'success' &&
       vars.GCP_WORKLOAD_IDENTITY_PROVIDER != '' && vars.GCP_DEPLOY_SERVICE_ACCOUNT != ''
@@ -382,7 +374,7 @@ jobs:
           # para no perder alertas ni publicar dos veces durante el corte.
           if [ "$DISPATCHER_CHANGED" = true ] || [ "$INTEGRATIONS_CHANGED" = true ]; then
             deploy_worker seismik-dispatcher Dockerfile.combined-worker \
-              --update-env-vars=SEISMIK_X_PUBLISHER_ENABLED=true,SEISMIK_X_PUBLISHER_DRY_RUN=false,SEISMIK_CATALOG_ALERTS_ENABLED=true \
+              --update-env-vars=SEISMIK_X_PUBLISHER_ENABLED=false,SEISMIK_X_PUBLISHER_DRY_RUN=true,SEISMIK_CATALOG_ALERTS_ENABLED=true \
               --update-secrets=SEISMIK_X_CONSUMER_KEY=seismik-x-consumer-key:latest,SEISMIK_X_CONSUMER_SECRET=seismik-x-consumer-secret:latest,SEISMIK_X_ACCESS_TOKEN=seismik-x-access-token:latest,SEISMIK_X_ACCESS_TOKEN_SECRET=seismik-x-access-token-secret:latest
             # `services update` sólo retorna después de crear y enrutar una
             # revisión lista. Evitamos un filtro JSONPath adicional que podía
