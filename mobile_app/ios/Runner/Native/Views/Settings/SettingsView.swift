@@ -705,6 +705,10 @@ public struct FamilySafetyView: View {
     @ObservedObject private var appState = SeismikState.shared
 
     @State private var circle: FamilyCircle?
+    @State private var nicknames: [String: String] = [:]
+    @State private var editingMember: FamilyMember?
+    @State private var nicknameText = ""
+    @State private var nicknameScope: (uid: String, circle: String)?
     @State private var isLoading = false
     @State private var isReporting = false
     @State private var displayName = ""
@@ -750,6 +754,31 @@ public struct FamilySafetyView: View {
                 }
             }
             .task(id: appState.account?.uid) { await reload() }
+            .sheet(item: $editingMember) { member in
+                CompatibleNavigationStack {
+                    Form {
+                        Section(footer: Text("Sólo cambia en este iPhone. Deja vacío para usar el nombre original.")) {
+                            TextField(member.displayName, text: $nicknameText)
+                                .onChange(of: nicknameText) { value in nicknameText = String(value.prefix(40)) }
+                        }
+                    }
+                    .navigationTitle("Sobrenombre privado")
+                    .toolbar {
+                        ToolbarItem(placement: .navigationBarLeading) { Button("Cancelar") { editingMember = nil } }
+                        ToolbarItem(placement: .navigationBarTrailing) {
+                            Button("Guardar") {
+                                guard let scope = nicknameScope, appState.account?.uid == scope.uid,
+                                      circle?.circleId == scope.circle else { editingMember = nil; return }
+                                let name = nicknameText.trimmingCharacters(in: .whitespacesAndNewlines)
+                                if name.isEmpty { nicknames.removeValue(forKey: member.id) }
+                                else { nicknames[member.id] = name }
+                                FamilyNicknameStoreNative.save(nicknames, uid: scope.uid, circle: scope.circle)
+                                editingMember = nil
+                            }
+                        }
+                    }
+                }
+            }
             .onChange(of: appState.familyUpdates) { _ in
                 Task { await reload() }
             }
@@ -916,7 +945,8 @@ public struct FamilySafetyView: View {
                             .font(.title3)
                             .foregroundColor(statusColor(member.status))
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(member.isYou ? "\(member.displayName) · Tú" : member.displayName)
+                            Text(member.isYou ? "\(nicknames[member.id] ?? member.displayName) · Tú" : (nicknames[member.id] ?? member.displayName))
+                            if nicknames[member.id] != nil { Text(member.displayName).font(.caption).foregroundColor(.secondary) }
                             Text(statusLabel(member.status))
                                 .font(.caption)
                                 .foregroundColor(.secondary)
@@ -929,6 +959,13 @@ public struct FamilySafetyView: View {
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                         }
+                        Spacer()
+                        Button {
+                            nicknameText = nicknames[member.id] ?? ""
+                            editingMember = member
+                        } label: { Image(systemName: "pencil") }
+                        .buttonStyle(.borderless)
+                        .accessibilityLabel("Editar sobrenombre de \(member.displayName)")
                     }
                 }
                 if circle.isOwner == true {
@@ -1017,14 +1054,21 @@ public struct FamilySafetyView: View {
     }
 
     private func reload() async {
-        guard appState.account != nil else {
+        guard let uid = appState.account?.uid else {
             circle = nil
+            nicknames = [:]
+            nicknameScope = nil
+            editingMember = nil
             return
         }
         isLoading = true
         defer { isLoading = false }
         do {
-            circle = try await SeismikAPIClient.shared.fetchFamilyCircle()
+            let loaded = try await SeismikAPIClient.shared.fetchFamilyCircle()
+            guard appState.account?.uid == uid else { return }
+            circle = loaded
+            nicknameScope = loaded.map { (uid: uid, circle: $0.circleId) }
+            nicknames = loaded.map { FamilyNicknameStoreNative.load(uid: uid, circle: $0.circleId) } ?? [:]
             if let first = circle?.members.first(where: { $0.location != nil })?.location {
                 region.center = CLLocationCoordinate2D(latitude: first.latitude, longitude: first.longitude)
             }
