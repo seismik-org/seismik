@@ -128,6 +128,9 @@ async def _identity(
         raw = await request.app.state.redis.get(f"seismik:oauth:session:{seismik_session}")
         if raw:
             session = json.loads(raw)
+            from api.firebase_login import validate_session
+
+            await validate_session(request, session)
             session["uid"] = session.get("uid") or session.get("email", "")
             return session
     if not authorization or not authorization.lower().startswith("bearer "):
@@ -141,6 +144,7 @@ async def _identity(
             auth.verify_id_token,
             token,
             app=_firebase_app(request),
+            check_revoked=True,
         )
     except HTTPException:
         raise
@@ -151,7 +155,9 @@ async def _identity(
         ) from exc
     if not identity.get("email_verified", False):
         raise HTTPException(status_code=403, detail="A verified email address is required")
-    return identity
+    from api.firebase_login import resolve_identity
+
+    return await resolve_identity(request, identity)
 
 
 async def _request_identity(

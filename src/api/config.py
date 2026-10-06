@@ -100,6 +100,8 @@ class AppSettings(BaseSettings):
     x_access_token: SecretStr = SecretStr("")
     x_access_token_secret: SecretStr = SecretStr("")
     firebase_web_api_key: str = ""
+    # Enable only after Firebase Email/Password and email templates are configured.
+    email_login_enabled: bool = False
     firebase_web_auth_domain: str = ""
     firebase_web_project_id: str = ""
     firebase_web_app_id: str = ""

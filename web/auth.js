@@ -1,6 +1,11 @@
 (async () => {
   const buttons = [...document.querySelectorAll("[data-provider]")];
   const availability = document.querySelector("#availability");
+  // An email app flow already binds PKCE and its callback on the server.
+  if (new URLSearchParams(location.search).has("flow_id")) {
+    for (const button of buttons) button.hidden = true;
+    return;
+  }
   try {
     const response = await fetch("/v1/oauth/providers", { credentials: "include" });
     if (!response.ok) throw new Error("No se pudo consultar los proveedores");

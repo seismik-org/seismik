@@ -118,6 +118,15 @@ class _SignInPrompt extends StatelessWidget {
                 : 'Iniciar sesión con Google',
           ),
         ),
+        const SizedBox(height: 12),
+        OutlinedButton.icon(
+          style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(52)),
+          onPressed: family.signingIn
+              ? null
+              : () => family.signIn(provider: 'email'),
+          icon: const Icon(Icons.email_outlined),
+          label: const Text('Entrar o registrarme con correo'),
+        ),
       ],
     );
   }
