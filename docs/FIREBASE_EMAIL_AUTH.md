@@ -124,11 +124,47 @@ familias o claves API al revertir.
 
 En el proyecto existente se habilitó Email/Password (sin acceso por enlace ni
 teléfono), se añadió auth.seismik.org, se desactivó la combinación automática
-por correo, se guardaron idioma español y remitente/asuntos Seismik y se
-exigió mínimo 12 caracteres sin forzar actualización en accesos actuales.
+por correo, se guardó idioma español y se exigió mínimo 12 caracteres sin
+forzar actualización en accesos actuales.
 `emailPrivacyConfig.enableImprovedEmailPrivacy=true` se confirmó mediante la
 API administrativa (HTTP 200). Cloud Shell necesitó la cabecera
 `x-goog-user-project: seismik-15bbb` para usar la cuota del proyecto; el token
-administrativo no se imprimió ni se guardó en archivos. La URL de acciones
-se cambia sólo después de comprobar el despliegue; registrar en el informe
-final la verificación de producción y cualquier buzón de prueba pendiente.
+administrativo no se imprimió ni se guardó en archivos. La credencial montada
+pertenece a este proyecto y ya tiene `roles/firebaseauth.admin`; no se crearon
+claves ni permisos nuevos.
+
+La implementación se fusionó en la PR #2 (commit desplegado
+`fc02b214e3b162eb21480c986c1601438f3b7fb9`). El
+[run de Actions](https://github.com/seismik-org/seismik/actions/runs/37500192391)
+terminó con éxito en backend, JavaScript, Flutter, Android, iOS y pruebas
+nativas, y desplegó API, web y los workers afectados. Cloudflare publicó esa
+versión con el 100 % del tráfico.
+
+En producción se comprobó `/id`, los assets y la configuración de correo
+(HTTP 200 y flag activo), CSP de Firebase, rechazo de token inválido (401),
+otro Origin (403), sesión ausente (401), logout (204), requisito PKCE (400)
+y redirección móvil al formulario de correo. Apple, Google y GitHub siguen
+habilitados y sus inicios redirigen a los dominios correctos; no se completó
+el callback de cada proveedor con una cuenta real. Firebase devuelve
+`INVALID_LOGIN_CREDENTIALS` para una identidad sintética y HTTP 200 neutro
+en recuperación. El navegador mostró el error de un enlace sintético inválido.
+
+**Pendiente por restricción de Firebase:** la consola y la API administrativa
+rechazan cambios de remitente, asunto, cuerpo y URL de acción con HTTP 400
+`EMAIL_TEMPLATE_UPDATE_NOT_ALLOWED`. La consola indica que el proyecto no
+puede actualizar plantillas y remite a
+[soporte de Firebase](https://firebase.google.com/support/troubleshooter/auth/email/help).
+Los cambios de marca personalizados intentados no quedaron guardados.
+El idioma español sí quedó guardado; continúan las plantillas predeterminadas
+y el enlace funcional `https://seismik-15bbb.firebaseapp.com/__/auth/action`,
+con continuación fija a `https://auth.seismik.org/id`. El handler personalizado
+en auth.seismik.org está desplegado, pero no es aún el destino de los correos.
+Cuando soporte habilite la edición, aplicar remitente/asuntos/cuerpo indicados
+arriba y URL compartida `https://auth.seismik.org/auth.html`, y comprobar que
+persisten después de recargar la consola.
+
+Falta un buzón controlado para comprobar entrega y completar en producción
+registro, verificación, login, recuperación y vinculación con datos reales.
+Esos flujos pasaron pruebas automatizadas con Firebase simulado. Los cambios
+móviles compilaron; la distribución de nuevos binarios por las tiendas queda
+fuera del despliegue de Cloud Run y pendiente.
