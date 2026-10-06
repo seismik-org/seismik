@@ -78,7 +78,11 @@ async def email_exchange(
     # Browser-only endpoint: Origin plus JSON prevents login CSRF and linking CSRF.
     if request.headers.get("origin") != "https://auth.seismik.org":
         raise HTTPException(403, "Origen de acceso no permitido")
-    bucket = hashlib.sha256((request.client.host if request.client else "unknown").encode()).hexdigest()
+    client_host = request.client.host if request.client else "unknown"
+    # The edge guard validates the shared origin secret before this router.
+    if request.app.state.settings.edge_origin_secret.get_secret_value():
+        client_host = request.headers.get("cf-connecting-ip") or client_host
+    bucket = hashlib.sha256(client_host.encode()).hexdigest()
     key = f"seismik:email-rate:{bucket}:{int(time.time()) // 60}"
     pipe = request.app.state.redis.pipeline(transaction=True)
     pipe.incr(key)

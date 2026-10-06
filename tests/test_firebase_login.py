@@ -163,6 +163,8 @@ async def test_mobile_preserves_pkce_one_time_exchange_and_revocation(app: FastA
         assert (await client.get("/protected-mobile", headers=headers)).json()["uid"] == "firebase-person"
         app.state.user.disabled = True
         assert (await client.get("/protected-mobile", headers=headers)).status_code == 401
+        assert (await client.post("/v1/oauth/mobile/logout", headers=headers)).status_code == 204
+        assert not await app.state.redis.get("seismik:oauth:mobile-session:" + mobile.json()["mobile_session_token"])
 
 
 async def test_mobile_requires_pkce_and_rate_limit_blocks_abuse(app: FastAPI) -> None:

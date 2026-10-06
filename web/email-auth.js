@@ -114,7 +114,9 @@ async function initialize() {
     const code = params.get("oobCode");
     if (["verifyEmail", "recoverEmail", "verifyAndChangeEmail"].includes(params.get("mode"))) {
       await applyActionCode(auth, code);
-      message("Cambio de correo confirmado. Ya puedes iniciar sesión en Seismik.");
+      message(params.get("mode") === "verifyEmail"
+        ? "Correo verificado. Ya puedes iniciar sesión en Seismik."
+        : "Cambio de correo confirmado. Ya puedes iniciar sesión en Seismik.");
     } else if (params.get("mode") === "resetPassword") {
       await verifyPasswordResetCode(auth, code);
       resetting = true;
