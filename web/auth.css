@@ -38,9 +38,19 @@
 .return-link:hover { text-decoration: underline; }
 .auth-card [hidden] { display: none !important; }
 #email-form { display: grid; gap: 12px; }
+#email-access h2 { margin: 24px 0 0; font-size: 1.35rem; line-height: 1.25; letter-spacing: -.02em; }
+#email-description { margin-bottom: 20px; }
+.email-navigation { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 5px; border: 1px solid var(--line-strong); border-radius: 14px; background: var(--surface-2); }
+.email-navigation button { min-height: 44px; border: 1px solid transparent; border-radius: 10px; background: transparent; color: var(--muted); font: inherit; font-weight: 700; cursor: pointer; }
+.email-navigation button[aria-pressed=true] { border-color: var(--primary); background: var(--surface-3); color: var(--text); }
+.email-fields { display: grid; gap: 12px; }
+.field-hint { margin: -4px 0 0; color: var(--muted); font-size: .9rem; }
 #email-form input:not([type=checkbox]) { width: 100%; padding: 14px; border: 1px solid var(--line-strong); border-radius: 12px; background: var(--surface-2); color: var(--text); font: inherit; }
 #link-label { font-size: .9rem; line-height: 1.5; }
 .email-actions { display: flex; flex-wrap: wrap; gap: 12px; }
 .email-actions button { border: 0; background: transparent; color: var(--primary); font: inherit; cursor: pointer; padding: 6px 0; }
 #email-access button:disabled { opacity: .55; cursor: wait; }
 #email-message[data-error=true] { color: var(--warn); }
+#verification-actions { margin-top: 12px; }
+#email-submit { width: 100%; }
+#email-access button:focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; }

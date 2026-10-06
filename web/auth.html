@@ -28,23 +28,37 @@
     </div>
     <p id="availability" class="availability" hidden></p>
     <section id="email-access" hidden aria-label="Acceso con correo">
-      <h2>Continuar con correo</h2>
+      <nav id="email-navigation" class="email-navigation" aria-label="Elige cómo acceder con correo">
+        <button id="email-login" type="button" aria-pressed="true">Iniciar sesión</button>
+        <button id="email-register" type="button" aria-pressed="false">Crear cuenta</button>
+      </nav>
+      <h2 id="email-title">Iniciar sesión con correo</h2>
+      <p id="email-description" class="auth-copy">Introduce el correo y la contraseña de tu cuenta.</p>
       <form id="email-form">
         <label for="email">Correo electrónico</label>
         <input id="email" type="email" autocomplete="email" required maxlength="254">
-        <label for="password">Contraseña</label>
-        <input id="password" type="password" autocomplete="current-password" required maxlength="128">
+        <div id="password-fields" class="email-fields">
+          <label for="password">Contraseña</label>
+          <input id="password" type="password" autocomplete="current-password" required maxlength="4096" aria-describedby="password-hint">
+          <p id="password-hint" class="field-hint" hidden>Usa al menos 12 caracteres.</p>
+        </div>
+        <div id="confirmation-fields" class="email-fields" hidden>
+          <label for="password-confirm">Confirmar contraseña</label>
+          <input id="password-confirm" type="password" autocomplete="new-password" maxlength="4096" disabled>
+        </div>
         <label id="link-label"><input id="link-account" type="checkbox"> Vincular a mi cuenta actual de Seismik</label>
-        <p class="auth-copy">Si ya usas Seismik, entra primero con tu proveedor habitual y vuelve aquí para vincular tu correo. Así conservarás tu familia, dispositivos y claves API.</p>
-        <button class="provider-button" id="email-submit" type="submit">Entrar</button>
+        <p id="link-help" class="auth-copy">Si ya usas Seismik, entra primero con tu proveedor habitual y vuelve aquí para vincular tu correo. Así conservarás tu familia, dispositivos y claves API.</p>
+        <button class="provider-button" id="email-submit" type="submit">Iniciar sesión</button>
         <div class="email-actions">
-          <button type="button" id="email-register">Crear acceso con correo</button>
-          <button type="button" id="email-recover">Recuperar contraseña</button>
-          <button type="button" id="email-verify" hidden>Reenviar verificación</button>
-          <button type="button" id="email-check" hidden>Ya verifiqué mi correo</button>
+          <button type="button" id="email-recover">¿Olvidaste tu contraseña?</button>
+          <button type="button" id="email-back" hidden>Volver a iniciar sesión</button>
         </div>
       </form>
       <p id="email-message" class="availability" role="status" aria-live="polite" hidden></p>
+      <div id="verification-actions" class="email-actions" hidden>
+        <button type="button" id="email-verify">Reenviar verificación</button>
+        <button type="button" id="email-check">Ya verifiqué mi correo</button>
+      </div>
     </section>
     <a class="return-link" href="https://devs.seismik.org/">Volver a Seismik Developers</a>
   </main>
