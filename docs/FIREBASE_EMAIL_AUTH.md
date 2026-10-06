@@ -112,6 +112,12 @@ PKCE/códigos de un uso, revocación y vinculación conservando datos.
 Los proveedores Firebase están simulados: esto no prueba entrega de correo.
 Las pruebas JS cubren registro, verificación, recuperación, mensajes neutros,
 limpieza de contraseña y canje que sólo contiene el ID token.
+La pantalla separa «Iniciar sesión» y «Crear cuenta» en vistas explícitas.
+Crear cuenta solicita confirmación de contraseña y envía el registro desde
+el botón principal o Enter; esa vista nunca ejecuta el login. Recuperación
+tiene una vista que sólo requiere correo. Los errores de creación y de envío
+de verificación se muestran por separado; no se anuncia un registro completado
+si Firebase rechazó su creación.
 Verificar con un buzón controlado registro → verificación → login → logout,
 recuperación → nueva contraseña → rechazo de sesión anterior, y vinculación
 con una cuenta de prueba. Comprobar también los tres proveedores en vivo.
