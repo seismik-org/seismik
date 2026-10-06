@@ -10,6 +10,7 @@ const params = new URLSearchParams(location.search);
 const flowId = params.get("flow_id");
 let auth;
 let resetting = false;
+let mode = "login";
 let busy = false;
 const actionSettings = { url: "https://auth.seismik.org/id", handleCodeInApp: false };
 function message(text, error = false) {
@@ -17,32 +18,68 @@ function message(text, error = false) {
   $("email-message").hidden = false;
   $("email-message").dataset.error = String(error);
 }
-async function run(action) {
+function showMode(next) {
+  mode = next;
+  const register = mode === "register";
+  const recover = mode === "recover";
+  $("email-title").textContent = register ? "Crear cuenta con correo" : recover ? "Recuperar contraseña" : "Iniciar sesión con correo";
+  $("email-description").textContent = register
+    ? "Elige una contraseña y confirma tu correo antes de acceder a Seismik."
+    : recover ? "Te enviaremos un enlace para elegir una nueva contraseña."
+    : "Introduce el correo y la contraseña de tu cuenta.";
+  $("email-login").setAttribute("aria-pressed", String(mode === "login"));
+  $("email-register").setAttribute("aria-pressed", String(register));
+  $("password-fields").hidden = recover;
+  $("password").required = !recover;
+  $("password").disabled = recover;
+  $("password").minLength = register ? 12 : 0;
+  $("password").autocomplete = register ? "new-password" : "current-password";
+  $("password").value = "";
+  $("password-hint").hidden = !register;
+  $("confirmation-fields").hidden = !register;
+  $("password-confirm").required = register;
+  $("password-confirm").disabled = !register;
+  $("password-confirm").value = "";
+  $("link-label").hidden = mode !== "login";
+  $("link-help").hidden = recover;
+  $("email-recover").hidden = mode !== "login";
+  $("email-back").hidden = !recover;
+  $("email-submit").textContent = register ? "Crear cuenta y enviar verificación" : recover ? "Enviar enlace de recuperación" : "Iniciar sesión";
+  $("email-message").hidden = true;
+  $("verification-actions").hidden = true;
+}
+async function run(action, pending = "Procesando…") {
   if (busy) return;
   busy = true;
   $("email-form").setAttribute("aria-busy", "true");
-  document.querySelectorAll("#email-form button").forEach((b) => { b.disabled = true; });
-  message("Procesando…");
+  document.querySelectorAll("#email-access button").forEach((b) => { b.disabled = true; });
+  const label = $("email-submit").textContent;
+  $("email-submit").textContent = pending;
+  message(pending);
   try { await action(); }
   catch (error) {
     const code = error?.code;
     message(code === "auth/too-many-requests" ? "Demasiados intentos. Espera unos minutos."
       : code === "auth/network-request-failed" ? "No se pudo conectar. Comprueba tu conexión."
       : code === "auth/weak-password" || code === "auth/password-does-not-meet-requirements" ? "Usa al menos 12 caracteres y cumple los requisitos de contraseña."
+      : code === "auth/operation-not-allowed" ? "El acceso con correo no está disponible temporalmente. Inténtalo más tarde."
+      : code === "auth/expired-action-code" || code === "auth/invalid-action-code" ? "Este enlace expiró o no es válido. Solicita uno nuevo."
       : error?.safeMessage || "No se pudo completar el acceso. Revisa los datos o recupera tu contraseña.", true);
   } finally {
-    if ($("email-message").textContent === "Procesando…") message("Revisa los campos para continuar.", true);
+    if ($("email-message").textContent === pending) message("Revisa los campos para continuar.", true);
     $("password").value = "";
+    $("password-confirm").value = "";
+    $("email-submit").textContent = label;
     busy = false;
     $("email-form").setAttribute("aria-busy", "false");
-    document.querySelectorAll("#email-form button").forEach((b) => { b.disabled = false; });
+    document.querySelectorAll("#email-access button").forEach((b) => { b.disabled = false; });
   }
 }
 async function finish() {
+  if (!auth.currentUser) throw { safeMessage: "Primero inicia sesión con tu correo y contraseña para comprobar la verificación." };
   await reload(auth.currentUser);
   if (!auth.currentUser.emailVerified) {
-    $("email-verify").hidden = false;
-    $("email-check").hidden = false;
+    $("verification-actions").hidden = false;
     message("Verifica tu correo con el enlace recibido. Después pulsa «Ya verifiqué mi correo».");
     return;
   }
@@ -70,8 +107,24 @@ async function initialize() {
   auth.languageCode = "es";
   await setPersistence(auth, inMemoryPersistence);
   $("email-access").hidden = false;
+  showMode("login");
+  $("email-login").addEventListener("click", () => showMode("login"));
+  $("email-register").addEventListener("click", () => showMode("register"));
+  $("email-recover").addEventListener("click", () => showMode("recover"));
+  $("email-back").addEventListener("click", () => showMode("login"));
+  $("email-form").addEventListener("invalid", () => {
+    message(mode === "register" ? "Completa el correo, una contraseña de al menos 12 caracteres y su confirmación." : "Revisa los campos indicados para continuar.", true);
+  }, true);
   $("email-form").addEventListener("submit", (event) => {
     event.preventDefault();
+    if (!$("email-form").reportValidity()) {
+      message("Revisa los campos indicados para continuar.", true);
+      return;
+    }
+    if (mode === "register" && $("password").value !== $("password-confirm").value) {
+      message("Las contraseñas no coinciden. Revisa la confirmación.", true);
+      return;
+    }
     run(async () => {
       if (resetting) {
         if ($("password").value.length < 12) throw { code: "auth/weak-password" };
@@ -82,29 +135,35 @@ async function initialize() {
         location.replace("/id");
         return;
       }
+      if (mode === "register") {
+        if ($("password").value.length < 12) throw { code: "auth/weak-password" };
+        let user;
+        try {
+          ({ user } = await createUserWithEmailAndPassword(auth, $("email").value.trim(), $("password").value));
+        } catch (error) {
+          if (error.code !== "auth/email-already-in-use") throw error;
+        }
+        if (user) {
+          try { await sendEmailVerification(user, actionSettings); }
+          catch (_) {
+            $("verification-actions").hidden = false;
+            throw { safeMessage: "No se pudo enviar el correo de verificación. Puedes reenviarlo aquí o iniciar sesión más tarde para hacerlo." };
+          }
+        }
+        $("verification-actions").hidden = false;
+        message("Solicitud de registro completada. Revisa tu correo y la carpeta de spam. Si no recibes un enlace, inicia sesión o recupera tu contraseña.");
+        return;
+      }
+      if (mode === "recover") {
+        try { await sendPasswordResetEmail(auth, $("email").value.trim(), actionSettings); }
+        catch (error) { if (error.code !== "auth/user-not-found") throw error; }
+        message("Si el correo tiene acceso, recibirás instrucciones de Seismik para recuperar la contraseña.");
+        return;
+      }
       await signInWithEmailAndPassword(auth, $("email").value.trim(), $("password").value);
       await finish();
-    });
+    }, resetting ? "Guardando contraseña…" : mode === "register" ? "Creando cuenta…" : mode === "recover" ? "Enviando enlace…" : "Iniciando sesión…");
   });
-  $("email-register").addEventListener("click", () => run(async () => {
-    if (!$("email-form").reportValidity()) return;
-    if ($("password").value.length < 12) throw { code: "auth/weak-password" };
-    try {
-      const { user } = await createUserWithEmailAndPassword(auth, $("email").value.trim(), $("password").value);
-      await sendEmailVerification(user, actionSettings);
-    } catch (error) {
-      if (error.code !== "auth/email-already-in-use") throw error;
-    }
-    $("email-verify").hidden = false;
-    $("email-check").hidden = false;
-    message("Si el registro puede completarse, recibirás un enlace de verificación. Si ya tienes acceso, entra o recupera tu contraseña.");
-  }));
-  $("email-recover").addEventListener("click", () => run(async () => {
-    if (!$("email").reportValidity()) return;
-    try { await sendPasswordResetEmail(auth, $("email").value.trim(), actionSettings); }
-    catch (error) { if (error.code !== "auth/user-not-found") throw error; }
-    message("Si el correo tiene acceso, recibirás instrucciones de Seismik para recuperar la contraseña.");
-  }));
   $("email-verify").addEventListener("click", () => run(async () => {
     if (!auth.currentUser) throw { safeMessage: "Entra con tu correo para reenviar la verificación." };
     await sendEmailVerification(auth.currentUser, actionSettings);
@@ -121,11 +180,15 @@ async function initialize() {
     } else if (params.get("mode") === "resetPassword") {
       await verifyPasswordResetCode(auth, code);
       resetting = true;
+      $("email-navigation").hidden = true;
+      $("email-title").textContent = "Elegir nueva contraseña";
+      $("email-description").textContent = "Usa al menos 12 caracteres para proteger tu cuenta.";
       $("email").required = false;
       $("email").hidden = true;
       document.querySelector('label[for="email"]').hidden = true;
       $("password").autocomplete = "new-password";
       $("link-label").hidden = true;
+      $("link-help").hidden = true;
       document.querySelector(".email-actions").hidden = true;
       $("email-submit").textContent = "Guardar nueva contraseña";
       message("Escribe tu nueva contraseña (al menos 12 caracteres).");
