@@ -18,6 +18,7 @@ from api.devices_store import DeviceRepository
 from api.edge_origin import EdgeOriginGuard
 from api.family import account_router as family_account_router
 from api.family import router as family_router
+from api.firebase_login import router as firebase_login_router
 from api.history import router as history_router
 from api.integrations import router as integrations_router
 from api.integrity import DeviceIntegrityVerifier
@@ -86,6 +87,7 @@ def create_app(settings: AppSettings | None = None) -> FastAPI:
     app.include_router(developer_keys_router)
     app.include_router(integrations_router)
     app.include_router(oauth_router)
+    app.include_router(firebase_login_router)
     app.include_router(oauth_identity_router)
     app.include_router(crowd_router)
     app.include_router(public_router)

@@ -108,7 +108,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-      - run: node --test tests/web_fallback.test.mjs
+      - run: node --test tests/web_fallback.test.mjs tests/email_auth.test.mjs
 
   mobile:
     runs-on: ubuntu-latest
@@ -287,7 +287,7 @@ jobs:
       - name: Update service
         env:
           IMAGE: ${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.GCP_ARTIFACT_REPOSITORY }}/api:${{ github.sha }}
-        run: gcloud run services update seismik-api --project "$GCP_PROJECT_ID" --region "$GCP_REGION" --image "$IMAGE"
+        run: gcloud run services update seismik-api --project "$GCP_PROJECT_ID" --region "$GCP_REGION" --image "$IMAGE" --update-env-vars SEISMIK_EMAIL_LOGIN_ENABLED=true
 
   deploy-web:
     name: Deploy developer web to Cloud Run

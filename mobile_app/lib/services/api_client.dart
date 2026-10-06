@@ -747,6 +747,20 @@ class ApiClient {
   }
 
   Future<void> clearAccount() async {
+    final String? token = _accountToken ??
+        await _secureStorage.read(key: _accountSessionKey);
+    if (token != null && token.isNotEmpty) {
+      try {
+        await _http
+            .post(
+              Uri.parse('${SeismikConstants.authBaseUrl}/v1/oauth/mobile/logout'),
+              headers: <String, String>{'X-Seismik-Account-Session': token},
+            )
+            .timeout(const Duration(seconds: 5));
+      } catch (_) {
+        // Sin red se elimina el acceso local; el servidor conserva su TTL.
+      }
+    }
     _accountToken = null;
     await _wear.clearAccount();
     await _secureStorage.delete(key: _accountSessionKey);

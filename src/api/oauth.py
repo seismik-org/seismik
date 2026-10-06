@@ -13,7 +13,7 @@ from urllib.parse import parse_qs, urlencode, urlparse
 
 import httpx
 import jwt
-from fastapi import APIRouter, Body, Cookie, HTTPException, Request, Response, status
+from fastapi import APIRouter, Body, Cookie, Header, HTTPException, Request, Response, status
 from fastapi.responses import RedirectResponse
 from jwt import PyJWK
 
@@ -101,6 +101,7 @@ async def _finish_login(
     """Issue the browser cookie and, only for the native app, a one-time code."""
     settings = request.app.state.settings
     session = secrets.token_urlsafe(48)
+    user = {**user, "authenticated_at": str(int(time.time()))}
     await request.app.state.redis.set(
         f"seismik:oauth:session:{session}",
         json.dumps(user),
@@ -176,12 +177,17 @@ async def authorize(
     proveedor. El origen permitido decide el retorno: el portal de
     desarrolladores o el esquema de la app; no se acepta una URL arbitraria.
     """
-    if provider not in _PROVIDERS:
+    if provider not in _PROVIDERS and provider != "email":
         raise HTTPException(status_code=404, detail="Proveedor OAuth no disponible")
     returns = {"devs": None, "app": _MOBILE_CALLBACK}
     if origin not in returns:
         raise HTTPException(status_code=400, detail="Origen OAuth no permitido")
     challenge = _app_challenge(app_challenge, returns[origin])
+    if provider == "email":
+        if not request.app.state.settings.email_login_enabled:
+            raise HTTPException(503, "El acceso con correo aún no está disponible")
+        if origin == "app" and not challenge:
+            raise HTTPException(400, "El acceso móvil con correo requiere PKCE")
     flow_id = secrets.token_urlsafe(24)
     await request.app.state.redis.set(
         f"seismik:oauth:identity:{flow_id}",
@@ -205,6 +211,8 @@ async def identity_entry(request: Request, flow_id: str) -> Response:
     if not raw:
         raise HTTPException(status_code=410, detail="Esta solicitud de inicio de sesión expiró")
     saved = json.loads(raw)
+    if saved.get("provider") == "email":
+        return RedirectResponse("/auth.html?" + urlencode({"flow_id": flow_id}), status_code=303)
     if saved.get("provider") == "google":
         return await google_start(
             request, return_to=saved.get("return_to"), app_challenge=saved.get("app_challenge")
@@ -569,6 +577,9 @@ async def exchange_mobile_code(
     if not raw:
         raise HTTPException(status_code=401, detail="Código móvil OAuth inválido o expirado")
     user = json.loads(raw)
+    from api.firebase_login import validate_session
+
+    await validate_session(request, user)
     challenge = user.pop("app_challenge", None)
     if challenge is not None:
         # En Android otra app puede registrar el mismo esquema `seismik://` y
@@ -593,7 +604,20 @@ async def current_session(request: Request, seismik_session: str | None = Cookie
     raw = await request.app.state.redis.get(f"seismik:oauth:session:{seismik_session}")
     if not raw:
         raise HTTPException(status_code=401, detail="Sesión expirada")
-    return json.loads(raw)
+    user = json.loads(raw)
+    from api.firebase_login import validate_session
+
+    await validate_session(request, user)
+    return {key: user[key] for key in ("uid", "email", "name")}
+
+
+@router.post("/mobile/logout", status_code=204)
+async def mobile_logout(
+    request: Request,
+    x_account_session: str | None = Header(default=None, alias="X-Seismik-Account-Session"),
+) -> None:
+    if x_account_session:
+        await request.app.state.redis.delete(f"seismik:oauth:mobile-session:{x_account_session}")
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)

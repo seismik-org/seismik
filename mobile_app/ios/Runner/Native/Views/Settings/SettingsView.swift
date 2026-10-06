@@ -472,6 +472,7 @@ public struct SettingsView: View {
                 Button("Apple") { startSignIn(provider: "apple") }
                 Button("Google") { startSignIn(provider: "google") }
                 Button("GitHub") { startSignIn(provider: "github") }
+                Button("Correo y contraseña") { startSignIn(provider: "email") }
                 Button("Cancelar", role: .cancel) {}
             }
             .alert("No se pudo iniciar sesión", isPresented: Binding(
@@ -775,6 +776,14 @@ public struct FamilySafetyView: View {
                 .controlSize(.large)
                 Button("Iniciar sesión con GitHub") { signIn(provider: "github") }
                     .font(.footnote)
+                Button {
+                    signIn(provider: "email")
+                } label: {
+                    Label("Entrar o registrarme con correo", systemImage: "envelope")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.large)
             }
             .padding(24)
         }
