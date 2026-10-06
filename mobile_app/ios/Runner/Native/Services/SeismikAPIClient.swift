@@ -673,6 +673,16 @@ public final class SeismikAPIClient {
         UserDefaults.standard.removeObject(forKey: Self.accountProfileKey)
     }
 
+    public func revokeAccountSession() async throws {
+        guard let token = accountSessionToken else { return }
+        var request = URLRequest(url: URL(string: "https://auth.seismik.org/v1/oauth/mobile/logout")!)
+        request.httpMethod = "POST"
+        request.timeoutInterval = 5
+        request.setValue(token, forHTTPHeaderField: "X-Seismik-Account-Session")
+        let (data, response) = try await session.data(for: request)
+        try assertSuccess(response, data: data)
+    }
+
     /// Asocia este iPhone a la cuenta: aquí llegarán los avisos de la familia.
     public func linkDeviceToAccount() async throws {
         var request = try accountRequest(path: "v1/account/device", requireDevice: true)

@@ -59,6 +59,9 @@ async def require_account_session(
         )
     # Renovación deslizante: quien usa la app no debe encontrarse con que su
     # sesión venció justo cuando necesita avisar a su familia tras un sismo.
+    from api.firebase_login import validate_session
+
+    await validate_session(request, user)
     await redis.expire(key, request.app.state.settings.mobile_account_session_ttl_seconds)
     return AccountPrincipal(
         uid=uid,

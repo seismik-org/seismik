@@ -275,6 +275,7 @@ public final class SeismikState: ObservableObject {
     public func signOutAccount() async {
         // Sin esto el teléfono seguiría recibiendo los avisos de la familia.
         try? await apiClient.unlinkDeviceFromAccount()
+        try? await apiClient.revokeAccountSession()
         try? apiClient.signOutAccount()
         account = nil
         pendingFamilyCheckIn = nil

@@ -19,7 +19,7 @@
       <span>SEISMIK</span>
     </a>
     <p class="eyebrow">ACCESO SEGURO</p>
-    <h1 id="auth-title">Entra a Seismik Developers</h1>
+    <h1 id="auth-title">Entra a Seismik</h1>
     <p class="auth-copy">Elige cómo quieres continuar. Seismik sólo solicita tu perfil básico y un correo verificado.</p>
     <div id="providers" class="provider-list" aria-live="polite">
       <button class="provider-button provider-apple" type="button" data-provider="apple"><svg aria-hidden="true" viewBox="0 0 24 24"><path fill="currentColor" d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701"/></svg> Continuar con Apple</button>
@@ -27,9 +27,29 @@
       <button class="provider-button" type="button" data-provider="github"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path fill="currentColor" d="M12 .297a12 12 0 0 0-3.793 23.385c.6.111.82-.261.82-.577v-2.234c-3.338.726-4.043-1.416-4.043-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.835 2.807 1.305 3.492.998.108-.776.418-1.305.762-1.605-2.665-.303-5.467-1.334-5.467-5.931 0-1.31.469-2.381 1.236-3.221-.124-.303-.536-1.524.117-3.176 0 0 1.008-.322 3.301 1.23a11.52 11.52 0 0 1 6.006 0c2.291-1.552 3.297-1.23 3.297-1.23.655 1.652.243 2.873.119 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.625-5.479 5.922.43.372.823 1.102.823 2.222v3.293c0 .319.216.694.825.576A12 12 0 0 0 12 .297Z"/></svg> Continuar con GitHub</button>
     </div>
     <p id="availability" class="availability" hidden></p>
+    <section id="email-access" hidden aria-label="Acceso con correo">
+      <h2>Continuar con correo</h2>
+      <form id="email-form">
+        <label for="email">Correo electrónico</label>
+        <input id="email" type="email" autocomplete="email" required maxlength="254">
+        <label for="password">Contraseña</label>
+        <input id="password" type="password" autocomplete="current-password" required maxlength="128">
+        <label id="link-label"><input id="link-account" type="checkbox"> Vincular a mi cuenta actual de Seismik</label>
+        <p class="auth-copy">Si ya usas Seismik, entra primero con tu proveedor habitual y vuelve aquí para vincular tu correo. Así conservarás tu familia, dispositivos y claves API.</p>
+        <button class="provider-button" id="email-submit" type="submit">Entrar</button>
+        <div class="email-actions">
+          <button type="button" id="email-register">Crear acceso con correo</button>
+          <button type="button" id="email-recover">Recuperar contraseña</button>
+          <button type="button" id="email-verify" hidden>Reenviar verificación</button>
+          <button type="button" id="email-check" hidden>Ya verifiqué mi correo</button>
+        </div>
+      </form>
+      <p id="email-message" class="availability" role="status" aria-live="polite" hidden></p>
+    </section>
     <a class="return-link" href="https://devs.seismik.org/">Volver a Seismik Developers</a>
   </main>
   <script src="/auth.js?v=__ASSET_VERSION__"></script>
+  <script type="module" src="/email-auth.js?v=__ASSET_VERSION__"></script>
   <script src="/site.js?v=__ASSET_VERSION__" defer></script>
 </body>
 </html>
