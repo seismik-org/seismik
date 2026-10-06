@@ -96,8 +96,9 @@ async def test_invalid_token_and_cross_origin_do_not_issue_session(app: FastAPI)
 async def test_email_match_alone_never_links_existing_account(app: FastAPI) -> None:
     async with client_for(app) as client:
         await legacy_session(app, client)
-        await exchange(client)
-        assert (await client.get("/v1/oauth/session")).json()["uid"] == "firebase-person"
+        assert (await exchange(client)).status_code == 409
+        assert (await client.get("/v1/oauth/session")).json()["uid"] == "github:123"
+        assert not await app.state.redis.get(firebase_login.binding_key("firebase-person"))
 
 
 async def test_explicit_link_preserves_family_devices_and_api_keys(app: FastAPI) -> None:

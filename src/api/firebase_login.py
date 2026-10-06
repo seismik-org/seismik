@@ -111,6 +111,11 @@ async def email_exchange(
         flow = json.loads(raw) if raw else None
         if not flow or flow.get("provider") != "email" or not flow.get("app_challenge"):
             raise HTTPException(410, "La solicitud móvil expiró; inicia el acceso desde la app")
+    if not body.link and seismik_session and not await redis.get(binding_key(firebase_uid)):
+        raw = await redis.get(f"seismik:oauth:session:{seismik_session}")
+        current = json.loads(raw) if raw else {}
+        if current.get("uid") and current["uid"] != firebase_uid:
+            raise HTTPException(409, "Ya tienes una cuenta abierta. Marca la opción de vincular para conservar sus datos, o cierra esa sesión antes de entrar con otra cuenta")
     if body.link:
         raw = await redis.get(f"seismik:oauth:session:{seismik_session}") if seismik_session else None
         existing = json.loads(raw) if raw else {}

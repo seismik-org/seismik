@@ -31,6 +31,7 @@ async function run(action) {
       : code === "auth/weak-password" || code === "auth/password-does-not-meet-requirements" ? "Usa al menos 12 caracteres y cumple los requisitos de contraseña."
       : error?.safeMessage || "No se pudo completar el acceso. Revisa los datos o recupera tu contraseña.", true);
   } finally {
+    if ($("email-message").textContent === "Procesando…") message("Revisa los campos para continuar.", true);
     $("password").value = "";
     busy = false;
     $("email-form").setAttribute("aria-busy", "false");
