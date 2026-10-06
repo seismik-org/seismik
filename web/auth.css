@@ -26,8 +26,7 @@
   font: inherit; font-weight: 700; cursor: pointer; transition: border-color 0.15s ease, background 0.15s ease;
 }
 .provider-button:hover { border-color: var(--primary); background: var(--surface-3); }
-.provider-button span { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--text); color: var(--bg); font-weight: 900; font-size: 0.85rem; }
-.provider-button svg { width: 20px; height: 20px; flex: none; }
+.provider-button svg { display: block; width: 20px; height: 20px; flex: none; }
 /* Apple pide botón blanco sobre fondo oscuro y negro sobre fondo claro. */
 .provider-apple { border-color: #fff; background: #fff; color: #000; }
 .provider-apple:hover { border-color: #e8e8ed; background: #e8e8ed; }
