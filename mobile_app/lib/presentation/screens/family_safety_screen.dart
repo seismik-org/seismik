@@ -114,7 +114,7 @@ class _SignInPrompt extends StatelessWidget {
               : const Icon(Icons.login_rounded),
           label: Text(
             family.signingIn
-                ? 'Esperando a Google…'
+                ? 'Esperando el inicio de sesión…'
                 : 'Iniciar sesión con Google',
           ),
         ),

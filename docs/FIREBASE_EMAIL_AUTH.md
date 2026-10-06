@@ -82,9 +82,10 @@ existente. Los Bearer Firebase del portal resuelven la misma relación.
 
 ## Abuso
 
-El canje permite 20 intentos/minuto por IP observada por FastAPI, usando un
-hash y ventana Redis con caducidad. Detrás del proxy este límite puede
-agrupar conexiones; ajustar infraestructura antes de elevarlo. Se exige
+El canje permite 20 intentos/minuto por IP, usando un hash y ventana Redis
+con caducidad. Con la guardia de origen activa se utiliza CF-Connecting-IP
+del Worker autenticado; sin ella se utiliza la conexión observada por FastAPI.
+Se exige
 Origin y JSON para impedir CSRF. Registro y recuperación no consultan si el
 correo existe y muestran mensajes neutros. Firebase controla los intentos
 directos de contraseña y envío de correo; activar su protección contra
@@ -101,10 +102,12 @@ anterior decía que su publicación era manual. Conservar sincronizados
 gstatic y los endpoints de Firebase también en auth.seismik.org.
 
 Pruebas locales: `pytest`, `ruff check src tests`, `mypy src`,
-`node --test tests/web_fallback.test.mjs`. `tests/test_firebase_login.py`
+`node --test tests/web_fallback.test.mjs tests/email_auth.test.mjs`. `tests/test_firebase_login.py`
 comprueba tokens inválidos/no verificados, CSRF, límites, sesiones y logout,
 PKCE/códigos de un uso, revocación y vinculación conservando datos.
 Los proveedores Firebase están simulados: esto no prueba entrega de correo.
+Las pruebas JS cubren registro, verificación, recuperación, mensajes neutros,
+limpieza de contraseña y canje que sólo contiene el ID token.
 Verificar con un buzón controlado registro → verificación → login → logout,
 recuperación → nueva contraseña → rechazo de sesión anterior, y vinculación
 con una cuenta de prueba. Comprobar también los tres proveedores en vivo.
@@ -112,3 +115,16 @@ con una cuenta de prueba. Comprobar también los tres proveedores en vivo.
 Reversión: desactivar `SEISMIK_EMAIL_LOGIN_ENABLED` y volver a las revisiones
 anteriores de API/web/Worker. No borrar usuarios Firebase, relaciones Redis,
 familias o claves API al revertir.
+
+## Configuración comprobada el 2026-10-06
+
+En el proyecto existente se habilitó Email/Password (sin acceso por enlace ni
+teléfono), se añadió auth.seismik.org, se desactivó la combinación automática
+por correo, se guardaron idioma español y remitente/asuntos Seismik y se
+exigió mínimo 12 caracteres sin forzar actualización en accesos actuales.
+`emailPrivacyConfig.enableImprovedEmailPrivacy=true` se confirmó mediante la
+API administrativa (HTTP 200). Cloud Shell necesitó la cabecera
+`x-goog-user-project: seismik-15bbb` para usar la cuota del proyecto; el token
+administrativo no se imprimió ni se guardó en archivos. La URL de acciones
+se cambia sólo después de comprobar el despliegue; registrar en el informe
+final la verificación de producción y cualquier buzón de prueba pendiente.
