@@ -79,6 +79,10 @@ usó en Seismik o tiene datos, se rechaza el cambio (409), conservando ambas
 cuentas. No hay una migración o fusión automática de cuentas ya pobladas.
 Familias, dispositivos, planes, claves API y webhooks permanecen bajo el UID
 existente. Los Bearer Firebase del portal resuelven la misma relación.
+Si hay otra cuenta abierta y el correo todavía no tiene una relación, se
+requiere elegir explícitamente la vinculación o cerrar esa sesión antes de
+crear un acceso separado. Así no se sustituye inadvertidamente la cuenta
+existente por una cuenta vacía.
 
 ## Abuso
 
