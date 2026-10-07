@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from datetime import datetime, timedelta, timezone
 
 import httpx
 import pytest
@@ -18,6 +19,7 @@ from reporting.ingest import router
 def payload() -> dict:
     return {
         "report_id": "browser-report-001",
+        "earthquake_event_id": "catalog:test:event-001",
         "observed_at": "2026-10-07T15:00:00Z",
         "latitude": 4.651234,
         "longitude": -74.051234,
@@ -39,9 +41,15 @@ def secure_settings(**kwargs):
     )
 
 
-def setup(settings: AppSettings | None = None):
+async def setup(settings: AppSettings | None = None):
     settings = settings or AppSettings()
     redis = FakeRedis(decode_responses=True)
+    await redis.xadd(settings.official_stream, {"payload": json.dumps({
+        "event_id": "catalog:test:event-001",
+        "preferred_report": {"official_event_id": "official-001",
+            "origin_time": datetime.now(timezone.utc).isoformat(), "magnitude": 3.2,
+            "latitude": 4.6, "longitude": -74.1, "place": "Colombia", "agency": "Test"},
+    })})
     app = FastAPI()
     app.include_router(router)
     app.add_middleware(EdgeOriginGuard, secret=settings.edge_origin_secret.get_secret_value())
@@ -54,7 +62,7 @@ def setup(settings: AppSettings | None = None):
 
 @pytest.mark.asyncio
 async def test_web_rounding_provenance_stream_and_retry():
-    client, redis, settings = setup()
+    client, redis, settings = await setup()
     async with client:
         first = await client.post("/v1/reports/web/felt", json=payload())
         retry = await client.post("/v1/reports/web/felt", json=payload())
@@ -75,7 +83,7 @@ async def test_web_rounding_provenance_stream_and_retry():
 
 @pytest.mark.asyncio
 async def test_precise_opt_in_optional_details_and_official_forms():
-    client, redis, settings = setup()
+    client, redis, settings = await setup()
     async with client:
         response = await client.post(
             "/v1/reports/web/felt",
@@ -120,7 +128,7 @@ async def test_precise_opt_in_optional_details_and_official_forms():
     ],
 )
 async def test_browser_cannot_claim_mobile_identity_or_collect_personal_fields(extra):
-    client, redis, settings = setup()
+    client, redis, settings = await setup()
     async with client:
         response = await client.post("/v1/reports/web/felt", json=payload() | extra)
     assert response.status_code == 422
@@ -138,7 +146,7 @@ async def test_browser_cannot_claim_mobile_identity_or_collect_personal_fields(e
     ],
 )
 async def test_fail_closed_without_both_keys(environment, site, secret):
-    client, _, _ = setup(
+    client, _, _ = await setup(
         secure_settings(
             environment=environment, turnstile_site_key=site, turnstile_secret_key=secret
         )
@@ -184,7 +192,7 @@ async def test_real_verification_action_hostname_and_token_redaction(
                 json={"success": success, "action": action, "hostname": hostname},
             )
 
-    client, redis, settings = setup(
+    client, redis, settings = await setup(
         secure_settings(
             environment="production", turnstile_site_key="site", turnstile_secret_key="secret"
         )
@@ -203,7 +211,7 @@ async def test_real_verification_action_hostname_and_token_redaction(
 @pytest.mark.asyncio
 async def test_rate_limit_hashes_trusted_edge_ip_and_ignores_spoofed_header():
     secret = "edge-secret"
-    client, redis, _ = setup(AppSettings(edge_origin_secret=secret, report_rate_limit_per_minute=1))
+    client, redis, _ = await setup(AppSettings(edge_origin_secret=secret, report_rate_limit_per_minute=1))
     async with client:
         blocked = await client.post(
             "/v1/reports/web/felt", json=payload(), headers={"X-Seismik-Client-IP": "1.2.3.4"}
@@ -219,7 +227,7 @@ async def test_rate_limit_hashes_trusted_edge_ip_and_ignores_spoofed_header():
     keys = await redis.keys("seismik:reports:web:rate:*")
     assert len(keys) == 1 and hashlib.sha256(b"1.2.3.4").hexdigest() in keys[0]
     assert "1.2.3.4" not in keys[0]
-    client, redis, _ = setup()
+    client, redis, _ = await setup()
     async with client:
         await client.post(
             "/v1/reports/web/felt", json=payload(), headers={"X-Seismik-Client-IP": "1.2.3.4"}
@@ -230,7 +238,7 @@ async def test_rate_limit_hashes_trusted_edge_ip_and_ignores_spoofed_header():
 
 @pytest.mark.asyncio
 async def test_web_id_does_not_suppress_mobile_id():
-    client, redis, settings = setup()
+    client, redis, settings = await setup()
     bus = RedisEventBus(redis, 100, 600)
     async with client:
         response = await client.post("/v1/reports/web/felt", json=payload())
@@ -243,7 +251,7 @@ async def test_web_id_does_not_suppress_mobile_id():
 async def test_missing_token_and_verifier_outage_never_publish(monkeypatch):
     from reporting import web
 
-    client, redis, settings = setup(
+    client, redis, settings = await setup(
         secure_settings(
             environment="production", turnstile_site_key="site", turnstile_secret_key="secret"
         )
@@ -268,3 +276,45 @@ async def test_missing_token_and_verifier_outage_never_publish(monkeypatch):
         )
         assert outage.status_code == 503
     assert await redis.xlen(settings.felt_reports_stream) == 0
+
+
+@pytest.mark.asyncio
+async def test_selected_event_is_required_known_and_official_identity_is_bound():
+    client, redis, settings = await setup()
+    async with client:
+        for changes in ({"earthquake_event_id": None}, {"earthquake_event_id": "invented"},
+                        {"official_event_id": "other-event"}):
+            response = await client.post("/v1/reports/web/felt", json=payload() | changes)
+            assert response.status_code == 422
+        missing = payload()
+        del missing["earthquake_event_id"]
+        assert (await client.post("/v1/reports/web/felt", json=missing)).status_code == 422
+        assert await redis.xlen(settings.felt_reports_stream) == 0
+        assert (await client.post("/v1/reports/web/felt", json=payload())).status_code == 202
+    stored = json.loads((await redis.xrange(settings.felt_reports_stream))[0][1]["payload"])
+    assert stored["earthquake_event_id"] == "catalog:test:event-001"
+    assert stored["official_event_id"] == "official-001"
+
+
+@pytest.mark.asyncio
+async def test_catalog_deduplicates_revisions_filters_old_events_and_has_no_magnitude_floor():
+    client, redis, settings = await setup()
+    old = {"event_id": "old", "preferred_report": {
+        "origin_time": (datetime.now(timezone.utc) - timedelta(days=8)).isoformat(),
+        "magnitude": 5.0,
+    }}
+    await redis.xadd(settings.official_stream, {"payload": json.dumps(old)})
+    await redis.xadd(settings.official_stream, {"payload": "malformed"})
+    revision = {"event_id": "catalog:test:event-001", "preferred_report": {
+        "origin_time": datetime.now(timezone.utc).isoformat(), "magnitude": 2.9,
+        "place": "Revised", "official_event_id": "official-001",
+    }}
+    await redis.xadd(settings.official_stream, {"payload": json.dumps(revision)})
+    async with client:
+        response = await client.get("/v1/reports/web/events")
+    assert response.status_code == 200
+    assert response.headers["Cache-Control"] == "no-store"
+    assert response.json()["period_days"] == 7
+    assert len(response.json()["events"]) == 1
+    assert response.json()["events"][0]["place"] == "Revised"
+    assert response.json()["events"][0]["magnitude"] == 2.9

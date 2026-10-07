@@ -81,6 +81,7 @@ class FeltReport(CitizenReportBase):
 class WebFeltReport(FeltReport):
     """Voluntary browser reports never represent an attested mobile device."""
 
+    earthquake_event_id: str = Field(min_length=1, max_length=128)
     device_id: Literal["web-unverified"] = "web-unverified"
     source: Literal["web"] = "web"
     integrity_verified: Literal[False] = False
