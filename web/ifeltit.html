@@ -6,10 +6,10 @@
 <p class="safety">Si hay peligro inmediato, contacta a los servicios de emergencia. Este formulario no solicita ayuda.</p>
 <ol class="steps" aria-label="Progreso"><li aria-current="step">1 · Sismo y ubicación</li><li>2 · Tu experiencia</li><li>3 · Revisar y enviar</li></ol>
 <form id="report-form" novalidate>
-<fieldset data-step="0"><legend>Sismo y ubicación</legend>
+<fieldset data-step="0"><legend tabindex="-1">Sismo y ubicación</legend>
 <p class="section-intro">Elige el sismo que quieres reportar y marca dónde estabas cuando ocurrió.</p>
 <div class="section-heading"><span class="section-number">01</span><div><h2>¿Qué sismo sentiste?</h2><p>Catálogo de los últimos 7 días · hora local de tu dispositivo</p></div></div>
-<label>Buscar por lugar<input type="search" id="event-search" placeholder="Por ejemplo, Colombia o Japón" autocomplete="off"></label>
+<label>Buscar por lugar<input type="search" id="event-search" placeholder="Por ejemplo, Colombia o Chile" autocomplete="off"></label>
 <label class="event-picker">Sismo<select name="earthquake_event_id" id="earthquake-event" required><option value="">Cargando sismos recientes…</option></select></label>
 <p id="event-status" class="hint" role="status"></p><button type="button" id="reload-events" class="text-button">Actualizar catálogo ↻</button>
 <div id="selected-event" class="event-card" hidden><div class="magnitude" id="event-magnitude"></div><div><h3 id="event-place"></h3><p id="event-time"></p><p id="event-agency"></p></div></div>
@@ -21,7 +21,7 @@
 <div class="grid"><label>País donde estabas<select name="country_code" required><option value="">Selecciona tu país</option></select></label><label>Fecha y hora local del reporte<input type="datetime-local" name="observed_at" required></label></div>
 <label class="check privacy-choice"><input name="precise" type="checkbox"><span>Compartir el punto exacto que elegí</span></label><p class="hint">Si no eliges esta opción, Seismik redondea la ubicación a dos decimales y elimina la precisión del GPS. Google recibe las solicitudes necesarias para mostrar el mapa.</p>
 </fieldset>
-<fieldset data-step="1" hidden><legend>Tu experiencia</legend><p class="section-intro">Cuéntanos cómo se sintió. Los detalles adicionales son opcionales.</p><div class="grid"><label>¿Sentiste el sismo?<select name="felt" required><option value="">Elige una respuesta</option><option value="true">Sí</option><option value="false">No</option></select></label>
+<fieldset data-step="1" hidden><legend tabindex="-1">Tu experiencia</legend><p class="section-intro">Cuéntanos cómo se sintió. Los detalles adicionales son opcionales.</p><div class="grid"><label>¿Sentiste el sismo?<select name="felt" required><option value="">Elige una respuesta</option><option value="true">Sí</option><option value="false">No</option></select></label>
 <label id="intensity-label" hidden>Intensidad percibida<select name="intensity_mmi"><option value="">Elige una intensidad</option><option value="2">Muy leve</option><option value="3">Leve</option><option value="4">Moderada</option><option value="5">Fuerte</option><option value="6">Muy fuerte</option><option value="7">Severa</option><option value="8">Violenta</option><option value="9">Extrema</option><option value="10">Máxima</option></select></label>
 <label class="details-label">Detalles adicionales <span class="hint">Puedes dejar estas preguntas sin responder.</span></label>
 <label>Duración aproximada (segundos)<input name="duration_seconds" type="number" min="0" max="3600" step="1"></label>
@@ -37,7 +37,7 @@
 <label>Lámparas<select name="lamps"><option value="">Sin responder</option><option value="none">Sin efecto</option><option value="swung">Oscilaron</option><option value="fell">Cayeron</option><option value="unknown">No sé</option></select></label>
 <label>Muebles<select name="furniture"><option value="">Sin responder</option><option value="none">Sin efecto</option><option value="moved">Se movieron</option><option value="fell">Cayeron</option><option value="unknown">No sé</option></select></label>
 </div></fieldset>
-<fieldset data-step="2" hidden><legend>Revisar y enviar</legend><dl id="summary"></dl>
+<fieldset data-step="2" hidden><legend tabindex="-1">Revisar y enviar</legend><dl id="summary"></dl>
 <p>No recogemos nombre, correo ni archivos. Este reporte se identifica como web, sin verificación de dispositivo móvil.</p>
 <label class="check"><input name="share_with_official_agencies" type="checkbox">Mostrar formularios de organismos oficiales después del envío</label>
 <p class="hint">Los organismos sólo reciben información si completas sus formularios.</p><div id="turnstile-container"></div>

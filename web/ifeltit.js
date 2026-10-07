@@ -4,7 +4,8 @@ const status = document.querySelector("#status");
 const steps = [...form.querySelectorAll("[data-step]")];
 const control = (name) => form.elements.namedItem(name);
 let step = 0, config, widget, token = "", pending, busy = false, accuracy = null;
-let events = [], map, locationCircle, mapLoading = false;
+let events = [], map, locationCircle, mapLoading = false, searchTimer, catalogRequest = 0;
+const magnitudeText = value => Number.isFinite(value) ? value.toFixed(1) : "—";
 const scriptNonce = document.querySelector("script[nonce]")?.nonce || "";
 const localDate = value => new Date(value).toLocaleString("es", {dateStyle:"medium", timeStyle:"short"});
 const now = new Date();
@@ -48,6 +49,7 @@ function review() {
 }
 function showStep(index) {
   step = index;
+  status.textContent = "";
   steps.forEach((el,i) => el.hidden = i !== step);
   document.querySelectorAll(".steps li").forEach((el,i) => {
     if (i === step) el.setAttribute("aria-current","step"); else el.removeAttribute("aria-current");
@@ -55,6 +57,8 @@ function showStep(index) {
   document.querySelector("#back").hidden = step === 0;
   document.querySelector("#next").hidden = step === 2;
   document.querySelector("#send").hidden = step !== 2;
+  steps[step].scrollIntoView?.({block:"start"});
+  steps[step].querySelector("legend")?.focus?.();
   if (step === 2) { review(); loadConfig().catch(error => { status.textContent = error.message; }); }
 }
 function valid(index) {
@@ -147,7 +151,7 @@ function renderEvents() {
   const matches = events.filter(event => !query || (event.place || "").toLocaleLowerCase("es").includes(query) || event.event_id === selected);
   for (const event of matches) {
     const option = document.createElement("option"); option.value = event.event_id;
-    option.textContent = `M ${event.magnitude ?? "—"} · ${event.place || "Ubicación sin descripción"} · ${localDate(event.origin_time)}`;
+    option.textContent = `M ${magnitudeText(event.magnitude)} · ${event.place || "Ubicación sin descripción"} · ${localDate(event.origin_time)}`;
     picker.append(option);
   }
   picker.value = events.some(event => event.event_id === selected) ? selected : "";
@@ -159,7 +163,7 @@ function selectEvent() {
   document.querySelector("#selected-event").hidden = !selected;
   pending = undefined;
   if (!selected) return;
-  document.querySelector("#event-magnitude").textContent = `M ${selected.magnitude ?? "—"}`;
+  document.querySelector("#event-magnitude").textContent = `M ${magnitudeText(selected.magnitude)}`;
   document.querySelector("#event-place").textContent = selected.place || "Ubicación sin descripción";
   document.querySelector("#event-time").textContent = localDate(selected.origin_time);
   document.querySelector("#event-agency").textContent = selected.agency || "Catálogo oficial";
@@ -172,25 +176,32 @@ function selectEvent() {
 }
 async function loadEvents() {
   const message = document.querySelector("#event-status");
+  const request = ++catalogRequest;
   message.textContent = "Consultando sismos recientes…";
   try {
-    const response = await fetch("/v1/reports/web/events", {cache:"no-store", signal:AbortSignal.timeout(10000)});
+    const query = document.querySelector("#event-search").value.trim();
+    const response = await fetch("/v1/reports/web/events" + (query ? `?q=${encodeURIComponent(query)}` : ""), {cache:"no-store", signal:AbortSignal.timeout(10000)});
     if (!response.ok) throw new Error("No se pudo consultar el catálogo. Pulsa Actualizar catálogo para reintentar.");
     const result = await response.json();
     if (!Array.isArray(result.events)) throw new Error("El catálogo no está disponible. Reintenta más tarde.");
-    if (busy) return;
+    if (busy || request !== catalogRequest) return;
+    const saved = events.find(event => event.event_id === control("earthquake_event_id").value);
     events = result.events;
+    if (saved && !events.some(event => event.event_id === saved.event_id)) events.push(saved);
     const selected = control("earthquake_event_id").value;
     renderEvents();
     if (selected && !control("earthquake_event_id").value) { pending = undefined; document.querySelector("#selected-event").hidden = true; }
-  } catch (error) { message.textContent = error.message; }
+  } catch (error) { if (request === catalogRequest) message.textContent = error.message; }
 }
 const countryNames = new Intl.DisplayNames(["es"], {type:"region"});
 const countries = "AD AE AF AG AI AL AM AO AQ AR AS AT AU AW AX AZ BA BB BD BE BF BG BH BI BJ BL BM BN BO BQ BR BS BT BV BW BY BZ CA CC CD CF CG CH CI CK CL CM CN CO CR CU CV CW CX CY CZ DE DJ DK DM DO DZ EC EE EG EH ER ES ET FI FJ FK FM FO FR GA GB GD GE GF GG GH GI GL GM GN GP GQ GR GS GT GU GW GY HK HM HN HR HT HU ID IE IL IM IN IO IQ IR IS IT JE JM JO JP KE KG KH KI KM KN KP KR KW KY KZ LA LB LC LI LK LR LS LT LU LV LY MA MC MD ME MF MG MH MK ML MM MN MO MP MQ MR MS MT MU MV MW MX MY MZ NA NC NE NF NG NI NL NO NP NR NU NZ OM PA PE PF PG PH PK PL PM PN PR PS PT PW PY QA RE RO RS RU RW SA SB SC SD SE SG SH SI SJ SK SL SM SN SO SR SS ST SV SX SY SZ TC TD TF TG TH TJ TK TL TM TN TO TR TT TV TW TZ UA UG UM US UY UZ VA VC VE VG VI VN VU WF WS YE YT ZA ZM ZW".split(" ");
 for (const code of countries.sort((a,b) => countryNames.of(a).localeCompare(countryNames.of(b), "es"))) {
   const option = document.createElement("option"); option.value = code; option.textContent = countryNames.of(code); control("country_code").append(option);
 }
-document.querySelector("#event-search").addEventListener("input", renderEvents);
+const unknownCountry = document.createElement("option"); unknownCountry.value = "ZZ"; unknownCountry.textContent = "Otro / no sé"; control("country_code").append(unknownCountry);
+document.querySelector("#event-search").addEventListener("input", () => {
+  clearTimeout(searchTimer); searchTimer = setTimeout(loadEvents, 500);
+});
 control("earthquake_event_id").addEventListener("change", selectEvent);
 document.querySelector("#reload-events").addEventListener("click", loadEvents);
 async function loadConfig() {
