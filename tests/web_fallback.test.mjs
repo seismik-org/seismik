@@ -144,6 +144,7 @@ test('browser keeps its ID across failures, rotates on edits and confirms only a
         panTo(point) { mapCenter=point; } setZoom() {}
         getCenter() { return {lat:()=>mapCenter.lat,lng:()=>mapCenter.lng}; }
       }, Circle:class { setCenter(point) { this.point=point; } },
+      Marker:class { setPosition(point) { this.point=point; } addListener() {} }, SymbolPath:{CIRCLE:0},
     }}}, navigator:{}, Date, URL, URLSearchParams, AbortSignal, Intl,
     crypto:{randomUUID},
     FormData: class { get(name) { return controls[name].value; } },
