@@ -16,6 +16,7 @@ from redis.exceptions import ResponseError
 
 from api.config import AppSettings, get_settings
 from integrations.catalog_alerts import CatalogAlertFeed
+from integrations.facebook_publisher import FacebookPublisher
 from integrations.security import derive_webhook_secret
 from integrations.x_publisher import XPublisher
 from runtime_health import start_health_server
@@ -164,7 +165,10 @@ async def run_integrations(*, serve_health: bool = True) -> None:
     catalog_alerts = asyncio.create_task(
         keep_running("Catalog alerts", CatalogAlertFeed(redis, settings).run, X_PUBLISHER_RETRY_SECONDS)
     )
-    background = (x_publisher, catalog_alerts)
+    facebook_publisher = asyncio.create_task(
+        keep_running("Facebook publisher", FacebookPublisher(redis, settings).run, X_PUBLISHER_RETRY_SECONDS)
+    )
+    background = (x_publisher, catalog_alerts, facebook_publisher)
     health_server = start_health_server() if serve_health else None
     try:
         await worker.run()

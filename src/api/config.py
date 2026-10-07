@@ -62,6 +62,11 @@ class AppSettings(BaseSettings):
     integration_delivery_concurrency: int = Field(default=20, ge=1, le=100)
     integration_webhook_master_secret: SecretStr = SecretStr("change-me-integration-secret")
     x_publisher_enabled: bool = False
+    facebook_publisher_enabled: bool = False
+    facebook_publisher_dry_run: bool = True
+    facebook_page_id: str = ""
+    facebook_page_access_token: SecretStr = SecretStr("")
+    facebook_graph_version: str = Field(default="v26.0", pattern=r"^v\d+\.0$")
     x_publisher_dry_run: bool = True
     x_publisher_minimum_magnitude: float = Field(default=2.5, ge=0, le=10)
     # El catálogo global no es una alarma temprana: evita publicar todos los
