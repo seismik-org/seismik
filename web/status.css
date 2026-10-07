@@ -16,4 +16,16 @@
 .state.ok { border-color: color-mix(in srgb, var(--ok) 42%, var(--line)); color: var(--ok); }
 .state.degraded { border-color: color-mix(in srgb, var(--warn) 42%, var(--line)); color: var(--warn); }
 @keyframes pulse { 50% { opacity: .35; } }
+.status-history { margin: 36px 0; }
+.status-history h2 { font-size: 1.4rem; letter-spacing: -.03em; }
+.history-service { margin: 20px 0; padding: 20px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface); }
+.history-service h3 { margin: 0 0 14px; font-size: 1rem; }
+.history-bars { display: grid; grid-template-columns: repeat(30, minmax(0, 1fr)); gap: 4px; }
+.history-day { min-width: 0; height: 38px; padding: 0; border: 0; border-radius: 3px; background: var(--faint); cursor: pointer; }
+.history-day.ok { background: var(--ok); }
+.history-day.degraded { background: var(--warn); }
+.history-day:focus-visible { outline: 2px solid var(--text); outline-offset: 3px; }
+.history-legend { display: flex; flex-wrap: wrap; gap: 14px; }
+.legend-ok { color: var(--ok); }
+.legend-degraded { color: var(--warn); }
 @media (max-width: 520px) { .status-card { align-items: flex-start; flex-direction: column; gap: 14px; } }

@@ -1,4 +1,6 @@
 import { FALLBACK_ASSETS } from "../deploy/fallback-assets.js";
+import { STATUS_ASSETS } from "../deploy/status-assets.js";
+import { recordProbe, readHistory } from "../deploy/status-history.js";
 
 /**
  * Reemplaza al Caddy de la VM como origen de los dominios públicos.
@@ -113,14 +115,36 @@ function unavailableResponse(request, target) {
 }
 
 export default {
+  async scheduled(controller, env, ctx) {
+    ctx.waitUntil((async () => {
+      const status = await (await publicStatus(env)).json();
+      await recordProbe(env.STATUS_DB, status, controller.scheduledTime);
+    })());
+  },
   async fetch(request, env) {
     const source = new URL(request.url);
+    if (source.hostname === "status.seismik.org" && source.pathname === "/api/history") {
+      if (request.method !== "GET") return new Response("Method not allowed", { status: 405 });
+      try {
+        return Response.json(await readHistory(env?.STATUS_DB), { headers: securityHeaders(source.hostname) });
+      } catch {
+        return Response.json({ available: false, days: [] }, { status: 503, headers: securityHeaders(source.hostname) });
+      }
+    }
     if (source.hostname === "status.seismik.org" && source.pathname === "/api/status") {
       if (request.method !== "GET") return new Response("Method not allowed", { status: 405 });
       const response = await publicStatus(env);
       const headers = new Headers(response.headers);
       for (const [name, value] of securityHeaders(source.hostname)) headers.set(name, value);
       return new Response(response.body, { status: response.status, headers });
+    }
+    // Status assets live at the edge so the history remains visible during web outages.
+    if (source.hostname === "status.seismik.org" && Object.hasOwn(STATUS_ASSETS, source.pathname)) {
+      if (!["GET", "HEAD"].includes(request.method)) return new Response("Method not allowed", { status: 405 });
+      const headers = securityHeaders(source.hostname);
+      const type = source.pathname.endsWith(".js") ? "application/javascript" : source.pathname.endsWith(".css") ? "text/css" : "text/html";
+      headers.set("Content-Type", `${type}; charset=utf-8`);
+      return new Response(request.method === "HEAD" ? null : STATUS_ASSETS[source.pathname], { headers });
     }
     if (["GET", "HEAD"].includes(request.method) && Object.hasOwn(FALLBACK_ASSETS, source.pathname) && source.hostname !== "api.seismik.org" && source.hostname !== "auth.seismik.org") {
       return fallbackResponse(request);
