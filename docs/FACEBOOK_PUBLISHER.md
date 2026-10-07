@@ -12,7 +12,9 @@ independientes: `seismik:facebook:*` y `stream:seismik:facebook-audit`.
 ## Activación
 
 1. Configurar una aplicación de Meta con acceso a la página Seismik
-   (`61595218284668`). Obtener un token de página con los permisos que Meta
+   (ID Graph `1426821820505734`, confirmado con `me?fields=id,name`). El ID
+   del perfil público puede ser distinto; usar siempre el devuelto por Graph.
+   Obtener un token de página con los permisos que Meta
    requiere para publicar: `pages_manage_posts`, `pages_read_engagement`.
    La obtención/listado de páginas puede requerir `pages_show_list`.
 2. Guardarlo en Secret Manager como `seismik-facebook-page-access-token` y
