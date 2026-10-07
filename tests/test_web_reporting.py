@@ -318,3 +318,20 @@ async def test_catalog_deduplicates_revisions_filters_old_events_and_has_no_magn
     assert len(response.json()["events"]) == 1
     assert response.json()["events"][0]["place"] == "Revised"
     assert response.json()["events"][0]["magnitude"] == 2.9
+
+
+@pytest.mark.asyncio
+async def test_catalog_deduplicates_official_ids_but_keeps_old_selection_valid_and_searches():
+    client, redis, settings = await setup()
+    await redis.xadd(settings.official_stream, {"payload": json.dumps({
+        "event_id": "new-revision", "preferred_report": {
+            "official_event_id": "official-001", "agency": "Test", "place": "Revised Colombia",
+            "origin_time": datetime.now(timezone.utc).isoformat(), "magnitude": 3.4,
+        },
+    })})
+    async with client:
+        catalog = await client.get("/v1/reports/web/events?q=colombia")
+        assert len(catalog.json()["events"]) == 1
+        assert catalog.json()["events"][0]["event_id"] == "new-revision"
+        assert (await client.get("/v1/reports/web/events?q=unknown")).json()["events"] == []
+        assert (await client.post("/v1/reports/web/felt", json=payload())).status_code == 202

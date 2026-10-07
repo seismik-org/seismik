@@ -165,6 +165,10 @@ export default {
     // viaja hacia la API: ni el sitio estático ni Firebase deben verlo.
     upstreamRequest.headers.delete(ORIGIN_AUTH_HEADER);
     upstreamRequest.headers.delete("X-Seismik-Client-IP");
+    if (source.hostname === "ifeltit.seismik.org" && ["/", "/ifeltit.html"].includes(source.pathname)) {
+      upstreamRequest.headers.delete("If-None-Match");
+      upstreamRequest.headers.delete("If-Modified-Since");
+    }
     if (target.origin === API && request.headers.get("CF-Connecting-IP")) {
       upstreamRequest.headers.set("X-Seismik-Client-IP", request.headers.get("CF-Connecting-IP"));
     }
@@ -183,6 +187,10 @@ export default {
     const nonce = feltHTML ? crypto.randomUUID().replaceAll("-", "") : "";
     for (const [name, value] of securityHeaders(source.hostname, nonce)) headers.set(name, value);
     headers.delete("Server");
+    if (feltHTML) {
+      headers.set("Cache-Control", "no-store");
+      headers.delete("ETag"); headers.delete("Last-Modified");
+    }
     const response = new Response(upstream.body, { status: upstream.status, statusText: upstream.statusText, headers });
     if (feltHTML && request.method !== "HEAD") {
       return new HTMLRewriter().on("script", { element(element) { element.setAttribute("nonce", nonce); } }).transform(response);

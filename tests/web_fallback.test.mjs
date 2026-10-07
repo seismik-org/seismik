@@ -193,3 +193,38 @@ test('browser keeps its ID across failures, rotates on edits and confirms only a
   assert.equal(form.hidden,true);
   assert.equal(nodes['#result'].hidden,false);
 });
+
+
+test('Maps permissions and fresh CSP nonces stay confined to the felt HTML host', async () => {
+  const originalFetch=globalThis.fetch, originalRewriter=globalThis.HTMLRewriter;
+  let forwarded;
+  globalThis.fetch=async req => { forwarded=req; return new Response('<script src="/ifeltit.js"></script>',{
+    headers:{'Content-Type':'text/html','ETag':'old'},
+  }); };
+  globalThis.HTMLRewriter=class {
+    on(selector,handler) { this.handler=handler; return this; }
+    async transform(response) {
+      let nonce;
+      this.handler.element({setAttribute(name,value) { assert.equal(name,'nonce'); nonce=value; }});
+      return new Response((await response.text()).replace('<script ',`<script nonce="${nonce}" `),{headers:response.headers});
+    }
+  };
+  try {
+    const req=()=>new Request('https://ifeltit.seismik.org/',{headers:{'If-None-Match':'old'}});
+    const first=await worker.fetch(req(),{}), second=await worker.fetch(req(),{});
+    assert.equal(forwarded.headers.get('If-None-Match'),null);
+    assert.equal(first.headers.get('Cache-Control'),'no-store');
+    assert.equal(first.headers.get('ETag'),null);
+    const firstNonce=(await first.text()).match(/nonce="([a-f0-9]{32})"/)[1];
+    const secondNonce=(await second.text()).match(/nonce="([a-f0-9]{32})"/)[1];
+    assert.notEqual(firstNonce,secondNonce);
+    const csp=first.headers.get('Content-Security-Policy');
+    assert.ok(csp.includes(`'nonce-${firstNonce}'`));
+    assert.ok(csp.includes('https://maps.googleapis.com'));
+    assert.equal(csp.includes("'unsafe-inline'"),false);
+    assert.equal(first.headers.get('Referrer-Policy'),'strict-origin-when-cross-origin');
+    const home=await worker.fetch(request(),{});
+    assert.equal(home.headers.get('Content-Security-Policy').includes('googleapis.com'),false);
+    assert.equal(home.headers.get('Referrer-Policy'),'no-referrer');
+  } finally { globalThis.fetch=originalFetch; globalThis.HTMLRewriter=originalRewriter; }
+});
