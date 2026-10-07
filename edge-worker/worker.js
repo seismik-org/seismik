@@ -47,7 +47,10 @@ function targetFor(request) {
   let origin = WEB;
   let path = source.pathname;
   if (host === "api.seismik.org") origin = API;
-  else if (host === "devs.seismik.org") {
+  else if (host === "ifeltit.seismik.org") {
+    if (path.startsWith("/v1/reports/")) origin = API;
+    else if (path === "/") path = "/ifeltit.html";
+  } else if (host === "devs.seismik.org") {
     if (path.startsWith("/v1/")) origin = API;
     else if (path.startsWith("/__/auth/")) origin = FIREBASE;
     else if (path === "/") path = "/developers.html";
@@ -74,7 +77,9 @@ function securityHeaders(host) {
     "Cache-Control": host === "api.seismik.org" || host === "auth.seismik.org" || host === "status.seismik.org"
       ? "no-store"
       : "private, no-cache",
-    "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+    "Permissions-Policy": host === "ifeltit.seismik.org"
+      ? "camera=(), microphone=(), geolocation=(self)"
+      : "camera=(), microphone=(), geolocation=()",
     "Referrer-Policy": "no-referrer",
     "Strict-Transport-Security": "max-age=31536000; includeSubDomains; preload",
     "X-Content-Type-Options": "nosniff",
@@ -155,6 +160,10 @@ export default {
     // Un cliente no puede fijar la cabecera por su cuenta, y el secreto sólo
     // viaja hacia la API: ni el sitio estático ni Firebase deben verlo.
     upstreamRequest.headers.delete(ORIGIN_AUTH_HEADER);
+    upstreamRequest.headers.delete("X-Seismik-Client-IP");
+    if (target.origin === API && request.headers.get("CF-Connecting-IP")) {
+      upstreamRequest.headers.set("X-Seismik-Client-IP", request.headers.get("CF-Connecting-IP"));
+    }
     if (target.origin === API && env?.EDGE_ORIGIN_SECRET) upstreamRequest.headers.set(ORIGIN_AUTH_HEADER, env.EDGE_ORIGIN_SECRET);
     let upstream;
     try {

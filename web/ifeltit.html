@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>¿Lo sentiste? · Seismik</title><meta name="description" content="Comparte cómo sentiste un sismo. Reporte voluntario sin nombre ni correo.">
+<link rel="icon" href="/favicon.ico"><link rel="icon" type="image/png" href="/assets/favicon-32.png"><link rel="apple-touch-icon" href="/assets/apple-touch-icon.png"><link rel="stylesheet" href="/ifeltit.css?v=__ASSET_VERSION__"><script src="/ifeltit.js?v=__ASSET_VERSION__" defer></script></head>
+<body><header><a href="https://seismik.org/">SEISMIK</a><span>Reportes de la comunidad</span></header><main>
+<p class="eyebrow">TU EXPERIENCIA CUENTA</p><h1>¿Lo sentiste?</h1><p class="intro">Ayúdanos a conocer cómo se sintió el sismo en tu zona.</p>
+<p class="safety">Si hay peligro inmediato, contacta a los servicios de emergencia. Este formulario no solicita ayuda.</p>
+<ol class="steps" aria-label="Progreso"><li aria-current="step">1 · Tu experiencia</li><li>2 · Los detalles</li><li>3 · Revisar y enviar</li></ol>
+<form id="report-form" novalidate>
+<fieldset data-step="0"><legend>Tu experiencia y ubicación</legend><div class="grid">
+<label>¿Sentiste el sismo?<select name="felt" required><option value="">Elige una respuesta</option><option value="true">Sí</option><option value="false">No</option></select></label>
+<label id="intensity-label" hidden>Intensidad percibida<select name="intensity_mmi"><option value="">Elige una intensidad</option><option value="2">Muy leve</option><option value="3">Leve</option><option value="4">Moderada</option><option value="5">Fuerte</option><option value="6">Muy fuerte</option><option value="7">Severa</option><option value="8">Violenta</option><option value="9">Extrema</option><option value="10">Máxima</option></select></label>
+<label>Fecha y hora local<input type="datetime-local" name="observed_at" required></label>
+<label>País (código de dos letras)<input name="country_code" minlength="2" maxlength="2" pattern="[A-Za-z]{2}" placeholder="CO" required></label>
+<label>Latitud<input name="latitude" type="number" min="-90" max="90" step="any" required></label>
+<label>Longitud<input name="longitude" type="number" min="-180" max="180" step="any" required></label></div>
+<button type="button" id="locate" class="secondary">Usar mi ubicación</button><p id="location-status" role="status"></p>
+<label class="check"><input name="precise" type="checkbox">Elegir ubicación exacta</label><p class="hint">Por defecto, el servidor redondea las coordenadas a dos decimales y elimina la precisión del GPS.</p>
+</fieldset>
+<fieldset data-step="1" hidden><legend>Los detalles (opcionales)</legend><p>Puedes dejar todas estas preguntas sin responder.</p><div class="grid">
+<label>Duración aproximada (segundos)<input name="duration_seconds" type="number" min="0" max="3600" step="1"></label>
+<label>Altura del edificio (pisos)<input name="building_height" type="number" min="1" max="200" step="1"></label>
+<label>Piso en el que estabas<input name="floor" type="number" min="-5" max="200" step="1"></label>
+<label>Movimiento<select name="movement"><option value="">Sin responder</option><option value="shaking">Sacudidas</option><option value="rolling">Ondulación</option><option value="both">Ambos</option><option value="unknown">No sé</option></select></label>
+<label>Actividad<select name="activity"><option value="">Sin responder</option><option value="sleeping">Durmiendo</option><option value="resting">En reposo</option><option value="walking">Caminando</option><option value="working">Trabajando</option><option value="driving">En un vehículo</option><option value="other">Otra</option></select></label>
+<label>Tipo de edificio<select name="building_type"><option value="">Sin responder</option><option value="house">Casa</option><option value="apartment">Apartamento</option><option value="office">Oficina</option><option value="other">Otro</option><option value="outside">Al aire libre</option></select></label>
+<label>Reacción<select name="reaction"><option value="">Sin responder</option><option value="none">Ninguna</option><option value="alert">Me puse alerta</option><option value="sheltered">Me protegí</option><option value="left">Salí</option><option value="other">Otra</option></select></label>
+<label>Otras personas<select name="others_felt"><option value="">Sin responder</option><option value="none">Nadie lo sintió</option><option value="some">Algunas lo sintieron</option><option value="many">Muchas lo sintieron</option><option value="unknown">No sé</option></select></label>
+<label>Ruido<select name="noise"><option value="">Sin responder</option><option value="none">Ninguno</option><option value="weak">Leve</option><option value="loud">Fuerte</option><option value="unknown">No sé</option></select></label>
+<label>Ventanas<select name="windows"><option value="">Sin responder</option><option value="none">Sin efecto</option><option value="rattled">Vibraron</option><option value="broken">Se rompieron</option><option value="unknown">No sé</option></select></label>
+<label>Lámparas<select name="lamps"><option value="">Sin responder</option><option value="none">Sin efecto</option><option value="swung">Oscilaron</option><option value="fell">Cayeron</option><option value="unknown">No sé</option></select></label>
+<label>Muebles<select name="furniture"><option value="">Sin responder</option><option value="none">Sin efecto</option><option value="moved">Se movieron</option><option value="fell">Cayeron</option><option value="unknown">No sé</option></select></label>
+</div></fieldset>
+<fieldset data-step="2" hidden><legend>Revisar y enviar</legend><dl id="summary"></dl>
+<p>No recogemos nombre, correo ni archivos. Este reporte se identifica como web, sin verificación de dispositivo móvil.</p>
+<label class="check"><input name="share_with_official_agencies" type="checkbox">Mostrar formularios de organismos oficiales después del envío</label>
+<p class="hint">Los organismos sólo reciben información si completas sus formularios.</p><div id="turnstile-container"></div>
+<p class="hint">Si falla la red, conservamos tus respuestas mientras esta pestaña siga abierta. Al cerrarla o recargarla se pierden.</p>
+</fieldset>
+<div class="actions"><button id="back" type="button" class="secondary" hidden>Anterior</button><button id="next" type="button">Continuar</button><button id="send" type="submit" hidden>Enviar reporte</button></div>
+<p id="status" role="status" aria-live="polite"></p></form>
+<section id="result" hidden><h2>Reporte recibido</h2><p id="receipt"></p><p id="notice"></p><div id="agency-links"></div><button id="another" type="button">Crear otro reporte</button></section>
+<noscript>Activa JavaScript para completar este formulario.</noscript></main><footer><a href="https://seismik.org/terms-of-privacy/">Privacidad</a> · <a href="https://seismik.org/terms-of-service/">Términos</a></footer></body></html>
