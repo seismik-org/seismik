@@ -86,10 +86,25 @@ publica hasta 200 eventos de los últimos siete días, sin piso de magnitud, y c
 `official_event_id` del evento seleccionado. Un identificador ausente, desconocido o
 incompatible no publica el reporte.
 
-La ubicación se elige tocando Google Maps, usando el GPS o moviendo el mapa y pulsando
-«Elegir el centro del mapa». El epicentro nunca se usa como ubicación del visitante.
-No hay campos visibles de latitud o longitud. Los países se muestran por nombre.
+La ubicación se elige tocando Google Maps, arrastrando el punto azul, usando el GPS o
+moviendo el mapa y pulsando «Marcar el centro del mapa». El epicentro nunca se usa como
+ubicación del visitante. No hay campos visibles de latitud o longitud. Los países se
+muestran por nombre y, si el Geocoder de Google responde, se preseleccionan a partir del
+punto elegido; sin Geocoding API el visitante lo elige a mano.
 Se mantiene el redondeo en el servidor y la precisión exacta requiere elección explícita.
+
+El mapa muestra a la vez al visitante (azul) y el epicentro del sismo elegido (rojo, con
+un círculo orientativo del radio en el que suele sentirse) y encuadra ambos. La tarjeta del
+sismo indica la distancia; si supera el doble de ese radio aparece un aviso que no
+bloquea el envío. Con una ubicación marcada, la lista agrupa primero los sismos a menos de
+1 000 km. El navegador fusiona las versiones del mismo sismo publicadas por varias
+agencias (menos de 90 s y 150 km de diferencia) y conserva el ID de la agencia regional
+cuando existe. La búsqueda por lugar filtra el catálogo ya descargado, sin consultas
+adicionales. `?event=<event_id>` abre el formulario con ese sismo elegido; seismik.org
+lo usa en las tarjetas «En vivo».
+
+Si el visitante responde que no lo sintió, no se piden intensidad ni detalles y el
+reporte no los incluye. Con «Al aire libre» no se preguntan pisos.
 
 Configurar `SEISMIK_GOOGLE_MAPS_WEB_API_KEY` con una clave pública para Maps JavaScript API,
 restringida a `https://ifeltit.seismik.org/*`; para desarrollo, autorizar sólo los orígenes
