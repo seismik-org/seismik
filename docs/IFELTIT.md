@@ -76,3 +76,30 @@ ejecutar `python tools/serve_ifeltit.py`. Abrir `http://127.0.0.1:8080` o
 con una sola clave, también development falla cerrado. No usar el servidor
 local para producción. Las verificaciones locales no certifican DNS, TLS ni
 Turnstile reales.
+
+
+## Sismo seleccionado y mapa
+
+El primer paso exige elegir un evento del catálogo oficial reciente: `/v1/reports/web/events`
+publica hasta 200 eventos de los últimos siete días, sin piso de magnitud, y conserva la
+última revisión por identificador. El servidor valida `earthquake_event_id` y deriva
+`official_event_id` del evento seleccionado. Un identificador ausente, desconocido o
+incompatible no publica el reporte.
+
+La ubicación se elige tocando Google Maps, usando el GPS o moviendo el mapa y pulsando
+«Elegir el centro del mapa». El epicentro nunca se usa como ubicación del visitante.
+No hay campos visibles de latitud o longitud. Los países se muestran por nombre.
+Se mantiene el redondeo en el servidor y la precisión exacta requiere elección explícita.
+
+Configurar `SEISMIK_GOOGLE_MAPS_WEB_API_KEY` con una clave pública para Maps JavaScript API,
+restringida a `https://ifeltit.seismik.org/*`; para desarrollo, autorizar sólo los orígenes
+locales que se necesiten. No reutilizar claves restringidas a Android o iOS. El config
+publica esta clave, nunca el secreto Turnstile. Google Maps requiere que su API esté
+habilitada y el proyecto tenga facturación configurada. No se activa ningún producto
+de pago de Cloudflare para el certificado.
+
+El Worker aplica una CSP exclusiva de este host, agrega un nonce nuevo a los scripts
+HTML y permite los recursos de Google Maps. Las políticas de los demás hosts se
+conservan. La política de referencias envía sólo el origen a Google para validar la
+restricción de la clave. Las configuraciones Caddy alternativas mantienen una política
+más estricta y requieren el Worker delante para el mapa interactivo.

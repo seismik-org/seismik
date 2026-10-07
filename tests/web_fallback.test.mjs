@@ -114,10 +114,10 @@ test('browser keeps its ID across failures, rotates on edits and confirms only a
     hidden: false, disabled: false, textContent: '', value: '', checked: false,
     listeners: {}, addEventListener(name, fn) { this.listeners[name] = fn; },
     checkValidity: () => true, reportValidity() {}, replaceChildren() {}, append() {},
-    setAttribute() {}, removeAttribute() {},
+    setAttribute() {}, removeAttribute() {}, querySelector:()=>node(),
   });
   const values = {
-    felt: 'true', intensity_mmi: '4', country_code: 'CO', latitude: '4.651234',
+    earthquake_event_id:'catalog:test:event-001', felt: 'true', intensity_mmi: '4', country_code: 'CO', latitude: '4.651234',
     longitude: '-74.051234', observed_at: '', duration_seconds: '15', building_height: '', floor: '',
     movement: 'rolling', activity: '', building_type: '', reaction: '', others_felt: '',
     noise: '', windows: '', lamps: '', furniture: '', precise: '', share_with_official_agencies: '',
@@ -130,16 +130,26 @@ test('browser keeps its ID across failures, rotates on edits and confirms only a
   const nodes = {'#report-form':form};
   const document = {
     querySelector: selector => nodes[selector] ||= node(),
-    querySelectorAll: () => Array.from({length:3},node), createElement: node,
+    querySelectorAll: () => Array.from({length:3},node), createElement: node, head:node(),
   };
   let mode = 'offline';
+  const mapListeners = {};
+  let mapCenter;
   const posts = [];
   const context = {
-    document, window:{location:{reload(){}}}, navigator:{}, Date, URL, AbortSignal,
+    document, window:{location:{reload(){}}, google:{maps:{
+      Map:class {
+        constructor(element,options) { mapCenter=options.center; }
+        addListener(name,listener) { mapListeners[name]=listener; }
+        panTo(point) { mapCenter=point; } setZoom() {}
+        getCenter() { return {lat:()=>mapCenter.lat,lng:()=>mapCenter.lng}; }
+      }, Circle:class { setCenter(point) { this.point=point; } },
+    }}}, navigator:{}, Date, URL, URLSearchParams, AbortSignal, Intl,
     crypto:{randomUUID},
     FormData: class { get(name) { return controls[name].value; } },
     fetch: async (url, init) => {
-      if (url.endsWith('/config')) return {ok:true,json:async()=>({enabled:true,turnstile_required:false})};
+      if (url.endsWith('/config')) return {ok:true,json:async()=>({enabled:true,turnstile_required:false,google_maps_api_key:'test-browser-key'})};
+      if (url.endsWith('/events')) return {ok:true,json:async()=>({events:[{event_id:'catalog:test:event-001',origin_time:'2026-10-07T15:00:00Z',magnitude:3,place:'Colombia',latitude:1,longitude:2}]})};
       const report = JSON.parse(init.body); posts.push(report);
       if (mode === 'offline') throw new Error('Network unavailable');
       return {status:mode === 'wrong-status' ? 200 : 202, json:async()=>({
@@ -152,7 +162,16 @@ test('browser keeps its ID across failures, rotates on edits and confirms only a
   vm.runInContext(readFileSync('web/ifeltit.js','utf8'),context);
   await new Promise(setImmediate);
   const submit = () => form.listeners.submit({preventDefault(){}});
+  controls.latitude.value=''; controls.longitude.value='';
+  context.window.initFeltMap();
+  controls.earthquake_event_id.listeners.change();
+  assert.equal(controls.latitude.value,'', 'Epicenter must not select the reporter location');
+  await submit(); assert.equal(posts.length,0, 'Missing map location must prevent submission');
+  mapListeners.click({latLng:{lat:()=>4.651234,lng:()=>-74.051234}});
+  assert.equal(controls.latitude.value,4.651234);
+  assert.equal(controls.longitude.value,-74.051234);
   await submit(); await submit();
+  assert.equal(posts[0].earthquake_event_id,'catalog:test:event-001');
   assert.equal(posts[0].report_id,posts[1].report_id);
   assert.equal(controls.duration_seconds.value,'15');
   assert.ok(fieldsets.every(el=>!el.disabled));
@@ -161,6 +180,11 @@ test('browser keeps its ID across failures, rotates on edits and confirms only a
     await submit(); assert.equal(form.hidden,false);
     assert.equal(posts.at(-1).report_id,posts[0].report_id);
   }
+  mapListeners.click({latLng:{lat:()=>4.7,lng:()=>-74.1}});
+  mode='offline'; await submit(); await submit();
+  assert.notEqual(posts.at(-1).report_id,posts[0].report_id,'Moving the map point creates a new identifier');
+  assert.equal(posts.at(-1).report_id,posts.at(-2).report_id);
+  assert.equal(posts.at(-1).latitude,4.7);
   controls.duration_seconds.value = '20';
   form.listeners.input({target:controls.duration_seconds});
   mode = 'duplicate'; await submit();
