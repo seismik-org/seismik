@@ -1,3 +1,11 @@
 name = "seismik"
 main = "deploy/cloudflare-edge-router.js"
 compatibility_date = "2026-09-12"
+
+[[d1_databases]]
+binding = "STATUS_DB"
+database_name = "seismik-status"
+database_id = "1703c376-a7f6-48a6-9cb8-1f76eb0d7cea"
+
+[triggers]
+crons = ["* * * * *"]

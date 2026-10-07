@@ -29,6 +29,12 @@
       <article class="status-card"><div><h2>Sitio web</h2><p>seismik.org y sus páginas públicas.</p></div><span id="web-state" class="state checking">Comprobando</span></article>
       <article class="status-card"><div><h2>Portal de desarrolladores</h2><p>devs.seismik.org, autenticación y claves API.</p></div><span id="developers-state" class="state checking">Comprobando</span></article>
     </section>
+    <section class="status-history" aria-labelledby="history-title">
+      <h2 id="history-title">Historial de disponibilidad</h2>
+      <p class="fine-print">Últimos 30 días · Comprobaciones cada minuto · Fechas en UTC. Los periodos sin registros no cuentan como disponibilidad.</p>
+      <div id="history" aria-live="polite"><p class="fine-print">Cargando historial…</p></div>
+      <p class="history-legend fine-print"><span class="legend-ok">● Sin fallos registrados</span> <span class="legend-degraded">● Con fallos</span> <span>● Sin registros</span></p>
+    </section>
     <p class="fine-print">Un estado degradado significa que una comprobación pública no respondió. No implica por sí solo que una alerta sísmica se haya perdido.</p>
     <div class="actions"><a class="button secondary" href="https://seismik.org/">Ir a Seismik</a><button id="refresh" class="button" type="button">Actualizar ahora</button></div>
   </main>
