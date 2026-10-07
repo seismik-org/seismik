@@ -119,7 +119,9 @@ p { margin: 0 0 1em; }
 .primary-nav { display: flex; align-items: center; gap: 4px; margin-left: auto; }
 .primary-nav a {
   padding: 8px 12px; border-radius: 10px; color: var(--muted); text-decoration: none; font-size: 0.93rem; font-weight: 550;
+  white-space: nowrap;
 }
+.header-actions .button { white-space: nowrap; }
 .primary-nav a:hover { color: var(--text); background: var(--surface-2); }
 .header-actions { display: flex; align-items: center; gap: 10px; }
 
@@ -138,7 +140,9 @@ p { margin: 0 0 1em; }
 .menu-panel a { padding: 11px 14px; border-radius: 10px; color: var(--text); text-decoration: none; font-weight: 600; }
 .menu-panel a:hover { background: var(--surface-2); }
 
-@media (max-width: 900px) {
+/* El menú completo ocupa unos 1 250 px; por debajo, los enlaces partidos en dos
+   líneas descuadraban la cabecera, así que se usa el menú compacto. */
+@media (max-width: 1260px) {
   .primary-nav { display: none; }
   .header-actions { margin-left: auto; }
   .mobile-menu { display: block; margin-left: 0; }
