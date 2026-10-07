@@ -20,8 +20,10 @@ from reporting.schemas import (
     LocationPrecision,
     ReportAccepted,
 )
+from reporting.web import router as web_router
 
 router = APIRouter(prefix="/v1/reports", tags=["citizen-reports"])
+router.include_router(web_router)
 ReportModel = TypeVar("ReportModel", bound=BaseModel)
 
 

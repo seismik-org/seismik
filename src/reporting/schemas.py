@@ -53,9 +53,7 @@ class CitizenReportBase(StrictModel):
         if len(set(self.selected_agency_ids)) != len(self.selected_agency_ids):
             raise ValueError("selected_agency_ids must be unique")
         if self.selected_agency_ids and not self.share_with_official_agencies:
-            raise ValueError(
-                "share_with_official_agencies must be true when agencies are selected"
-            )
+            raise ValueError("share_with_official_agencies must be true when agencies are selected")
         return self
 
 
@@ -80,6 +78,27 @@ class FeltReport(CitizenReportBase):
         return self
 
 
+class WebFeltReport(FeltReport):
+    """Voluntary browser reports never represent an attested mobile device."""
+
+    device_id: Literal["web-unverified"] = "web-unverified"
+    source: Literal["web"] = "web"
+    integrity_verified: Literal[False] = False
+    comment: None = None
+    turnstile_token: str | None = Field(default=None, max_length=2048, exclude=True)
+    duration_seconds: int | None = Field(default=None, ge=0, le=3600)
+    movement: Literal["shaking", "rolling", "both", "unknown"] | None = None
+    activity: Literal["sleeping", "resting", "walking", "working", "driving", "other"] | None = None
+    building_type: Literal["house", "apartment", "office", "other", "outside"] | None = None
+    building_height: int | None = Field(default=None, ge=1, le=200)
+    reaction: Literal["none", "alert", "sheltered", "left", "other"] | None = None
+    others_felt: Literal["none", "some", "many", "unknown"] | None = None
+    noise: Literal["none", "weak", "loud", "unknown"] | None = None
+    windows: Literal["none", "rattled", "broken", "unknown"] | None = None
+    lamps: Literal["none", "swung", "fell", "unknown"] | None = None
+    furniture: Literal["none", "moved", "fell", "unknown"] | None = None
+
+
 class DamageReport(CitizenReportBase):
     type: Literal["seismik_damage_report"] = "seismik_damage_report"
     severity: DamageSeverity
@@ -97,8 +116,7 @@ class DamageReport(CitizenReportBase):
             or self.injuries_observed
             or self.severity in {DamageSeverity.SEVERE, DamageSeverity.COLLAPSE}
             or any(
-                hazard in {ObservedHazard.FIRE, ObservedHazard.GAS_LEAK}
-                for hazard in self.hazards
+                hazard in {ObservedHazard.FIRE, ObservedHazard.GAS_LEAK} for hazard in self.hazards
             )
         )
 

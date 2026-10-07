@@ -1,5 +1,8 @@
 # Seismik en Cloud Run
 
+El formulario voluntario `ifeltit.seismik.org` se activa siguiendo
+[Reporte web «¿Lo sentiste?»](../docs/IFELTIT.md), incluidos el certificado wildcard existente, Turnstile y la verificación del stream.
+
 La primera fase migra la **API HTTP** a Cloud Run. Puede escalar a cero y
 atiende `api.seismik.org`, las rutas `/v1` de `devs.seismik.org` y el inicio de
 sesión de `auth.seismik.org`.

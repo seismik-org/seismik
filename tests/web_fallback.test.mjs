@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
+import { randomUUID } from 'node:crypto';
 import worker from '../deploy/cloudflare-edge-router.js';
 import { FALLBACK_ASSETS } from '../deploy/fallback-assets.js';
 
@@ -79,4 +80,92 @@ test('both router entry points and embedded fallback stay synchronized', () => {
   for (const [path, contents] of Object.entries(FALLBACK_ASSETS)) {
     assert.equal(contents.replace(/\?v=[a-f0-9]{16}/g, '?v=__ASSET_VERSION__'), readFileSync(`web${path}`, 'utf8'));
   }
+});
+
+test('felt host routes to web and API and replaces spoofed visitor identity', async () => {
+  const original = globalThis.fetch;
+  const calls = [];
+  globalThis.fetch = async (req) => { calls.push(req); return new Response('ok'); };
+  try {
+    const host = 'ifeltit.seismik.org';
+    const page = await worker.fetch(new Request(`https://${host}/`, {headers: {
+      'X-Seismik-Origin-Auth': 'spoof', 'X-Seismik-Client-IP': 'spoof',
+    }}), { EDGE_ORIGIN_SECRET: 'edge-secret' });
+    assert.match(calls[0].url, /seismik-web-.*\/ifeltit.html$/);
+    assert.equal(calls[0].headers.get('X-Seismik-Origin-Auth'), null);
+    assert.equal(calls[0].headers.get('X-Seismik-Client-IP'), null);
+    assert.match(page.headers.get('Permissions-Policy'), /geolocation=\(self\)/);
+    assert.match(page.headers.get('Content-Security-Policy'), /frame-src https:\/\/challenges.cloudflare.com/);
+    const body = JSON.stringify({report_id:'test-report'});
+    await worker.fetch(new Request(`https://${host}/v1/reports/web/felt`, {
+      method:'POST', body, headers:{'X-Seismik-Client-IP':'spoof','CF-Connecting-IP':'1.2.3.4'},
+    }), {EDGE_ORIGIN_SECRET:'edge-secret'});
+    assert.match(calls[1].url, /seismik-api-.*\/v1\/reports\/web\/felt$/);
+    assert.equal(calls[1].headers.get('X-Seismik-Client-IP'),'1.2.3.4');
+    assert.equal(calls[1].headers.get('X-Seismik-Origin-Auth'),'edge-secret');
+    assert.equal(await calls[1].text(),body);
+    const home = await worker.fetch(request(),{});
+    assert.match(home.headers.get('Permissions-Policy'), /geolocation=\(\)/);
+  } finally { globalThis.fetch = original; }
+});
+
+test('browser keeps its ID across failures, rotates on edits and confirms only accepted responses', async () => {
+  const node = () => ({
+    hidden: false, disabled: false, textContent: '', value: '', checked: false,
+    listeners: {}, addEventListener(name, fn) { this.listeners[name] = fn; },
+    checkValidity: () => true, reportValidity() {}, replaceChildren() {}, append() {},
+    setAttribute() {}, removeAttribute() {},
+  });
+  const values = {
+    felt: 'true', intensity_mmi: '4', country_code: 'CO', latitude: '4.651234',
+    longitude: '-74.051234', observed_at: '', duration_seconds: '15', building_height: '', floor: '',
+    movement: 'rolling', activity: '', building_type: '', reaction: '', others_felt: '',
+    noise: '', windows: '', lamps: '', furniture: '', precise: '', share_with_official_agencies: '',
+  };
+  const controls = Object.fromEntries(Object.entries(values).map(([name,value]) => [name, {...node(),name,value}]));
+  const fieldsets = Array.from({length:3}, () => ({...node(), querySelectorAll: () => Object.values(controls)}));
+  const buttons = Array.from({length:4},node);
+  const form = {...node(), elements: {namedItem: name => controls[name]},
+    querySelectorAll: selector => selector === '[data-step]' ? fieldsets : buttons};
+  const nodes = {'#report-form':form};
+  const document = {
+    querySelector: selector => nodes[selector] ||= node(),
+    querySelectorAll: () => Array.from({length:3},node), createElement: node,
+  };
+  let mode = 'offline';
+  const posts = [];
+  const context = {
+    document, window:{location:{reload(){}}}, navigator:{}, Date, URL, AbortSignal,
+    crypto:{randomUUID},
+    FormData: class { get(name) { return controls[name].value; } },
+    fetch: async (url, init) => {
+      if (url.endsWith('/config')) return {ok:true,json:async()=>({enabled:true,turnstile_required:false})};
+      const report = JSON.parse(init.body); posts.push(report);
+      if (mode === 'offline') throw new Error('Network unavailable');
+      return {status:mode === 'wrong-status' ? 200 : 202, json:async()=>({
+        report_id:mode === 'wrong-id' ? 'another-report' : report.report_id,
+        accepted:mode === 'accepted', duplicate:mode === 'duplicate', agency_routes:[],notice:'Received',
+      })};
+    },
+  };
+  vm.createContext(context);
+  vm.runInContext(readFileSync('web/ifeltit.js','utf8'),context);
+  await new Promise(setImmediate);
+  const submit = () => form.listeners.submit({preventDefault(){}});
+  await submit(); await submit();
+  assert.equal(posts[0].report_id,posts[1].report_id);
+  assert.equal(controls.duration_seconds.value,'15');
+  assert.ok(fieldsets.every(el=>!el.disabled));
+  assert.equal(form.hidden,false);
+  for (mode of ['not-accepted','wrong-status','wrong-id']) {
+    await submit(); assert.equal(form.hidden,false);
+    assert.equal(posts.at(-1).report_id,posts[0].report_id);
+  }
+  controls.duration_seconds.value = '20';
+  form.listeners.input({target:controls.duration_seconds});
+  mode = 'duplicate'; await submit();
+  assert.notEqual(posts.at(-1).report_id,posts[0].report_id);
+  assert.equal(posts.at(-1).duration_seconds,20);
+  assert.equal(form.hidden,true);
+  assert.equal(nodes['#result'].hidden,false);
 });
