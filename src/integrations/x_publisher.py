@@ -137,6 +137,7 @@ def bulletin_text(event: dict[str, Any]) -> str:
 
 
 class XPublisher:
+    namespace = "x"
     def __init__(self, redis: Redis, settings: AppSettings) -> None:
         self.redis, self.settings = redis, settings
         self.stop_event = asyncio.Event()
@@ -165,14 +166,14 @@ class XPublisher:
 
     async def _run_catalogs(self) -> None:
         sources = self.watched_catalogs()
-        LOGGER.info("X publisher vigila %s catálogos oficiales", len(sources))
+        LOGGER.info("%s publisher vigila %s catálogos oficiales", self.namespace, len(sources))
         while not self.stop_event.is_set():
             try:
                 await self.poll_catalogs(sources, datetime.now(timezone.utc))
             except asyncio.CancelledError:
                 raise
             except Exception:
-                LOGGER.exception("X catalog poll failed")
+                LOGGER.exception("%s catalog poll failed", self.namespace)
             with contextlib.suppress(TimeoutError):
                 await asyncio.wait_for(self.stop_event.wait(), timeout=self.settings.x_publisher_poll_seconds)
 
@@ -220,7 +221,7 @@ class XPublisher:
 
     async def _post_catalog_event(self, event: dict[str, Any], report: OfficialReport, origin: datetime) -> None:
         event_id = str(event["event_id"])
-        handled_key = f"seismik:x:published:{event_id}"
+        handled_key = f"seismik:{self.namespace}:published:{event_id}"
         if await self.redis.exists(handled_key):
             return
         if await self._is_known_quake(report, origin):
@@ -232,7 +233,7 @@ class XPublisher:
         try:
             await self._publish(event, handled_key)
         except Exception as exc:
-            LOGGER.warning("Publicación en X fallida event_id=%s error=%s", event_id, type(exc).__name__)
+            LOGGER.warning("Publicación en %s fallida event_id=%s error=%s", self.namespace, event_id, type(exc).__name__)
             await self._catalog_failure(event_id, handled_key)
             return
         await self._remember_quake(event_id, report, origin)
@@ -242,7 +243,7 @@ class XPublisher:
         """Otro reporte del mismo sismo, de cualquier agencia, ya se publicó."""
         window = self.settings.x_publisher_duplicate_seconds
         stamp = origin.timestamp()
-        for raw in await self.redis.zrangebyscore(RECENT_QUAKES, stamp - window, stamp + window):
+        for raw in await self.redis.zrangebyscore(f"seismik:{self.namespace}:recent-quakes", stamp - window, stamp + window):
             known = json.loads(cast(str, raw))
             distance = _distance_km(known["lat"], known["lon"], report.latitude, report.longitude)
             if distance <= self.settings.x_publisher_duplicate_km:
@@ -252,8 +253,8 @@ class XPublisher:
     async def _remember_quake(self, event_id: str, report: OfficialReport, origin: datetime) -> None:
         stamp = origin.timestamp()
         member = json.dumps({"id": event_id, "lat": report.latitude, "lon": report.longitude})
-        await self.redis.zadd(RECENT_QUAKES, {member: stamp})
-        await self.redis.zremrangebyscore(RECENT_QUAKES, "-inf", stamp - 172_800)
+        await self.redis.zadd(f"seismik:{self.namespace}:recent-quakes", {member: stamp})
+        await self.redis.zremrangebyscore(f"seismik:{self.namespace}:recent-quakes", "-inf", stamp - 172_800)
 
     async def _catalog_failure(self, event_id: str, handled_key: str) -> None:
         key = self._failure_key(event_id)
@@ -262,7 +263,7 @@ class XPublisher:
         if attempts < self.settings.integration_delivery_max_attempts:
             await self.redis.delete(handled_key)  # La siguiente consulta lo reintenta.
             return
-        LOGGER.critical("Boletín no publicado en X tras %s intentos event_id=%s", attempts, event_id)
+        LOGGER.critical("Boletín no publicado en %s tras %s intentos event_id=%s", self.namespace, attempts, event_id)
         await self.redis.set(handled_key, "failed", ex=HANDLED_TTL_SECONDS)
         await self._audit(event_id, "failed", attempts=str(attempts))
 
@@ -329,7 +330,7 @@ class XPublisher:
         event_id = str(event.get("event_id", ""))
         # Cada actualización oficial de una detección trae un event_id nuevo
         # (uuid): el sismo es la detección, y sólo se publica una vez.
-        published_key = f"seismik:x:published:{event.get('candidate_event_id') or event_id}"
+        published_key = f"seismik:{self.namespace}:published:{event.get('candidate_event_id') or event_id}"
         try:
             if is_simulated(event):
                 await self._audit(event_id, "skipped_drill")
@@ -423,11 +424,11 @@ class XPublisher:
 
     async def _audit(self, event_id: str, action: str, **extra: str) -> None:
         entry = {"event_id": event_id, "action": action, "at": datetime.now(timezone.utc).isoformat(), **extra}
-        await self.redis.xadd(AUDIT_STREAM, cast(dict[Any, Any], entry), maxlen=self.settings.stream_maxlen, approximate=True)
+        await self.redis.xadd(f"stream:seismik:{self.namespace}-audit", cast(dict[Any, Any], entry), maxlen=self.settings.stream_maxlen, approximate=True)
 
-    @staticmethod
-    def _failure_key(message_id: str) -> str:
-        return f"seismik:x:failures:{message_id}"
+    @classmethod
+    def _failure_key(cls, message_id: str) -> str:
+        return f"seismik:{cls.namespace}:failures:{message_id}"
 
 
 async def run_x_publisher() -> None:
