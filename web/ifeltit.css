@@ -2,3 +2,7 @@
 
 
 fieldset{scroll-margin-top:24px}legend:focus{outline:none}
+.map-legend{display:flex;flex-wrap:wrap;gap:6px 18px;list-style:none;padding:0;margin:10px 0 0;font-size:.76rem;color:var(--muted)}.map-legend li{display:flex;align-items:center;gap:7px}.dot{width:12px;height:12px;border-radius:50%;border:2px solid #fff;display:inline-block}.dot.you{background:#2678ed}.dot.quake{background:#ff5a3c;box-shadow:0 0 0 4px #ff5a3c26}
+.event-card .distance{color:#eef3ff;font-weight:650}.event-card .distance:empty{display:none}
+.plausibility{border:1px solid #fbbf242b;border-radius:10px;padding:12px 16px;background:#fbbf2407;color:#d6be87;font-size:.8rem;line-height:1.6;margin:12px 0 0}
+.wide{grid-column:1/-1}.grid.wide{margin-top:0}label .hint{font-weight:400;line-height:1.5}optgroup{color:var(--muted);font-weight:700}option{color:#eef3ff}
