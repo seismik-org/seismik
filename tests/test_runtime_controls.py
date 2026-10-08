@@ -5,7 +5,7 @@ import json
 import pytest
 from fakeredis.aioredis import FakeRedis
 from test_dispatcher import FakeDevices, FakePush
-from test_report_admin import ADMIN, setup
+from test_report_admin import ADMIN, approve, setup
 from test_x_publisher import official_event
 
 from api.config import AppSettings
@@ -34,6 +34,7 @@ async def test_admin_pause_is_durable_audited_and_requires_csrf() -> None:
         audit = await redis.xrevrange(AppSettings().developer_audit_stream, count=1)
         assert audit[0][1]["action"] == "operation.paused"
         assert audit[0][1]["by"] == "admin@example.com"
+        await approve(redis, "control:alerts:true")
         assert (await client.put(url, headers=ADMIN, json={"enabled": True})).status_code == 200
         assert not await paused(redis, "alerts")
 
@@ -50,6 +51,7 @@ async def test_controls_cannot_enable_an_unconfigured_or_disconnected_worker() -
         assert (await client.put(url, headers=ADMIN, json={"enabled": False, "secret": "x"})).status_code == 422
         assert (await client.put("/v1/admin/controls/unknown", headers=ADMIN,
                                  json={"enabled": False})).status_code == 404
+        await approve(redis, "control:facebook:false")
         assert (await client.put(url, headers=ADMIN, json={"enabled": False})).status_code == 200
 
 

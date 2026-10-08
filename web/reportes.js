@@ -37,6 +37,7 @@ function ago(value) {
 async function api(path, options = {}) {
   const headers = {Accept:"application/json"};
   if (options.method && options.method !== "GET") headers["X-Seismik-Admin"] = "1";
+  if (options.approval) headers["X-Seismik-Admin-Approval"] = options.approval;
   if (options.body) headers["Content-Type"] = "application/json";
   const response = await fetch(path, {...options, headers, credentials:"include", cache:"no-store"});
   const data = await response.json().catch(() => ({}));
@@ -49,9 +50,12 @@ async function api(path, options = {}) {
 }
 
 async function loadReports() {
+  const epoch = typeof adminEpoch === "undefined" ? 0 : adminEpoch;
   $("#reports-status").textContent = "Cargando reportes…";
   try {
-    reports = (await api("/v1/reports/admin/reports?limit=2000")).reports;
+    const data = await api("/v1/reports/admin/reports?limit=2000");
+    if (typeof adminEpoch !== "undefined" && epoch !== adminEpoch) return false;
+    reports = data.reports;
     $("#export").disabled = false;
     $("#reports-status").textContent = "";
     render();
@@ -208,8 +212,10 @@ async function setReview(item, status, button) {
   button.disabled = true;
   const stream = item.kind === "damage" ? "damage" : "felt";
   try {
+    const approval = await approveAction(`review:${stream}:${item.stream_id}:${status}`, `Marcar reporte ${item.stream_id}: ${status}`);
+    if (!approval) { button.disabled = false; return; }
     const result = await api(`/v1/reports/admin/reports/${stream}/${encodeURIComponent(item.stream_id)}/review`, {
-      method:"POST", body:JSON.stringify({status}),
+      method:"POST", approval, body:JSON.stringify({status}),
     });
     item.review = result.review;
     render();

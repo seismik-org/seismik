@@ -10,11 +10,12 @@ import json
 from datetime import datetime, timezone
 from typing import Any, Literal, cast
 
-from fastapi import APIRouter, Depends, HTTPException, Path, Query, Response
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request, Response
+from pydantic import BaseModel, ConfigDict
 from redis.asyncio import Redis
 
 from api.admin import redact, require_admin
+from api.admin_security import require_action
 from api.config import AppSettings
 from api.dependencies import get_app_settings, get_redis
 from reporting.plausibility import assess
@@ -29,6 +30,7 @@ HIDDEN_FIELDS = {"device_id", "event_id", "plausibility", "consent_version", "ty
 
 
 class Review(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     status: Literal["valid", "dismissed", "pending"]
 
 
@@ -42,7 +44,7 @@ async def _entries(redis: Redis, stream: str, limit: int) -> list[tuple[str, dic
     entries: list[tuple[str, dict[str, Any]]] = []
     for stream_id, fields in raw:
         try:
-            payload = json.loads(fields["payload"])
+            payload = json.loads(fields["payload"], parse_constant=lambda _: None)
         except (KeyError, ValueError, TypeError):
             continue
         if isinstance(payload, dict):
@@ -90,6 +92,7 @@ async def list_reports(
 @router.post("/reports/{stream}/{stream_id}/review")
 async def review_report(
     review: Review,
+    request: Request,
     response: Response,
     stream: Literal["felt", "damage"],
     stream_id: str = Path(pattern=STREAM_ID),
@@ -101,18 +104,20 @@ async def review_report(
     name = settings.felt_reports_stream if stream == "felt" else settings.damage_reports_stream
     if not await redis.xrange(name, min=stream_id, max=stream_id):
         raise HTTPException(404, "Reporte no encontrado")
+    await require_action(request, redis, f"review:{stream}:{stream_id}:{review.status}")
     field = f"{name}|{stream_id}"
-    await redis.xadd(settings.developer_audit_stream, {"payload": json.dumps({
+    record = None if review.status == "pending" else {
+        "status": review.status, "by": admin,
+        "at": datetime.now(timezone.utc).isoformat(),
+    }
+    pipe = redis.pipeline(transaction=True)
+    pipe.xadd(settings.developer_audit_stream, {"payload": json.dumps({
         "action": "report_review", "report": field, "status": review.status,
         "by": admin, "at": datetime.now(timezone.utc).isoformat(),
     })}, maxlen=settings.stream_maxlen, approximate=True)
-    if review.status == "pending":
-        await redis.hdel(REVIEW_KEY, field)
-        return {"id": field, "review": None}
-    record = {
-        "status": review.status,
-        "by": admin,
-        "at": datetime.now(timezone.utc).isoformat(),
-    }
-    await redis.hset(REVIEW_KEY, field, json.dumps(record))
+    if record is None:
+        pipe.hdel(REVIEW_KEY, field)
+    else:
+        pipe.hset(REVIEW_KEY, field, json.dumps(record))
+    await pipe.execute()
     return {"id": field, "review": record}

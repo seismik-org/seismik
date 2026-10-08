@@ -44,3 +44,10 @@
 @media (max-width: 640px) {
   .record-list summary { flex-direction: column; gap: 2px; }
 }
+
+.mfa-secret{display:block;overflow-wrap:anywhere;user-select:all;padding:1rem;border:1px solid var(--line);margin:1rem 0}
+#mfa form,.mfa-dialog form{display:grid;gap:1rem;margin-top:1rem}
+#mfa input,.mfa-dialog input{display:block;max-width:100%;margin-top:.5rem}
+.mfa-dialog{width:min(32rem,90vw);padding:2rem;border-radius:1rem;border:1px solid var(--line);background:var(--bg);color:var(--text)}
+.mfa-dialog::backdrop{background:rgba(0,0,0,.7)}
+#mfa-recovery{white-space:pre-wrap;overflow-wrap:anywhere;user-select:all}

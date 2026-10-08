@@ -50,6 +50,7 @@ jobs:
               - 'config.global.json'
               - 'official_sources.json'
               - 'deploy/cloudbuild.api.yaml'
+              - 'deploy/provision-admin-mfa.sh'
             web:
               - 'web/**'
               - 'Dockerfile.web'
@@ -108,7 +109,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-      - run: node --test tests/web_fallback.test.mjs tests/email_auth.test.mjs tests/status_history.test.mjs tests/admin_panel.test.mjs
+      - run: node --test tests/web_fallback.test.mjs tests/email_auth.test.mjs tests/status_history.test.mjs tests/admin_panel.test.mjs tests/admin_mfa.test.mjs
 
   mobile:
     runs-on: ubuntu-latest
@@ -284,6 +285,8 @@ jobs:
           gcloud auth configure-docker "$GCP_REGION-docker.pkg.dev" --quiet
           docker build --file Dockerfile.api --tag "$IMAGE" .
           docker push "$IMAGE"
+      - name: Provision isolated admin MFA secret
+        run: bash deploy/provision-admin-mfa.sh
       - name: Update service
         env:
           IMAGE: ${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.GCP_ARTIFACT_REPOSITORY }}/api:${{ github.sha }}
