@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Revisión interna de los reportes ciudadanos de Seismik.">
+  <meta name="robots" content="noindex,nofollow">
+  <title>Reportes · Seismik</title>
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32.png">
+  <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+  <meta name="theme-color" content="#060a13" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#f5f7fb" media="(prefers-color-scheme: light)">
+  <link rel="stylesheet" href="/styles.css?v=__ASSET_VERSION__">
+  <link rel="stylesheet" href="/logo.css?v=__ASSET_VERSION__">
+  <link rel="stylesheet" href="/reportes.css?v=__ASSET_VERSION__">
+  <script src="/reportes.js?v=__ASSET_VERSION__" defer></script>
+</head>
+<body>
+  <header class="site-header">
+    <div class="container header-inner">
+      <a class="brand" href="https://seismik.org/" aria-label="Seismik, inicio"><img class="brand-logo" src="/assets/seismik_logo.webp" width="32" height="32" alt="">SEISMIK <span class="brand-tag">REPORTES</span></a>
+      <div class="header-actions reports-auth">
+        <span id="user-label" class="user-label" hidden></span>
+        <button id="login-button" class="button compact keep" type="button" hidden>Entrar</button>
+        <button id="logout-button" class="button secondary compact keep" type="button" hidden>Salir</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="container reports-main">
+    <div class="reports-heading">
+      <div>
+        <p class="eyebrow">Revisión interna</p>
+        <h1>Reportes ciudadanos</h1>
+        <p class="reports-intro">Todo lo que llega desde la app y desde <a href="https://ifeltit.seismik.org/">ifeltit.seismik.org</a>. La plausibilidad compara la distancia y la intensidad con la magnitud del sismo; es orientativa. Descartar un reporte no lo borra: queda marcado con tu correo y la fecha.</p>
+      </div>
+      <div class="reports-tools">
+        <button id="reload" class="button secondary compact keep" type="button">Actualizar ↻</button>
+        <button id="export" class="button secondary compact keep" type="button" disabled>Exportar CSV</button>
+      </div>
+    </div>
+
+    <section id="gate" class="reports-gate card" hidden>
+      <h2 id="gate-title">Inicia sesión</h2>
+      <p id="gate-text">Entra con la cuenta autorizada para revisar los reportes.</p>
+      <button id="gate-login" class="button keep" type="button">Entrar</button>
+    </section>
+
+    <section id="dashboard" hidden>
+      <ul id="stats" class="report-stats" aria-label="Resumen"></ul>
+
+      <form id="filters" class="report-filters" aria-label="Filtros">
+        <label>Buscar<input id="filter-q" type="search" placeholder="Lugar, país o identificador" autocomplete="off"></label>
+        <label>Origen<select id="filter-source"><option value="all">Todos</option><option value="app">App</option><option value="web">ifeltit</option></select></label>
+        <label>Tipo<select id="filter-kind"><option value="all">Todos</option><option value="felt">¿Lo sentiste?</option><option value="damage">Daños</option></select></label>
+        <label>Plausibilidad<select id="filter-plausibility"><option value="all">Todas</option><option value="implausible">Poco plausibles</option><option value="plausible">Plausibles</option><option value="unknown">Sin comparar</option></select></label>
+        <label>Revisión<select id="filter-review"><option value="all">Todas</option><option value="pending">Sin revisar</option><option value="valid">Válidos</option><option value="dismissed">Descartados</option></select></label>
+      </form>
+
+      <p id="count" class="report-count" role="status"></p>
+      <div class="report-table-wrap">
+        <table class="report-table">
+          <thead>
+            <tr><th scope="col">Recibido</th><th scope="col">Origen</th><th scope="col">Sismo</th><th scope="col">Dónde</th><th scope="col">Experiencia</th><th scope="col">Plausibilidad</th><th scope="col">Revisión</th></tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <p id="status" class="report-status" role="status" aria-live="polite"></p>
+  </main>
+</body>
+</html>
