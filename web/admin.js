@@ -8,15 +8,19 @@ const KEY_LABELS = {
   api_keys:"Claves de API activas",
   webhook_owners:"Cuentas con webhooks",
   family_circles:"Círculos de familia",
+  admin_sessions:"Sesiones de administración",
   web_sessions:"Sesiones web abiertas",
   app_sessions:"Sesiones de la app",
 };
 const loaded = new Set();
+let adminEpoch = 0;
 let records = [];
 let recordRequest = 0;
 let controlsBusy = false;
 
 function clearData() {
+  if (typeof clearMfa === "function") clearMfa();
+  adminEpoch++;
   recordRequest++;
   loaded.clear();
   reports = [];
@@ -25,6 +29,7 @@ function clearData() {
   $("#export").disabled = true;
 }
 function accessError(error) {
+  if (error.status === 428) { clearData(); start(); return true; }
   if (![401, 403].includes(error.status)) return false;
   clearData();
   showUser("");
@@ -46,14 +51,15 @@ function showUser(email) {
   $("#logout-button").hidden = !email;
 }
 
-// auth.seismik.org vuelve aquí si encuentra esta marca de 10 minutos. SameSite=None
-// porque Apple devuelve el inicio de sesión con un POST desde su dominio.
-function login() {
-  document.cookie = "seismik_after_login=admin; Domain=.seismik.org; Path=/; Max-Age=600; Secure; SameSite=None";
-  window.location.assign(AUTH_URL);
+async function login() {
+  try {
+    const result = await api("/v1/admin/auth/start", {method:"POST"});
+    window.location.assign(result.redirect);
+  } catch (error) { showGate("Acceso no disponible", error.message); }
 }
 async function logout() {
-  await api("/v1/oauth/logout", {method:"POST"}).catch(() => {});
+  try { await api("/v1/admin/auth/logout", {method:"POST"}); }
+  catch (error) { $("#status").textContent = `No se pudo cerrar la sesión: ${error.message}`; return; }
   clearData();
   start();
 }
@@ -67,9 +73,11 @@ async function openTab(name) {
 }
 
 async function loadOverview() {
+  const epoch = adminEpoch;
   $("#overview-status").textContent = "Cargando…";
   try {
     const data = await api("/v1/admin/overview");
+    if (epoch !== adminEpoch) return false;
     $("#overview-time").textContent = `Datos de ${dateTime(data.generated_at)}. Cuentas y dispositivos se cuentan en Redis; los registros, por entradas.`;
     $("#key-stats").replaceChildren(...Object.entries(KEY_LABELS).map(([key, label]) => {
       const item = element("li", "report-stat");
@@ -166,10 +174,13 @@ function renderControls(controls) {
   }));
 }
 async function loadControls() {
+  const epoch = adminEpoch;
   if (controlsBusy) return false;
   $("#controls-status").textContent = "Consultando servicios…";
   try {
-    renderControls((await api("/v1/admin/controls")).controls);
+    const data = await api("/v1/admin/controls");
+    if (epoch !== adminEpoch) return false;
+    renderControls(data.controls);
     $("#controls-status").textContent = "";
     return true;
   } catch (error) {
@@ -179,12 +190,13 @@ async function loadControls() {
 }
 async function changeControl(control) {
   const verb = control.paused ? "reanudar" : "pausar";
-  if (!window.confirm(`¿Quieres ${verb} ${control.label.toLocaleLowerCase("es")}?`)) return;
+  const approval = await approveAction(`control:${control.id}:${control.paused}`, `${verb} ${control.label.toLocaleLowerCase("es")}`);
+  if (!approval) return;
   controlsBusy = true;
   for (const button of $("#controls-list").querySelectorAll("button")) button.disabled = true;
   $("#controls-status").textContent = "Guardando cambio…";
   try {
-    const data = await api(`/v1/admin/controls/${encodeURIComponent(control.id)}`, {method:"PUT", body:JSON.stringify({enabled:control.paused})});
+    const data = await api(`/v1/admin/controls/${encodeURIComponent(control.id)}`, {method:"PUT", approval, body:JSON.stringify({enabled:control.paused})});
     controlsBusy = false;
     renderControls(data.controls);
     $("#controls-status").textContent = `Cambio confirmado: ${control.label} ${control.paused ? "reanuda su funcionamiento" : "queda pausado"}.`;
@@ -199,6 +211,7 @@ async function changeControl(control) {
 async function start() {
   $("#status").textContent = "Comprobando acceso…";
   try {
+    if (!await adminAuthenticate()) { $("#status").textContent = ""; return; }
     const me = await api("/v1/admin/me");
     showUser(me.email);
     $("#gate").hidden = true;
@@ -211,7 +224,7 @@ async function start() {
       showUser("");
       showGate("Administración de Seismik", "Inicia sesión en auth.seismik.org con la cuenta autorizada. Volverás aquí al terminar.");
     } else if (error.status === 403) {
-      const session = await api("/v1/oauth/session").catch(() => ({}));
+      const session = {};
       showUser(session.email || "");
       showGate("Sin acceso", `${session.email || "Esta cuenta"} no tiene acceso a la administración. Sal e inicia sesión con la cuenta autorizada.`, {login:false, switchAccount:true});
     } else {

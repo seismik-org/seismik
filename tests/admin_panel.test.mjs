@@ -18,7 +18,7 @@ function panel() {
   const requests=[];
   const context={ $, document:{querySelectorAll:()=>[]}, window:{addEventListener(){},confirm:()=>false},
     element:(tag,cls,text)=>Object.assign(new Node(),{textContent:text}),
-    dateTime:v=>v, ago:v=>v, reports:[], loadReports:async()=>true,
+    dateTime:v=>v, ago:v=>v, reports:[], loadReports:async()=>true, adminAuthenticate:async()=>true,
     api:(url)=>url==='/v1/admin/me'
       ? Promise.reject(Object.assign(new Error('Login required'),{status:401}))
       : new Promise((resolve,reject)=>requests.push({url,resolve,reject})),
