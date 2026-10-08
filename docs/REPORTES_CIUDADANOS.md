@@ -29,11 +29,23 @@ haberlo sentido a más del doble de ese radio, si la intensidad supera la espera
 en más de 3 grados o si la hora es anterior al sismo; `unknown` si no hay sismo
 del catálogo con el que comparar. Es orientativa y nunca rechaza un envío.
 
-`https://devs.seismik.org/reportes/` lista los reportes de ambos orígenes con su
-sismo, distancia, plausibilidad (recalculada al consultar) y revisión. Entran sólo
-los correos de `SEISMIK_REPORT_ADMIN_EMAILS` (separados por comas, variable del
-servicio `seismik-api` en Cloud Run) con la sesión del portal; sin la variable el
-panel responde 403 a todos. Marcar un reporte como válido o descartado lo guarda
+## admin.seismik.org
+
+Panel interno con tres pestañas: **Resumen** (cuentas, dispositivos, claves y
+sesiones contadas en Redis; entradas totales, de 24 h y de 7 días de cada stream),
+**Reportes** (app y web con su sismo, distancia, plausibilidad recalculada al
+consultar y revisión) y **Registros** (últimas entradas de cada stream permitido,
+con tokens, firmas, secretos e IP ocultos por la API). Entran sólo los correos de
+`SEISMIK_ADMIN_EMAILS` (separados por comas, variable del servicio `seismik-api`
+en Cloud Run) con la sesión de auth.seismik.org; sin la variable responde 403 a
+todos. «Iniciar sesión» deja la cookie `seismik_after_login=admin` (10 minutos)
+y `_finish_login` vuelve a `admin_portal_url` en lugar del portal de
+desarrolladores. El Worker enruta `admin.seismik.org/v1/*` a la API y `/` a
+`web/admin/`; necesita el registro DNS proxied y la ruta `admin.seismik.org/*`
+del Worker `seismik`. API: `GET /v1/admin/me`, `/v1/admin/overview`,
+`/v1/admin/records/{nombre}`.
+
+La revisión de reportes: Marcar un reporte como válido o descartado lo guarda
 en el hash `seismik:reports:review` con el correo y la fecha; el reporte original
 no se modifica ni se borra del stream. API: `GET /v1/reports/admin/reports` y
 `POST /v1/reports/admin/reports/{felt|damage}/{stream_id}/review`.
