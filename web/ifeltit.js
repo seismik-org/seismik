@@ -263,7 +263,8 @@ function loadMap(key) {
   };
   const script = document.createElement("script"); script.nonce = scriptNonce;
   const url = new URL("https://maps.googleapis.com/maps/api/js");
-  url.search = new URLSearchParams({key, callback:"initFeltMap", loading:"async", v:"weekly", language:"es"}).toString();
+  // Sin `region`, Google aplica la de EE. UU. a fronteras, nombres y geocodificación.
+  url.search = new URLSearchParams({key, callback:"initFeltMap", loading:"async", v:"weekly", language:"es", region:"CO"}).toString();
   script.src = url.href; script.async = true;
   script.onerror = () => { mapLoading = false; script.remove(); message.querySelector("p").textContent = "No se pudo cargar Google Maps. Usa tu ubicación o reintenta la conexión."; };
   document.head.append(script);
