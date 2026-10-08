@@ -172,6 +172,10 @@ export default {
     // viaja hacia la API: ni el sitio estático ni Firebase deben verlo.
     upstreamRequest.headers.delete(ORIGIN_AUTH_HEADER);
     upstreamRequest.headers.delete("X-Seismik-Client-IP");
+    upstreamRequest.headers.delete("X-Seismik-Admin-Host");
+    if (target.origin === API && source.hostname === "admin.seismik.org") {
+      upstreamRequest.headers.set("X-Seismik-Admin-Host", source.hostname);
+    }
     if (source.hostname === "ifeltit.seismik.org" && ["/", "/ifeltit.html"].includes(source.pathname)) {
       upstreamRequest.headers.delete("If-None-Match");
       upstreamRequest.headers.delete("If-Modified-Since");
