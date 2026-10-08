@@ -73,3 +73,25 @@ devs.seismik.org {
 	rewrite @home /developers.html
 	file_server
 }
+
+# This single-level hostname is covered by the existing *.seismik.org certificate.
+ifeltit.seismik.org {
+    import seismik_security_headers
+    header Permissions-Policy "camera=(), microphone=(), geolocation=(self)"
+    header Content-Security-Policy "default-src 'self'; script-src 'self' https://challenges.cloudflare.com; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-src https://challenges.cloudflare.com; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"
+    request_body {
+        max_size 64KB
+    }
+    handle /v1/reports/* {
+        reverse_proxy api:8000 {
+            header_up X-Seismik-Client-IP {http.request.remote.host}
+            header_up X-Seismik-Origin-Auth {$SEISMIK_EDGE_ORIGIN_SECRET}
+        }
+    }
+    handle {
+        root * /srv
+        @feltHome path /
+        rewrite @feltHome /ifeltit.html
+        file_server
+    }
+}

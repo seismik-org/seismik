@@ -47,7 +47,10 @@ function targetFor(request) {
   let origin = WEB;
   let path = source.pathname;
   if (host === "api.seismik.org") origin = API;
-  else if (host === "devs.seismik.org") {
+  else if (host === "ifeltit.seismik.org") {
+    if (path.startsWith("/v1/reports/")) origin = API;
+    else if (path === "/") path = "/ifeltit.html";
+  } else if (host === "devs.seismik.org") {
     if (path.startsWith("/v1/")) origin = API;
     else if (path.startsWith("/__/auth/")) origin = FIREBASE;
     else if (path === "/") path = "/developers.html";
@@ -66,7 +69,7 @@ function targetFor(request) {
   return new URL(`${path}${source.search}`, origin);
 }
 
-function securityHeaders(host) {
+function securityHeaders(host, nonce = "") {
   const headers = new Headers({
     // No se guarda la respuesta API ni el acceso OAuth. El portal no contiene
     // secretos en HTML: permitir revalidación privada conserva bfcache al ir
@@ -74,7 +77,9 @@ function securityHeaders(host) {
     "Cache-Control": host === "api.seismik.org" || host === "auth.seismik.org" || host === "status.seismik.org"
       ? "no-store"
       : "private, no-cache",
-    "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+    "Permissions-Policy": host === "ifeltit.seismik.org"
+      ? "camera=(), microphone=(), geolocation=(self)"
+      : "camera=(), microphone=(), geolocation=()",
     "Referrer-Policy": "no-referrer",
     "Strict-Transport-Security": "max-age=31536000; includeSubDomains; preload",
     "X-Content-Type-Options": "nosniff",
@@ -82,6 +87,10 @@ function securityHeaders(host) {
   });
   if (host === "api.seismik.org") headers.set("Content-Security-Policy", "default-src 'none'; base-uri 'none'; frame-ancestors 'none'");
   else if (host === "devs.seismik.org" || host === "auth.seismik.org") headers.set("Content-Security-Policy", "default-src 'self'; script-src 'self' https://www.gstatic.com https://challenges.cloudflare.com; style-src 'self'; img-src 'self' data: https://lh3.googleusercontent.com; connect-src 'self' https://api.seismik.org https://identitytoolkit.googleapis.com https://securetoken.googleapis.com; frame-src 'self' https://accounts.google.com https://seismik-15bbb.firebaseapp.com https://challenges.cloudflare.com; base-uri 'none'; frame-ancestors 'none'; form-action 'self'");
+  else if (host === "ifeltit.seismik.org") {
+    headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+    headers.set("Content-Security-Policy", `default-src 'self'; script-src 'self' 'nonce-${nonce}' https://challenges.cloudflare.com https://maps.googleapis.com https://maps.gstatic.com; style-src 'self' 'nonce-${nonce}' https://fonts.googleapis.com; img-src 'self' data: https://*.googleapis.com https://*.gstatic.com https://*.google.com https://*.googleusercontent.com; connect-src 'self' https://api.seismik.org https://*.googleapis.com https://*.gstatic.com https://*.google.com; frame-src https://challenges.cloudflare.com https://*.google.com; font-src 'self' https://fonts.gstatic.com; worker-src blob:; base-uri 'none'; frame-ancestors 'none'; form-action 'self'`);
+  }
   else if (host === "status.seismik.org") headers.set("Content-Security-Policy", "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'");
   else headers.set("Content-Security-Policy", "default-src 'self'; script-src 'self' https://challenges.cloudflare.com; style-src 'self'; img-src 'self' data:; connect-src 'self' https://api.seismik.org; frame-src https://challenges.cloudflare.com; base-uri 'none'; frame-ancestors 'none'; form-action 'self'");
   return headers;
@@ -155,6 +164,14 @@ export default {
     // Un cliente no puede fijar la cabecera por su cuenta, y el secreto sólo
     // viaja hacia la API: ni el sitio estático ni Firebase deben verlo.
     upstreamRequest.headers.delete(ORIGIN_AUTH_HEADER);
+    upstreamRequest.headers.delete("X-Seismik-Client-IP");
+    if (source.hostname === "ifeltit.seismik.org" && ["/", "/ifeltit.html"].includes(source.pathname)) {
+      upstreamRequest.headers.delete("If-None-Match");
+      upstreamRequest.headers.delete("If-Modified-Since");
+    }
+    if (target.origin === API && request.headers.get("CF-Connecting-IP")) {
+      upstreamRequest.headers.set("X-Seismik-Client-IP", request.headers.get("CF-Connecting-IP"));
+    }
     if (target.origin === API && env?.EDGE_ORIGIN_SECRET) upstreamRequest.headers.set(ORIGIN_AUTH_HEADER, env.EDGE_ORIGIN_SECRET);
     let upstream;
     try {
@@ -166,8 +183,18 @@ export default {
       return fallbackResponse(request, true);
     }
     const headers = new Headers(upstream.headers);
-    for (const [name, value] of securityHeaders(source.hostname)) headers.set(name, value);
+    const feltHTML = source.hostname === "ifeltit.seismik.org" && upstream.headers.get("Content-Type")?.includes("text/html");
+    const nonce = feltHTML ? crypto.randomUUID().replaceAll("-", "") : "";
+    for (const [name, value] of securityHeaders(source.hostname, nonce)) headers.set(name, value);
     headers.delete("Server");
-    return new Response(upstream.body, { status: upstream.status, statusText: upstream.statusText, headers });
+    if (feltHTML) {
+      headers.set("Cache-Control", "no-store");
+      headers.delete("ETag"); headers.delete("Last-Modified");
+    }
+    const response = new Response(upstream.body, { status: upstream.status, statusText: upstream.statusText, headers });
+    if (feltHTML && request.method !== "HEAD") {
+      return new HTMLRewriter().on("script", { element(element) { element.setAttribute("nonce", nonce); } }).transform(response);
+    }
+    return response;
   },
 };

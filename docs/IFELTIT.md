@@ -1,0 +1,120 @@
+# Reporte web «¿Lo sentiste?»
+
+La web se publica en `https://ifeltit.seismik.org/`. Usa el stream
+`SEISMIK_FELT_REPORTS_STREAM` de los reportes voluntarios de la app, con
+`source=web`, `device_id=web-unverified` e `integrity_verified=false`. No registra
+dispositivos ni evita la atestación de `/v1/reports/felt`. Los consumidores deben
+conservar esta procedencia y no interpretar un reporte web como un dispositivo
+verificado. `report_id` conserva el UUID del formulario; el `event_id` del bus
+lleva el prefijo `web:` para evitar colisiones con los IDs móviles. La ventana
+de deduplicación es la existente (`SEISMIK_WEBHOOK_IDEMPOTENCY_SECONDS`).
+
+El formulario tiene tres pasos. Duración, movimiento, actividad, tipo y altura
+del edificio, piso, reacción, otras personas, ruido, ventanas, lámparas y muebles
+son opcionales. Por defecto el servidor redondea las coordenadas a dos decimales
+y elimina `location_accuracy_m`; la ubicación exacta requiere una elección.
+No recoge nombre, correo ni archivos. Tampoco permite comentarios libres.
+Los enlaces oficiales se muestran después del envío si el visitante los elige:
+ningún organismo recibe información hasta que complete su formulario externo.
+
+Las respuestas se conservan en memoria después de un fallo de red y se reutiliza
+el identificador al reintentar sin cambios. Cualquier edición crea otro ID.
+Cerrar o recargar la pestaña pierde las respuestas. Sólo un 202 con aceptación
+o duplicado del mismo `report_id` confirma el envío. Cada reintento con Turnstile
+requiere una nueva verificación; el token nunca se publica en el stream.
+
+## Activación en producción
+
+1. Desplegar API y web mediante los jobs existentes `deploy-api` y `deploy-web`
+   de `.github/workflows/ci.yml`. La API incluye `/v1/reports/web/config` y
+   `/v1/reports/web/felt`; `Dockerfile.web` incluye `web/ifeltit.*` y versiona
+   sus recursos. Los despliegues manuales usan `deploy/cloudbuild.api.yaml`
+   y `deploy/cloudbuild.worker.yaml` con `_DOCKERFILE=Dockerfile.web`, seguidos
+   de `gcloud run services update` de cada servicio. Usar `--update-env-vars`
+   y `--update-secrets` para conservar la configuración existente.
+2. Autorizar `ifeltit.seismik.org` en el widget Turnstile existente.
+   Configurar `SEISMIK_TURNSTILE_SITE_KEY` y `SEISMIK_TURNSTILE_SECRET_KEY` en
+   la API; almacenar la clave secreta en Secret Manager. Configurar
+   `SEISMIK_FELT_WEB_HOSTNAME=ifeltit.seismik.org`. El servidor exige la
+   acción `felt_report` y ese hostname. Fuera de development, la falta de
+   cualquiera de las dos claves produce 503. El endpoint config publica
+   únicamente la clave pública y el estado de disponibilidad.
+3. Crear el registro DNS proxied y la ruta del Worker
+   `ifeltit.seismik.org/*`. Verificar el certificado activo para
+   `*.seismik.org`, que cubre este hostname de un nivel. No contratar ACM
+   ni utilizar `ifeltit.api.seismik.org`: ese hostname anidado necesitaría
+   cobertura adicional.
+4. Publicar `deploy/cloudflare-edge-router.js` (idéntico a
+   `edge-worker/worker.js`) con sus imports. El Worker sirve `/` desde
+   `/ifeltit.html`, dirige `/v1/reports/*` a la API y habilita geolocalización
+   sólo para este host. Conservar iguales `EDGE_ORIGIN_SECRET` del Worker y
+   `SEISMIK_EDGE_ORIGIN_SECRET` de la API, con una versión fija al rotarlos.
+   El Worker reemplaza `X-Seismik-Client-IP` por `CF-Connecting-IP`; sólo la
+   guardia autenticada habilita su uso en el backend. Redis conserva únicamente
+   el hash de la IP en claves de límite con vencimiento de 120 segundos; la IP
+   no forma parte del reporte. Los Caddy alternativos también incluyen el host;
+   envían la IP del par de conexión, no cabeceras arbitrarias del visitante.
+5. Comprobar HTTPS y el certificado del hostname, configuración pública,
+   Turnstile real, un POST aceptado con 202 y lectura del stream autorizado.
+   Repetir el mismo `report_id` dentro de la ventana de deduplicación con un
+   token Turnstile nuevo: debe responder `duplicate=true` sin un segundo
+   registro. Comprobar `source`, `device_id`, `integrity_verified`, ubicación
+   redondeada y ausencia de `turnstile_token`. Probar también ubicación exacta
+   elegida, token inválido y acceso directo al origen sin su secreto (403).
+
+## Verificación local
+
+```bash
+python -m pytest tests/test_web_reporting.py tests/test_reporting.py tests/test_web_hardening.py tests/test_web_assets.py
+node --test tests/web_fallback.test.mjs
+```
+
+Para probar la interfaz con la API bajo el mismo origen, configurar Redis de
+desarrollo mediante `SEISMIK_REDIS_URL`, `SEISMIK_ENVIRONMENT=development` y
+ejecutar `python tools/serve_ifeltit.py`. Abrir `http://127.0.0.1:8080` o
+`http://localhost:8080`. Se omite Turnstile sólo si ambas claves están vacías;
+con una sola clave, también development falla cerrado. No usar el servidor
+local para producción. Las verificaciones locales no certifican DNS, TLS ni
+Turnstile reales.
+
+
+## Sismo seleccionado y mapa
+
+El primer paso exige elegir un evento del catálogo oficial reciente: `/v1/reports/web/events`
+publica hasta 200 eventos de los últimos siete días, sin piso de magnitud, y conserva la
+última revisión por identificador. El servidor valida `earthquake_event_id` y deriva
+`official_event_id` del evento seleccionado. Un identificador ausente, desconocido o
+incompatible no publica el reporte.
+
+La ubicación se elige tocando Google Maps, arrastrando el punto azul, usando el GPS o
+moviendo el mapa y pulsando «Marcar el centro del mapa». El epicentro nunca se usa como
+ubicación del visitante. No hay campos visibles de latitud o longitud. Los países se
+muestran por nombre y, si el Geocoder de Google responde, se preseleccionan a partir del
+punto elegido; sin Geocoding API el visitante lo elige a mano.
+Se mantiene el redondeo en el servidor y la precisión exacta requiere elección explícita.
+
+El mapa muestra a la vez al visitante (azul) y el epicentro del sismo elegido (rojo, con
+un círculo orientativo del radio en el que suele sentirse) y encuadra ambos. La tarjeta del
+sismo indica la distancia; si supera el doble de ese radio aparece un aviso que no
+bloquea el envío. Con una ubicación marcada, la lista agrupa primero los sismos a menos de
+1 000 km. El navegador fusiona las versiones del mismo sismo publicadas por varias
+agencias (menos de 90 s y 150 km de diferencia) y conserva el ID de la agencia regional
+cuando existe. La búsqueda por lugar filtra el catálogo ya descargado, sin consultas
+adicionales. `?event=<event_id>` abre el formulario con ese sismo elegido; seismik.org
+lo usa en las tarjetas «En vivo».
+
+Si el visitante responde que no lo sintió, no se piden intensidad ni detalles y el
+reporte no los incluye. Con «Al aire libre» no se preguntan pisos.
+
+Configurar `SEISMIK_GOOGLE_MAPS_WEB_API_KEY` con una clave pública para Maps JavaScript API,
+restringida a `https://ifeltit.seismik.org/*`; para desarrollo, autorizar sólo los orígenes
+locales que se necesiten. No reutilizar claves restringidas a Android o iOS. El config
+publica esta clave, nunca el secreto Turnstile. Google Maps requiere que su API esté
+habilitada y el proyecto tenga facturación configurada. No se activa ningún producto
+de pago de Cloudflare para el certificado.
+
+El Worker aplica una CSP exclusiva de este host, agrega un nonce nuevo a los scripts
+HTML y permite los recursos de Google Maps. Las políticas de los demás hosts se
+conservan. La política de referencias envía sólo el origen a Google para validar la
+restricción de la clave. Las configuraciones Caddy alternativas mantienen una política
+más estricta y requieren el Worker delante para el mapa interactivo.

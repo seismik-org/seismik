@@ -122,6 +122,17 @@
 }
 @keyframes showcase-pulse { 0%, 100% { opacity: 0.6; } 50% { opacity: 1; } }
 .showcase-status { margin: 14px 0 0; color: var(--faint); font-size: 0.9rem; text-align: center; }
+
+/* ¿Lo sentiste? */
+.felt-section { padding-top: 0; }
+.felt-cta {
+  display: flex; align-items: center; justify-content: space-between; gap: 28px; padding: clamp(26px, 4vw, 40px);
+  border-color: color-mix(in srgb, var(--primary) 30%, var(--line));
+}
+.felt-cta h2 { margin: 6px 0 10px; }
+.felt-cta p:not(.eyebrow) { max-width: 640px; }
+.felt-cta .button { flex: none; }
+@media (max-width: 720px) { .felt-cta { flex-direction: column; align-items: flex-start; } }
 .showcase-status:empty { display: none; }
 
 /* ---------- Cómo funciona ---------- */
