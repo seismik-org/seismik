@@ -10,7 +10,11 @@ const request = (path = '/', host = 'seismik.org', method = 'GET') => new Reques
 test('admin has strict headers and sends its API requests to the protected origin', async () => {
   const original = globalThis.fetch;
   const targets = [];
-  globalThis.fetch = async (target) => { targets.push(target.url || String(target)); return new Response('ok'); };
+  const hostHeaders = [];
+  globalThis.fetch = async (target) => {
+    targets.push(target.url || String(target)); hostHeaders.push(target.headers.get('X-Seismik-Admin-Host'));
+    return new Response('ok');
+  };
   try {
     const page = await worker.fetch(request('/', 'admin.seismik.org'), {});
     assert.match(targets[0], /seismik-web.*\/admin\/$/);
@@ -19,6 +23,11 @@ test('admin has strict headers and sends its API requests to the protected origi
     assert.match(page.headers.get('Content-Security-Policy'), /frame-ancestors 'none'/);
     await worker.fetch(request('/v1/admin/me', 'admin.seismik.org'), {});
     assert.match(targets[1], /seismik-api.*\/v1\/admin\/me$/);
+    assert.equal(hostHeaders[1], 'admin.seismik.org');
+    await worker.fetch(new Request('https://api.seismik.org/v1/admin/me', {
+      headers: {'X-Seismik-Admin-Host': 'admin.seismik.org'},
+    }), {});
+    assert.equal(hostHeaders[2], null);
   } finally { globalThis.fetch = original; }
 });
 

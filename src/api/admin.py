@@ -68,6 +68,11 @@ async def require_admin(
 ) -> str:
     response.headers["Cache-Control"] = "no-store"
     response.headers["X-Robots-Tag"] = "noindex, nofollow"
+    if settings.environment.lower() != "development" and (
+        not request.scope.get("seismik.edge_authenticated")
+        or request.headers.get("x-seismik-admin-host") != "admin.seismik.org"
+    ):
+        raise HTTPException(403, "Acceso sólo desde el borde autenticado del panel")
     origin = request.headers.get("origin")
     allowed = {"https://admin.seismik.org"}
     if settings.environment.lower() == "development":

@@ -14,6 +14,7 @@ from api.admin import router as admin_router
 from api.bus import RedisEventBus
 from api.config import AppSettings
 from api.dependencies import get_app_settings, get_bus, get_redis
+from api.edge_origin import EdgeOriginGuard
 from api.oauth import _finish_login
 from reporting.admin import REVIEW_KEY
 from reporting.ingest import router
@@ -74,8 +75,10 @@ def session(token: str) -> dict[str, str]:
 ADMIN = session("admin-token")
 
 
-async def setup(admins: str = "admin@example.com"):
+async def setup(admins: str = "admin@example.com", production: bool = False):
     settings = AppSettings(admin_emails=admins)
+    if production:
+        settings = settings.model_copy(update={"environment": "production"})
     redis = FakeRedis(decode_responses=True)
     await redis.xadd(settings.official_stream, {"payload": json.dumps({
         "event_id": EVENT["event_id"],
@@ -99,6 +102,8 @@ async def setup(admins: str = "admin@example.com"):
     await redis.hset("seismik:device:device-1", mapping={"platform": "ios"})
     await redis.hset("seismik:developer-profile:dev-1", mapping={"plan": "free"})
     app = FastAPI()
+    if production:
+        app.add_middleware(EdgeOriginGuard, secret="test-edge-secret")
     app.include_router(router)
     app.include_router(admin_router)
     app.state.redis = redis
@@ -290,3 +295,17 @@ async def test_reports_redact_nested_credentials_too() -> None:
         data = (await client.get("/v1/reports/admin/reports", headers=ADMIN)).json()
     item = next(item for item in data["reports"] if item["report"]["report_id"] == "sensitive")
     assert item["report"]["authorization"] == item["report"]["nested"]["clientIp"] == "•••"
+
+
+@pytest.mark.asyncio
+async def test_production_admin_requires_authenticated_edge_and_panel_host() -> None:
+    client, _ = await setup(production=True)
+    async with client:
+        headers = {**ADMIN, "X-Seismik-Admin-Host": "admin.seismik.org"}
+        assert (await client.get("/v1/admin/me", headers=headers)).status_code == 403
+        headers["X-Seismik-Origin-Auth"] = "test-edge-secret"
+        assert (await client.get("/v1/admin/me", headers=headers)).status_code == 200
+        headers["X-Seismik-Admin-Host"] = "devs.seismik.org"
+        assert (await client.get("/v1/admin/me", headers=headers)).status_code == 403
+        del headers["X-Seismik-Admin-Host"]
+        assert (await client.get("/v1/admin/me", headers=headers)).status_code == 403

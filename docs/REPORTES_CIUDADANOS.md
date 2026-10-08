@@ -45,6 +45,15 @@ desarrolladores. El Worker enruta `admin.seismik.org/v1/*` a la API y `/` a
 del Worker `seismik`. API: `GET /v1/admin/me`, `/v1/admin/overview`,
 `/v1/admin/records/{nombre}`.
 
+En producción, la API exige además la guardia de origen autenticada y la
+cabecera del host admin que el Worker reemplaza; no acepta la suministrada por
+el visitante. La sesión debe haberse iniciado en las últimas ocho horas y se
+limita a 120 consultas por minuto. Las revisiones exigen `Origin` del panel y
+`X-Seismik-Admin: 1` contra CSRF, incluidos otros subdominios. Cada revisión y
+su deshacer dejan una entrada de auditoría. Los CSV neutralizan fórmulas; la
+API oculta también credenciales anidadas en los reportes. Al salir se limpian
+las tablas y al volver desde el historial se comprueba otra vez el acceso.
+
 La revisión de reportes: Marcar un reporte como válido o descartado lo guarda
 en el hash `seismik:reports:review` con el correo y la fecha; el reporte original
 no se modifica ni se borra del stream. API: `GET /v1/reports/admin/reports` y
