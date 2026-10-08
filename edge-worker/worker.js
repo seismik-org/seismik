@@ -54,6 +54,9 @@ function targetFor(request) {
     if (path.startsWith("/v1/")) origin = API;
     else if (path.startsWith("/__/auth/")) origin = FIREBASE;
     else if (path === "/") path = "/developers.html";
+  } else if (host === "admin.seismik.org") {
+    if (path.startsWith("/v1/")) origin = API;
+    else if (path === "/") path = "/admin/";
   } else if (host === "status.seismik.org") {
     if (path === "/") path = "/status.html";
   } else if (host === "auth.seismik.org") {
@@ -74,7 +77,7 @@ function securityHeaders(host, nonce = "") {
     // No se guarda la respuesta API ni el acceso OAuth. El portal no contiene
     // secretos en HTML: permitir revalidación privada conserva bfcache al ir
     // atrás/adelante y `pageshow` vuelve a consultar la sesión.
-    "Cache-Control": host === "api.seismik.org" || host === "auth.seismik.org" || host === "status.seismik.org"
+    "Cache-Control": host === "api.seismik.org" || host === "auth.seismik.org" || host === "status.seismik.org" || host === "admin.seismik.org"
       ? "no-store"
       : "private, no-cache",
     "Permissions-Policy": host === "ifeltit.seismik.org"
@@ -92,6 +95,10 @@ function securityHeaders(host, nonce = "") {
     headers.set("Content-Security-Policy", `default-src 'self'; script-src 'self' 'nonce-${nonce}' https://challenges.cloudflare.com https://maps.googleapis.com https://maps.gstatic.com; style-src 'self' 'nonce-${nonce}' https://fonts.googleapis.com; img-src 'self' data: https://*.googleapis.com https://*.gstatic.com https://*.google.com https://*.googleusercontent.com; connect-src 'self' https://api.seismik.org https://*.googleapis.com https://*.gstatic.com https://*.google.com; frame-src https://challenges.cloudflare.com https://*.google.com; font-src 'self' https://fonts.gstatic.com; worker-src blob:; base-uri 'none'; frame-ancestors 'none'; form-action 'self'`);
   }
   else if (host === "status.seismik.org") headers.set("Content-Security-Policy", "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'");
+  else if (host === "admin.seismik.org") {
+    headers.set("Content-Security-Policy", "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'");
+    headers.set("X-Robots-Tag", "noindex, nofollow");
+  }
   else headers.set("Content-Security-Policy", "default-src 'self'; script-src 'self' https://challenges.cloudflare.com; style-src 'self'; img-src 'self' data:; connect-src 'self' https://api.seismik.org; frame-src https://challenges.cloudflare.com; base-uri 'none'; frame-ancestors 'none'; form-action 'self'");
   return headers;
 }
@@ -165,6 +172,10 @@ export default {
     // viaja hacia la API: ni el sitio estático ni Firebase deben verlo.
     upstreamRequest.headers.delete(ORIGIN_AUTH_HEADER);
     upstreamRequest.headers.delete("X-Seismik-Client-IP");
+    upstreamRequest.headers.delete("X-Seismik-Admin-Host");
+    if (target.origin === API && source.hostname === "admin.seismik.org") {
+      upstreamRequest.headers.set("X-Seismik-Admin-Host", source.hostname);
+    }
     if (source.hostname === "ifeltit.seismik.org" && ["/", "/ifeltit.html"].includes(source.pathname)) {
       upstreamRequest.headers.delete("If-None-Match");
       upstreamRequest.headers.delete("If-Modified-Since");

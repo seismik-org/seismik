@@ -66,6 +66,9 @@ def _cookie_name() -> str:
     return "seismik_session"
 
 
+AFTER_LOGIN_COOKIE = "seismik_after_login"
+
+
 def _mobile_return_to(value: str | None) -> str | None:
     """Accept exactly the app callback; never turn OAuth into an open redirect."""
     if value is None:
@@ -108,6 +111,11 @@ async def _finish_login(
         ex=settings.oauth_session_ttl_seconds,
     )
     target = settings.developer_portal_url
+    # admin.seismik.org deja esta marca antes de enviar a auth. Sólo elige entre
+    # destinos fijos de la configuración; nunca es una URL del visitante.
+    to_admin = not return_to and request.cookies.get(AFTER_LOGIN_COOKIE) == "admin"
+    if to_admin:
+        target = settings.admin_portal_url
     if return_to:
         code = secrets.token_urlsafe(32)
         await request.app.state.redis.set(
@@ -122,6 +130,8 @@ async def _finish_login(
         secure=True, httponly=True, samesite="lax", path="/",
         domain=settings.oauth_cookie_domain,
     )
+    if to_admin:
+        response.delete_cookie(AFTER_LOGIN_COOKIE, path="/", domain=settings.oauth_cookie_domain)
     return response
 
 

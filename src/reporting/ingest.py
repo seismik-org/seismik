@@ -12,7 +12,9 @@ from api.config import AppSettings
 from api.dependencies import get_app_settings, get_bus, get_devices, get_redis
 from api.devices_store import DeviceRepository
 from api.security import derive_crowd_token, verify_signature
+from reporting.admin import router as admin_router
 from reporting.agencies import routes_for
+from reporting.plausibility import assess
 from reporting.schemas import (
     AgencyRoute,
     DamageReport,
@@ -20,10 +22,12 @@ from reporting.schemas import (
     LocationPrecision,
     ReportAccepted,
 )
+from reporting.web import official_events
 from reporting.web import router as web_router
 
 router = APIRouter(prefix="/v1/reports", tags=["citizen-reports"])
 router.include_router(web_router)
+router.include_router(admin_router)
 ReportModel = TypeVar("ReportModel", bound=BaseModel)
 
 
@@ -99,6 +103,9 @@ async def _ingest_report(
         payload["latitude"] = round(float(payload["latitude"]), 2)
         payload["longitude"] = round(float(payload["longitude"]), 2)
         payload["location_accuracy_m"] = None
+    # Marca orientativa para quien revisa; nunca bloquea el envío.
+    event_id = getattr(report, "earthquake_event_id", None) or ""
+    payload["plausibility"] = assess(payload, (await official_events(redis, settings)).get(event_id))
     payload["event_id"] = str(getattr(report, "report_id"))
     result = await bus.publish_once(stream, payload)
     return report, result.accepted, result.stream_id
