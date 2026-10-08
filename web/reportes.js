@@ -220,7 +220,7 @@ function exportCsv() {
   const columns = ["recibido", "origen", "tipo", "sismo", "magnitud", "pais", "latitud", "longitud", "distancia_km", "sintio", "intensidad", "plausibilidad", "motivos", "revision", "report_id"];
   const quote = value => {
     let text = String(value ?? "");
-    if (/^[\s\u0000-\u001f]*[=+@-]/u.test(text)) text = "'" + text;
+    if (typeof value === "string" && /^[\s\u0000-\u001f]*[=+@-]/u.test(text)) text = "'" + text;
     return `"${text.replaceAll('"', '""')}"`;
   };
   const lines = reports.filter(matches).map(item => [
