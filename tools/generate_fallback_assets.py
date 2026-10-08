@@ -9,7 +9,7 @@ import re
 
 ROOT = Path(__file__).resolve().parents[1]
 WEB = ROOT / 'web'
-NAMES = ('offline.html', 'offline.css', 'offline.js', 'site.js', 'sw.js')
+NAMES = ('offline.html', 'offline.css', 'footer.css', 'offline.js', 'site.js', 'sw.js')
 
 
 def render():

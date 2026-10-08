@@ -102,7 +102,7 @@ test('service worker provides cached navigation and assets without caching priva
   let pending;
   handlers.install({ waitUntil: (p) => pending = p });
   await pending;
-  assert.deepEqual([...stored.keys()], ['/offline.html', '/offline.css', '/offline.js', '/site.js']);
+  assert.deepEqual([...stored.keys()], ['/offline.html', '/offline.css', '/footer.css', '/offline.js', '/site.js']);
   context.fetch = async () => { throw new Error('offline'); };
   const navigate = (path, mode = 'navigate') => {
     let response;
@@ -121,7 +121,7 @@ test('service worker provides cached navigation and assets without caching priva
 test('both router entry points and embedded fallback stay synchronized', () => {
   assert.equal(readFileSync('edge-worker/worker.js', 'utf8'), readFileSync('deploy/cloudflare-edge-router.js', 'utf8'));
   for (const [path, contents] of Object.entries(FALLBACK_ASSETS)) {
-    assert.equal(contents.replace(/\?v=[a-f0-9]{16}/g, '?v=__ASSET_VERSION__'), readFileSync(`web${path}`, 'utf8'));
+    assert.equal(contents.replace(/\?v=[a-f0-9]{16}/g, '?v=__ASSET_VERSION__').replace(/\r\n/g, '\n'), readFileSync(`web${path}`, 'utf8').replace(/\r\n/g, '\n'));
   }
 });
 

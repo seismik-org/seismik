@@ -55,8 +55,11 @@ async function loadReports() {
     $("#export").disabled = false;
     $("#reports-status").textContent = "";
     render();
+    return true;
   } catch (error) {
+    if (typeof accessError === "function" && accessError(error)) return false;
     $("#reports-status").textContent = `No se pudieron cargar los reportes: ${error.message}`;
+    return false;
   }
 }
 

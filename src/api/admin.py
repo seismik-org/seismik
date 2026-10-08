@@ -14,10 +14,12 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, cast
 
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Query, Request, Response
+from pydantic import BaseModel, ConfigDict, StrictBool
 from redis.asyncio import Redis
 
 from api.config import AppSettings
 from api.dependencies import get_app_settings, get_redis
+from api.runtime_controls import FEATURES, PAUSE_KEY, state
 
 router = APIRouter(prefix="/v1/admin", tags=["admin"])
 
@@ -55,7 +57,10 @@ def streams(settings: AppSettings) -> dict[str, tuple[str, str]]:
         "integrations": (settings.integration_stream, "Integraciones"),
         "integration_failures": (settings.integration_dead_letter_stream, "Integraciones fallidas"),
         "dead_letter": (settings.dead_letter_stream, "Eventos fallidos"),
-        "x_publisher": (settings.x_publisher_stream, "Publicaciones en X"),
+        "x_publisher": ("stream:seismik:x-audit", "Publicaciones en X"),
+        "facebook_audit": ("stream:seismik:facebook-audit", "Publicaciones en Facebook"),
+        "integration_audit": (settings.integration_audit_stream, "Auditoría de integraciones"),
+        "push_audit": (settings.push_audit_stream, "Pruebas de notificaciones"),
     }
 
 
@@ -125,7 +130,7 @@ def _decode(fields: dict[str, str]) -> dict[str, Any]:
     """Los streams guardan JSON en `payload`; algunos guardan campos sueltos."""
     if "payload" in fields:
         try:
-            payload = json.loads(fields["payload"])
+            payload = json.loads(fields["payload"], parse_constant=lambda _: None)
             if isinstance(payload, dict):
                 return payload
         except ValueError:
@@ -216,3 +221,39 @@ async def records(
             for stream_id, fields in raw
         ],
     }
+
+
+class ControlChange(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    enabled: StrictBool
+
+
+@router.get("/controls")
+async def controls(
+    admin: str = Depends(require_admin), redis: Redis = Depends(get_redis),
+) -> dict[str, Any]:
+    return {"controls": await state(redis)}
+
+
+@router.put("/controls/{feature}")
+async def change_control(
+    feature: str, change: ControlChange,
+    admin: str = Depends(require_admin),
+    redis: Redis = Depends(get_redis),
+    settings: AppSettings = Depends(get_app_settings),
+) -> dict[str, Any]:
+    if feature not in FEATURES:
+        raise HTTPException(404, "Control desconocido")
+    current = next(item for item in await state(redis) if item["id"] == feature)
+    if change.enabled and not current["configured"]:
+        raise HTTPException(409, "El servicio no está configurado o no está disponible para reanudarlo")
+    # The switch and its audit record succeed or fail together.
+    pipe = redis.pipeline(transaction=True)
+    pipe.hset(PAUSE_KEY, feature, "0" if change.enabled else "1")
+    pipe.xadd(settings.developer_audit_stream, {
+        "action": "operation.resumed" if change.enabled else "operation.paused",
+        "feature": feature, "by": admin,
+        "at": datetime.now(timezone.utc).isoformat(),
+    }, maxlen=settings.stream_maxlen, approximate=True)
+    await pipe.execute()
+    return {"controls": await state(redis)}
