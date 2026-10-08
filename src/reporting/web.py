@@ -14,6 +14,7 @@ from api.bus import RedisEventBus
 from api.config import AppSettings
 from api.dependencies import get_app_settings, get_bus, get_redis
 from reporting.agencies import routes_for
+from reporting.plausibility import assess
 from reporting.schemas import LocationPrecision, ReportAccepted, WebFeltReport
 
 router = APIRouter(prefix="/web")
@@ -83,6 +84,45 @@ async def recent_web_events(redis: Redis, settings: AppSettings) -> list[dict]:
         except (KeyError, ValueError, TypeError):
             continue
     return events
+
+
+async def official_events(redis: Redis, settings: AppSettings) -> dict[str, dict]:
+    """Última revisión de cada sismo oficial reciente, por `event_id`, sin límite de días.
+
+    La app puede reportar sismos más antiguos que el catálogo web de siete días.
+    """
+    raw = cast(
+        list[tuple[str, dict[str, str]]],
+        await redis.xrevrange(settings.official_stream, count=5000),
+    )
+    index: dict[str, dict] = {}
+    for _, fields in raw:
+        try:
+            event = json.loads(fields["payload"])
+            event_id = str(event["event_id"])
+            report = event["preferred_report"]
+        except (KeyError, ValueError, TypeError):
+            continue
+        if event_id in index or not isinstance(report, dict):
+            continue
+        index[event_id] = {
+            "event_id": event_id,
+            **{
+                name: report.get(name)
+                for name in (
+                    "origin_time",
+                    "latitude",
+                    "longitude",
+                    "magnitude",
+                    "depth_km",
+                    "agency",
+                    "place",
+                    "official_event_id",
+                    "official_url",
+                )
+            },
+        }
+    return index
 
 
 @router.get("/events")
@@ -192,6 +232,8 @@ async def submit_web_felt(
         payload["latitude"] = round(report.latitude, 2)
         payload["longitude"] = round(report.longitude, 2)
         payload["location_accuracy_m"] = None
+    # Se calcula con la ubicación ya redondeada: es la que queda guardada.
+    payload["plausibility"] = assess(payload, selected)
     # Namespace browser IDs so they cannot suppress a mobile report in the bus.
     payload["event_id"] = f"web:{report.report_id}"
     result = await bus.publish_once(settings.felt_reports_stream, payload)
