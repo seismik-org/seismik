@@ -1,0 +1,73 @@
+/* Revisión interna de reportes: tokens de styles.css. */
+.reports-auth { margin-left: auto; }
+.user-label { color: var(--muted); font-size: 0.86rem; max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.reports-main { padding: 40px 0 80px; }
+.reports-heading { display: flex; justify-content: space-between; align-items: flex-end; gap: 24px; margin-bottom: 28px; }
+.reports-heading h1 { margin: 6px 0 10px; font-size: clamp(1.8rem, 4vw, 2.6rem); }
+.reports-intro { color: var(--muted); max-width: 760px; margin: 0; }
+.reports-tools { display: flex; gap: 10px; flex: none; }
+.reports-gate { max-width: 560px; }
+.reports-gate h2 { margin: 0 0 8px; }
+.reports-gate p { margin: 0 0 18px; }
+
+.report-stats { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; list-style: none; padding: 0; margin: 0 0 24px; }
+.report-stat { display: grid; gap: 2px; padding: 16px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface); }
+.report-stat strong { font-size: 1.6rem; font-variant-numeric: tabular-nums; }
+.report-stat span { color: var(--muted); font-size: 0.82rem; }
+.report-stat.warn { border-color: color-mix(in srgb, var(--warn) 55%, var(--line)); }
+.report-stat.warn strong { color: var(--warn); }
+
+.report-filters { display: grid; grid-template-columns: 2fr repeat(4, 1fr); gap: 12px; margin-bottom: 12px; }
+.report-filters label { display: grid; gap: 6px; font-size: 0.8rem; color: var(--muted); font-weight: 600; }
+.report-filters input, .report-filters select {
+  font: inherit; font-size: 0.9rem; color: var(--text); background: var(--surface); border: 1px solid var(--line-strong);
+  border-radius: 10px; padding: 9px 11px; min-width: 0;
+}
+.report-count, .report-status { color: var(--muted); font-size: 0.85rem; margin: 10px 0; }
+.report-status:empty { display: none; }
+
+.report-table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface); }
+.report-table { width: 100%; border-collapse: collapse; font-size: 0.86rem; min-width: 1080px; }
+.report-table th { text-align: left; font-size: 0.74rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--faint); padding: 12px 14px; border-bottom: 1px solid var(--line); background: var(--surface-2); }
+.report-table td { padding: 12px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.report-table td > * { display: block; }
+.report-table td > * + * { margin-top: 4px; }
+.report-table small { color: var(--muted); font-size: 0.78rem; line-height: 1.45; }
+.report-table a { color: var(--primary); text-decoration: none; font-size: 0.8rem; }
+.report-table a:hover { text-decoration: underline; }
+.report-table tr.dismissed > td { opacity: 0.55; }
+.report-table td.empty { text-align: center; color: var(--muted); padding: 40px; }
+.muted { color: var(--muted); }
+.danger-text { color: var(--danger) !important; font-weight: 600; }
+
+.badge { display: inline-block !important; width: max-content; padding: 3px 9px; border-radius: 999px; font-size: 0.74rem; font-weight: 700; border: 1px solid var(--line-strong); color: var(--muted); }
+.badge.plausible, .badge.review-valid { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 50%, transparent); }
+.badge.implausible { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 55%, transparent); background: color-mix(in srgb, var(--warn) 10%, transparent); }
+.badge.review-dismissed { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 50%, transparent); }
+.badge.source-web { color: var(--primary); border-color: color-mix(in srgb, var(--primary) 45%, transparent); }
+
+.review-actions { display: flex !important; flex-wrap: wrap; gap: 6px; }
+.review-actions button {
+  font: inherit; font-size: 0.76rem; font-weight: 650; padding: 5px 10px; border-radius: 8px; cursor: pointer;
+  border: 1px solid var(--line-strong); background: var(--surface-2); color: var(--text);
+}
+.review-actions button:hover { border-color: var(--primary); }
+.review-actions button.danger:hover { border-color: var(--danger); color: var(--danger); }
+.review-actions button.link-button { border-color: transparent; background: transparent; color: var(--primary); padding-inline: 4px; }
+.review-actions button:disabled { opacity: 0.5; cursor: default; }
+
+.detail-row > td { background: var(--surface-2); }
+.detail-row dl { display: grid !important; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px 20px; margin: 0; }
+.detail-row dt { font-size: 0.72rem; color: var(--faint); font-family: var(--mono); }
+.detail-row dd { margin: 0 0 6px; overflow-wrap: anywhere; }
+
+@media (max-width: 980px) {
+  .report-stats { grid-template-columns: repeat(3, 1fr); }
+  .report-filters { grid-template-columns: 1fr 1fr; }
+  .report-filters label:first-child { grid-column: 1 / -1; }
+}
+@media (max-width: 640px) {
+  .reports-heading { flex-direction: column; align-items: flex-start; }
+  .report-stats { grid-template-columns: repeat(2, 1fr); }
+  .user-label { display: none; }
+}
