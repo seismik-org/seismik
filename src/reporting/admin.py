@@ -1,8 +1,8 @@
 """Revisión interna de los reportes ciudadanos (app y ifeltit.seismik.org).
 
-Sólo lo usan los correos de `report_admin_emails`, con la misma sesión del portal
-de desarrolladores (cookie `seismik_session`). La revisión nunca borra el
-reporte del stream: guarda aparte si es válido o se descarta, con quién y cuándo.
+La usa admin.seismik.org con el mismo acceso que el resto del panel
+(`api.admin.require_admin`). La revisión nunca borra el reporte del stream:
+guarda aparte si es válido o se descarta, con quién y cuándo.
 """
 from __future__ import annotations
 
@@ -10,10 +10,11 @@ import json
 from datetime import datetime, timezone
 from typing import Any, Literal, cast
 
-from fastapi import APIRouter, Cookie, Depends, HTTPException, Path, Query, Request, Response
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, Response
 from pydantic import BaseModel
 from redis.asyncio import Redis
 
+from api.admin import require_admin
 from api.config import AppSettings
 from api.dependencies import get_app_settings, get_redis
 from reporting.plausibility import assess
@@ -29,28 +30,6 @@ HIDDEN_FIELDS = {"device_id", "event_id", "plausibility", "consent_version", "ty
 
 class Review(BaseModel):
     status: Literal["valid", "dismissed", "pending"]
-
-
-async def require_report_admin(
-    request: Request,
-    seismik_session: str | None = Cookie(default=None),
-    settings: AppSettings = Depends(get_app_settings),
-    redis: Redis = Depends(get_redis),
-) -> str:
-    raw = await redis.get(f"seismik:oauth:session:{seismik_session}") if seismik_session else None
-    if not raw:
-        raise HTTPException(401, "Inicia sesión para revisar los reportes")
-    session = json.loads(raw)
-    from api.firebase_login import validate_session
-
-    await validate_session(request, session)
-    email = str(session.get("email") or "").strip().casefold()
-    admins = {
-        item.strip().casefold() for item in settings.report_admin_emails.split(",") if item.strip()
-    }
-    if not email or email not in admins:
-        raise HTTPException(403, "Esta cuenta no puede revisar reportes")
-    return email
 
 
 def _received_at(stream_id: str) -> str:
@@ -75,7 +54,7 @@ async def _entries(redis: Redis, stream: str, limit: int) -> list[tuple[str, dic
 async def list_reports(
     response: Response,
     limit: int = Query(default=500, ge=1, le=2000),
-    admin: str = Depends(require_report_admin),
+    admin: str = Depends(require_admin),
     settings: AppSettings = Depends(get_app_settings),
     redis: Redis = Depends(get_redis),
 ) -> dict[str, Any]:
@@ -112,7 +91,7 @@ async def review_report(
     response: Response,
     stream: Literal["felt", "damage"],
     stream_id: str = Path(pattern=STREAM_ID),
-    admin: str = Depends(require_report_admin),
+    admin: str = Depends(require_admin),
     settings: AppSettings = Depends(get_app_settings),
     redis: Redis = Depends(get_redis),
 ) -> dict[str, Any]:
