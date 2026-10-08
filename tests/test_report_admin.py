@@ -7,10 +7,13 @@ import httpx
 import pytest
 from fakeredis.aioredis import FakeRedis
 from fastapi import FastAPI
+from starlette.requests import Request
 
+from api.admin import router as admin_router
 from api.bus import RedisEventBus
 from api.config import AppSettings
 from api.dependencies import get_app_settings, get_bus, get_redis
+from api.oauth import _finish_login
 from reporting.admin import REVIEW_KEY
 from reporting.ingest import router
 from reporting.plausibility import assess
@@ -70,7 +73,7 @@ ADMIN = session("admin-token")
 
 
 async def setup(admins: str = "admin@example.com"):
-    settings = AppSettings(report_admin_emails=admins)
+    settings = AppSettings(admin_emails=admins)
     redis = FakeRedis(decode_responses=True)
     await redis.xadd(settings.official_stream, {"payload": json.dumps({
         "event_id": EVENT["event_id"],
@@ -85,8 +88,15 @@ async def setup(admins: str = "admin@example.com"):
     )})
     for token, email in (("admin-token", "Admin@Example.com"), ("user-token", "user@example.com")):
         await redis.set(f"seismik:oauth:session:{token}", json.dumps({"uid": token, "email": email}))
+    await redis.xadd(settings.developer_audit_stream, {"payload": json.dumps(
+        {"action": "key_created", "email": "dev@example.com", "api_key": "sk_live_secret",
+         "client_ip": "1.2.3.4", "nested": {"session_token": "abc"}}
+    )})
+    await redis.hset("seismik:device:device-1", mapping={"platform": "ios"})
+    await redis.hset("seismik:developer-profile:dev-1", mapping={"plan": "free"})
     app = FastAPI()
     app.include_router(router)
+    app.include_router(admin_router)
     app.state.redis = redis
     app.dependency_overrides[get_app_settings] = lambda: settings
     app.dependency_overrides[get_redis] = lambda: redis
@@ -168,3 +178,60 @@ async def test_web_ingest_stores_plausibility() -> None:
         assert (await client.post("/v1/reports/web/felt", json=body)).status_code == 202
     stored = json.loads((await redis.xrange(settings.felt_reports_stream))[0][1]["payload"])
     assert stored["plausibility"]["status"] == "implausible"
+
+@pytest.mark.asyncio
+async def test_overview_counts_streams_and_accounts_for_admins_only() -> None:
+    client, _ = await setup()
+    async with client:
+        assert (await client.get("/v1/admin/overview")).status_code == 401
+        user = await client.get("/v1/admin/overview", headers=session("user-token"))
+        assert user.status_code == 403
+        assert (await client.get("/v1/admin/me", headers=ADMIN)).json() == {
+            "email": "admin@example.com"
+        }
+        data = (await client.get("/v1/admin/overview", headers=ADMIN)).json()
+    streams = {item["name"]: item for item in data["streams"]}
+    assert streams["felt"]["total"] == 2 and streams["felt"]["last_24h"] == 2
+    assert streams["official"]["total"] == 1
+    assert streams["damage"]["total"] == 0 and streams["damage"]["last_at"] is None
+    assert data["keys"]["devices"] == 1
+    assert data["keys"]["developer_accounts"] == 1
+    assert data["keys"]["web_sessions"] == 2
+    assert data["keys_complete"] is True
+
+
+@pytest.mark.asyncio
+async def test_records_hide_secrets_and_reject_unknown_streams() -> None:
+    client, _ = await setup()
+    async with client:
+        data = (await client.get("/v1/admin/records/developer_audit", headers=ADMIN)).json()
+        unknown = await client.get("/v1/admin/records/oauth-sessions", headers=ADMIN)
+        anonymous = await client.get("/v1/admin/records/felt")
+    entry = data["records"][0]["data"]
+    assert entry["email"] == "dev@example.com" and entry["action"] == "key_created"
+    assert entry["api_key"] == entry["client_ip"] == entry["nested"]["session_token"] == "•••"
+    assert unknown.status_code == 404
+    assert anonymous.status_code == 401
+
+
+def login_request(cookie: str = "") -> Request:
+    app = FastAPI()
+    app.state.settings = AppSettings()
+    app.state.redis = FakeRedis(decode_responses=True)
+    headers = [(b"cookie", cookie.encode())] if cookie else []
+    return Request({"type": "http", "app": app, "headers": headers, "method": "GET",
+                    "path": "/", "query_string": b""})
+
+
+@pytest.mark.asyncio
+async def test_login_returns_to_admin_only_with_the_fixed_marker() -> None:
+    user = {"uid": "u-1", "email": "support@example.com", "name": "Support"}
+    plain = await _finish_login(login_request(), user, None)
+    assert plain.headers["location"] == "https://devs.seismik.org/"
+    admin = await _finish_login(login_request("seismik_after_login=admin"), user, None)
+    assert admin.headers["location"] == "https://admin.seismik.org/"
+    assert any(
+        value.startswith("seismik_after_login=") for value in admin.headers.getlist("set-cookie")
+    )
+    other = await _finish_login(login_request("seismik_after_login=https://evil.example"), user, None)
+    assert other.headers["location"] == "https://devs.seismik.org/"
