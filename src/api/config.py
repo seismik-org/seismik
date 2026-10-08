@@ -52,6 +52,10 @@ class AppSettings(BaseSettings):
     turnstile_web_hostname: str = "seismik.org"
     felt_web_hostname: str = "ifeltit.seismik.org"
     google_maps_web_api_key: str = ""
+    # Correos (separados por comas) que pueden revisar los reportes ciudadanos en
+    # devs.seismik.org/reportes/. Vacío: nadie, el panel falla cerrado. Vive en el
+    # entorno de Cloud Run, no en el repositorio público.
+    report_admin_emails: str = ""
     account_deletion_request_stream: str = "stream:seismik:account-deletion-requests"
     account_deletion_requests_per_hour: int = Field(default=5, ge=1, le=1_000)
     integration_stream: str = "stream:seismik:integrations"
