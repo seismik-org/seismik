@@ -15,6 +15,7 @@ from redis.asyncio import Redis
 from redis.exceptions import ResponseError
 
 from api.config import AppSettings, get_settings
+from api.runtime_controls import heartbeat
 from integrations.catalog_alerts import CatalogAlertFeed
 from integrations.facebook_publisher import FacebookPublisher
 from integrations.security import derive_webhook_secret
@@ -168,7 +169,18 @@ async def run_integrations(*, serve_health: bool = True) -> None:
     facebook_publisher = asyncio.create_task(
         keep_running("Facebook publisher", FacebookPublisher(redis, settings).run, X_PUBLISHER_RETRY_SECONDS)
     )
-    background = (x_publisher, catalog_alerts, facebook_publisher)
+    operations = asyncio.create_task(heartbeat(redis, {
+        "x": settings.x_publisher_enabled and not settings.x_publisher_dry_run and all(
+            secret.get_secret_value() for secret in (
+                settings.x_consumer_key, settings.x_consumer_secret,
+                settings.x_access_token, settings.x_access_token_secret,
+            )
+        ),
+        "facebook": settings.facebook_publisher_enabled and not settings.facebook_publisher_dry_run
+        and settings.facebook_page_id.isdecimal()
+        and bool(settings.facebook_page_access_token.get_secret_value()),
+    }))
+    background = (x_publisher, catalog_alerts, facebook_publisher, operations)
     health_server = start_health_server() if serve_health else None
     try:
         await worker.run()

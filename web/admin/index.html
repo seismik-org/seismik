@@ -17,6 +17,7 @@
   <link rel="stylesheet" href="/admin.css?v=__ASSET_VERSION__">
   <script src="/reportes.js?v=__ASSET_VERSION__" defer></script>
   <script src="/admin.js?v=__ASSET_VERSION__" defer></script>
+<link rel="stylesheet" href="/footer.css?v=__ASSET_VERSION__">
 </head>
 <body>
   <header class="site-header">
@@ -46,6 +47,7 @@
         <button type="button" role="tab" data-tab="overview" aria-selected="true">Resumen</button>
         <button type="button" role="tab" data-tab="reports" aria-selected="false">Reportes</button>
         <button type="button" role="tab" data-tab="records" aria-selected="false">Registros</button>
+        <button type="button" role="tab" data-tab="controls" aria-selected="false">Controles</button>
       </nav>
 
       <section id="tab-overview" role="tabpanel">
@@ -116,11 +118,22 @@
           <label>Buscar<input id="record-q" type="search" placeholder="Texto dentro de la entrada" autocomplete="off"></label>
         </form>
         <p id="record-count" class="report-count" role="status"></p>
+        <button id="record-reload" class="button secondary compact keep" type="button">Actualizar registro ↻</button>
         <ol id="record-list" class="record-list"></ol>
+      </section>
+
+      <section id="tab-controls" role="tabpanel" hidden>
+        <div class="reports-heading"><div><p class="eyebrow">Operación</p><h1>Controles del servicio</h1>
+          <p class="reports-intro">Pausa o reanuda funciones configuradas. Cada cambio queda en auditoría y se conserva al reiniciar los servicios. Los envíos ya iniciados pueden terminar.</p></div>
+          <button id="controls-reload" class="button secondary compact keep" type="button">Actualizar estado ↻</button></div>
+        <p class="reports-intro">Pausar alertas detiene las alarmas y avisos sísmicos a dispositivos. Los avisos de familia continúan. Los eventos omitidos durante una pausa no se vuelven a enviar al reanudar.</p>
+        <ul id="controls-list" class="controls-list"></ul>
+        <p id="controls-status" class="report-status" role="status" aria-live="polite"></p>
       </section>
     </div>
 
     <p id="status" class="report-status" role="status" aria-live="polite"></p>
   </main>
+<footer class="site-footer"><div class="container footer-bottom"><span>© 2026 Seismik</span></div></footer>
 </body>
 </html>

@@ -10,6 +10,7 @@ from typing import Any
 
 import requests
 
+from api.runtime_controls import paused
 from integrations.x_publisher import XPublisher, bulletin_text
 
 
@@ -28,9 +29,15 @@ class FacebookPublisher(XPublisher):
         await self._run_catalogs()
 
     async def _publish(self, event: dict[str, Any], published_key: str) -> None:
+        if await paused(self.redis, self.namespace):
+            await self._audit(str(event["event_id"]), "skipped_paused")
+            return
         event_id = str(event["event_id"])
         text = bulletin_text(event)
         image = await self._render_card(event)
+        if await paused(self.redis, self.namespace):
+            await self._audit(event_id, "skipped_paused")
+            return
         if not self.settings.facebook_publisher_enabled or self.settings.facebook_publisher_dry_run:
             await self._audit(event_id, "dry_run", text=text, image="yes" if image else "no")
             return

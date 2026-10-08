@@ -14,6 +14,7 @@ from api.accounts import devices_for_account
 from api.config import AppSettings, get_settings
 from api.devices_store import DeviceRepository
 from api.family import family_members_key
+from api.runtime_controls import heartbeat, paused
 from api.schemas import DeviceTarget
 from dispatcher.policy import (
     CATALOG_ORIGIN,
@@ -143,7 +144,7 @@ class StreamConsumer:
                 longitude=longitude,
                 magnitude=magnitude,
             )
-            result = await self.push.send(event, targets, critical=True)
+            result = await self._send_earthquake(event, targets, critical=True)
             await self._record_dry_run(event, result, critical=True)
             await self._record_ledger(event, critical=True, delivered=result.attempted)
             await self._remove_invalid(result.invalid_device_ids)
@@ -200,11 +201,11 @@ class StreamConsumer:
             if alarms:
                 # Quien quedó en la zona de sacudida fuerte recibe la alarma,
                 # aunque haya apagado los avisos o subido su magnitud mínima.
-                alarm_result = await self.push.send(event, alarms, critical=True)
+                alarm_result = await self._send_earthquake(event, alarms, critical=True)
                 await self._record_dry_run(event, alarm_result, critical=True)
                 await self._remove_invalid(alarm_result.invalid_device_ids)
                 attempted += alarm_result.attempted
-            result = await self.push.send(event, notices, critical=False)
+            result = await self._send_earthquake(event, notices, critical=False)
             await self._record_dry_run(event, result, critical=False)
             await self._remove_invalid(result.invalid_device_ids)
             attempted += result.attempted
@@ -217,6 +218,17 @@ class StreamConsumer:
             "Official push event_id=%s alarms=%d notices=%d",
             event["event_id"], len(alarms), len(notices),
         )
+
+    async def _send_earthquake(
+        self, event: dict[str, Any], targets: list[DeviceTarget], *, critical: bool,
+    ) -> PushResult:
+        if await paused(self.redis, "alerts"):
+            await self.redis.xadd(self.settings.developer_audit_stream, {
+                "action": "alert.skipped_paused", "event_id": str(event["event_id"]),
+                "at": datetime.now(timezone.utc).isoformat(),
+            }, maxlen=self.settings.stream_maxlen, approximate=True)
+            return PushResult(0, 0)
+        return await self.push.send(event, targets, critical=critical)
 
     async def _handle_family_status(self, event: dict[str, Any]) -> None:
         """Avisa al resto del círculo que alguien reportó su estado tras un sismo."""
@@ -438,9 +450,12 @@ async def run_dispatcher(*, serve_health: bool = True) -> None:
             loop.add_signal_handler(signal_name, worker.stop)
         except (NotImplementedError, RuntimeError):
             pass
+    operations = asyncio.create_task(heartbeat(redis, {"alerts": settings.push_enabled}))
     try:
         await worker.run()
     finally:
+        operations.cancel()
+        await asyncio.gather(operations, return_exceptions=True)
         if health_server is not None:
             health_server.shutdown()
         await redis.aclose()

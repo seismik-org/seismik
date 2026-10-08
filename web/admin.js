@@ -13,6 +13,24 @@ const KEY_LABELS = {
 };
 const loaded = new Set();
 let records = [];
+let recordRequest = 0;
+let controlsBusy = false;
+
+function clearData() {
+  recordRequest++;
+  loaded.clear();
+  reports = [];
+  records = [];
+  for (const selector of ["#rows", "#record-list", "#key-stats", "#stream-rows", "#stats", "#controls-list", "#record-stream"]) $(selector).replaceChildren();
+  $("#export").disabled = true;
+}
+function accessError(error) {
+  if (![401, 403].includes(error.status)) return false;
+  clearData();
+  showUser("");
+  showGate("Vuelve a iniciar sesión", error.message);
+  return true;
+}
 
 function showGate(title, text, {login = true, switchAccount = false} = {}) {
   $("#app").hidden = true;
@@ -36,22 +54,16 @@ function login() {
 }
 async function logout() {
   await api("/v1/oauth/logout", {method:"POST"}).catch(() => {});
-  loaded.clear();
-  reports = [];
-  records = [];
-  for (const selector of ["#rows", "#record-list", "#key-stats", "#stream-rows", "#stats"]) $(selector).replaceChildren();
-  $("#export").disabled = true;
+  clearData();
   start();
 }
 
-function openTab(name) {
+async function openTab(name) {
   for (const tab of document.querySelectorAll("[data-tab]")) tab.setAttribute("aria-selected", String(tab.dataset.tab === name));
   for (const panel of document.querySelectorAll("[role=tabpanel]")) panel.hidden = panel.id !== `tab-${name}`;
   if (loaded.has(name)) return;
-  loaded.add(name);
-  if (name === "overview") loadOverview();
-  if (name === "reports") loadReports();
-  if (name === "records") loadRecords();
+  const loaders = {overview:loadOverview, reports:loadReports, records:loadRecords, controls:loadControls};
+  if (await loaders[name]()) loaded.add(name);
 }
 
 async function loadOverview() {
@@ -71,7 +83,7 @@ async function loadOverview() {
       const view = element("button", "link-button", "Ver entradas");
       view.type = "button";
       view.disabled = !stream.total;
-      view.addEventListener("click", () => { $("#record-stream").value = stream.name; loaded.add("records"); openTab("records"); loadRecords(); });
+      view.addEventListener("click", () => { $("#record-stream").value = stream.name; loaded.delete("records"); openTab("records"); });
       const action = element("td");
       action.append(view);
       row.append(
@@ -92,8 +104,11 @@ async function loadOverview() {
       }
     }
     $("#overview-status").textContent = "";
+    return true;
   } catch (error) {
+    if (accessError(error)) return false;
     $("#overview-status").textContent = `No se pudo cargar el resumen: ${error.message}`;
+    return false;
   }
 }
 
@@ -116,16 +131,68 @@ function renderRecords() {
   $("#record-count").textContent = `${visible.length} de ${records.length} entradas mostradas`;
 }
 async function loadRecords() {
+  if (!$("#record-stream").value && !await loadOverview()) return false;
   const name = $("#record-stream").value;
-  if (!name) { await loadOverview(); if (!$("#record-stream").value) return; }
+  const request = ++recordRequest;
+  records = [];
+  $("#record-list").replaceChildren();
   $("#record-count").textContent = "Cargando…";
   try {
-    const data = await api(`/v1/admin/records/${encodeURIComponent($("#record-stream").value)}?limit=${$("#record-limit").value}`);
+    const data = await api(`/v1/admin/records/${encodeURIComponent(name)}?limit=${$("#record-limit").value}`);
+    if (request !== recordRequest) return false;
     records = data.records;
     renderRecords();
     $("#record-count").textContent = `${records.length} de ${data.total.toLocaleString("es")} entradas · ${data.title}`;
+    return true;
   } catch (error) {
+    if (request !== recordRequest || accessError(error)) return false;
     $("#record-count").textContent = `No se pudo cargar el registro: ${error.message}`;
+    loaded.delete("records");
+    return false;
+  }
+}
+
+function renderControls(controls) {
+  $("#controls-list").replaceChildren(...controls.map(control => {
+    const card = element("li", "control-card");
+    const info = element("div");
+    info.append(element("h2", "", control.label), element("p", "", control.paused ? "Pausado" : control.enabled ? "Activo" : control.worker_available ? "Sin configurar para envíos" : "Servicio sin conexión reciente"));
+    const button = element("button", "button secondary compact keep", control.paused ? "Reanudar" : "Pausar");
+    button.type = "button";
+    button.disabled = controlsBusy || (control.paused && !control.configured);
+    button.addEventListener("click", () => changeControl(control));
+    card.append(info, button);
+    return card;
+  }));
+}
+async function loadControls() {
+  if (controlsBusy) return false;
+  $("#controls-status").textContent = "Consultando servicios…";
+  try {
+    renderControls((await api("/v1/admin/controls")).controls);
+    $("#controls-status").textContent = "";
+    return true;
+  } catch (error) {
+    if (!accessError(error)) $("#controls-status").textContent = `No se pudo cargar el estado: ${error.message}`;
+    return false;
+  }
+}
+async function changeControl(control) {
+  const verb = control.paused ? "reanudar" : "pausar";
+  if (!window.confirm(`¿Quieres ${verb} ${control.label.toLocaleLowerCase("es")}?`)) return;
+  controlsBusy = true;
+  for (const button of $("#controls-list").querySelectorAll("button")) button.disabled = true;
+  $("#controls-status").textContent = "Guardando cambio…";
+  try {
+    const data = await api(`/v1/admin/controls/${encodeURIComponent(control.id)}`, {method:"PUT", body:JSON.stringify({enabled:control.paused})});
+    controlsBusy = false;
+    renderControls(data.controls);
+    $("#controls-status").textContent = `Cambio confirmado: ${control.label} ${control.paused ? "reanuda su funcionamiento" : "queda pausado"}.`;
+  } catch (error) {
+    controlsBusy = false;
+    if (accessError(error)) return;
+    await loadControls();
+    $("#controls-status").textContent = `No se pudo confirmar el cambio: ${error.message}. Revisa el estado antes de reintentar.`;
   }
 }
 
@@ -160,7 +227,9 @@ for (const tab of document.querySelectorAll("[data-tab]")) tab.addEventListener(
 $("#overview-reload").addEventListener("click", loadOverview);
 $("#record-stream").addEventListener("change", loadRecords);
 $("#record-limit").addEventListener("change", loadRecords);
+$("#record-reload").addEventListener("click", loadRecords);
+$("#controls-reload").addEventListener("click", loadControls);
 $("#record-q").addEventListener("input", renderRecords);
 $("#record-form").addEventListener("submit", event => event.preventDefault());
 start();
-window.addEventListener("pageshow", event => { if (event.persisted) { loaded.clear(); start(); } });
+window.addEventListener("pageshow", event => { if (event.persisted) { clearData(); start(); } });
