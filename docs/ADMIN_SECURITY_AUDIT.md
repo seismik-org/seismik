@@ -40,6 +40,13 @@ sin imprimirla y sólo asigna lectura al service account de la API. Se inyecta c
 No reutiliza el secreto del borde. No rotar/destruir esa clave sin migrar previamente
 los secretos cifrados; perderla inutiliza los autenticadores registrados.
 
+En producción se reutilizó el permiso existente de lectura de secretos de
+`seismik-run-api`, sin ampliar IAM ni dar administración de Secret Manager a GitHub.
+El workflow sólo verifica la referencia de Cloud Run cuando ya está configurada.
+La cuenta de API tiene lectura de secretos a nivel proyecto: conviene revisar y
+reducir ese alcance a los secretos realmente usados por todos sus consumidores
+en una auditoría de infraestructura antes de retirar ese permiso compartido.
+
 El usuario completa personalmente el enrolamiento en su aplicación. Añadir cuenta
 con clave manual y tipo basado en tiempo; no se usa un generador QR externo.
 Los diez códigos de recuperación se muestran una vez después de activar MFA.
