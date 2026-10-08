@@ -45,8 +45,9 @@ test('admin CSV neutralizes formulas in untrusted report fields', async () => {
   vm.runInContext(readFileSync('web/reportes.js', 'utf8'), context);
   for (const value of ['=HYPERLINK("https://evil.example")', '+cmd', '@SUM(1)', '-cmd', ' \t=1+1']) {
     context.example = value;
-    vm.runInContext(`reports = [{received_at:'now',source:'web',kind:'felt',event:{place:example},report:{report_id:'safe'},plausibility:{status:'unknown',reasons:[]}}]; exportCsv();`, context);
+    vm.runInContext(`reports = [{received_at:'now',source:'web',kind:'felt',event:{place:example},report:{report_id:'safe',longitude:-74.05},plausibility:{status:'unknown',reasons:[]}}]; exportCsv();`, context);
     assert.ok((await blob.text()).includes(`"'${value.replaceAll('"', '""')}"`));
+    assert.ok((await blob.text()).includes('"-74.05"'));
   }
 });
 test('edge survives a failed origin, preserving 503 and serving its own assets', async () => {
