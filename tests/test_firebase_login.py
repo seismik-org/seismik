@@ -142,7 +142,7 @@ async def test_reset_disabled_or_unverified_revokes_existing_cookie(app: FastAPI
     async with client_for(app) as client:
         await exchange(client)
         for key, value in change.items():
-            setattr(app.state.user, key, value)
+            setattr(app.state.user, key, (time.time() + 10) * 1000 if key == "tokens_valid_after_timestamp" else value)
         assert (await client.get("/v1/oauth/session")).status_code == 401
 
 

@@ -102,6 +102,11 @@ async def _finish_login(
     app_challenge: str | None = None,
 ) -> Response:
     """Issue the browser cookie and, only for the native app, a one-time code."""
+    from api.admin_security import finish_admin_login
+
+    admin_response = await finish_admin_login(request, user) if not return_to else None
+    if admin_response is not None:
+        return admin_response
     settings = request.app.state.settings
     session = secrets.token_urlsafe(48)
     user = {**user, "authenticated_at": str(int(time.time()))}
@@ -111,11 +116,6 @@ async def _finish_login(
         ex=settings.oauth_session_ttl_seconds,
     )
     target = settings.developer_portal_url
-    # admin.seismik.org deja esta marca antes de enviar a auth. Sólo elige entre
-    # destinos fijos de la configuración; nunca es una URL del visitante.
-    to_admin = not return_to and request.cookies.get(AFTER_LOGIN_COOKIE) == "admin"
-    if to_admin:
-        target = settings.admin_portal_url
     if return_to:
         code = secrets.token_urlsafe(32)
         await request.app.state.redis.set(
@@ -130,8 +130,6 @@ async def _finish_login(
         secure=True, httponly=True, samesite="lax", path="/",
         domain=settings.oauth_cookie_domain,
     )
-    if to_admin:
-        response.delete_cookie(AFTER_LOGIN_COOKIE, path="/", domain=settings.oauth_cookie_domain)
     return response
 
 
@@ -275,10 +273,9 @@ async def google_callback(request: Request, code: str | None = None, state: str 
     settings = request.app.state.settings
     if not code or not state:
         raise HTTPException(status_code=400, detail="Respuesta OAuth incompleta")
-    raw = await request.app.state.redis.get(f"seismik:oauth:state:{state}")
+    raw = await request.app.state.redis.getdel(f"seismik:oauth:state:{state}")
     if not raw:
         raise HTTPException(status_code=400, detail="Estado OAuth inválido o expirado")
-    await request.app.state.redis.delete(f"seismik:oauth:state:{state}")
     saved = json.loads(raw)
     verifier = saved["verifier"]
     async with httpx.AsyncClient(timeout=10) as client:
@@ -354,10 +351,9 @@ async def github_callback(
     settings = request.app.state.settings
     if not code or not state:
         raise HTTPException(status_code=400, detail="Respuesta OAuth incompleta")
-    raw = await request.app.state.redis.get(f"seismik:oauth:state:{state}")
+    raw = await request.app.state.redis.getdel(f"seismik:oauth:state:{state}")
     if not raw:
         raise HTTPException(status_code=400, detail="Estado OAuth inválido o expirado")
-    await request.app.state.redis.delete(f"seismik:oauth:state:{state}")
     saved = json.loads(raw)
     if saved.get("provider") != "github":
         raise HTTPException(status_code=400, detail="Estado OAuth no coincide con GitHub")

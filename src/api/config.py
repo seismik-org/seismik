@@ -30,6 +30,7 @@ class AppSettings(BaseSettings):
     crowd_master_secret: SecretStr = SecretStr("change-me-crowd-secret")
     developer_portal_origins: tuple[str, ...] = ("https://devs.seismik.org",)
     developer_portal_url: str = "https://devs.seismik.org/"
+    admin_mfa_encryption_key: SecretStr = SecretStr("")
     admin_portal_url: str = "https://admin.seismik.org/"
     developer_terms_version: str = "2026-08-30"
     developer_max_active_keys: int = Field(default=3, ge=1, le=20)

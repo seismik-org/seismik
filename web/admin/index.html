@@ -16,6 +16,7 @@
   <link rel="stylesheet" href="/reportes.css?v=__ASSET_VERSION__">
   <link rel="stylesheet" href="/admin.css?v=__ASSET_VERSION__">
   <script src="/reportes.js?v=__ASSET_VERSION__" defer></script>
+  <script src="/admin-mfa.js?v=__ASSET_VERSION__" defer></script>
   <script src="/admin.js?v=__ASSET_VERSION__" defer></script>
 <link rel="stylesheet" href="/footer.css?v=__ASSET_VERSION__">
 </head>
@@ -42,6 +43,21 @@
       </div>
     </section>
 
+    <section id="mfa" class="reports-gate card" hidden>
+      <img class="admin-gate-logo" src="/assets/seismik_logo.webp" width="64" height="64" alt="Seismik">
+      <p class="eyebrow">Segundo factor obligatorio</p>
+      <h1 id="mfa-title">Configura tu autenticador</h1>
+      <p id="mfa-description"></p>
+      <button id="mfa-enroll" class="button keep" type="button">Configurar autenticador</button>
+      <div id="mfa-setup" hidden><p>En tu aplicación añade una cuenta llamada <strong>Seismik Admin</strong>, elige clave de configuración y tipo basado en tiempo:</p><code id="mfa-secret" class="mfa-secret"></code></div>
+      <form id="mfa-form" hidden><label>Código del autenticador o de recuperación<input id="mfa-code" type="text" autocomplete="one-time-code" maxlength="64" required></label><button id="mfa-submit" class="button keep" type="submit">Verificar</button></form>
+      <div id="mfa-backup" hidden><h2>Códigos de recuperación</h2><pre id="mfa-recovery"></pre><button id="mfa-continue" class="button keep" type="button">Ya guardé los códigos · Entrar</button></div>
+      <p id="mfa-message" role="status" aria-live="polite"></p>
+    </section>
+    <dialog id="action-mfa" class="mfa-dialog" aria-labelledby="action-title">
+      <h2 id="action-title">Confirmar cambio con MFA</h2><p id="action-description"></p>
+      <form id="action-form"><label>Código nuevo del autenticador<input id="action-code" type="text" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" minlength="6" maxlength="6" required></label><p id="action-message" role="status" aria-live="polite"></p><div class="gate-actions"><button id="action-submit" class="button keep" type="submit">Verificar y aplicar</button><button id="action-cancel" class="button secondary keep" type="button">Cancelar</button></div></form>
+    </dialog>
     <div id="app" hidden>
       <nav class="admin-tabs" role="tablist" aria-label="Secciones">
         <button type="button" role="tab" data-tab="overview" aria-selected="true">Resumen</button>

@@ -6,17 +6,16 @@ los registros ocultan tokens, firmas, secretos e IP antes de salir de la API.
 """
 from __future__ import annotations
 
-import hashlib
 import json
 import re
-import time
 from datetime import datetime, timedelta, timezone
 from typing import Any, cast
 
-from fastapi import APIRouter, Cookie, Depends, HTTPException, Query, Request, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from pydantic import BaseModel, ConfigDict, StrictBool
 from redis.asyncio import Redis
 
+from api.admin_security import require_action, require_admin
 from api.config import AppSettings
 from api.dependencies import get_app_settings, get_redis
 from api.runtime_controls import FEATURES, PAUSE_KEY, state
@@ -32,6 +31,7 @@ KEY_GROUPS = (
     ("api_keys", "seismik:developer-key:"),
     ("webhook_owners", "seismik:webhooks:"),
     ("family_circles", "seismik:family:circle:"),
+    ("admin_sessions", "seismik:admin:session:"),
     ("web_sessions", "seismik:oauth:session:"),
     ("app_sessions", "seismik:oauth:mobile-session:"),
 )
@@ -39,7 +39,7 @@ KEY_GROUPS = (
 MAX_SCANNED_KEYS = 200_000
 SECRET_FIELD = re.compile(
     r"token|secret|signature|password|hash|session|cookie|authorization|credential|"
-    r"private.?key|client.?ip|ip.?address|(^|_)ip($|_)|(^|_)key$", re.I
+    r"private.?key|totp|recovery|otp|mfa|client.?ip|ip.?address|(^|_)ip($|_)|(^|_)key$", re.I
 )
 
 
@@ -64,65 +64,26 @@ def streams(settings: AppSettings) -> dict[str, tuple[str, str]]:
     }
 
 
-async def require_admin(
-    request: Request,
-    response: Response,
-    seismik_session: str | None = Cookie(default=None),
-    settings: AppSettings = Depends(get_app_settings),
-    redis: Redis = Depends(get_redis),
-) -> str:
-    response.headers["Cache-Control"] = "no-store"
-    response.headers["X-Robots-Tag"] = "noindex, nofollow"
-    if settings.environment.lower() != "development" and (
-        not request.scope.get("seismik.edge_authenticated")
-        or request.headers.get("x-seismik-admin-host") != "admin.seismik.org"
-    ):
-        raise HTTPException(403, "Acceso sólo desde el borde autenticado del panel")
-    origin = request.headers.get("origin")
-    allowed = {"https://admin.seismik.org"}
-    if settings.environment.lower() == "development":
-        allowed.update({"http://localhost:8080", "http://127.0.0.1:8080"})
-    if origin is not None and origin not in allowed:
-        raise HTTPException(403, "Origen de administración no permitido")
-    if request.method not in {"GET", "HEAD", "OPTIONS"} and (
-        origin not in allowed or request.headers.get("x-seismik-admin") != "1"
-    ):
-        raise HTTPException(403, "Petición de administración no permitida")
-    raw = await redis.get(f"seismik:oauth:session:{seismik_session}") if seismik_session else None
-    if not raw:
-        raise HTTPException(401, "Inicia sesión en auth.seismik.org")
-    try:
-        session = json.loads(raw)
-        authenticated_at = float(session.get("authenticated_at", 0))
-        age = time.time() - authenticated_at
-    except (ValueError, TypeError, AttributeError):
-        raise HTTPException(401, "Sesión inválida") from None
-    if not 0 <= age <= 8 * 3600:
-        raise HTTPException(401, "Vuelve a iniciar sesión para administrar Seismik")
-    from api.firebase_login import validate_session
 
-    await validate_session(request, session)
-    email = str(session.get("email") or "").strip().casefold()
-    admins = {item.strip().casefold() for item in settings.admin_emails.split(",") if item.strip()}
-    if not email or email not in admins:
-        raise HTTPException(403, "Esta cuenta no tiene acceso a la administración de Seismik")
-    bucket = int(time.time() // 60)
-    identity = hashlib.sha256(str(seismik_session).encode()).hexdigest()
-    rate_key = f"seismik:admin:rate:{identity}:{bucket}"
-    await redis.set(rate_key, 0, ex=120, nx=True)
-    if int(await redis.incr(rate_key)) > 120:
-        raise HTTPException(429, "Demasiadas consultas; espera un minuto")
-    return email
-
-
-def redact(value: Any) -> Any:
+def redact(value: Any, depth: int = 0) -> Any:
+    if depth > 12:
+        return "•••"
     if isinstance(value, dict):
         return {
-            key: "•••" if SECRET_FIELD.search(str(key)) and value_ else redact(value_)
+            key: "•••" if SECRET_FIELD.search(str(key)) and value_ else redact(value_, depth + 1)
             for key, value_ in value.items()
         }
     if isinstance(value, list):
-        return [redact(item) for item in value]
+        return [redact(item, depth + 1) for item in value]
+    if isinstance(value, str):
+        if value.lstrip().startswith(("{", "[")):
+            try:
+                return redact(json.loads(value, parse_constant=lambda _: None), depth + 1)
+            except (ValueError, RecursionError):
+                return "•••"
+        value = re.sub(r"(?i)(Bearer\s+)[A-Za-z0-9._~+/=-]+", r"\1•••", value)
+        value = re.sub(r"(?i)((?:token|secret|password|api_key|signature)=)[^&\s]+", r"\1•••", value)
+        value = re.sub(r"eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+", "•••", value)
     return value
 
 
@@ -133,8 +94,10 @@ def _decode(fields: dict[str, str]) -> dict[str, Any]:
             payload = json.loads(fields["payload"], parse_constant=lambda _: None)
             if isinstance(payload, dict):
                 return payload
-        except ValueError:
+        except (ValueError, RecursionError):
             pass
+        # Malformed payloads must not turn a decoding failure into a secret leak.
+        return {"payload": "•••"}
     return dict(fields)
 
 
@@ -237,7 +200,7 @@ async def controls(
 
 @router.put("/controls/{feature}")
 async def change_control(
-    feature: str, change: ControlChange,
+    feature: str, change: ControlChange, request: Request,
     admin: str = Depends(require_admin),
     redis: Redis = Depends(get_redis),
     settings: AppSettings = Depends(get_app_settings),
@@ -247,6 +210,7 @@ async def change_control(
     current = next(item for item in await state(redis) if item["id"] == feature)
     if change.enabled and not current["configured"]:
         raise HTTPException(409, "El servicio no está configurado o no está disponible para reanudarlo")
+    await require_action(request, redis, f"control:{feature}:{str(change.enabled).lower()}")
     # The switch and its audit record succeed or fail together.
     pipe = redis.pipeline(transaction=True)
     pipe.hset(PAUSE_KEY, feature, "0" if change.enabled else "1")
