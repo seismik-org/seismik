@@ -1,9 +1,35 @@
 "use strict";
 // Secrets/codes stay in this page's memory; never in URL, storage or telemetry.
 let actionRequest = null;
-function clearMfa() {
-  for (const id of ['#mfa-code', '#action-code']) $(id).value = '';
+let enrollmentTimer = null;
+let mfaGeneration = 0;
+function clearEnrollment() {
+  clearTimeout(enrollmentTimer);
+  enrollmentTimer = null;
   $('#mfa-secret').textContent = '';
+  $('#mfa-qr').width = 0;
+  $('#mfa-qr').height = 0;
+  $('#mfa-manual').open = false;
+  $('#mfa-setup').hidden = true;
+}
+function renderMfaQr(uri) {
+  const qr = qrcodegen.QrCode.encodeText(uri, qrcodegen.QrCode.Ecc.MEDIUM);
+  const canvas = $('#mfa-qr');
+  const scale = 6, border = 4;
+  canvas.width = canvas.height = (qr.size + border * 2) * scale;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('No se pudo mostrar el QR. Usa la clave manual.');
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = '#000000';
+  for (let y = 0; y < qr.size; y++) for (let x = 0; x < qr.size; x++) {
+    if (qr.getModule(x, y)) ctx.fillRect((x + border) * scale, (y + border) * scale, scale, scale);
+  }
+}
+function clearMfa() {
+  mfaGeneration++;
+  clearEnrollment();
+  for (const id of ['#mfa-code', '#action-code']) $(id).value = '';
   $('#mfa-recovery').textContent = '';
   $('#mfa-setup').hidden = true;
   $('#mfa-backup').hidden = true;
@@ -34,24 +60,38 @@ async function adminAuthenticate() {
   return false;
 }
 $('#mfa-enroll').addEventListener('click', async () => {
+  const generation = mfaGeneration;
   $('#mfa-enroll').disabled = true;
   try {
     const data = await api('/v1/admin/auth/enroll', {method:'POST'});
+    if (generation !== mfaGeneration) return;
+    clearEnrollment();
+    $('#mfa-code').value = '';
     $('#mfa-secret').textContent = data.secret;
     $('#mfa-setup').hidden = false;
     $('#mfa-form').hidden = false;
-    $('#mfa-message').textContent = 'Añade una cuenta con clave de configuración, tipo basado en tiempo, y confirma con el código de seis dígitos. La clave expira en cinco minutos.';
+    $('#mfa-enroll').hidden = true;
+    $('#mfa-message').textContent = 'Este QR y su clave expiran en cinco minutos. Confirma con el código de seis dígitos de tu aplicación.';
+    enrollmentTimer = setTimeout(() => {
+      clearEnrollment();
+      $('#mfa-code').value = '';
+      $('#mfa-form').hidden = true;
+      $('#mfa-message').textContent = 'La configuración expiró. Vuelve a iniciar sesión para generar otro QR.';
+    }, 300000);
+    try { renderMfaQr(data.uri); }
+    catch { $('#mfa-manual').open = true; $('#mfa-message').textContent = 'No se pudo mostrar el QR. Puedes usar la clave manual y confirmar el código.'; }
   } catch (error) { $('#mfa-message').textContent = error.message; }
   finally { $('#mfa-enroll').disabled = false; }
 });
 $('#mfa-form').addEventListener('submit', async event => {
   event.preventDefault();
+  const generation = mfaGeneration;
   $('#mfa-submit').disabled = true;
   try {
     const data = await api('/v1/admin/auth/verify', {method:'POST', body:JSON.stringify({code:$('#mfa-code').value})});
+    if (generation !== mfaGeneration) return;
     $('#mfa-code').value = '';
-    $('#mfa-secret').textContent = '';
-    $('#mfa-setup').hidden = true;
+    clearEnrollment();
     if (data.recovery_codes.length) {
       $('#mfa-recovery').textContent = data.recovery_codes.join('\n');
       $('#mfa-form').hidden = true;
@@ -62,6 +102,7 @@ $('#mfa-form').addEventListener('submit', async event => {
   } catch (error) { $('#mfa-message').textContent = error.message; }
   finally { $('#mfa-code').value = ''; $('#mfa-submit').disabled = false; }
 });
+window.addEventListener('pagehide', clearMfa);
 $('#mfa-continue').addEventListener('click', () => { clearMfa(); start(); });
 function approveAction(action, label) {
   if (actionRequest) return Promise.resolve(null);
