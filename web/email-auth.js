@@ -92,7 +92,7 @@ async function finish() {
   if (!response.ok) throw { safeMessage: result.detail || "No se pudo completar el acceso." };
   await signOut(auth);
   const target = new URL(result.redirect);
-  if (target.origin !== "https://devs.seismik.org" && !(flowId && target.protocol === "seismik:" && target.host === "auth" && target.pathname === "/callback")) {
+  if (!["https://devs.seismik.org", "https://admin.seismik.org"].includes(target.origin) && !(flowId && target.protocol === "seismik:" && target.host === "auth" && target.pathname === "/callback")) {
     throw { safeMessage: "Destino de acceso no permitido." };
   }
   location.assign(target.href);

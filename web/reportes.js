@@ -1,7 +1,7 @@
 "use strict";
-// Revisión interna de reportes. La API vive en el mismo origen (el Worker envía
-// /v1/* a la API), así la cookie de sesión del portal sirve sin más.
-const AUTH = "https://auth.seismik.org";
+// Pestaña «Reportes» de admin.seismik.org. La API vive en el mismo origen (el
+// Worker envía /v1/* a la API) y admin.js decide el acceso; los utilitarios de
+// aquí ($, element, api, dateTime, ago) también los usa admin.js.
 const $ = selector => document.querySelector(selector);
 const countries = new Intl.DisplayNames(["es"], {type:"region"});
 const dateTime = value => new Date(value).toLocaleString("es", {dateStyle:"medium", timeStyle:"short"});
@@ -47,44 +47,15 @@ async function api(path, options = {}) {
   return data;
 }
 
-function showGate(title, text, canLogin) {
-  $("#dashboard").hidden = true;
-  $("#gate").hidden = false;
-  $("#gate-title").textContent = title;
-  $("#gate-text").textContent = text;
-  $("#gate-login").hidden = !canLogin;
-  $("#export").disabled = true;
-}
-function showUser(email) {
-  $("#user-label").textContent = email || "";
-  $("#user-label").hidden = !email;
-  $("#logout-button").hidden = !email;
-  $("#login-button").hidden = Boolean(email);
-}
-
-async function load() {
-  $("#status").textContent = "Cargando reportes…";
+async function loadReports() {
+  $("#reports-status").textContent = "Cargando reportes…";
   try {
-    const data = await api("/v1/reports/admin/reports?limit=2000");
-    reports = data.reports;
-    showUser(data.admin);
-    $("#gate").hidden = true;
-    $("#dashboard").hidden = false;
+    reports = (await api("/v1/reports/admin/reports?limit=2000")).reports;
     $("#export").disabled = false;
-    $("#status").textContent = "";
+    $("#reports-status").textContent = "";
     render();
   } catch (error) {
-    $("#status").textContent = "";
-    if (error.status === 401) {
-      showUser("");
-      showGate("Inicia sesión", "Entra con la cuenta autorizada para revisar los reportes. Después de entrar, vuelve a esta página.", true);
-    } else if (error.status === 403) {
-      const session = await api("/v1/oauth/session").catch(() => ({}));
-      showUser(session.email || "");
-      showGate("Sin acceso", `${session.email || "Esta cuenta"} no está autorizada para revisar reportes. Sal y entra con la cuenta administradora.`, false);
-    } else {
-      $("#status").textContent = `No se pudieron cargar los reportes: ${error.message}`;
-    }
+    $("#reports-status").textContent = `No se pudieron cargar los reportes: ${error.message}`;
   }
 }
 
@@ -240,7 +211,7 @@ async function setReview(item, status, button) {
     render();
   } catch (error) {
     button.disabled = false;
-    $("#status").textContent = `No se guardó la revisión: ${error.message}`;
+    $("#reports-status").textContent = `No se guardó la revisión: ${error.message}`;
   }
 }
 
@@ -260,16 +231,7 @@ function exportCsv() {
   setTimeout(() => URL.revokeObjectURL(link.href), 1000);
 }
 
-const login = () => window.location.assign(`${AUTH}/id`);
-$("#login-button").addEventListener("click", login);
-$("#gate-login").addEventListener("click", login);
-$("#logout-button").addEventListener("click", async () => {
-  await api("/v1/oauth/logout", {method:"POST"}).catch(() => {});
-  reports = [];
-  load();
-});
-$("#reload").addEventListener("click", load);
+$("#reload").addEventListener("click", loadReports);
 $("#export").addEventListener("click", exportCsv);
 $("#filters").addEventListener("input", render);
 $("#filters").addEventListener("submit", event => event.preventDefault());
-load();
