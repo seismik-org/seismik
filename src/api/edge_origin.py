@@ -33,6 +33,8 @@ class EdgeOriginGuard:
         self._header = EDGE_ORIGIN_HEADER.encode()
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] == "http" and self._secret and self._authorized(scope):
+            scope["seismik.edge_authenticated"] = True
         if (
             scope["type"] != "http"
             or not self._secret

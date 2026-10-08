@@ -68,6 +68,15 @@
       body.append(link);
     }
 
+    // El formulario de ifeltit.seismik.org abre con este sismo ya elegido.
+    if (event.event_id) {
+      const report = document.createElement("a");
+      report.className = "showcase-link";
+      report.href = `https://ifeltit.seismik.org/?event=${encodeURIComponent(event.event_id)}`;
+      report.textContent = "¿Lo sentiste? Repórtalo";
+      body.append(report);
+    }
+
     item.append(body);
     return item;
   }
