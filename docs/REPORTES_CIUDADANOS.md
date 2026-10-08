@@ -19,6 +19,25 @@ Un reporte de daños no es una solicitud de rescate. Heridos, atrapados, incendi
 fuga de gas, colapso o peligro inmediato activan una advertencia para contactar a
 los servicios locales de emergencia.
 
+## Plausibilidad y revisión
+
+Cada reporte (app, web y daños) guarda `plausibility`, calculada en
+`src/reporting/plausibility.py` con el sismo indicado: distancia al epicentro,
+radio en el que suele sentirse (`10^(0.42·M + 0.2)` km) e intensidad esperada
+(`1 + 1,5·M − 3·log10(distancia hipocentral)`). Es `implausible` si alguien dice
+haberlo sentido a más del doble de ese radio, si la intensidad supera la esperada
+en más de 3 grados o si la hora es anterior al sismo; `unknown` si no hay sismo
+del catálogo con el que comparar. Es orientativa y nunca rechaza un envío.
+
+`https://devs.seismik.org/reportes/` lista los reportes de ambos orígenes con su
+sismo, distancia, plausibilidad (recalculada al consultar) y revisión. Entran sólo
+los correos de `SEISMIK_REPORT_ADMIN_EMAILS` (separados por comas, variable del
+servicio `seismik-api` en Cloud Run) con la sesión del portal; sin la variable el
+panel responde 403 a todos. Marcar un reporte como válido o descartado lo guarda
+en el hash `seismik:reports:review` con el correo y la fecha; el reporte original
+no se modifica ni se borra del stream. API: `GET /v1/reports/admin/reports` y
+`POST /v1/reports/admin/reports/{felt|damage}/{stream_id}/review`.
+
 Antes de producción se necesita una política de retención, borrado, acceso,
 moderación, antiabuso y cumplimiento jurídico por país. No deben hacerse públicos
 reportes individuales ni coordenadas sin agregación y evaluación de privacidad.
