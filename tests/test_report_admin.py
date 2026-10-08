@@ -11,6 +11,8 @@ from fastapi import FastAPI
 from starlette.requests import Request
 
 from api.admin import router as admin_router
+from api.admin_security import COOKIE, MFA_PREFIX, SESSION_PREFIX, account, digest
+from api.admin_security import router as security_router
 from api.bus import RedisEventBus
 from api.config import AppSettings
 from api.dependencies import get_app_settings, get_bus, get_redis
@@ -68,11 +70,17 @@ def test_missing_event_is_unknown() -> None:
 
 
 def session(token: str) -> dict[str, str]:
-    return {"Cookie": f"seismik_session={token}", "Origin": "https://admin.seismik.org",
-            "X-Seismik-Admin": "1"}
+    return {"Cookie": f"{COOKIE}={token}", "Origin": "https://admin.seismik.org",
+            "X-Seismik-Admin": "1", "X-Seismik-Admin-Approval": "test-approval"}
 
 
 ADMIN = session("admin-token")
+
+
+async def approve(redis, action):
+    await redis.set("seismik:admin:approval:" + digest("test-approval"),
+                    json.dumps({"session":digest("admin-token"), "action":action}), ex=120)
+
 
 
 async def setup(admins: str = "admin@example.com", production: bool = False):
@@ -92,9 +100,11 @@ async def setup(admins: str = "admin@example.com", production: bool = False):
                latitude=40.4, longitude=-3.7)
     )})
     for token, email in (("admin-token", "Admin@Example.com"), ("user-token", "user@example.com")):
-        await redis.set(f"seismik:oauth:session:{token}", json.dumps(
-            {"uid": token, "email": email, "authenticated_at": str(int(time.time()))}
+        await redis.set(SESSION_PREFIX + digest(token), json.dumps(
+            {"uid": token, "email": email, "authenticated_at": str(int(time.time())), "last_seen": time.time(), "mfa_version": "test-version"}
         ))
+    await redis.set(MFA_PREFIX + account({"uid":"admin-token"}), json.dumps({"version":"test-version"}))
+    await redis.set("seismik:admin:approval:" + digest("test-approval"), json.dumps({"session":digest("admin-token"),"action":"control:alerts:false"}), ex=120)
     await redis.xadd(settings.developer_audit_stream, {"payload": json.dumps(
         {"action": "key_created", "email": "dev@example.com", "api_key": "sk_live_secret",
          "client_ip": "1.2.3.4", "nested": {"session_token": "abc"}}
@@ -106,6 +116,8 @@ async def setup(admins: str = "admin@example.com", production: bool = False):
         app.add_middleware(EdgeOriginGuard, secret="test-edge-secret")
     app.include_router(router)
     app.include_router(admin_router)
+    app.include_router(security_router)
+    app.state.settings = settings
     app.state.redis = redis
     app.dependency_overrides[get_app_settings] = lambda: settings
     app.dependency_overrides[get_redis] = lambda: redis
@@ -148,11 +160,13 @@ async def test_review_is_stored_without_touching_the_report() -> None:
     async with client:
         listed = (await client.get("/v1/reports/admin/reports", headers=ADMIN)).json()["reports"][0]
         url = f"/v1/reports/admin/reports/felt/{listed['stream_id']}/review"
+        await approve(redis, f"review:felt:{listed['stream_id']}:dismissed")
         dismissed = await client.post(url, json={"status": "dismissed"}, headers=ADMIN)
         assert dismissed.status_code == 200
         assert dismissed.json()["review"]["by"] == "admin@example.com"
         again = (await client.get("/v1/reports/admin/reports", headers=ADMIN)).json()["reports"]
         assert next(i for i in again if i["id"] == listed["id"])["review"]["status"] == "dismissed"
+        await approve(redis, f"review:felt:{listed['stream_id']}:pending")
         pending = await client.post(url, json={"status": "pending"}, headers=ADMIN)
         assert pending.json()["review"] is None
         missing = await client.post(
@@ -210,7 +224,8 @@ async def test_overview_counts_streams_and_accounts_for_admins_only() -> None:
     assert streams["damage"]["total"] == 0 and streams["damage"]["last_at"] is None
     assert data["keys"]["devices"] == 1
     assert data["keys"]["developer_accounts"] == 1
-    assert data["keys"]["web_sessions"] == 2
+    assert data["keys"]["admin_sessions"] == 2
+    assert data["keys"]["web_sessions"] == 0
     assert data["keys_complete"] is True
 
 
@@ -242,11 +257,9 @@ async def test_login_returns_to_admin_only_with_the_fixed_marker() -> None:
     user = {"uid": "u-1", "email": "support@example.com", "name": "Support"}
     plain = await _finish_login(login_request(), user, None)
     assert plain.headers["location"] == "https://devs.seismik.org/"
+    # A legacy/shared cookie cannot create an administrative session.
     admin = await _finish_login(login_request("seismik_after_login=admin"), user, None)
-    assert admin.headers["location"] == "https://admin.seismik.org/"
-    assert any(
-        value.startswith("seismik_after_login=") for value in admin.headers.getlist("set-cookie")
-    )
+    assert admin.headers["location"] == "https://devs.seismik.org/"
     other = await _finish_login(login_request("seismik_after_login=https://evil.example"), user, None)
     assert other.headers["location"] == "https://devs.seismik.org/"
 
@@ -258,7 +271,7 @@ async def test_admin_rejects_csrf_including_sibling_domains() -> None:
     url = f"/v1/reports/admin/reports/felt/{stream_id}/review"
     async with client:
         for origin in (None, "https://evil.example", "https://devs.seismik.org"):
-            headers = {"Cookie": "seismik_session=admin-token", "X-Seismik-Admin": "1"}
+            headers = {"Cookie": f"{COOKIE}=admin-token", "X-Seismik-Admin": "1"}
             if origin:
                 headers["Origin"] = origin
             assert (await client.post(url, json={"status": "valid"}, headers=headers)).status_code == 403
@@ -270,7 +283,7 @@ async def test_admin_rejects_csrf_including_sibling_domains() -> None:
 @pytest.mark.asyncio
 async def test_admin_requires_recent_valid_session_and_limits_queries() -> None:
     client, redis = await setup()
-    key = "seismik:oauth:session:admin-token"
+    key = SESSION_PREFIX + digest("admin-token")
     valid = await redis.get(key)
     async with client:
         for raw in ("{broken", json.dumps({"email": "admin@example.com"}),
