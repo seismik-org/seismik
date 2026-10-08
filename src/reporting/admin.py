@@ -14,7 +14,7 @@ from fastapi import APIRouter, Depends, HTTPException, Path, Query, Response
 from pydantic import BaseModel
 from redis.asyncio import Redis
 
-from api.admin import require_admin
+from api.admin import redact, require_admin
 from api.config import AppSettings
 from api.dependencies import get_app_settings, get_redis
 from reporting.plausibility import assess
@@ -60,13 +60,15 @@ async def list_reports(
 ) -> dict[str, Any]:
     response.headers["Cache-Control"] = "no-store"
     events = await official_events(redis, settings)
-    reviews = cast(dict[str, str], await redis.hgetall(REVIEW_KEY))
     reports: list[dict[str, Any]] = []
     streams = (("felt", settings.felt_reports_stream), ("damage", settings.damage_reports_stream))
     for kind, stream in streams:
-        for stream_id, payload in await _entries(redis, stream, limit):
+        entries = await _entries(redis, stream, limit)
+        reviews = cast(list[str | None], await redis.hmget(
+            REVIEW_KEY, [f"{stream}|{stream_id}" for stream_id, _ in entries]
+        )) if entries else []
+        for (stream_id, payload), review_raw in zip(entries, reviews):
             event = events.get(str(payload.get("earthquake_event_id") or ""))
-            review_raw = reviews.get(f"{stream}|{stream_id}")
             reports.append(
                 {
                     "id": f"{stream}|{stream_id}",
@@ -74,7 +76,7 @@ async def list_reports(
                     "received_at": _received_at(stream_id),
                     "kind": kind,
                     "source": "web" if payload.get("source") == "web" else "app",
-                    "report": {k: v for k, v in payload.items() if k not in HIDDEN_FIELDS},
+                    "report": redact({k: v for k, v in payload.items() if k not in HIDDEN_FIELDS}),
                     "event": event,
                     # Se recalcula: el sismo pudo revisarse después del envío.
                     "plausibility": assess(payload, event),
@@ -100,6 +102,10 @@ async def review_report(
     if not await redis.xrange(name, min=stream_id, max=stream_id):
         raise HTTPException(404, "Reporte no encontrado")
     field = f"{name}|{stream_id}"
+    await redis.xadd(settings.developer_audit_stream, {"payload": json.dumps({
+        "action": "report_review", "report": field, "status": review.status,
+        "by": admin, "at": datetime.now(timezone.utc).isoformat(),
+    })}, maxlen=settings.stream_maxlen, approximate=True)
     if review.status == "pending":
         await redis.hdel(REVIEW_KEY, field)
         return {"id": field, "review": None}
