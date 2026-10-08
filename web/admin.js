@@ -37,6 +37,10 @@ function login() {
 async function logout() {
   await api("/v1/oauth/logout", {method:"POST"}).catch(() => {});
   loaded.clear();
+  reports = [];
+  records = [];
+  for (const selector of ["#rows", "#record-list", "#key-stats", "#stream-rows", "#stats"]) $(selector).replaceChildren();
+  $("#export").disabled = true;
   start();
 }
 
@@ -159,3 +163,4 @@ $("#record-limit").addEventListener("change", loadRecords);
 $("#record-q").addEventListener("input", renderRecords);
 $("#record-form").addEventListener("submit", event => event.preventDefault());
 start();
+window.addEventListener("pageshow", event => { if (event.persisted) { loaded.clear(); start(); } });

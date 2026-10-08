@@ -6,8 +6,10 @@ los registros ocultan tokens, firmas, secretos e IP antes de salir de la API.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import re
+import time
 from datetime import datetime, timedelta, timezone
 from typing import Any, cast
 
@@ -34,7 +36,8 @@ KEY_GROUPS = (
 # Un recorrido acotado: el panel no debe competir con la API por Redis.
 MAX_SCANNED_KEYS = 200_000
 SECRET_FIELD = re.compile(
-    r"token|secret|signature|password|hash|session|cookie|(^|_)ip($|_)|(^|_)key$", re.I
+    r"token|secret|signature|password|hash|session|cookie|authorization|credential|"
+    r"private.?key|client.?ip|ip.?address|(^|_)ip($|_)|(^|_)key$", re.I
 )
 
 
@@ -58,14 +61,34 @@ def streams(settings: AppSettings) -> dict[str, tuple[str, str]]:
 
 async def require_admin(
     request: Request,
+    response: Response,
     seismik_session: str | None = Cookie(default=None),
     settings: AppSettings = Depends(get_app_settings),
     redis: Redis = Depends(get_redis),
 ) -> str:
+    response.headers["Cache-Control"] = "no-store"
+    response.headers["X-Robots-Tag"] = "noindex, nofollow"
+    origin = request.headers.get("origin")
+    allowed = {"https://admin.seismik.org"}
+    if settings.environment.lower() == "development":
+        allowed.update({"http://localhost:8080", "http://127.0.0.1:8080"})
+    if origin is not None and origin not in allowed:
+        raise HTTPException(403, "Origen de administración no permitido")
+    if request.method not in {"GET", "HEAD", "OPTIONS"} and (
+        origin not in allowed or request.headers.get("x-seismik-admin") != "1"
+    ):
+        raise HTTPException(403, "Petición de administración no permitida")
     raw = await redis.get(f"seismik:oauth:session:{seismik_session}") if seismik_session else None
     if not raw:
         raise HTTPException(401, "Inicia sesión en auth.seismik.org")
-    session = json.loads(raw)
+    try:
+        session = json.loads(raw)
+        authenticated_at = float(session.get("authenticated_at", 0))
+        age = time.time() - authenticated_at
+    except (ValueError, TypeError, AttributeError):
+        raise HTTPException(401, "Sesión inválida") from None
+    if not 0 <= age <= 8 * 3600:
+        raise HTTPException(401, "Vuelve a iniciar sesión para administrar Seismik")
     from api.firebase_login import validate_session
 
     await validate_session(request, session)
@@ -73,6 +96,12 @@ async def require_admin(
     admins = {item.strip().casefold() for item in settings.admin_emails.split(",") if item.strip()}
     if not email or email not in admins:
         raise HTTPException(403, "Esta cuenta no tiene acceso a la administración de Seismik")
+    bucket = int(time.time() // 60)
+    identity = hashlib.sha256(str(seismik_session).encode()).hexdigest()
+    rate_key = f"seismik:admin:rate:{identity}:{bucket}"
+    await redis.set(rate_key, 0, ex=120, nx=True)
+    if int(await redis.incr(rate_key)) > 120:
+        raise HTTPException(429, "Demasiadas consultas; espera un minuto")
     return email
 
 
@@ -105,7 +134,7 @@ def _stream_time(stream_id: str) -> datetime:
 
 async def _recent_count(redis: Redis, stream: str, since: datetime) -> int:
     start = f"{int(since.timestamp() * 1000)}-0"
-    raw = await redis.xrange(stream, min=start, max="+", count=10_000)
+    raw = cast(list[Any], await redis.xrange(stream, min=start, max="+", count=10_000))
     return len(raw)
 
 

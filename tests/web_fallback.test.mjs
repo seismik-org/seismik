@@ -7,6 +7,39 @@ import worker from '../deploy/cloudflare-edge-router.js';
 import { FALLBACK_ASSETS } from '../deploy/fallback-assets.js';
 
 const request = (path = '/', host = 'seismik.org', method = 'GET') => new Request(`https://${host}${path}`, { method, headers: { Accept: 'text/html' } });
+test('admin has strict headers and sends its API requests to the protected origin', async () => {
+  const original = globalThis.fetch;
+  const targets = [];
+  globalThis.fetch = async (target) => { targets.push(target.url || String(target)); return new Response('ok'); };
+  try {
+    const page = await worker.fetch(request('/', 'admin.seismik.org'), {});
+    assert.match(targets[0], /seismik-web.*\/admin\/$/);
+    assert.equal(page.headers.get('Cache-Control'), 'no-store');
+    assert.equal(page.headers.get('X-Robots-Tag'), 'noindex, nofollow');
+    assert.match(page.headers.get('Content-Security-Policy'), /frame-ancestors 'none'/);
+    await worker.fetch(request('/v1/admin/me', 'admin.seismik.org'), {});
+    assert.match(targets[1], /seismik-api.*\/v1\/admin\/me$/);
+  } finally { globalThis.fetch = original; }
+});
+
+test('admin CSV neutralizes formulas in untrusted report fields', async () => {
+  let blob;
+  const context = {
+    document: {
+      querySelector: selector => ({value: selector === '#filter-q' ? '' : 'all', addEventListener() {}}),
+      createElement: () => ({click() {}}),
+    },
+    Intl, Blob, setTimeout() {},
+    URL: {createObjectURL: value => { blob = value; return 'blob:test'; }},
+  };
+  vm.createContext(context);
+  vm.runInContext(readFileSync('web/reportes.js', 'utf8'), context);
+  for (const value of ['=HYPERLINK("https://evil.example")', '+cmd', '@SUM(1)', '-cmd', ' \t=1+1']) {
+    context.example = value;
+    vm.runInContext(`reports = [{received_at:'now',source:'web',kind:'felt',event:{place:example},report:{report_id:'safe'},plausibility:{status:'unknown',reasons:[]}}]; exportCsv();`, context);
+    assert.ok((await blob.text()).includes(`"'${value.replaceAll('"', '""')}"`));
+  }
+});
 test('edge survives a failed origin, preserving 503 and serving its own assets', async () => {
   const original = globalThis.fetch;
   globalThis.fetch = async () => { throw new Error('origin down'); };

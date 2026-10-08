@@ -1,4 +1,5 @@
 /* admin.seismik.org: pestañas, resumen y registros. Base en reportes.css. */
+.admin-gate-logo { display: block; margin-bottom: 20px; border-radius: 16px; }
 .reports-gate h1 { margin: 6px 0 10px; font-size: clamp(1.6rem, 4vw, 2.2rem); }
 .gate-actions { display: flex; flex-wrap: wrap; gap: 10px; }
 

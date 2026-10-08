@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import time
 from datetime import datetime, timedelta, timezone
 
 import httpx
@@ -66,7 +67,8 @@ def test_missing_event_is_unknown() -> None:
 
 
 def session(token: str) -> dict[str, str]:
-    return {"Cookie": f"seismik_session={token}"}
+    return {"Cookie": f"seismik_session={token}", "Origin": "https://admin.seismik.org",
+            "X-Seismik-Admin": "1"}
 
 
 ADMIN = session("admin-token")
@@ -87,7 +89,9 @@ async def setup(admins: str = "admin@example.com"):
                latitude=40.4, longitude=-3.7)
     )})
     for token, email in (("admin-token", "Admin@Example.com"), ("user-token", "user@example.com")):
-        await redis.set(f"seismik:oauth:session:{token}", json.dumps({"uid": token, "email": email}))
+        await redis.set(f"seismik:oauth:session:{token}", json.dumps(
+            {"uid": token, "email": email, "authenticated_at": str(int(time.time()))}
+        ))
     await redis.xadd(settings.developer_audit_stream, {"payload": json.dumps(
         {"action": "key_created", "email": "dev@example.com", "api_key": "sk_live_secret",
          "client_ip": "1.2.3.4", "nested": {"session_token": "abc"}}
@@ -154,6 +158,11 @@ async def test_review_is_stored_without_touching_the_report() -> None:
         assert invalid.status_code == 422
     assert await redis.xlen(AppSettings().felt_reports_stream) == 2
     assert await redis.hlen(REVIEW_KEY) == 0
+    audit = [json.loads(fields["payload"]) for _, fields in
+             await redis.xrevrange(AppSettings().developer_audit_stream, count=2)]
+    assert [entry["status"] for entry in audit] == ["pending", "dismissed"]
+    assert all(entry["action"] == "report_review" and entry["by"] == "admin@example.com"
+               for entry in audit)
 
 
 @pytest.mark.asyncio
@@ -235,3 +244,49 @@ async def test_login_returns_to_admin_only_with_the_fixed_marker() -> None:
     )
     other = await _finish_login(login_request("seismik_after_login=https://evil.example"), user, None)
     assert other.headers["location"] == "https://devs.seismik.org/"
+
+
+@pytest.mark.asyncio
+async def test_admin_rejects_csrf_including_sibling_domains() -> None:
+    client, redis = await setup()
+    stream_id = (await redis.xrevrange(AppSettings().felt_reports_stream, count=1))[0][0]
+    url = f"/v1/reports/admin/reports/felt/{stream_id}/review"
+    async with client:
+        for origin in (None, "https://evil.example", "https://devs.seismik.org"):
+            headers = {"Cookie": "seismik_session=admin-token", "X-Seismik-Admin": "1"}
+            if origin:
+                headers["Origin"] = origin
+            assert (await client.post(url, json={"status": "valid"}, headers=headers)).status_code == 403
+        headers = {k: v for k, v in ADMIN.items() if k != "X-Seismik-Admin"}
+        assert (await client.post(url, json={"status": "valid"}, headers=headers)).status_code == 403
+    assert await redis.hlen(REVIEW_KEY) == 0
+
+
+@pytest.mark.asyncio
+async def test_admin_requires_recent_valid_session_and_limits_queries() -> None:
+    client, redis = await setup()
+    key = "seismik:oauth:session:admin-token"
+    valid = await redis.get(key)
+    async with client:
+        for raw in ("{broken", json.dumps({"email": "admin@example.com"}),
+                    json.dumps({"email": "admin@example.com", "authenticated_at": time.time() - 28801})):
+            await redis.set(key, raw)
+            assert (await client.get("/v1/admin/me", headers=ADMIN)).status_code == 401
+        await redis.set(key, valid)
+        for _ in range(120):
+            response = await client.get("/v1/admin/me", headers=ADMIN)
+            assert response.status_code == 200
+        assert response.headers["cache-control"] == "no-store"
+        assert (await client.get("/v1/admin/me", headers=ADMIN)).status_code == 429
+
+
+@pytest.mark.asyncio
+async def test_reports_redact_nested_credentials_too() -> None:
+    client, redis = await setup()
+    await redis.xadd(AppSettings().felt_reports_stream, {"payload": json.dumps(
+        report(report_id="sensitive", authorization="Bearer private", nested={"clientIp": "1.2.3.4"})
+    )})
+    async with client:
+        data = (await client.get("/v1/reports/admin/reports", headers=ADMIN)).json()
+    item = next(item for item in data["reports"] if item["report"]["report_id"] == "sensitive")
+    assert item["report"]["authorization"] == item["report"]["nested"]["clientIp"] == "•••"

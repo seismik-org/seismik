@@ -36,6 +36,7 @@ function ago(value) {
 
 async function api(path, options = {}) {
   const headers = {Accept:"application/json"};
+  if (options.method && options.method !== "GET") headers["X-Seismik-Admin"] = "1";
   if (options.body) headers["Content-Type"] = "application/json";
   const response = await fetch(path, {...options, headers, credentials:"include", cache:"no-store"});
   const data = await response.json().catch(() => ({}));
@@ -217,7 +218,11 @@ async function setReview(item, status, button) {
 
 function exportCsv() {
   const columns = ["recibido", "origen", "tipo", "sismo", "magnitud", "pais", "latitud", "longitud", "distancia_km", "sintio", "intensidad", "plausibilidad", "motivos", "revision", "report_id"];
-  const quote = value => `"${String(value ?? "").replaceAll('"', '""')}"`;
+  const quote = value => {
+    let text = String(value ?? "");
+    if (/^[\s\u0000-\u001f]*[=+@-]/u.test(text)) text = "'" + text;
+    return `"${text.replaceAll('"', '""')}"`;
+  };
   const lines = reports.filter(matches).map(item => [
     item.received_at, item.source === "web" ? "ifeltit" : "app", item.kind, item.event?.place || item.report.earthquake_event_id,
     item.event?.magnitude, item.report.country_code, item.report.latitude, item.report.longitude, item.plausibility.distance_km,
