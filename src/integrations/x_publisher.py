@@ -34,6 +34,7 @@ from redis.exceptions import ResponseError
 from requests_oauthlib import OAuth1
 
 from api.config import AppSettings, get_settings
+from api.runtime_controls import paused
 from eew.models import OfficialReport
 from eew.official import OfficialApiClient, OfficialSource, load_sources
 from eew.simulation import is_drill
@@ -361,9 +362,15 @@ class XPublisher:
     # --- Publicación en X ---------------------------------------------------------
 
     async def _publish(self, event: dict[str, Any], published_key: str) -> None:
+        if await paused(self.redis, self.namespace):
+            await self._audit(str(event["event_id"]), "skipped_paused")
+            return
         event_id = str(event["event_id"])
         text = bulletin_text(event)
         image = await self._render_card(event) if self.settings.x_publisher_images else None
+        if await paused(self.redis, self.namespace):
+            await self._audit(event_id, "skipped_paused")
+            return
         if not self.settings.x_publisher_enabled or self.settings.x_publisher_dry_run:
             extra = {"text": text}
             if self.settings.x_publisher_images:
@@ -380,6 +387,9 @@ class XPublisher:
             payload: dict[str, Any] = {"text": text}
             if image:
                 payload["media"] = {"media_ids": [await self._upload_image(image, auth)]}
+            if await paused(self.redis, self.namespace):
+                await self._audit(event_id, "skipped_paused")
+                return
             response = await asyncio.to_thread(requests.post, X_POST_URL, json=payload, auth=auth, timeout=10)
             response.raise_for_status()
         except Exception:
