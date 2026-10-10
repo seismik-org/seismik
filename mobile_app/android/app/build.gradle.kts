@@ -7,7 +7,12 @@ plugins {
 // El archivo de Firebase se mantiene fuera de Git porque contiene la
 // configuración del proyecto. En desarrollo y releases firmados existe y se
 // aplica el plugin; en CI se valida el APK sin copiar credenciales al runner.
-if (file("google-services.json").isFile) {
+// Isolated, debug-only sensor probe: never replace the Play-installed app.
+val motionProbe = project.findProperty("seismikMotionProbe") == "true"
+if (motionProbe && gradle.startParameter.taskNames.any { it.contains("Release", ignoreCase = true) }) {
+    throw GradleException("The motion probe cannot be compiled as a release.")
+}
+if (!motionProbe && file("google-services.json").isFile) {
     apply(plugin = "com.google.gms.google-services")
 }
 
@@ -28,6 +33,7 @@ android {
 
     defaultConfig {
         applicationId = "com.seismik.app"
+        if (motionProbe) applicationId = "com.seismik.app.motionprobe"
         minSdk = 24
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
@@ -36,6 +42,7 @@ android {
             (project.findProperty("SEISMIK_GOOGLE_MAPS_API_KEY") as String?)
                 ?: System.getenv("SEISMIK_GOOGLE_MAPS_API_KEY")
                 ?: ""
+        manifestPlaceholders["SEISMIK_APP_LABEL"] = if (motionProbe) "Seismik · prueba local" else "Seismik"
     }
 
     signingConfigs {

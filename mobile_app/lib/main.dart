@@ -17,15 +17,18 @@ import 'presentation/screens/damage_report_screen.dart';
 import 'presentation/screens/event_detail_screen.dart';
 import 'presentation/screens/family_safety_screen.dart';
 import 'presentation/screens/felt_report_screen.dart';
+import 'presentation/screens/government_sources_screen.dart';
 import 'presentation/screens/ios_settings_screen.dart';
 import 'presentation/screens/monitor_screen.dart';
 import 'presentation/screens/settings_screen.dart';
 import 'state/family_state.dart';
 import 'state/mobile_settings.dart';
 import 'state/seismik_state.dart';
+import 'services/background_motion_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  BackgroundMotionService.initialize();
   await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
   SeismikConstants.validateBuildConfiguration();
   final MobileSettings settings = MobileSettings();
@@ -127,6 +130,48 @@ class _SeismikShellState extends State<_SeismikShell> {
   static const int _familyTab = 3;
   int _selectedIndex = 0;
   ValueNotifier<int>? _familyOpenRequests;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => _showIndependenceNotice(),
+    );
+  }
+
+  Future<void> _showIndependenceNotice() async {
+    if (!mounted) return;
+    final MobileSettings settings = context.read<MobileSettings>();
+    if (settings.governmentNoticeSeen) return;
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => AlertDialog(
+        icon: const Icon(Icons.account_balance_outlined),
+        title: const Text('Fuentes y aviso importante'),
+        content: const SingleChildScrollView(
+          child: Text(GovernmentSourcesScreen.disclaimer),
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).push(
+              MaterialPageRoute<void>(
+                builder: (_) => const GovernmentSourcesScreen(),
+              ),
+            ),
+            child: const Text('Ver fuentes oficiales'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              await settings.acknowledgeGovernmentNotice();
+              if (dialogContext.mounted) Navigator.of(dialogContext).pop();
+            },
+            child: const Text('Entendido'),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   void didChangeDependencies() {

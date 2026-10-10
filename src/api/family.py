@@ -4,9 +4,9 @@ Cada círculo agrupa cuentas Seismik, no teléfonos. Tras un sismo, cada persona
 avisa si está bien o necesita ayuda; ese mismo toque comparte su ubicación con
 el círculo por unas horas y envía un aviso push a sus familiares.
 
-No es rastreo en segundo plano ni sustituye a los canales de emergencia. Nada
-se comparte sin una acción explícita, la ubicación aproximada se redondea en el
-servidor y tanto la ubicación como el estado vencen solos.
+No es rastreo en segundo plano ni sustituye a los canales de emergencia. Compartir
+requiere un reporte manual o activar expresamente la ubicación automática ante
+alertas reales. La ubicación aproximada se redondea y los datos vencen solos.
 """
 from __future__ import annotations
 
@@ -17,7 +17,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Literal, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, StrictBool, field_validator, model_validator
 from redis.asyncio import Redis
 
 from api.accounts import (
@@ -72,6 +72,31 @@ class LocationPoint(_StrictModel):
 
 class LocationShare(LocationPoint):
     share_minutes: int = Field(default=60, ge=15, le=240)
+
+
+class AutomaticLocationPreference(_StrictModel):
+    enabled: StrictBool
+
+
+def automatic_location_key(uid: str) -> str:
+    return f"seismik:family:auto-location:{uid}"
+
+
+@router.put("/automatic-location")
+async def set_automatic_location(
+    payload: AutomaticLocationPreference,
+    redis: Redis = Depends(get_redis),
+    account: AccountPrincipal = Depends(require_account_session),
+) -> dict[str, bool]:
+    circle_id = await _circle_for_account(redis, account.uid)
+    if payload.enabled:
+        await redis.set(automatic_location_key(account.uid), "1", ex=_CIRCLE_TTL_SECONDS)
+    else:
+        await redis.delete(automatic_location_key(account.uid))
+        raw = await redis.get(_location_key(circle_id, account.uid))
+        if raw and json.loads(raw).get("source") == "automatic_alert":
+            await redis.delete(_location_key(circle_id, account.uid))
+    return {"enabled": payload.enabled}
 
 
 class StatusReport(_StrictModel):
@@ -184,6 +209,7 @@ async def create_circle(
     pipe.sadd(family_members_key(circle_id), account.uid)
     pipe.hset(_member_key(circle_id, account.uid), mapping={"display_name": payload.display_name, "joined_at": now})
     pipe.set(_account_circle_key(account.uid), circle_id, ex=_CIRCLE_TTL_SECONDS)
+    pipe.delete(automatic_location_key(account.uid))
     pipe.expire(_circle_key(circle_id), _CIRCLE_TTL_SECONDS)
     pipe.expire(family_members_key(circle_id), _CIRCLE_TTL_SECONDS)
     pipe.expire(_member_key(circle_id, account.uid), _CIRCLE_TTL_SECONDS)
@@ -232,6 +258,7 @@ async def join_circle(
     pipe.hset(_member_key(circle_id, account.uid), mapping={"display_name": payload.display_name, "joined_at": now})
     pipe.set(_account_circle_key(account.uid), circle_id, ex=_CIRCLE_TTL_SECONDS)
     pipe.delete(f"seismik:family:invite:{payload.invite_code}")
+    pipe.delete(automatic_location_key(account.uid))
     pipe.expire(_member_key(circle_id, account.uid), _CIRCLE_TTL_SECONDS)
     await pipe.execute()
     await _touch_circle(redis, circle_id)
@@ -256,7 +283,8 @@ async def stop_sharing_location(
     account: AccountPrincipal = Depends(require_account_session),
 ) -> None:
     circle_id = await _circle_for_account(redis, account.uid)
-    await redis.delete(_location_key(circle_id, account.uid))
+    # Revocation also stops later automatic publications.
+    await redis.delete(_location_key(circle_id, account.uid), automatic_location_key(account.uid))
 
 
 @router.put("/status")
@@ -347,17 +375,30 @@ async def get_circle(
         profile = cast(dict[str, str], await redis.hgetall(_member_key(circle_id, member_id)))
         raw_location = await redis.get(_location_key(circle_id, member_id))
         raw_status = await redis.get(_status_key(circle_id, member_id))
+        location = json.loads(raw_location) if raw_location else None
+        report = json.loads(raw_status) if raw_status else None
+        if location and location.get("source") == "automatic_alert":
+            if not report or report.get("event_id") != location.get("related_event_id"):
+                # A newer explicit check-in still wins, including when the user
+                # selected the official catalog ID instead of the candidate ID.
+                try:
+                    newer = report is not None and datetime.fromisoformat(report["reported_at"]) >= datetime.fromisoformat(location["shared_at"])
+                except (KeyError, ValueError, TypeError):
+                    newer = False
+                if not newer:
+                    report = None
         members.append({
             "member_id": _public_member_id(circle_id, member_id),
             "display_name": profile.get("display_name", "Familiar"),
             "is_you": member_id == account.uid,
             "is_owner": member_id in owners,
-            "location": json.loads(raw_location) if raw_location else None,
-            "status": json.loads(raw_status) if raw_status else None,
+            "location": location,
+            "status": report,
         })
     await _touch_circle(redis, circle_id)
     return {
         "circle_id": circle_id,
+        "automatic_location_sharing": await redis.get(automatic_location_key(account.uid)) == "1",
         "circle_name": circle.get("circle_name", "Mi círculo"),
         "is_owner": account.uid in owners,
         "members": members,

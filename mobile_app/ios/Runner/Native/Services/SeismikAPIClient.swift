@@ -103,9 +103,10 @@ public struct FamilyLocation: Decodable, Equatable {
     public let longitude: Double
     public let precision: String
     public let expiresAt: String
+    public var source: String? = nil
 
     enum CodingKeys: String, CodingKey {
-        case latitude, longitude, precision
+        case latitude, longitude, precision, source
         case expiresAt = "expires_at"
     }
 }
@@ -150,12 +151,14 @@ public struct FamilyCircle: Decodable, Equatable {
     /// Sólo quien creó el círculo puede invitar.
     public let isOwner: Bool?
     public let members: [FamilyMember]
+    public var automaticLocationSharing: Bool? = nil
 
     enum CodingKeys: String, CodingKey {
         case circleId = "circle_id"
         case circleName = "circle_name"
         case isOwner = "is_owner"
         case members
+        case automaticLocationSharing = "automatic_location_sharing"
     }
 }
 
@@ -764,6 +767,11 @@ public final class SeismikAPIClient {
         if (response as? HTTPURLResponse)?.statusCode != 204 {
             try assertSuccess(response, data: data)
         }
+    }
+
+    public func setAutomaticFamilyLocation(_ enabled: Bool) async throws {
+        _ = try await familySend(path: "v1/family/automatic-location", method: "PUT",
+                                 body: ["enabled": enabled])
     }
 
     /// «Estoy bien» o «Necesito ayuda». Con coordenadas las comparte con la

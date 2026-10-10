@@ -9,6 +9,8 @@ class MobileSettings extends ChangeNotifier {
   static const String _themeKey = 'settings.theme_mode';
   static const String _dynamicColorKey = 'settings.dynamic_color';
   static const String _crowdsourcingKey = 'settings.crowdsourcing';
+  static const String backgroundCrowdsourcingKey =
+      'settings.background_crowdsourcing';
   static const String _preciseLocationKey = 'settings.precise_location';
   static const String _minimumMagnitudeKey = 'settings.minimum_magnitude';
   static const String _historyDaysKey = 'settings.history_days';
@@ -23,6 +25,8 @@ class MobileSettings extends ChangeNotifier {
       'settings.notification_magnitude';
   static const String _alertRadiusKey = 'settings.alert_radius_km';
   static const String _mapProviderKey = 'settings.map_provider';
+  static const String _governmentNoticeSeenKey =
+      'settings.government_notice_seen';
 
   /// Radios ofrecidos para el umbral de cercanía de las alertas.
   static const List<double> alertRadiusOptions = <double>[
@@ -37,6 +41,7 @@ class MobileSettings extends ChangeNotifier {
   ThemeMode themeMode = ThemeMode.system;
   bool useDynamicColor = true;
   bool crowdsourcingEnabled = true;
+  bool backgroundCrowdsourcingEnabled = false;
   bool preciseLocationByDefault = false;
   double minimumHistoryMagnitude = 2.5;
   int historyDays = 7;
@@ -51,6 +56,7 @@ class MobileSettings extends ChangeNotifier {
   double minimumNotificationMagnitude = 4.0;
   double alertRadiusKm = 250.0;
   MapProvider mapProvider = MapProvider.system;
+  bool governmentNoticeSeen = false;
 
   Future<void> load() async {
     final SharedPreferences preferences = await SharedPreferences.getInstance();
@@ -61,6 +67,8 @@ class MobileSettings extends ChangeNotifier {
     };
     useDynamicColor = preferences.getBool(_dynamicColorKey) ?? true;
     crowdsourcingEnabled = preferences.getBool(_crowdsourcingKey) ?? true;
+    backgroundCrowdsourcingEnabled =
+        preferences.getBool(backgroundCrowdsourcingKey) ?? false;
     preciseLocationByDefault =
         preferences.getBool(_preciseLocationKey) ?? false;
     minimumHistoryMagnitude =
@@ -93,6 +101,8 @@ class MobileSettings extends ChangeNotifier {
     mapProvider = savedMapProvider == null && Platform.isIOS
         ? MapProvider.apple
         : MapProvider.fromName(savedMapProvider);
+    governmentNoticeSeen =
+        preferences.getBool(_governmentNoticeSeenKey) ?? false;
   }
 
   /// Los umbrales fuera de rango del servidor se ajustan al valor admitido más
@@ -120,10 +130,29 @@ class MobileSettings extends ChangeNotifier {
 
   Future<void> setCrowdsourcingEnabled(bool value) async {
     if (crowdsourcingEnabled == value) return;
-    crowdsourcingEnabled = value;
-    notifyListeners();
     final SharedPreferences preferences = await SharedPreferences.getInstance();
     await preferences.setBool(_crowdsourcingKey, value);
+    crowdsourcingEnabled = value;
+    notifyListeners();
+  }
+
+  Future<void> setBackgroundCrowdsourcingEnabled(bool value) async {
+    if (backgroundCrowdsourcingEnabled == value) return;
+    final SharedPreferences preferences = await SharedPreferences.getInstance();
+    await preferences.setBool(backgroundCrowdsourcingKey, value);
+    backgroundCrowdsourcingEnabled = value;
+    notifyListeners();
+  }
+
+  /// The notification stop button changes the preference in another isolate.
+  Future<void> reloadBackgroundCrowdsourcing() async {
+    final SharedPreferences preferences = await SharedPreferences.getInstance();
+    await preferences.reload();
+    final bool value = preferences.getBool(backgroundCrowdsourcingKey) ?? false;
+    if (value != backgroundCrowdsourcingEnabled) {
+      backgroundCrowdsourcingEnabled = value;
+      notifyListeners();
+    }
   }
 
   Future<void> setPreciseLocationByDefault(bool value) async {
@@ -213,5 +242,16 @@ class MobileSettings extends ChangeNotifier {
     notifyListeners();
     final SharedPreferences preferences = await SharedPreferences.getInstance();
     await preferences.setString(_mapProviderKey, value.name);
+  }
+
+  /// Registra que se presentó el aviso de independencia y las fuentes.
+  /// No condiciona ninguna función ni recopila datos: sólo evita repetir el
+  /// cuadro de bienvenida en cada apertura.
+  Future<void> acknowledgeGovernmentNotice() async {
+    if (governmentNoticeSeen) return;
+    governmentNoticeSeen = true;
+    notifyListeners();
+    final SharedPreferences preferences = await SharedPreferences.getInstance();
+    await preferences.setBool(_governmentNoticeSeenKey, true);
   }
 }

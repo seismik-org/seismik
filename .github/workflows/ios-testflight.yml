@@ -67,6 +67,11 @@ jobs:
           security list-keychain -d user -s "$keychain_path"
           mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
           profile_uuid=$(security cms -D -i "$profile_path" | plutil -extract UUID raw -)
+          if [[ "${{ inputs.critical_alerts_approved }}" == "true" ]]; then
+            # Approval on the developer account does not update an old profile.
+            security cms -D -i "$profile_path" > "$RUNNER_TEMP/profile.plist"
+            /usr/libexec/PlistBuddy -c 'Print :Entitlements:com.apple.developer.usernotifications.critical-alerts' "$RUNNER_TEMP/profile.plist" | grep -qx true
+          fi
           cp "$profile_path" "$HOME/Library/MobileDevice/Provisioning Profiles/$profile_uuid.mobileprovision"
       - name: Build signed IPA
         env:
@@ -102,7 +107,7 @@ jobs:
           codesign -d --entitlements :- "$app" > "$RUNNER_TEMP/entitlements.plist" 2> "$RUNNER_TEMP/codesign.log"
           plutil -p "$RUNNER_TEMP/entitlements.plist" | grep -q 'aps-environment'
           if [[ "${{ inputs.critical_alerts_approved }}" == "true" ]]; then
-            plutil -p "$RUNNER_TEMP/entitlements.plist" | grep -q 'usernotifications.critical-alerts'
+            /usr/libexec/PlistBuddy -c 'Print :com.apple.developer.usernotifications.critical-alerts' "$RUNNER_TEMP/entitlements.plist" | grep -qx true
           fi
       - uses: actions/upload-artifact@v4
         with:

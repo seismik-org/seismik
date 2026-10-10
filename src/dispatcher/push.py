@@ -356,9 +356,13 @@ def family_notification_content(event: dict[str, Any]) -> tuple[str, str, dict[s
 
     name = str(event.get("display_name") or "Tu familiar")
     needs_help = event.get("status") == "need_help"
-    title = f"{name} necesita ayuda" if needs_help else f"{name} está bien"
+    location_only = event.get("status") == "location_only"
+    title = (f"{name}: ubicación disponible" if location_only
+             else f"{name} necesita ayuda" if needs_help else f"{name} está bien")
     message = str(event.get("message") or "").strip()
     default_body = (
+        "Última ubicación registrada disponible. Estado sin confirmar."
+        if location_only else
         "Reportó que necesita ayuda. Abre Seismik para ver dónde está."
         if needs_help
         else "Reportó que está a salvo. Abre Seismik para ver a tu familia."

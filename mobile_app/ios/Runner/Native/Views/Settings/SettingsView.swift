@@ -11,8 +11,11 @@ public struct SettingsView: View {
     public let showsCloseButton: Bool
     @ObservedObject private var locationManager = LocationManager.shared
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.scenePhase) private var scenePhase
 
     @State private var notificationStatus: UNAuthorizationStatus = .notDetermined
+    @State private var criticalNotificationStatus: UNNotificationSetting = .notSupported
+    @State private var notificationTestMessage: String?
     @State private var showCopiedAlert = false
     @State private var browserDestination: BrowserDestination?
     @State private var showSignInProviders = false
@@ -79,7 +82,7 @@ public struct SettingsView: View {
                             Label("Iniciar sesión", systemImage: "person.badge.key")
                         }
                     }
-                    Text("La cuenta identifica a tu familia en la pestaña Familia. Nunca comparte tu ubicación sin una acción explícita.")
+                    Text("La cuenta identifica a tu familia. El envío automático de ubicación sólo funciona si lo autorizas en Familia.")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
@@ -92,7 +95,7 @@ public struct SettingsView: View {
                                 Text("Activar alertas")
                                     .font(.body)
                                     .foregroundColor(.primary)
-                                Text("Las alertas críticas requieren aprobación de Apple; mientras tanto se usan avisos urgentes normales.")
+                                Text("Apple aprobó Critical Alerts para Seismik. Este build debe estar firmado con la capacidad y tú debes permitirla.")
                                     .font(.caption)
                                     .foregroundColor(.secondary)
                             }
@@ -101,6 +104,21 @@ public struct SettingsView: View {
                                 .font(.system(size: 16))
                                 .foregroundColor(SeismikColors.systemBlue)
                         }
+                    }
+
+                    HStack {
+                        Text("Permiso de alertas críticas")
+                        Spacer()
+                        Text(criticalNotificationStatus == .enabled ? "Permitido" :
+                            criticalNotificationStatus == .disabled ? "Desactivado" : "No disponible en este build")
+                            .foregroundColor(.secondary)
+                    }
+                    Button("Abrir permisos del iPhone", action: openSystemSettings)
+                    Button("Probar aviso con pantalla bloqueada en 10 s") {
+                        Task { await scheduleLockedNotificationTest() }
+                    }
+                    if let notificationTestMessage {
+                        Text(notificationTestMessage).font(.caption).foregroundColor(.secondary)
                     }
 
                     HStack {
@@ -147,7 +165,10 @@ public struct SettingsView: View {
                     .tint(SeismikColors.systemBlue)
                     .onChange(of: state.receiveOfficialUpdates) { _ in saveAlertPreferences() }
 
-                    // El valor de magnitud guardado se conserva para el registro compatible.
+                    Stepper(value: $state.minimumNotificationMagnitude, in: 0...9, step: 0.5) {
+                        Text(String(format: "Reportes desde M %.1f", state.minimumNotificationMagnitude))
+                    }
+                    .onChange(of: state.minimumNotificationMagnitude) { _ in saveAlertPreferences() }
                     Text("El perímetro estima la sacudida donde estás según la magnitud, profundidad y distancia. Con sacudida fuerte (VI o más) la alarma suena siempre, sin importar tu configuración. La alerta temprana avisa desde IV y el reporte oficial desde III. Un reporte oficial de más de 30 minutos llega como aviso.")
                         .font(.caption)
                         .foregroundColor(.secondary)
@@ -461,8 +482,18 @@ public struct SettingsView: View {
                 Text("Identificador del dispositivo copiado al portapapeles.")
             }
             .task {
-                notificationStatus = await UNUserNotificationCenter.current()
-                    .notificationSettings().authorizationStatus
+                let permissions = await UNUserNotificationCenter.current().notificationSettings()
+                notificationStatus = permissions.authorizationStatus
+                criticalNotificationStatus = permissions.criticalAlertSetting
+            }
+            .onChange(of: scenePhase) { phase in
+                if phase == .active {
+                    Task {
+                        let permissions = await UNUserNotificationCenter.current().notificationSettings()
+                        notificationStatus = permissions.authorizationStatus
+                        criticalNotificationStatus = permissions.criticalAlertSetting
+                    }
+                }
             }
             .sheet(item: $browserDestination) { destination in
                 InAppBrowserView(url: destination.url)
@@ -535,6 +566,8 @@ public struct SettingsView: View {
     private func requestNotificationPermission() {
         Task {
             notificationStatus = await state.requestNotificationPermission()
+            criticalNotificationStatus = await UNUserNotificationCenter.current()
+                .notificationSettings().criticalAlertSetting
             if notificationStatus == .denied,
                let url = URL(string: UIApplication.openSettingsURLString) {
                 _ = await UIApplication.shared.open(url)
@@ -545,6 +578,31 @@ public struct SettingsView: View {
     private func openSystemSettings() {
         guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
         Task { _ = await UIApplication.shared.open(url) }
+    }
+
+    private func scheduleLockedNotificationTest() async {
+        let center = UNUserNotificationCenter.current()
+        let permissions = await center.notificationSettings()
+        guard permissions.authorizationStatus == .authorized else {
+            notificationTestMessage = "Activa primero las notificaciones del iPhone."
+            return
+        }
+        let content = UNMutableNotificationContent()
+        content.title = "PRUEBA LOCAL · Seismik"
+        content.body = "No es un sismo real. Esta prueba no avisa a tu familia."
+        if permissions.criticalAlertSetting == .enabled {
+            content.sound = .defaultCritical
+            content.interruptionLevel = .critical
+        } else {
+            content.sound = .default
+        }
+        do {
+            try await center.add(UNNotificationRequest(identifier: "seismik-local-locked-test",
+                content: content, trigger: UNTimeIntervalNotificationTrigger(timeInterval: 10, repeats: false)))
+            notificationTestMessage = permissions.criticalAlertSetting == .enabled
+                ? "Bloquea el iPhone: aviso crítico local en 10 segundos."
+                : "Prueba normal en 10 segundos; Critical Alerts aún no está permitido."
+        } catch { notificationTestMessage = "No se pudo programar la prueba local." }
     }
 
     private func startSignIn(provider: String) {
@@ -686,6 +744,10 @@ public struct FamilySafetyView: View {
     @ObservedObject private var appState = SeismikState.shared
 
     @State private var circle: FamilyCircle?
+    @State private var nicknames: [String: String] = [:]
+    @State private var editingMember: FamilyMember?
+    @State private var nicknameText = ""
+    @State private var nicknameScope: (uid: String, circle: String)?
     @State private var isLoading = false
     @State private var isReporting = false
     @State private var displayName = ""
@@ -724,6 +786,31 @@ public struct FamilySafetyView: View {
                 }
             }
             .task(id: appState.account?.uid) { await reload() }
+            .sheet(item: $editingMember) { member in
+                CompatibleNavigationStack {
+                    Form {
+                        Section(footer: Text("Sólo cambia en este iPhone. Deja vacío para usar el nombre original.")) {
+                            TextField(member.displayName, text: $nicknameText)
+                                .onChange(of: nicknameText) { value in nicknameText = String(value.prefix(40)) }
+                        }
+                    }
+                    .navigationTitle("Sobrenombre privado")
+                    .toolbar {
+                        ToolbarItem(placement: .navigationBarLeading) { Button("Cancelar") { editingMember = nil } }
+                        ToolbarItem(placement: .navigationBarTrailing) {
+                            Button("Guardar") {
+                                guard let scope = nicknameScope, appState.account?.uid == scope.uid,
+                                      circle?.circleId == scope.circle else { editingMember = nil; return }
+                                let name = nicknameText.trimmingCharacters(in: .whitespacesAndNewlines)
+                                if name.isEmpty { nicknames.removeValue(forKey: member.id) }
+                                else { nicknames[member.id] = name }
+                                FamilyNicknameStoreNative.save(nicknames, uid: scope.uid, circle: scope.circle)
+                                editingMember = nil
+                            }
+                        }
+                    }
+                }
+            }
             .onChange(of: appState.familyUpdates) { _ in
                 Task { await reload() }
             }
@@ -750,7 +837,7 @@ public struct FamilySafetyView: View {
                 Text("Tras un sismo, cada integrante de tu círculo reporta si está bien o necesita ayuda. Ese reporte comparte su ubicación con la familia durante unas horas y les llega como notificación.")
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
-                Text("Para saber quién es quién necesitas iniciar sesión. Seismik nunca comparte tu ubicación sin que toques un botón.")
+                Text("Necesitas iniciar sesión. Compartir ubicación requiere tu permiso: un reporte manual o activar la opción automática.")
                     .font(.footnote)
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
@@ -825,6 +912,19 @@ public struct FamilySafetyView: View {
 
     private func circleContent(_ circle: FamilyCircle) -> some View {
         Form {
+            Section(footer: Text("Comparte durante una hora la última ubicación registrada hace menos de una hora, redondeada. No es GPS en vivo y no confirma que estés bien. Puedes revocarlo aquí o al dejar de compartir.")) {
+                Toggle("Ubicación automática tras una alerta", isOn: Binding(
+                    get: { circle.automaticLocationSharing ?? false },
+                    set: { enabled in
+                        Task {
+                            do {
+                                try await SeismikAPIClient.shared.setAutomaticFamilyLocation(enabled)
+                                await reload()
+                            } catch { message = "No se pudo guardar. La opción no cambió." }
+                        }
+                    }
+                ))
+            }
             Section {
                 VStack(alignment: .leading, spacing: 10) {
                     Text(appState.pendingFamilyCheckIn == nil ? "¿Estás bien?" : "Tras el sismo, ¿estás bien?")
@@ -892,7 +992,8 @@ public struct FamilySafetyView: View {
                             .font(.title3)
                             .foregroundColor(statusColor(member.status))
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(member.isYou ? "\(member.displayName) · Tú" : member.displayName)
+                            Text(member.isYou ? "\(nicknames[member.id] ?? member.displayName) · Tú" : (nicknames[member.id] ?? member.displayName))
+                            if nicknames[member.id] != nil { Text(member.displayName).font(.caption).foregroundColor(.secondary) }
                             Text(statusLabel(member.status))
                                 .font(.caption)
                                 .foregroundColor(.secondary)
@@ -905,6 +1006,13 @@ public struct FamilySafetyView: View {
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                         }
+                        Spacer()
+                        Button {
+                            nicknameText = nicknames[member.id] ?? ""
+                            editingMember = member
+                        } label: { Image(systemName: "pencil") }
+                        .buttonStyle(.borderless)
+                        .accessibilityLabel("Editar sobrenombre de \(member.displayName)")
                     }
                 }
                 if circle.isOwner == true {
@@ -953,6 +1061,7 @@ public struct FamilySafetyView: View {
 
     private func locationLabel(_ location: FamilyLocation?) -> String {
         guard let location else { return "No comparte ubicación" }
+        if location.source == "automatic_alert" { return "Última ubicación registrada · no es GPS en vivo" }
         return location.precision == "precise" ? "Ubicación precisa" : "Ubicación aproximada"
     }
 
@@ -993,14 +1102,21 @@ public struct FamilySafetyView: View {
     }
 
     private func reload() async {
-        guard appState.account != nil else {
+        guard let uid = appState.account?.uid else {
             circle = nil
+            nicknames = [:]
+            nicknameScope = nil
+            editingMember = nil
             return
         }
         isLoading = true
         defer { isLoading = false }
         do {
-            circle = try await SeismikAPIClient.shared.fetchFamilyCircle()
+            let loaded = try await SeismikAPIClient.shared.fetchFamilyCircle()
+            guard appState.account?.uid == uid else { return }
+            circle = loaded
+            nicknameScope = loaded.map { (uid: uid, circle: $0.circleId) }
+            nicknames = loaded.map { FamilyNicknameStoreNative.load(uid: uid, circle: $0.circleId) } ?? [:]
             if let first = circle?.members.first(where: { $0.location != nil })?.location {
                 region.center = CLLocationCoordinate2D(latitude: first.latitude, longitude: first.longitude)
             }

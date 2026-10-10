@@ -68,7 +68,9 @@ class _FamilyApi extends ApiClient {
 
   @override
   Future<FamilyCircle?> fetchFamilyCircle() async {
-    if (expired) throw const SeismikApiException('Account session expired', 401);
+    if (expired) {
+      throw const SeismikApiException('Account session expired', 401);
+    }
     return circle;
   }
 
@@ -108,20 +110,54 @@ void main() {
         authorizer: authorizer,
       );
 
-  test('iniciar sesión canjea el código con el verificador de su challenge', () async {
-    final _FamilyApi api = _FamilyApi()..circle = circleNamed('Casa');
-    final _FakeAuthorizer authorizer = _FakeAuthorizer();
-    final FamilyState family = familyWith(api, authorizer);
+  test(
+    'nickname survives refresh/restart, blank restores original, logout clears UI',
+    () async {
+      final api = _FamilyApi()
+        ..account = const SeismikAccount(uid: 'a', email: 'a@x.test', name: 'A')
+        ..circle = circleNamed('Casa');
+      final member = FamilyMember.fromMap(<String, dynamic>{
+        'member_id': 'm',
+        'display_name': 'Luis',
+      });
+      final family = familyWith(api, _FakeAuthorizer());
+      await family.initialize();
+      await family.setNickname(member, '  Papá  ');
+      await family.refresh();
+      expect(family.nameFor(member), 'Papá');
+      final restarted = familyWith(api, _FakeAuthorizer());
+      await restarted.initialize();
+      expect(restarted.nameFor(member), 'Papá');
+      await restarted.setNickname(member, '');
+      expect(restarted.nameFor(member), 'Luis');
+      await family.signOut();
+      expect(family.nameFor(member), 'Luis');
+      family.dispose();
+      restarted.dispose();
+    },
+  );
 
-    await family.signIn();
+  test(
+    'iniciar sesión canjea el código con el verificador de su challenge',
+    () async {
+      final _FamilyApi api = _FamilyApi()..circle = circleNamed('Casa');
+      final _FakeAuthorizer authorizer = _FakeAuthorizer();
+      final FamilyState family = familyWith(api, authorizer);
 
-    expect(PkcePair.challengeFor(api.verifier!), authorizer.challenge);
-    expect(family.account?.email, 'ana@example.test');
-    expect(api.links, 1, reason: 'el teléfono queda asociado para recibir avisos');
-    expect(family.circle?.circleName, 'Casa');
-    expect(family.signingIn, isFalse);
-    expect(family.error, isNull);
-  });
+      await family.signIn();
+
+      expect(PkcePair.challengeFor(api.verifier!), authorizer.challenge);
+      expect(family.account?.email, 'ana@example.test');
+      expect(
+        api.links,
+        1,
+        reason: 'el teléfono queda asociado para recibir avisos',
+      );
+      expect(family.circle?.circleName, 'Casa');
+      expect(family.signingIn, isFalse);
+      expect(family.error, isNull);
+    },
+  );
 
   test('cerrar la ventana de Google no muestra un error', () async {
     final FamilyState family = familyWith(
@@ -148,34 +184,40 @@ void main() {
     expect(family.error, contains('venció'));
   });
 
-  test('avisar desde la alerta abre Familia y liga el aviso al sismo', () async {
-    final _FamilyApi api = _FamilyApi()
-      ..account = const SeismikAccount(uid: 'u', email: 'e@x.test', name: 'E')
-      ..circle = circleNamed('Casa');
-    final FamilyState family = familyWith(api, _FakeAuthorizer());
-    final SeismicEvent event = SeismicEvent.fromMap(<String, dynamic>{
-      'event_id': 'official-sgc-1',
-      'type': 'official_report_update',
-      'origin_time': '2026-09-12T20:00:00Z',
-    });
-    int openRequests = 0;
-    family.openRequests.addListener(() => openRequests++);
+  test(
+    'avisar desde la alerta abre Familia y liga el aviso al sismo',
+    () async {
+      final _FamilyApi api = _FamilyApi()
+        ..account = const SeismikAccount(uid: 'u', email: 'e@x.test', name: 'E')
+        ..circle = circleNamed('Casa');
+      final FamilyState family = familyWith(api, _FakeAuthorizer());
+      final SeismicEvent event = SeismicEvent.fromMap(<String, dynamic>{
+        'event_id': 'official-sgc-1',
+        'type': 'official_report_update',
+        'origin_time': '2026-09-12T20:00:00Z',
+      });
+      int openRequests = 0;
+      family.openRequests.addListener(() => openRequests++);
 
-    family.requestCheckIn(event);
-    expect(openRequests, 1);
-    expect(family.checkInEvent?.id, 'official-sgc-1');
+      family.requestCheckIn(event);
+      expect(openRequests, 1);
+      expect(family.checkInEvent?.id, 'official-sgc-1');
 
-    await family.reportStatus(needsHelp: false);
+      await family.reportStatus(needsHelp: false);
 
-    expect(api.reportedEvents, <String?>['official-sgc-1']);
-    expect(family.checkInEvent, isNull);
-    expect(family.reporting, isFalse);
-  });
+      expect(api.reportedEvents, <String?>['official-sgc-1']);
+      expect(family.checkInEvent, isNull);
+      expect(family.reporting, isFalse);
+    },
+  );
 
   test('un aviso familiar abierto lleva a la pestaña Familia', () async {
     final _FamilyApi api = _FamilyApi()
       ..account = const SeismikAccount(uid: 'u', email: 'e@x.test', name: 'E');
-    final SeismikState seismik = SeismikState(settings: settings, apiClient: api);
+    final SeismikState seismik = SeismikState(
+      settings: settings,
+      apiClient: api,
+    );
     final FamilyState family = FamilyState(
       seismik: seismik,
       authorizer: _FakeAuthorizer(),
@@ -195,22 +237,25 @@ void main() {
     expect(seismik.recentEvents, isEmpty, reason: 'no es un sismo');
   });
 
-  test('un 401 de la sesión del teléfono no cierra la sesión de la cuenta', () async {
-    final _FamilyApi api = _FamilyApi()
-      ..account = const SeismikAccount(uid: 'u', email: 'e@x.test', name: 'E')
-      ..linkFailure = const SeismikApiException(
-        '{detail: Invalid device session}',
-        401,
+  test(
+    'un 401 de la sesión del teléfono no cierra la sesión de la cuenta',
+    () async {
+      final _FamilyApi api = _FamilyApi()
+        ..account = const SeismikAccount(uid: 'u', email: 'e@x.test', name: 'E')
+        ..linkFailure = const SeismikApiException(
+          '{detail: Invalid device session}',
+          401,
+        );
+      final FamilyState family = familyWith(api, _FakeAuthorizer());
+
+      await family.initialize();
+
+      expect(
+        family.account,
+        isNotNull,
+        reason: 'el siguiente registro vuelve a enlazar el teléfono',
       );
-    final FamilyState family = familyWith(api, _FakeAuthorizer());
-
-    await family.initialize();
-
-    expect(
-      family.account,
-      isNotNull,
-      reason: 'el siguiente registro vuelve a enlazar el teléfono',
-    );
-    expect(family.error, isNull);
-  });
+      expect(family.error, isNull);
+    },
+  );
 }

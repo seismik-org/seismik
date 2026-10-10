@@ -14,6 +14,7 @@ from api.accounts import devices_for_account
 from api.config import AppSettings, get_settings
 from api.devices_store import DeviceRepository
 from api.family import family_members_key
+from api.family_automatic import share_alert_locations
 from api.runtime_controls import heartbeat, paused
 from api.schemas import DeviceTarget
 from dispatcher.policy import (
@@ -228,7 +229,13 @@ class StreamConsumer:
                 "at": datetime.now(timezone.utc).isoformat(),
             }, maxlen=self.settings.stream_maxlen, approximate=True)
             return PushResult(0, 0)
-        return await self.push.send(event, targets, critical=critical)
+        result = await self.push.send(event, targets, critical=critical)
+        if critical and not result.dry_run and result.attempted:
+            try:
+                await share_alert_locations(self.redis, self.settings, event, targets)
+            except Exception:
+                LOGGER.exception("Automatic family location failed; critical push already sent")
+        return result
 
     async def _handle_family_status(self, event: dict[str, Any]) -> None:
         """Avisa al resto del círculo que alguien reportó su estado tras un sismo."""

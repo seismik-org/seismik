@@ -7,6 +7,7 @@ import '../data/models/seismic_event.dart';
 import '../data/models/seismik_account.dart';
 import '../services/account_service.dart';
 import '../services/api_client.dart';
+import '../services/family_nickname_store.dart';
 import '../services/notification_service.dart';
 import 'seismik_state.dart';
 
@@ -35,6 +36,33 @@ class FamilyState extends ChangeNotifier {
   bool signingIn = false;
   bool reporting = false;
   String? error;
+  final FamilyNicknameStore _nicknameStore = const FamilyNicknameStore();
+  Map<String, String> _nicknames = <String, String>{};
+
+  String nameFor(FamilyMember member) =>
+      _nicknames[member.memberId] ?? member.displayName;
+
+  String nicknameFor(FamilyMember member) => _nicknames[member.memberId] ?? '';
+
+  Future<void> setNickname(FamilyMember member, String value) async {
+    final uid = account?.uid;
+    final circleId = circle?.circleId;
+    if (uid == null || circleId == null) return;
+    final name = value.trim();
+    if (name.runes.length > 40) {
+      throw ArgumentError('Usa como máximo 40 caracteres.');
+    }
+    final updated = Map<String, String>.of(_nicknames);
+    if (name.isEmpty) {
+      updated.remove(member.memberId);
+    } else {
+      updated[member.memberId] = name;
+    }
+    await _nicknameStore.save(uid, circleId, updated);
+    if (account?.uid != uid || circle?.circleId != circleId) return;
+    _nicknames = updated;
+    _notify();
+  }
 
   /// Sismo tras el cual la persona pidió avisar a su familia desde la alerta.
   SeismicEvent? checkInEvent;
@@ -101,6 +129,7 @@ class FamilyState extends ChangeNotifier {
     await _api.clearAccount();
     account = null;
     circle = null;
+    _nicknames = <String, String>{};
     checkInEvent = null;
     error = null;
     _notify();
@@ -111,7 +140,14 @@ class FamilyState extends ChangeNotifier {
     loading = true;
     _notify();
     try {
-      circle = await _api.fetchFamilyCircle();
+      final uid = account!.uid;
+      final nextCircle = await _api.fetchFamilyCircle();
+      final names = nextCircle == null
+          ? <String, String>{}
+          : await _nicknameStore.load(uid, nextCircle.circleId);
+      if (account?.uid != uid) return;
+      circle = nextCircle;
+      _nicknames = names;
       error = null;
     } on SeismikApiException catch (failure) {
       if (failure.isAccountSessionRejected) {
@@ -157,6 +193,11 @@ class FamilyState extends ChangeNotifier {
     await refresh();
   }
 
+  Future<void> setAutomaticLocationSharing(bool enabled) async {
+    await _api.setAutomaticFamilyLocation(enabled);
+    await refresh();
+  }
+
   /// «Estoy bien» o «Necesito ayuda». Devuelve si se pudo incluir la ubicación.
   Future<bool> reportStatus({
     required bool needsHelp,
@@ -170,7 +211,10 @@ class FamilyState extends ChangeNotifier {
       // última ubicación conocida, y sin ninguna el aviso sale igual.
       final ({double latitude, double longitude})? coordinates = await seismik
           .currentCoordinates()
-          .timeout(const Duration(seconds: 8), onTimeout: _lastKnownCoordinates);
+          .timeout(
+            const Duration(seconds: 8),
+            onTimeout: _lastKnownCoordinates,
+          );
       await _api.reportFamilyStatus(
         needsHelp: needsHelp,
         message: message,
@@ -238,6 +282,7 @@ class FamilyState extends ChangeNotifier {
     await _api.clearAccount();
     account = null;
     circle = null;
+    _nicknames = <String, String>{};
     error = 'Tu sesión venció. Inicia sesión de nuevo para ver a tu familia.';
     _notify();
   }

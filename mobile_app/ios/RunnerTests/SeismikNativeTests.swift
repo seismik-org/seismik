@@ -3,6 +3,38 @@ import MapKit
 
 @testable import Runner
 
+final class FamilyNicknameAndReportChoiceTests: XCTestCase {
+    func testNicknamesPersistLocallyAndAreScopedToAccountAndCircle() {
+        let suite = "seismik.nicknames.tests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        FamilyNicknameStoreNative.save(["m": "Papá"], uid: "a", circle: "c", defaults: defaults)
+        XCTAssertEqual(FamilyNicknameStoreNative.load(uid: "a", circle: "c", defaults: defaults)["m"], "Papá")
+        XCTAssertTrue(FamilyNicknameStoreNative.load(uid: "b", circle: "c", defaults: defaults).isEmpty)
+        XCTAssertTrue(FamilyNicknameStoreNative.load(uid: "a", circle: "other", defaults: defaults).isEmpty)
+        FamilyNicknameStoreNative.save([:], uid: "a", circle: "c", defaults: defaults)
+        XCTAssertTrue(FamilyNicknameStoreNative.load(uid: "a", circle: "c", defaults: defaults).isEmpty)
+    }
+
+    func testReportCandidatesRankDistanceExcludeOldFutureDrillsAndDuplicates() {
+        let now = Date(timeIntervalSince1970: 1791115200)
+        func event(_ id: String, _ latitude: Double?, date: Date? = nil, source: String? = nil) -> SeismicEvent {
+            SeismicEvent(id: id, place: id, magnitude: 3, depthKm: 10,
+                         latitude: latitude, longitude: latitude == nil ? nil : -74,
+                         detectedAt: date ?? now.addingTimeInterval(-3600), sourceId: source)
+        }
+        let events = [event("far", 8), event("near", 4.6), event("near", 4.6), event("unknown-location", nil),
+                      event("old", 4.6, date: now.addingTimeInterval(-8 * 86400)),
+                      event("future", 4.6, date: now.addingTimeInterval(60)),
+                      event("drill-test", 4.6), event("simulation", 4.6, source: "simulation")]
+        let choices = ReportEventChoices.ordered(events, at: CLLocationCoordinate2D(latitude: 4.6, longitude: -74), now: now)
+        XCTAssertEqual(choices.map(\.id), ["near", "far", "unknown-location"])
+        XCTAssertNil(ReportEventChoices.distance(choices[0], from: nil))
+        let dated = ReportEventChoices.ordered([event("older", 4.6, date: now.addingTimeInterval(-7200)), event("newer", 8)], at: nil, now: now)
+        XCTAssertEqual(dated.map(\.id), ["newer", "older"])
+    }
+}
+
 /// Pruebas de la lógica nativa que no depende de red ni de dispositivo.
 ///
 /// Cubre lo que un iPhone en la mano no puede verificar de forma barata: qué
@@ -617,6 +649,13 @@ final class NativeFamilyContractTests: XCTestCase {
 /// El ajuste de mapas sólo decide con qué app se abre el epicentro; el mapa de
 /// la app es siempre Apple Maps.
 final class MapProviderChoiceTests: XCTestCase {
+    func testAutomaticFamilyLocationIsExplicitAndIdentified() throws {
+        let data = Data("{\"circle_id\":\"circle\",\"circle_name\":\"Familia\",\"is_owner\":true,\"automatic_location_sharing\":true,\"members\":[]}".utf8)
+        let circle = try JSONDecoder().decode(FamilyCircle.self, from: data)
+        XCTAssertEqual(circle.automaticLocationSharing, true)
+        let legacy = Data("{\"circle_id\":\"circle\",\"circle_name\":\"Familia\",\"is_owner\":true,\"members\":[]}".utf8)
+        XCTAssertNil(try JSONDecoder().decode(FamilyCircle.self, from: legacy).automaticLocationSharing)
+    }
     func testTheOnlyProvidersAreAppleAndGoogle() {
         XCTAssertEqual(MapProviderChoice.allCases.map(\.rawValue), ["apple", "google"])
         XCTAssertEqual(MapProviderChoice.apple.label, "Apple Maps")
