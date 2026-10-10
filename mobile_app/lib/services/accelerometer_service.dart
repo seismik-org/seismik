@@ -7,6 +7,7 @@ import 'package:sensors_plus/sensors_plus.dart';
 
 import '../core/constants.dart';
 import 'api_client.dart';
+import 'motion_evidence.dart';
 
 typedef PositionProvider =
     Future<({double latitude, double longitude})?> Function();
@@ -88,14 +89,29 @@ class AccelerometerService {
   AccelerometerService({
     required ApiClient apiClient,
     required PositionProvider positionProvider,
+    Stream<UserAccelerometerEvent>? samples,
+    Future<bool> Function()? chargingProvider,
+    double? Function()? locationAccuracyProvider,
+    bool? experimentalShadow,
   }) : _apiClient = apiClient,
-       _positionProvider = positionProvider;
+       _positionProvider = positionProvider,
+       _samples = samples,
+       _chargingProvider = chargingProvider,
+       _locationAccuracyProvider = locationAccuracyProvider,
+       _experimentalShadow =
+           experimentalShadow ?? SeismikConstants.crowdV2Shadow;
 
   /// El estado de carga cambia en minutos, no en milisegundos.
   static const Duration _batteryRefreshInterval = Duration(seconds: 60);
 
   final ApiClient _apiClient;
   final PositionProvider _positionProvider;
+  final Stream<UserAccelerometerEvent>? _samples;
+  final Future<bool> Function()? _chargingProvider;
+  final double? Function()? _locationAccuracyProvider;
+  final bool _experimentalShadow;
+  final MotionEvidenceDetector _evidence = MotionEvidenceDetector();
+  DateTime _lastPresence = DateTime.fromMillisecondsSinceEpoch(0);
   final Battery _battery = Battery();
   final MotionWindow _window = MotionWindow();
   StreamSubscription<UserAccelerometerEvent>? _subscription;
@@ -103,27 +119,58 @@ class AccelerometerService {
   DateTime _lastBatteryCheck = DateTime.fromMillisecondsSinceEpoch(0);
   bool _sending = false;
   bool _charging = false;
+  int _generation = 0;
+  int samplesRead = 0;
+  int reportsSent = 0;
+  String? lastError;
+  DateTime? lastSampleAt;
+  bool get running => _subscription != null;
 
   Future<void> start() async {
     if (_subscription != null) return;
+    final int generation = ++_generation;
     await _refreshBattery();
+    if (generation != _generation) return;
     _lastBatteryCheck = DateTime.now();
     _subscription =
-        userAccelerometerEventStream(
-          samplingPeriod: SensorInterval.gameInterval,
-        ).listen(
-          _onSample,
-          onError: (_) {
-            unawaited(stop());
-          },
-        );
+        (_samples ??
+                userAccelerometerEventStream(
+                  samplingPeriod: SensorInterval.gameInterval,
+                ))
+            .listen(
+              _onSample,
+              onError: (_) {
+                lastError = 'El sistema no entrega lecturas del sensor.';
+                unawaited(stop());
+              },
+            );
   }
 
   void _onSample(UserAccelerometerEvent event) {
     final DateTime now = DateTime.now();
+    samplesRead++;
+    lastSampleAt = now;
     final double magnitude = math.sqrt(
       event.x * event.x + event.y * event.y + event.z * event.z,
     );
+    if (!magnitude.isFinite) {
+      _evidence.reset();
+      return;
+    }
+    if (_experimentalShadow) {
+      final evidence = _evidence.add(
+        event.timestamp,
+        event.x,
+        event.y,
+        event.z,
+      );
+      if (evidence != null && !_sending) {
+        _sending = true;
+        unawaited(_sendShadow(evidence, _generation));
+      }
+      // No fall-through into the legacy candidate/push path in a v2 build.
+      return;
+    }
     // La varianza se calcula sobre el historial anterior al pico. Incluir el
     // propio impulso haría que un sismo real pareciera movimiento del usuario.
     final double lowFrequencyVariance = _window.variance;
@@ -153,14 +200,26 @@ class AccelerometerService {
     }
 
     _sending = true;
-    unawaited(_sendPing(now, magnitude));
+    // También enfriar intentos fallidos: no hacer una petición por muestra.
+    _lastPing = now;
+    unawaited(_sendPing(now, magnitude, _generation));
   }
 
-  Future<void> _sendPing(DateTime now, double magnitude) async {
+  Future<void> _sendPing(DateTime now, double magnitude, int generation) async {
     try {
-      final ({double latitude, double longitude})? position =
-          await _positionProvider();
-      if (position == null) return;
+      ({double latitude, double longitude})? position;
+      try {
+        position = await _positionProvider();
+      } catch (_) {
+        lastError = 'Medición descartada: no se pudo obtener la ubicación.';
+        _lastPing = DateTime.now().add(const Duration(seconds: 27));
+        return;
+      }
+      if (generation != _generation || !running) return;
+      if (position == null) {
+        lastError = 'Medición descartada: no hay ubicación reciente y precisa.';
+        return;
+      }
       await _apiClient.sendShake(
         latitude: position.latitude,
         longitude: position.longitude,
@@ -168,9 +227,71 @@ class AccelerometerService {
         timestampMilliseconds: now.millisecondsSinceEpoch,
       );
       _lastPing = now;
+      reportsSent++;
+      lastError = null;
     } catch (_) {
-      // Un pico no enviado no debe tumbar el flujo del sensor; el siguiente
-      // pico válido lo reintenta.
+      lastError =
+          'No se pudo enviar la medición. Se reintentará con otra sacudida.';
+      _lastPing = DateTime.now().add(const Duration(seconds: 27));
+    } finally {
+      _sending = false;
+    }
+  }
+
+  Future<void> sendShadowPresence() async {
+    if (!_experimentalShadow ||
+        !_evidence.available ||
+        _sending ||
+        DateTime.now().difference(_lastPresence) <
+            const Duration(seconds: 60)) {
+      return;
+    }
+    if (lastSampleAt == null ||
+        DateTime.now().difference(lastSampleAt!).abs() >
+            const Duration(seconds: 1)) {
+      return;
+    }
+    _lastPresence = DateTime.now();
+    _sending = true;
+    await _sendShadow(null, _generation);
+  }
+
+  Future<void> _sendShadow(MotionEvidence? evidence, int generation) async {
+    try {
+      final position = await _positionProvider();
+      final accuracy = _locationAccuracyProvider?.call();
+      if (generation != _generation || !running) return;
+      if (position == null ||
+          accuracy == null ||
+          !accuracy.isFinite ||
+          accuracy > 100) {
+        lastError =
+            'Sensor experimental: falta ubicación reciente con precisión suficiente.';
+        return;
+      }
+      await _apiClient.sendCrowdShadow(<String, dynamic>{
+        'lat': position.latitude, 'lon': position.longitude,
+        'timestamp':
+            (evidence?.at ?? DateTime.now()).millisecondsSinceEpoch / 1000,
+        'location_accuracy_m': accuracy,
+        'stationary_seconds':
+            evidence?.stationarySeconds ?? _evidence.stationarySeconds,
+        // Presence is not counted without a measured sampling cadence below.
+        'sampling_hz': evidence?.samplingHz ?? _evidence.samplingHz,
+        'max_gap_ms': evidence?.maxGapMs ?? _evidence.maxGapMs,
+        if (evidence != null) ...{
+          'peak_g': evidence.peakG,
+          'rms_g': evidence.rmsG,
+          'duration_ms': evidence.durationMs,
+          'samples': evidence.samples,
+          'threshold_samples': evidence.thresholdSamples,
+        },
+      }, presence: evidence == null);
+      if (evidence != null) reportsSent++;
+      lastError = null;
+    } catch (_) {
+      lastError =
+          'Medición experimental no enviada; no se enviará como alerta.';
     } finally {
       _sending = false;
     }
@@ -178,6 +299,10 @@ class AccelerometerService {
 
   Future<void> _refreshBattery() async {
     try {
+      if (_chargingProvider != null) {
+        _charging = await _chargingProvider();
+        return;
+      }
       final BatteryState state = await _battery.batteryState;
       _charging = state == BatteryState.charging || state == BatteryState.full;
     } catch (_) {
@@ -187,9 +312,12 @@ class AccelerometerService {
   }
 
   Future<void> stop() async {
-    await _subscription?.cancel();
+    ++_generation;
+    final subscription = _subscription;
     _subscription = null;
+    await subscription?.cancel();
     _window.clear();
+    _evidence.reset();
   }
 }
 

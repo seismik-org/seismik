@@ -173,7 +173,10 @@ class _AlertOverlayState extends State<AlertOverlay>
               ],
               const Spacer(),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 16),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 36,
+                  vertical: 16,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: 0.10),
                   borderRadius: BorderRadius.circular(28),
@@ -223,9 +226,7 @@ class _AlertOverlayState extends State<AlertOverlay>
               Theme(
                 data: Theme.of(context).copyWith(
                   textButtonTheme: TextButtonThemeData(
-                    style: TextButton.styleFrom(
-                      foregroundColor: Colors.white,
-                    ),
+                    style: TextButton.styleFrom(foregroundColor: Colors.white),
                   ),
                 ),
                 child: OpenInMapsButton(event: widget.event, compact: true),
@@ -279,10 +280,14 @@ class _AlertOverlayState extends State<AlertOverlay>
                   child: const Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: <Widget>[
-                      Icon(CupertinoIcons.checkmark_circle, color: Colors.white, size: 20),
+                      Icon(
+                        CupertinoIcons.checkmark_circle,
+                        color: Colors.white,
+                        size: 20,
+                      ),
                       SizedBox(width: 8),
                       Text(
-                        'ESTOY A SALVO · CERRAR',
+                        'SILENCIAR · CERRAR',
                         style: TextStyle(
                           color: Colors.white,
                           fontSize: 15,
@@ -301,4 +306,3 @@ class _AlertOverlayState extends State<AlertOverlay>
     ),
   );
 }
-

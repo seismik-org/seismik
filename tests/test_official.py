@@ -295,7 +295,9 @@ def test_a_rejected_source_is_left_alone_instead_of_hammered(status: int) -> Non
         with pytest.raises(SourceRejected):
             OfficialApiClient(_sgc(), 1, session).fetch(datetime(2026, 9, 18), datetime(2026, 9, 18, 1))
     assert len(session.calls) == 1
-    assert 29 * 60 < source_pause_remaining("sgc_colombia") <= 30 * 60
+    # Subtracting floating-point monotonic timestamps can round a few ulps
+    # above the exact interval on Windows; do not change the actual cooldown.
+    assert 29 * 60 < source_pause_remaining("sgc_colombia") <= 30 * 60 + 1e-6
 
 
 def test_the_agency_retry_after_sets_the_pause_within_limits() -> None:

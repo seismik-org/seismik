@@ -44,7 +44,7 @@ Set<Marker> buildMapMarkers({
         clusterManagerId: stationCluster,
         infoWindow: InfoWindow(
           title: '${station.network}.${station.id}',
-          snippet: 'Estación sísmica',
+          snippet: station.availabilityLabel,
         ),
         icon: stationIcon,
       ),

@@ -8,6 +8,7 @@ import 'package:provider/provider.dart';
 import '../../core/platform.dart';
 import '../../core/theme.dart';
 import '../widgets/adaptive.dart';
+import '../widgets/report_event_picker.dart';
 import '../widgets/liquid_glass.dart';
 
 import '../../data/models/citizen_report.dart';
@@ -49,6 +50,8 @@ class _DamageReportScreenState extends State<DamageReportScreen> {
   bool _official = true;
   bool _submitting = false;
   bool _settingsLoaded = false;
+  SeismicEvent? _selectedEvent;
+  int _pickerRevision = 0;
 
   @override
   void initState() {
@@ -84,6 +87,13 @@ class _DamageReportScreenState extends State<DamageReportScreen> {
       _hazards.contains('gas_leak');
 
   Future<void> _submit() async {
+    if (_selectedEvent == null) {
+      await showAdaptiveNotice(
+        context,
+        message: 'Selecciona el sismo al que corresponde este reporte.',
+      );
+      return;
+    }
     if (_country.text.trim().length != 2) {
       await showAdaptiveNotice(
         context,
@@ -109,8 +119,8 @@ class _DamageReportScreenState extends State<DamageReportScreen> {
         injuriesObserved: _injuries,
         emergencyServicesContacted: _emergencyContacted,
         safeToRemain: _safeToRemain,
-        earthquakeEventId: widget.event?.id,
-        officialEventId: widget.event?.officialEventId,
+        earthquakeEventId: _selectedEvent!.id,
+        officialEventId: _selectedEvent!.officialEventId,
         buildingType: _building.text,
         comment: _comment.text,
       );
@@ -121,12 +131,18 @@ class _DamageReportScreenState extends State<DamageReportScreen> {
         emergencyActionRecommended: _urgent,
       );
       if (!mounted) return;
-      await Navigator.of(context).pushReplacement(
+      await Navigator.of(context).push(
         adaptiveRoute<void>(
           (_) => ReportResultScreen(result: result),
           title: 'Reporte',
         ),
       );
+      if (mounted) {
+        setState(() {
+          _selectedEvent = null;
+          _pickerRevision++;
+        });
+      }
     } catch (error) {
       if (mounted) {
         await showAdaptiveNotice(context, message: 'No se pudo enviar: $error');
@@ -154,7 +170,9 @@ class _DamageReportScreenState extends State<DamageReportScreen> {
                   children: <Widget>[
                     Icon(
                       CupertinoIcons.exclamationmark_triangle_fill,
-                      color: _urgent ? SeismikColors.crimson : SeismikColors.amber,
+                      color: _urgent
+                          ? SeismikColors.crimson
+                          : SeismikColors.amber,
                       size: 24,
                     ),
                     const SizedBox(width: 12),
@@ -173,49 +191,65 @@ class _DamageReportScreenState extends State<DamageReportScreen> {
                 ),
               ),
             ),
+            _eventPicker(),
             CupertinoListSection.insetGrouped(
               header: const Text('NIVEL DE DAÑO OBSERVADO'),
-              children: const <String, String>{
-                'none': 'Sin daño visible',
-                'minor': 'Menor (grietas superficiales)',
-                'moderate': 'Moderado (desprendimientos)',
-                'severe': 'Severo (daño estructural)',
-                'collapse': 'Colapso parcial o total',
-              }.entries.map((entry) => CupertinoListTile(
-                title: Text(entry.value),
-                trailing: _severity == entry.key
-                    ? const Icon(CupertinoIcons.checkmark_circle_fill, color: CupertinoColors.activeBlue)
-                    : const Icon(CupertinoIcons.circle, color: CupertinoColors.tertiaryLabel),
-                onTap: () {
-                  unawaited(HapticFeedback.selectionClick());
-                  setState(() => _severity = entry.key);
-                },
-              )).toList(),
+              children:
+                  const <String, String>{
+                        'none': 'Sin daño visible',
+                        'minor': 'Menor (grietas superficiales)',
+                        'moderate': 'Moderado (desprendimientos)',
+                        'severe': 'Severo (daño estructural)',
+                        'collapse': 'Colapso parcial o total',
+                      }.entries
+                      .map(
+                        (entry) => CupertinoListTile(
+                          title: Text(entry.value),
+                          trailing: _severity == entry.key
+                              ? const Icon(
+                                  CupertinoIcons.checkmark_circle_fill,
+                                  color: CupertinoColors.activeBlue,
+                                )
+                              : const Icon(
+                                  CupertinoIcons.circle,
+                                  color: CupertinoColors.tertiaryLabel,
+                                ),
+                          onTap: () {
+                            unawaited(HapticFeedback.selectionClick());
+                            setState(() => _severity = entry.key);
+                          },
+                        ),
+                      )
+                      .toList(),
             ),
             CupertinoListSection.insetGrouped(
               header: const Text('PELIGROS OBSERVADOS'),
-              children: _hazardLabels.entries.map((entry) => CupertinoListTile(
-                title: Text(entry.value),
-                trailing: Icon(
-                  _hazards.contains(entry.key)
-                      ? CupertinoIcons.checkmark_circle_fill
-                      : CupertinoIcons.circle,
-                  color: _hazards.contains(entry.key)
-                      ? CupertinoColors.activeBlue
-                      : CupertinoColors.tertiaryLabel,
-                  size: 22,
-                ),
-                onTap: () {
-                  unawaited(HapticFeedback.selectionClick());
-                  setState(() {
-                    if (_hazards.contains(entry.key)) {
-                      _hazards.remove(entry.key);
-                    } else {
-                      _hazards.add(entry.key);
-                    }
-                  });
-                },
-              )).toList(),
+              children: _hazardLabels.entries
+                  .map(
+                    (entry) => CupertinoListTile(
+                      title: Text(entry.value),
+                      trailing: Icon(
+                        _hazards.contains(entry.key)
+                            ? CupertinoIcons.checkmark_circle_fill
+                            : CupertinoIcons.circle,
+                        color: _hazards.contains(entry.key)
+                            ? CupertinoColors.activeBlue
+                            : CupertinoColors.tertiaryLabel,
+                        size: 22,
+                      ),
+                      onTap: () {
+                        unawaited(HapticFeedback.selectionClick());
+                        setState(() {
+                          if (_hazards.contains(entry.key)) {
+                            _hazards.remove(entry.key);
+                          } else {
+                            _hazards.add(entry.key);
+                          }
+                        });
+                      },
+                    ),
+                  )
+                  .toList(),
             ),
             CupertinoListSection.insetGrouped(
               header: const Text('SITUACIÓN CRÍTICA'),
@@ -247,7 +281,10 @@ class _DamageReportScreenState extends State<DamageReportScreen> {
               header: const Text('DESCRIPCIÓN DEL LUGAR'),
               children: <Widget>[
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 8,
+                  ),
                   child: CupertinoTextField(
                     controller: _building,
                     maxLength: 80,
@@ -256,7 +293,10 @@ class _DamageReportScreenState extends State<DamageReportScreen> {
                   ),
                 ),
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 8,
+                  ),
                   child: CupertinoTextField(
                     controller: _comment,
                     maxLength: 1000,
@@ -308,7 +348,9 @@ class _DamageReportScreenState extends State<DamageReportScreen> {
                 kind: _urgent
                     ? AdaptiveButtonKind.destructive
                     : AdaptiveButtonKind.primary,
-                onPressed: _submitting ? null : _submit,
+                onPressed: _submitting || _selectedEvent == null
+                    ? null
+                    : _submit,
                 icon: Icons.send,
                 label: _submitting ? 'Enviando…' : 'Enviar reporte a Seismik',
               ),
@@ -343,6 +385,7 @@ class _DamageReportScreenState extends State<DamageReportScreen> {
             ),
           ),
           const SizedBox(height: 16),
+          _eventPicker(),
           DropdownButtonFormField<String>(
             initialValue: _severity,
             decoration: const InputDecoration(
@@ -462,7 +505,7 @@ class _DamageReportScreenState extends State<DamageReportScreen> {
             kind: _urgent
                 ? AdaptiveButtonKind.destructive
                 : AdaptiveButtonKind.primary,
-            onPressed: _submitting ? null : _submit,
+            onPressed: _submitting || _selectedEvent == null ? null : _submit,
             icon: Icons.send,
             label: _submitting ? 'Enviando…' : 'Enviar reporte a Seismik',
           ),
@@ -508,15 +551,25 @@ class _DamageReportScreenState extends State<DamageReportScreen> {
     );
   }
 
+  Widget _eventPicker() => ReportEventPicker(
+    key: ValueKey<int>(_pickerRevision),
+    suggested: widget.event,
+    enabled: !_submitting,
+    onSelected: (event) => setState(() {
+      _selectedEvent = event;
+      _country.text = event.countryCode ?? _country.text;
+    }),
+  );
+
   Widget _check(String label, bool value, ValueChanged<bool> update) {
     if (usesCupertino) {
       return CupertinoListTile(
         title: Text(label),
         trailing: Icon(
-          value
-              ? CupertinoIcons.checkmark_circle_fill
-              : CupertinoIcons.circle,
-          color: value ? CupertinoColors.activeBlue : CupertinoColors.tertiaryLabel,
+          value ? CupertinoIcons.checkmark_circle_fill : CupertinoIcons.circle,
+          color: value
+              ? CupertinoColors.activeBlue
+              : CupertinoColors.tertiaryLabel,
           size: 22,
         ),
         onTap: () {
@@ -532,4 +585,3 @@ class _DamageReportScreenState extends State<DamageReportScreen> {
     );
   }
 }
-

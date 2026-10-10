@@ -6,7 +6,8 @@ public struct FeltReportView: View {
     public let showsCloseButton: Bool
     @Environment(\.dismiss) private var dismiss
 
-    @State private var felt: Bool = true
+    @State private var felt: Bool?
+    @State private var selectedEvent: SeismicEvent?
     @State private var intensity: Double = 4.0
     @State private var indoors: Bool = true
     @State private var floorNumber: Int = 1
@@ -41,11 +42,17 @@ public struct FeltReportView: View {
     public var body: some View {
         CompatibleNavigationStack {
             Form {
+                ReportEventSelection(selectedEvent: $selectedEvent, suggested: preselectedEvent)
+                    .disabled(isSubmitting)
                 Section(header: Text("PERCEPCIÓN")) {
-                    Toggle("¿Sentiste el movimiento?", isOn: $felt)
-                        .tint(SeismikColors.emerald)
+                    Picker("¿Lo sentiste?", selection: $felt) {
+                        Text("Selecciona una respuesta").tag(Bool?.none)
+                        Text("Sí, lo sentí").tag(Optional(true))
+                        Text("No lo sentí").tag(Optional(false))
+                    }
+                    .disabled(selectedEvent == nil || isSubmitting)
 
-                    if felt {
+                    if felt == true {
                         VStack(alignment: .leading, spacing: 8) {
                             HStack {
                                 Text("Intensidad percibida")
@@ -75,7 +82,7 @@ public struct FeltReportView: View {
                     }
                 }
 
-                if felt {
+                if felt == true {
                     Section(header: Text("SITUACIÓN Y ENTORNO")) {
                         Toggle("¿Estabas en el interior de una edificación?", isOn: $indoors)
                             .tint(SeismikColors.systemBlue)
@@ -117,11 +124,14 @@ public struct FeltReportView: View {
             }
             .alert("Reporte Recibido", isPresented: $showSuccessAlert) {
                 Button("Entendido") {
+                    selectedEvent = nil
+                    felt = nil
                     if showsCloseButton { dismiss() }
                 }
             } message: {
                 Text(submissionMessage)
             }
+            .onChange(of: selectedEvent?.id) { _ in felt = nil }
             .alert("No se pudo guardar el reporte", isPresented: $showErrorAlert) {
                 Button("Aceptar", role: .cancel) {}
             } message: {
@@ -140,7 +150,7 @@ public struct FeltReportView: View {
             .frame(maxWidth: .infinity, minHeight: 50)
         }
         .buttonStyle(.borderedProminent)
-        .disabled(isSubmitting)
+        .disabled(isSubmitting || selectedEvent == nil || felt == nil)
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
         .background(.bar)
@@ -153,6 +163,7 @@ public struct FeltReportView: View {
     }
 
     private func submitReport() {
+        guard let selectedEvent, let felt else { return }
         guard let coordinate = LocationManager.shared.userCoordinate else {
             submissionMessage = "Se necesita tu ubicación para asociar el reporte al lugar correcto. Activa la ubicación de Seismik en Ajustes e inténtalo de nuevo."
             HapticManager.error()
@@ -164,8 +175,8 @@ public struct FeltReportView: View {
 
         let payload = FeltReportPayload(
             deviceId: SeismikAPIClient.shared.deviceId,
-            earthquakeEventId: preselectedEvent?.id,
-            officialEventId: preselectedEvent?.officialEventId,
+            earthquakeEventId: selectedEvent.id,
+            officialEventId: selectedEvent.officialEventId,
             observedAt: ISO8601DateFormatter().string(from: Date()),
             latitude: coordinate.latitude,
             longitude: coordinate.longitude,
@@ -175,10 +186,10 @@ public struct FeltReportView: View {
             intensityMmi: felt ? Int(intensity) : nil,
             indoors: indoors,
             floor: indoors ? floorNumber : nil,
-            wokeUp: wokeUp,
-            difficultyStanding: difficultyStanding,
+            wokeUp: felt && wokeUp,
+            difficultyStanding: felt && difficultyStanding,
             objectsMoved: nil,
-            objectsFell: objectsFell,
+            objectsFell: felt && objectsFell,
             visibleDamage: nil,
             comment: comment.isEmpty ? nil : comment
         )
@@ -218,4 +229,78 @@ public struct FeltReportView: View {
         }
     }
 
+}
+
+/// Location only ranks candidates. The person must choose the event explicitly.
+struct ReportEventSelection: View {
+    @Binding var selectedEvent: SeismicEvent?
+    let suggested: SeismicEvent?
+    @ObservedObject private var location = LocationManager.shared
+    @State private var events: [SeismicEvent] = []
+    @State private var showing = false
+    @State private var loading = false
+    @State private var warning: String?
+
+    private var choices: [SeismicEvent] {
+        ReportEventChoices.ordered(events + (suggested.map { [$0] } ?? []),
+                                   at: location.currentCoordinate, now: Date())
+    }
+
+    var body: some View {
+        Section(header: Text("SELECCIONA EL SISMO")) {
+            if let selectedEvent { Text(label(selectedEvent)) }
+            Button(selectedEvent == nil ? "Elegir sismo" : "Cambiar sismo") {
+                location.requestPermission()
+                showing = true
+            }
+            Text("Verifica lugar y hora. Se ordenan por distancia a tu ubicación actual; cercanía no significa que lo hayas sentido.")
+                .font(.caption).foregroundColor(.secondary)
+        }
+        .sheet(isPresented: $showing) {
+            CompatibleNavigationStack {
+                List {
+                    if loading { ProgressView("Buscando sismos…") }
+                    if location.currentCoordinate == nil {
+                        Text("Sin ubicación: se ordenan por fecha. Activa la ubicación para ver los más cercanos.")
+                    }
+                    if let warning { Text(warning).foregroundColor(.secondary) }
+                    if !loading && choices.isEmpty { Text("No hay sismos recientes disponibles. No se enviará un reporte sin sismo.") }
+                    ForEach(choices) { event in
+                        Button {
+                            selectedEvent = event
+                            showing = false
+                        } label: {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(label(event)).foregroundColor(.primary)
+                                Text(event.agency ?? "Seismik · preliminar").font(.caption).foregroundColor(.secondary)
+                            }
+                        }
+                    }
+                }
+                .navigationTitle("Sismos · últimos 7 días")
+                .toolbar {
+                    ToolbarItem(placement: .navigationBarLeading) { Button("Cancelar") { showing = false } }
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Button("Actualizar") { location.requestPermission(); Task { await refresh() } }.disabled(loading)
+                    }
+                }
+                .task { await refresh() }
+            }
+        }
+    }
+
+    private func label(_ event: SeismicEvent) -> String {
+        let time = event.detectedAt.map { DateFormatter.localizedString(from: $0, dateStyle: .short, timeStyle: .short) } ?? "Hora no disponible"
+        let magnitude = event.magnitude.map { String(format: " · M%.1f", $0) } ?? ""
+        let distance = ReportEventChoices.distance(event, from: location.currentCoordinate).map { " · \(Int($0.rounded())) km de tu ubicación" } ?? ""
+        return "\(event.place ?? "Ubicación no determinada") · \(time)\(magnitude)\(distance)"
+    }
+
+    @MainActor private func refresh() async {
+        loading = true
+        warning = nil
+        defer { loading = false }
+        do { events = try await SeismikAPIClient.shared.fetchRecentEvents(days: 7, minimumMagnitude: 0) }
+        catch { events = SeismikState.shared.events; warning = "Sin conexión: se muestran los sismos guardados." }
+    }
 }

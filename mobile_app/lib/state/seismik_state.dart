@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/widgets.dart';
 import 'package:geolocator/geolocator.dart';
@@ -8,6 +9,7 @@ import '../data/models/pending_report.dart';
 import '../data/models/seismic_event.dart';
 import '../data/models/station.dart';
 import '../services/accelerometer_service.dart';
+import '../services/background_motion_service.dart';
 import '../services/api_client.dart';
 import '../services/notification_service.dart';
 import '../services/offline_queue.dart';
@@ -21,6 +23,7 @@ import 'mobile_settings.dart';
 class _NetworkPreferences {
   _NetworkPreferences.of(MobileSettings settings)
     : crowdsourcing = settings.crowdsourcingEnabled,
+      backgroundCrowdsourcing = settings.backgroundCrowdsourcingEnabled,
       earlyAlerts = settings.receiveEarlyAlerts,
       officialUpdates = settings.receiveOfficialUpdates,
       notificationMagnitude = settings.minimumNotificationMagnitude,
@@ -30,6 +33,7 @@ class _NetworkPreferences {
       historySources = (settings.historySources.toList()..sort()).join(',');
 
   final bool crowdsourcing;
+  final bool backgroundCrowdsourcing;
   final bool earlyAlerts;
   final bool officialUpdates;
   final double notificationMagnitude;
@@ -65,6 +69,7 @@ class SeismikState extends ChangeNotifier with WidgetsBindingObserver {
     );
     _networkPreferences = _NetworkPreferences.of(settings);
     settings.addListener(_onSettingsChanged);
+    BackgroundMotionService.status.addListener(_onBackgroundStatus);
     WidgetsBinding.instance.addObserver(this);
   }
 
@@ -101,6 +106,12 @@ class SeismikState extends ChangeNotifier with WidgetsBindingObserver {
   Future<void>? _missedAlertsInFlight;
   List<SeismicEvent> _recoveredAlerts = const <SeismicEvent>[];
   bool _disposed = false;
+  Future<void> _sensorSync = Future<void>.value();
+  bool _visible = true;
+
+  void _onBackgroundStatus() {
+    if (!_disposed) unawaited(settings.reloadBackgroundCrowdsourcing());
+  }
 
   bool initializing = true;
   bool networkOnline = false;
@@ -219,7 +230,8 @@ class SeismikState extends ChangeNotifier with WidgetsBindingObserver {
     final _NetworkPreferences next = _NetworkPreferences.of(settings);
     _networkPreferences = next;
 
-    if (next.crowdsourcing != previous.crowdsourcing) {
+    if (next.crowdsourcing != previous.crowdsourcing ||
+        next.backgroundCrowdsourcing != previous.backgroundCrowdsourcing) {
       unawaited(_syncCrowdsourcing());
     }
     // El umbral de magnitud y el radio viven en el servidor: sin volver a
@@ -258,16 +270,31 @@ class SeismikState extends ChangeNotifier with WidgetsBindingObserver {
     }
   }
 
-  Future<void> _syncCrowdsourcing() async {
-    try {
-      if (settings.crowdsourcingEnabled && position != null) {
-        await accelerometer.start();
-      } else {
-        await accelerometer.stop();
+  Future<void> _syncCrowdsourcing() {
+    // Serialize hand-offs so two isolates never own the sensor concurrently.
+    return _sensorSync = _sensorSync.then((_) async {
+      if (_disposed) return;
+      try {
+        if (!settings.crowdsourcingEnabled || position == null) {
+          await accelerometer.stop();
+          await BackgroundMotionService.stop();
+        } else if (Platform.isAndroid &&
+            settings.backgroundCrowdsourcingEnabled) {
+          await accelerometer.stop();
+          if (_visible) await BackgroundMotionService.start(api);
+        } else {
+          await BackgroundMotionService.stop();
+          if (_visible) {
+            await accelerometer.start();
+          } else {
+            await accelerometer.stop();
+          }
+        }
+      } catch (error) {
+        BackgroundMotionService.status.value = 'Sensor detenido: $error';
+        await settings.setBackgroundCrowdsourcingEnabled(false);
       }
-    } catch (_) {
-      // Un sensor ausente o bloqueado no debe impedir el resto del monitor.
-    }
+    });
   }
 
   Future<void> _registerWithRetry() async {
@@ -298,8 +325,7 @@ class SeismikState extends ChangeNotifier with WidgetsBindingObserver {
   ///
   /// Volver a la app, tirar hacia abajo y cambiar un filtro pueden pedirlo a la
   /// vez: todas esas llamadas comparten una sola descarga.
-  Future<void> refreshNetworkData() =>
-      _refreshInFlight ??= _runRefreshes();
+  Future<void> refreshNetworkData() => _refreshInFlight ??= _runRefreshes();
 
   Future<void> _runRefreshes() async {
     try {
@@ -375,6 +401,16 @@ class SeismikState extends ChangeNotifier with WidgetsBindingObserver {
   /// prolongado y no reintenta a ciegas mientras el teléfono sigue offline.
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    _visible = state == AppLifecycleState.resumed;
+    if (state == AppLifecycleState.resumed) {
+      unawaited(
+        settings.reloadBackgroundCrowdsourcing().then(
+          (_) => _syncCrowdsourcing(),
+        ),
+      );
+    } else if (state == AppLifecycleState.paused) {
+      unawaited(_syncCrowdsourcing());
+    }
     if (state == AppLifecycleState.resumed && !initializing) {
       unawaited(refreshNetworkData());
     }
@@ -384,10 +420,8 @@ class SeismikState extends ChangeNotifier with WidgetsBindingObserver {
   ///
   /// Dos vaciados simultáneos podrían leer la misma cola y enviar un reporte
   /// dos veces: se comparte el que ya está en curso.
-  Future<void> flushPendingReports() =>
-      _flushInFlight ??= _flushPendingReports().whenComplete(
-        () => _flushInFlight = null,
-      );
+  Future<void> flushPendingReports() => _flushInFlight ??=
+      _flushPendingReports().whenComplete(() => _flushInFlight = null);
 
   Future<void> _flushPendingReports() async {
     final int previousCount = pendingReportCount;
@@ -424,10 +458,8 @@ class SeismikState extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   /// Recupera del servidor las alertas emitidas mientras no hubo conexión.
-  Future<void> syncMissedAlerts() =>
-      _missedAlertsInFlight ??= _syncMissedAlerts().whenComplete(
-        () => _missedAlertsInFlight = null,
-      );
+  Future<void> syncMissedAlerts() => _missedAlertsInFlight ??=
+      _syncMissedAlerts().whenComplete(() => _missedAlertsInFlight = null);
 
   Future<void> _syncMissedAlerts() async {
     try {
@@ -624,7 +656,8 @@ class SeismikState extends ChangeNotifier with WidgetsBindingObserver {
     }
     // Un reporte oficial entra al historial también cuando llegó como alarma
     // de sacudida fuerte, y una sola vez aunque el aviso se abra de nuevo.
-    if (event.isOfficial && !recentEvents.any((known) => known.id == event.id)) {
+    if (event.isOfficial &&
+        !recentEvents.any((known) => known.id == event.id)) {
       recentEvents = <SeismicEvent>[event, ...recentEvents];
     }
     _notify();
@@ -665,6 +698,7 @@ class SeismikState extends ChangeNotifier with WidgetsBindingObserver {
     registrations.dispose();
     WidgetsBinding.instance.removeObserver(this);
     settings.removeListener(_onSettingsChanged);
+    BackgroundMotionService.status.removeListener(_onBackgroundStatus);
     unawaited(_notificationSubscription?.cancel());
     unawaited(accelerometer.stop());
     unawaited(notifications.dispose());

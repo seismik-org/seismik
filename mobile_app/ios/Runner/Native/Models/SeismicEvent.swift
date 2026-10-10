@@ -1,6 +1,45 @@
 import Foundation
 import CoreLocation
 
+enum ReportEventChoices {
+    static func distance(_ event: SeismicEvent, from position: CLLocationCoordinate2D?) -> Double? {
+        guard let position, let epicenter = event.coordinate else { return nil }
+        return CLLocation(latitude: position.latitude, longitude: position.longitude)
+            .distance(from: CLLocation(latitude: epicenter.latitude, longitude: epicenter.longitude)) / 1000
+    }
+
+    static func ordered(_ events: [SeismicEvent], at position: CLLocationCoordinate2D?, now: Date) -> [SeismicEvent] {
+        var unique: [String: SeismicEvent] = [:]
+        for event in events {
+            guard !event.id.isEmpty, event.id != "unknown", !event.id.hasPrefix("drill-"),
+                  event.sourceId != "simulation", let date = event.detectedAt,
+                  now.timeIntervalSince(date) >= 0, now.timeIntervalSince(date) <= 7 * 86400 else { continue }
+            unique[event.id] = event
+        }
+        return unique.values.sorted {
+            let a = distance($0, from: position), b = distance($1, from: position)
+            if let a, let b, a != b { return a < b }
+            if a != nil && b == nil { return true }
+            if a == nil && b != nil { return false }
+            return ($0.detectedAt ?? .distantPast) > ($1.detectedAt ?? .distantPast)
+        }
+    }
+}
+
+enum FamilyNicknameStoreNative {
+    private static func key(_ uid: String, _ circle: String) -> String {
+        // Encoded pair avoids ambiguous concatenation and never travels to the API.
+        let scope = (try? JSONEncoder().encode([uid, circle]))?.base64EncodedString() ?? ""
+        return "seismik.family.nicknames.native.\(scope)"
+    }
+    static func load(uid: String, circle: String, defaults: UserDefaults = .standard) -> [String: String] {
+        defaults.dictionary(forKey: key(uid, circle)) as? [String: String] ?? [:]
+    }
+    static func save(_ names: [String: String], uid: String, circle: String, defaults: UserDefaults = .standard) {
+        defaults.set(names, forKey: key(uid, circle))
+    }
+}
+
 /// Registro de disparo de estación sismológica para coincidencia multiestación.
 public struct StationTrigger: Identifiable, Codable, Hashable {
     public var id: String { stationId }

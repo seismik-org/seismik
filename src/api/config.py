@@ -22,6 +22,8 @@ class AppSettings(BaseSettings):
     webhook_idempotency_seconds: int = Field(default=600, ge=60)
     event_max_body_bytes: int = Field(default=65_536, ge=1_024, le=1_048_576)
     consumer_api_key: SecretStr = SecretStr("")
+    # Reserved only to keep experimental crowd data off magnitude/alert streams.
+    magnitude_stream: str = "stream:seismik:magnitudes"
     # Secreto compartido con el Worker de Cloudflare y el reenviador de
     # Pub/Sub. Vacío, la API atiende a cualquiera; definido, rechaza lo que
     # llegue a su URL de Cloud Run sin él. Ver api/edge_origin.py.
@@ -189,6 +191,9 @@ class AppSettings(BaseSettings):
     allowed_ios_app_ids: tuple[str, ...] = ()
     allowed_android_app_ids: tuple[str, ...] = ()
     station_catalog_path: str = "config.global.json"
+    colombia_station_catalog_path: str = "data/stations/colombia-open.json"
+    magnitude_calibration_status_path: str = "data/calibration/magnitude-status.json"
+    local_magnitude_status_path: str = "data/calibration/ml-calibration-status.json"
     public_recent_event_limit: int = Field(default=50, ge=1, le=200)
     # El panel "Así se ve Seismik" de seismik.org: sin clave, sin sesión, sólo
     # el catálogo oficial ya filtrado a lo que de verdad mueve la aguja. El
@@ -209,6 +214,12 @@ class AppSettings(BaseSettings):
     crowd_h3_resolution: int = Field(default=7, ge=0, le=15)
     crowd_trigger_cooldown_seconds: int = Field(default=60, ge=1)
     crowd_rate_limit_per_second: int = Field(default=5, ge=1, le=100)
+    crowd_v2_enabled: bool = False
+    crowd_v2_device_allowlist: tuple[str, ...] = ()
+    crowd_v2_stream: str = "seismik:crowd:shadow:v2"
+    crowd_v2_presence_seconds: int = Field(default=150, ge=60, le=600)
+    crowd_v2_min_fraction: float = Field(default=0.05, gt=0, le=1)
+    crowd_v2_min_spatial_cells: int = Field(default=2, ge=2, le=20)
     report_rate_limit_per_minute: int = Field(default=10, ge=1, le=100)
 
     @field_validator(
