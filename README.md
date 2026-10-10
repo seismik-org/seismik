@@ -14,8 +14,9 @@ pero el checkout y los cobros automáticos siguen desactivados.
 
 ### Estado comprobado
 
-- **Android 1.0.0 (61):** disponible en la prueba interna de Google Play.
-- **iOS 1.0.0 (61):** disponible en TestFlight interno. Apple aprobó Critical
+- **Android 1.0.0 (62):** disponible en la prueba interna de Google Play.
+- **iOS 1.0.0 (62):** compilado, firmado y subido a TestFlight; queda por confirmar
+  su disponibilidad en el grupo interno. El build 61 ya estaba disponible. Apple aprobó Critical
   Alerts para la app y se verificó el entitlement en el binario firmado.
   Cada persona todavía debe conceder el permiso en su iPhone.
 - **Alertas y familia:** alarma Android al recibir la notificación, acción
@@ -28,6 +29,11 @@ pero el checkout y los cobros automáticos siguen desactivados.
 - **Estado:** comprobaciones periódicas e historial de disponibilidad en el borde;
   no depende de que alguien visite la página.
 - **Administración:** MFA y controles de alcance, sesiones, auditoría y privacidad.
+- **Build 62:** ajustes orientados al usuario, enlaces legales y eliminación de
+  cuenta; Apple/GitHub expuestos en Android y colores dinámicos del sistema
+  resueltos en Android 14+, con compatibilidad dinámica en Android 12–13.
+- **GeoJSON:** eventos recientes, historial, estaciones y showcase ofrecen
+  `format=geojson` sin cambiar permisos, cuotas ni el JSON por defecto.
 
 Estos canales de prueba no equivalen a una publicación general en ambas tiendas.
 La entrega sonora con Android bloqueado y los escenarios de permisos/Focus de
