@@ -383,9 +383,13 @@ jobs:
           # credenciales de X que antes estaban únicamente en integrations.
           # Esperamos la revisión lista antes de retirar el servicio anterior,
           # para no perder alertas ni publicar dos veces durante el corte.
+          # X: este despliegue ya no fuerza SEISMIK_X_PUBLISHER_ENABLED/DRY_RUN. Un
+          # redespliegue reactivaba las publicaciones aunque se hubieran apagado a
+          # propósito (2026-10-09: apagadas, dry-run). Se conserva lo que tenga el
+          # servicio; para encender X se fija a mano (deploy/CLOUD_RUN.md).
           if [ "$DISPATCHER_CHANGED" = true ] || [ "$INTEGRATIONS_CHANGED" = true ]; then
             deploy_worker seismik-dispatcher Dockerfile.combined-worker \
-              --update-env-vars=SEISMIK_X_PUBLISHER_ENABLED=true,SEISMIK_X_PUBLISHER_DRY_RUN=false,SEISMIK_CATALOG_ALERTS_ENABLED=true \
+              --update-env-vars=SEISMIK_CATALOG_ALERTS_ENABLED=true \
               --update-secrets=SEISMIK_X_CONSUMER_KEY=seismik-x-consumer-key:latest,SEISMIK_X_CONSUMER_SECRET=seismik-x-consumer-secret:latest,SEISMIK_X_ACCESS_TOKEN=seismik-x-access-token:latest,SEISMIK_X_ACCESS_TOKEN_SECRET=seismik-x-access-token-secret:latest
             # `services update` sólo retorna después de crear y enrutar una
             # revisión lista. Evitamos un filtro JSONPath adicional que podía
