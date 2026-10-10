@@ -118,12 +118,27 @@ def test_no_tracked_file_contains_a_secret() -> None:
     )
 
 
-def test_the_ios_maps_key_comes_from_configuration_not_from_source() -> None:
-    """La clave llega por `SEISMIK_GOOGLE_MAPS_API_KEY`, no escrita en el código."""
+def test_native_ios_maps_do_not_require_a_google_maps_key() -> None:
+    """MapKit no debe inicializar Google Maps ni recibir su clave en CI."""
 
     delegate = Path("mobile_app/ios/Runner/AppDelegate.swift").read_text(encoding="utf-8")
 
-    assert "SeismikGoogleMapsAPIKey" in delegate, "Debe leerse del Info.plist"
+    for path in (
+        "mobile_app/ios/Runner/AppDelegate.swift",
+        "mobile_app/ios/Runner/Info.plist",
+        "mobile_app/ios/Flutter/Seismik.xcconfig.example",
+        ".github/workflows/ios-testflight.yml",
+        "mobile_app/ios/Runner/Native/Services/GoogleMapsBridge.swift",
+    ):
+        content = Path(path).read_text(encoding="utf-8")
+        for obsolete in (
+            "SeismikGoogleMapsAPIKey", "SEISMIK_GOOGLE_MAPS_API_KEY",
+            "GMSServices", "import GoogleMaps",
+        ):
+            assert obsolete not in content, f"{path} mantiene configuración Maps obsoleta"
+    # La retirada de Maps no debe retirar Firebase/App Check del registro.
+    assert "FirebaseApp.configure()" in delegate
+    assert "AppCheck.setAppCheckProviderFactory" in delegate
     assert not PATTERNS["clave de API de Google"].search(delegate), (
         "Hay una clave de Google escrita en AppDelegate.swift"
     )
@@ -132,7 +147,7 @@ def test_the_ios_maps_key_comes_from_configuration_not_from_source() -> None:
         for text in decoded_candidates(delegate)
     ), (
         "Hay una clave de Google codificada en Base64 dentro de AppDelegate.swift. "
-        "Debe llegar por Info.plist / xcconfig desde el secreto de CI."
+        "Los mapas nativos de iOS usan MapKit y no necesitan esa clave."
     )
 
 

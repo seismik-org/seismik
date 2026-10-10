@@ -76,7 +76,6 @@ jobs:
       - name: Build signed IPA
         env:
           APPLE_TEAM_ID: ${{ vars.APPLE_TEAM_ID }}
-          SEISMIK_GOOGLE_MAPS_API_KEY: ${{ secrets.SEISMIK_GOOGLE_MAPS_API_KEY }}
           IOS_GOOGLE_SERVICE_INFO_BASE64: ${{ secrets.IOS_GOOGLE_SERVICE_INFO_BASE64 }}
         run: |
           set -euo pipefail
@@ -88,7 +87,7 @@ jobs:
           echo "$IOS_GOOGLE_SERVICE_INFO_BASE64" | base64 --decode > ios/Runner/GoogleService-Info.plist
           plutil -lint ios/Runner/GoogleService-Info.plist
           cp ios/Flutter/Seismik.xcconfig.example ios/Flutter/Seismik.xcconfig
-          printf '\nDEVELOPMENT_TEAM = %s\nSEISMIK_GOOGLE_MAPS_API_KEY = %s\n' "$APPLE_TEAM_ID" "$SEISMIK_GOOGLE_MAPS_API_KEY" >> ios/Flutter/Seismik.xcconfig
+          printf '\nDEVELOPMENT_TEAM = %s\n' "$APPLE_TEAM_ID" >> ios/Flutter/Seismik.xcconfig
           # Use the imported App Store distribution profile instead of Xcode's automatic (development) signing.
           printf '\nCODE_SIGN_STYLE = Manual\nCODE_SIGN_IDENTITY = Apple Distribution\nPROVISIONING_PROFILE_SPECIFIER = Seismik App Store Connect\n' >> ios/Flutter/Seismik.xcconfig
           if [[ "${{ inputs.critical_alerts_approved }}" != "true" ]]; then

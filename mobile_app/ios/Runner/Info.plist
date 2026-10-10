@@ -25,7 +25,6 @@
     <key>UIBackgroundModes</key>
     <array><string>remote-notification</string></array>
     <key>FirebaseAppDelegateProxyEnabled</key><true/>
-    <key>SeismikGoogleMapsAPIKey</key><string>$(SEISMIK_GOOGLE_MAPS_API_KEY)</string>
     <key>SeismikAPIBaseURL</key><string>$(SEISMIK_API_BASE_URL)</string>
     <key>LSApplicationQueriesSchemes</key>
     <array>

@@ -1,7 +1,6 @@
 import Flutter
 import FirebaseAppCheck
 import FirebaseCore
-import GoogleMaps
 import UIKit
 import UserNotifications
 import SwiftUI
@@ -32,11 +31,6 @@ import SwiftUI
       FirebaseApp.configure()
     }
 
-    if let mapsKey = Bundle.main.object(forInfoDictionaryKey: "SeismikGoogleMapsAPIKey") as? String,
-       !mapsKey.isEmpty,
-       !mapsKey.hasPrefix("$(") {
-      GoogleMapsBridge.initialize(with: mapsKey)
-    }
     GeneratedPluginRegistrant.register(with: self)
     let launched = super.application(application, didFinishLaunchingWithOptions: launchOptions)
 

@@ -61,7 +61,9 @@ la entrega de una alerta a cada teléfono ni la cobertura de estaciones.
 - **Android:** Flutter con Material 3/Material You, mapas, preferencias,
   notificaciones y reportes ciudadanos.
 - **iOS:** SwiftUI nativo, mapas MapKit, registro APNs y preferencias. El proyecto
-  conserva infraestructura Flutter y plugins de integración.
+  conserva infraestructura Flutter y plugins de integración. No requiere clave
+  de Google Maps para su mapa interno; la clave antigua dedicada se retiró el
+  10 de octubre ([detalle](docs/ios-maps-key-retirement-2026-10-10.md)).
 - **Portal de desarrolladores:** autenticación centralizada, claves con alcances,
   rotación, revocación, selección de plan y consumo agregado por cuenta.
 - **Consumo visible:** cuotas por minuto, día y mes, porcentajes, consultas
