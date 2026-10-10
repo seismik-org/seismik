@@ -71,6 +71,44 @@ async def test_family_requires_a_signed_in_account() -> None:
 
 
 @pytest.mark.asyncio
+async def test_automatic_location_consent_requires_real_boolean_and_can_be_revoked() -> None:
+    redis = FakeRedis(decode_responses=True)
+    async with client_for(app_for(redis)) as client:
+        owner, _member = await family_with_member(client, redis)
+        assert (await client.put("/v1/family/automatic-location", json={"enabled": True})).status_code == 401
+        assert (await client.put("/v1/family/automatic-location", headers=owner,
+                                 json={"enabled": "true"})).status_code == 422
+        enabled = await client.put("/v1/family/automatic-location", headers=owner, json={"enabled": True})
+        assert enabled.status_code == 200
+        assert (await client.get("/v1/family/circle", headers=owner)).json()["automatic_location_sharing"]
+        await client.delete("/v1/family/location", headers=owner)
+        assert not (await client.get("/v1/family/circle", headers=owner)).json()["automatic_location_sharing"]
+
+
+@pytest.mark.asyncio
+async def test_automatic_location_hides_prior_checkin_but_keeps_new_manual_help() -> None:
+    redis = FakeRedis(decode_responses=True)
+    async with client_for(app_for(redis)) as client:
+        owner, member = await family_with_member(client, redis)
+        circle_id = (await client.get("/v1/family/circle", headers=owner)).json()["circle_id"]
+        await redis.set(f"seismik:family:location:{circle_id}:google-ana", json.dumps({
+            "source": "automatic_alert", "shared_at": "2026-10-09T00:00:00+00:00",
+            "related_event_id": "candidate-2", "latitude": 4.65, "longitude": -74.08,
+        }))
+        await redis.set(f"seismik:family:status:{circle_id}:google-ana", json.dumps({
+            "status": "safe", "event_id": "older-event", "reported_at": "2026-10-08T00:00:00+00:00",
+        }))
+        snapshot = (await client.get("/v1/family/circle", headers=owner)).json()
+        ana = next(item for item in snapshot["members"] if not item["is_you"])
+        assert ana["status"] is None
+        assert (await client.put("/v1/family/status", headers=member,
+                                 json={"status": "need_help", "event_id": "official-2"})).status_code == 200
+        snapshot = (await client.get("/v1/family/circle", headers=owner)).json()
+        ana = next(item for item in snapshot["members"] if not item["is_you"])
+        assert ana["status"]["status"] == "need_help"
+
+
+@pytest.mark.asyncio
 async def test_family_circle_requires_invitation_and_expires_shared_location() -> None:
     redis = FakeRedis(decode_responses=True)
     async with client_for(app_for(redis)) as client:

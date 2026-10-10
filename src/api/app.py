@@ -30,6 +30,8 @@ from api.public import router as public_router
 from api.webhooks import router as webhooks_router
 from crowdsourcing.cluster import CrowdClusterEngine
 from crowdsourcing.ingest import router as crowd_router
+from crowdsourcing.shadow import CrowdShadowEngine
+from crowdsourcing.shadow import router as crowd_shadow_router
 from reporting.ingest import router as reporting_router
 
 
@@ -48,6 +50,7 @@ def create_app(settings: AppSettings | None = None) -> FastAPI:
         app.state.devices = DeviceRepository(redis)
         app.state.integrity_verifier = DeviceIntegrityVerifier(resolved)
         app.state.crowd_cluster = CrowdClusterEngine(redis, resolved)
+        app.state.crowd_shadow = CrowdShadowEngine(redis, resolved)
         try:
             yield
         finally:
@@ -92,6 +95,7 @@ def create_app(settings: AppSettings | None = None) -> FastAPI:
     app.include_router(firebase_login_router)
     app.include_router(oauth_identity_router)
     app.include_router(crowd_router)
+    app.include_router(crowd_shadow_router)
     app.include_router(public_router)
     app.include_router(history_router)
     app.include_router(reporting_router)

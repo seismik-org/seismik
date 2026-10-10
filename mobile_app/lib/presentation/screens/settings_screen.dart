@@ -7,8 +7,10 @@ import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
 
 import '../../services/map_launcher.dart';
+import '../../services/background_motion_service.dart';
 import '../../state/mobile_settings.dart';
 import '../../state/seismik_state.dart';
+import 'government_sources_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({required this.dynamicColorAvailable, super.key});
@@ -257,6 +259,26 @@ class SettingsScreen extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           _Section(
+            title: 'Fuentes y entidad pública',
+            icon: Icons.account_balance_outlined,
+            children: <Widget>[
+              ListTile(
+                leading: const Icon(Icons.open_in_new_rounded),
+                title: const Text('Fuentes oficiales y aviso legal'),
+                subtitle: const Text(
+                  'Seismik es independiente; consulta aquí las fuentes originales de los reportes.',
+                ),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => const GovernmentSourcesScreen(),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          _Section(
             title: 'Historial sísmico',
             icon: Icons.public_rounded,
             children: <Widget>[
@@ -323,6 +345,54 @@ class SettingsScreen extends StatelessWidget {
                   'Activa o detiene realmente el acelerómetro de Seismik.',
                 ),
               ),
+              if (Platform.isAndroid) ...[
+                SwitchListTile.adaptive(
+                  value: settings.backgroundCrowdsourcingEnabled,
+                  title: const Text('Sensor en segundo plano'),
+                  subtitle: const Text(
+                    'Voluntario, con notificación permanente y botón Detener. Consume batería; no sustituye las estaciones.',
+                  ),
+                  onChanged: settings.crowdsourcingEnabled
+                      ? (value) async {
+                          if (value) {
+                            final accepted = await showDialog<bool>(
+                              context: context,
+                              builder: (context) => AlertDialog(
+                                title: const Text('Colaborar con Seismik'),
+                                content: const Text(
+                                  'Seismik leerá el acelerómetro incluso con la pantalla apagada. Solo enviará resúmenes de sacudidas candidatas, su hora, ubicación y el identificador del dispositivo a nuestra API; no transmite las lecturas crudas continuamente. Puede consumir batería y datos. Una sacudida aislada no genera una alerta pública. Puedes detenerlo aquí o desde la notificación. Después de reiniciar o forzar el cierre, abre Seismik para reactivarlo.',
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () =>
+                                        Navigator.pop(context, false),
+                                    child: const Text('Cancelar'),
+                                  ),
+                                  FilledButton(
+                                    onPressed: () =>
+                                        Navigator.pop(context, true),
+                                    child: const Text('Activar'),
+                                  ),
+                                ],
+                              ),
+                            );
+                            if (accepted != true) return;
+                          }
+                          await settings.setBackgroundCrowdsourcingEnabled(
+                            value,
+                          );
+                        }
+                      : null,
+                ),
+                ValueListenableBuilder<String>(
+                  valueListenable: BackgroundMotionService.status,
+                  builder: (context, status, _) => ListTile(
+                    leading: const Icon(Icons.sensors),
+                    title: const Text('Estado del sensor de segundo plano'),
+                    subtitle: Text(status),
+                  ),
+                ),
+              ],
               SwitchListTile.adaptive(
                 value: settings.preciseLocationByDefault,
                 onChanged: (value) =>

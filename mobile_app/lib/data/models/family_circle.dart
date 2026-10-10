@@ -10,6 +10,7 @@ class FamilyLocation {
     required this.precision,
     required this.sharedAt,
     required this.expiresAt,
+    this.source,
   });
 
   factory FamilyLocation.fromMap(Map<String, dynamic> map) => FamilyLocation(
@@ -18,6 +19,7 @@ class FamilyLocation {
     precision: map['precision']?.toString() ?? 'approximate',
     sharedAt: DateTime.tryParse(map['shared_at']?.toString() ?? ''),
     expiresAt: DateTime.tryParse(map['expires_at']?.toString() ?? ''),
+    source: map['source']?.toString(),
   );
 
   final double latitude;
@@ -25,6 +27,7 @@ class FamilyLocation {
   final String precision;
   final DateTime? sharedAt;
   final DateTime? expiresAt;
+  final String? source;
 }
 
 /// Último aviso de un integrante tras un sismo.
@@ -100,12 +103,14 @@ class FamilyCircle {
     required this.circleName,
     required this.isOwner,
     required this.members,
+    this.automaticLocationSharing = false,
   });
 
   factory FamilyCircle.fromMap(Map<String, dynamic> map) => FamilyCircle(
     circleId: map['circle_id']?.toString() ?? '',
     circleName: map['circle_name']?.toString() ?? 'Mi círculo',
     isOwner: map['is_owner'] == true,
+    automaticLocationSharing: map['automatic_location_sharing'] == true,
     members: (map['members'] as List<dynamic>? ?? <dynamic>[])
         .whereType<Map<String, dynamic>>()
         .map(FamilyMember.fromMap)
@@ -118,6 +123,7 @@ class FamilyCircle {
   /// Sólo quien creó el círculo puede invitar.
   final bool isOwner;
   final List<FamilyMember> members;
+  final bool automaticLocationSharing;
 
   FamilyMember? get you {
     for (final FamilyMember member in members) {
