@@ -6,11 +6,12 @@ import json
 from datetime import datetime, timedelta, timezone
 from typing import Any, cast
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Response
 from redis.asyncio import Redis
 
 from api.config import AppSettings
 from api.dependencies import ApiPrincipal, get_app_settings, get_redis, require_mobile_events_read
+from api.geojson import FORMAT_QUERY, GEOJSON_RESPONSE, OutputFormat, feature_collection
 from eew.official import OfficialApiClient, OfficialSource, load_sources
 
 router = APIRouter(prefix="/v1/events", tags=["official-history"])
@@ -140,7 +141,6 @@ async def _recent_preliminary_events(
     return events[:limit]
 
 
-@router.get("/history")
 async def official_history(
     sources: str = Query(default="sgc_colombia,usgs_global,emsc_global", max_length=300),
     days: int = Query(default=7, ge=1, le=30),
@@ -213,6 +213,35 @@ async def official_history(
         return await _official_cached(
             redis, settings, cache_key, days, minimum_magnitude, limit, selected
         )
+
+
+@router.get("/history", response_model=None, responses=GEOJSON_RESPONSE)
+async def history_endpoint(
+    sources: str = Query(default="sgc_colombia,usgs_global,emsc_global", max_length=300),
+    days: int = Query(default=7, ge=1, le=30),
+    minimum_magnitude: float = Query(default=2.5, ge=0, le=10),
+    limit: int = Query(default=200, ge=1, le=500),
+    format: OutputFormat = FORMAT_QUERY,
+    settings: AppSettings = Depends(get_app_settings),
+    redis: Redis = Depends(get_redis),
+    _authorized: ApiPrincipal = Depends(require_mobile_events_read),
+) -> dict[str, Any] | Response:
+    payload = await official_history(
+        sources=sources,
+        days=days,
+        minimum_magnitude=minimum_magnitude,
+        limit=limit,
+        settings=settings,
+        redis=redis,
+        _authorized=_authorized,
+    )
+    if format == "geojson":
+        return feature_collection(
+            payload["events"],
+            id_field="event_id",
+            metadata={name: value for name, value in payload.items() if name != "events"},
+        )
+    return payload
 
 
 async def _official_cached(

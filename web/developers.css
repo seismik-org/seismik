@@ -93,6 +93,9 @@
 .error-table > div > code:first-child { justify-self: start; background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent); font-weight: 800; }
 .error-table span { color: var(--muted); font-size: 0.93rem; }
 .docs-note { margin-top: 18px; color: var(--faint); font-size: 0.9rem; }
+.docs-note-flush { margin-top: 0; }
+.code-card-spaced, .params-spaced { margin-top: 14px; }
+.code-card-after { margin-bottom: 14px; }
 
 /* ---------- Precios (marcado generado por developers.js) ---------- */
 .pricing-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 18px; }

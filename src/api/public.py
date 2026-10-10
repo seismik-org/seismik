@@ -7,7 +7,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any, cast
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from redis.asyncio import Redis
 
 from api.config import AppSettings
@@ -18,6 +18,7 @@ from api.dependencies import (
     require_mobile_events_read,
     require_mobile_stations_read,
 )
+from api.geojson import FORMAT_QUERY, GEOJSON_RESPONSE, OutputFormat, feature_collection
 
 router = APIRouter(prefix="/v1", tags=["public-monitor"])
 
@@ -46,15 +47,18 @@ def _load_stations(catalog_path: str) -> tuple[dict[str, Any], ...]:
     return tuple(stations)
 
 
-@router.get("/network/stations")
+@router.get("/network/stations", response_model=None, responses=GEOJSON_RESPONSE)
 async def network_stations(
+    format: OutputFormat = FORMAT_QUERY,
     settings: AppSettings = Depends(get_app_settings),
     _authorized: ApiPrincipal = Depends(require_mobile_stations_read),
-) -> dict[str, list[dict[str, Any]]]:
+) -> dict[str, list[dict[str, Any]]] | Response:
     try:
         stations = _load_stations(settings.station_catalog_path)
     except FileNotFoundError:
         raise HTTPException(status_code=503, detail="Station catalog is unavailable")
+    if format == "geojson":
+        return feature_collection(list(stations), id_field="station_id")
     return {"stations": list(stations)}
 
 
@@ -83,13 +87,14 @@ async def _enforce_showcase_rate(request: Request, redis: Redis, settings: AppSe
         )
 
 
-@router.get("/public/showcase-events")
+@router.get("/public/showcase-events", response_model=None, responses=GEOJSON_RESPONSE)
 async def showcase_events(
     request: Request,
     limit: int | None = Query(default=None, ge=1, le=20),
+    format: OutputFormat = FORMAT_QUERY,
     settings: AppSettings = Depends(get_app_settings),
     redis: Redis = Depends(get_redis),
-) -> dict[str, Any]:
+) -> dict[str, Any] | Response:
     """Los últimos sismos confirmados de magnitud considerable, sin clave.
 
     Es la Seismik Always Free API: respalda el panel "Así se ve Seismik" de la
@@ -131,15 +136,20 @@ async def showcase_events(
         )
         if len(events) >= result_limit:
             break
+    if format == "geojson":
+        return feature_collection(
+            events, id_field="event_id", metadata={"minimum_magnitude": minimum_magnitude}
+        )
     return {"events": events, "minimum_magnitude": minimum_magnitude}
 
 
-@router.get("/events/recent")
+@router.get("/events/recent", response_model=None, responses=GEOJSON_RESPONSE)
 async def recent_events(
+    format: OutputFormat = FORMAT_QUERY,
     settings: AppSettings = Depends(get_app_settings),
     redis: Redis = Depends(get_redis),
     _authorized: ApiPrincipal = Depends(require_mobile_events_read),
-) -> dict[str, list[dict[str, Any]]]:
+) -> dict[str, list[dict[str, Any]]] | Response:
     raw = cast(
         list[tuple[str, dict[str, str]]],
         await redis.xrevrange(settings.official_stream, count=settings.public_recent_event_limit),
@@ -162,4 +172,6 @@ async def recent_events(
                 "official_url": report.get("official_url"),
             }
         )
+    if format == "geojson":
+        return feature_collection(events, id_field="event_id")
     return {"events": events}

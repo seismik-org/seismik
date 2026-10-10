@@ -157,6 +157,7 @@
               <p>Los últimos sismos oficiales de magnitud considerable (M ≥ 4.5 fija). Es lo que muestra <a href="/#asi-se-ve">el panel en vivo de seismik.org</a>: pruébala sin crear cuenta.</p>
               <dl class="params">
                 <div><dt><code>limit</code></dt><dd>1–20 · 6 por defecto</dd></div>
+                <div><dt><code>format</code></dt><dd><code>json</code> (por defecto) o <code>geojson</code></dd></div>
               </dl>
               <small>Sin encabezado. Límite: <strong>30 solicitudes/min</strong> por IP.</small>
             </article>
@@ -168,17 +169,24 @@
                 <div><dt><code>minimum_magnitude</code></dt><dd>0–10 · 2.5 por defecto</dd></div>
                 <div><dt><code>limit</code></dt><dd>1–500 · 200 por defecto</dd></div>
                 <div><dt><code>sources</code></dt><dd><code>sgc_colombia,usgs_global</code>…</dd></div>
+                <div><dt><code>format</code></dt><dd><code>json</code> (por defecto) o <code>geojson</code></dd></div>
               </dl>
               <small>Requiere <strong>events:read</strong></small>
             </article>
             <article class="endpoint">
               <div class="endpoint-head"><span class="method">GET</span><code>/v1/events/recent</code></div>
               <p>Eventos oficiales recientes, de baja latencia.</p>
+              <dl class="params">
+                <div><dt><code>format</code></dt><dd><code>json</code> (por defecto) o <code>geojson</code></dd></div>
+              </dl>
               <small>Requiere <strong>events:read</strong></small>
             </article>
             <article class="endpoint">
               <div class="endpoint-head"><span class="method">GET</span><code>/v1/network/stations</code></div>
               <p>Catálogo geográfico de estaciones abiertas.</p>
+              <dl class="params">
+                <div><dt><code>format</code></dt><dd><code>json</code> (por defecto) o <code>geojson</code></dd></div>
+              </dl>
               <small>Requiere <strong>stations:read</strong></small>
             </article>
           </div>
@@ -192,12 +200,76 @@
   -H "X-Seismik-API-Key: sk_test_TU_CLAVE"</code></pre>
           </div>
 
-          <h3 class="docs-title">Errores</h3>
-          <div class="error-table" role="table" aria-label="Códigos de error">
-            <div role="row"><code role="cell">401</code><span role="cell">Falta la clave o no es válida.</span></div>
-            <div role="row"><code role="cell">403</code><span role="cell">La clave no tiene el permiso de ese endpoint.</span></div>
-            <div role="row"><code role="cell">429</code><span role="cell">Cuota superada. <code>Retry-After</code> indica cuántos segundos esperar.</span></div>
+          <h3 class="docs-title" id="geojson">GeoJSON</h3>
+          <p class="docs-note docs-note-flush">Los cuatro endpoints de datos devuelven una <code>FeatureCollection</code> (<a href="https://www.rfc-editor.org/rfc/rfc7946" target="_blank" rel="noopener">RFC 7946</a>) con <code>format=geojson</code>, lista para QGIS, Leaflet, Mapbox o geopandas. El cupo y los permisos son los mismos que con JSON.</p>
+          <div class="code-card">
+            <div class="code-tabs"><span>cURL</span></div>
+            <pre><code>curl "https://api.seismik.org/v1/events/history?days=7&amp;minimum_magnitude=4&amp;format=geojson" \
+  -H "X-Seismik-API-Key: sk_test_TU_CLAVE"</code></pre>
           </div>
+          <div class="code-card code-card-spaced">
+            <div class="code-tabs"><span>Respuesta · application/geo+json</span></div>
+            <pre><code>{
+  "type": "FeatureCollection",
+  "features": [{
+    "type": "Feature",
+    "id": "usgs_global:us7000abcd",
+    "geometry": { "type": "Point", "coordinates": [-73.12, 6.72] },
+    "properties": {
+      "magnitude": 5.1, "magnitude_type": "mww", "depth_km": 142.0,
+      "origin_time": "2026-09-20T01:12:47+00:00",
+      "place": "Los Santos, Santander", "agency": "USGS"
+    }
+  }],
+  "metadata": { "sources": [...], "errors": [], "cached": false, "generated_at": "..." }
+}</code></pre>
+          </div>
+          <dl class="params params-spaced">
+            <div><dt>Coordenadas</dt><dd><code>[longitud, latitud]</code> en WGS 84, siempre dos valores.</dd></div>
+            <div><dt>Profundidad</dt><dd>En <code>properties.depth_km</code>. No va como tercera coordenada: en RFC 7946 sería altitud.</dd></div>
+            <div><dt>Sin ubicación</dt><dd>El evento no se omite: sale con <code>"geometry": null</code>.</dd></div>
+            <div><dt>Campos</dt><dd>Los mismos que en JSON, sin <code>latitude</code> ni <code>longitude</code>. <code>id</code> es el <code>event_id</code> (o el <code>station_id</code>).</dd></div>
+            <div><dt>Metadatos</dt><dd>Fuentes, <code>errors</code> parciales y caché, en el miembro <code>metadata</code> de la colección.</dd></div>
+            <div><dt>Tipo</dt><dd><code>Content-Type: application/geo+json</code>. Otro valor de <code>format</code> responde <code>422</code>.</dd></div>
+          </dl>
+          <div class="code-card code-card-spaced">
+            <div class="code-tabs"><span>Python · geopandas</span></div>
+            <pre><code>import geopandas as gpd, requests
+
+r = requests.get("https://api.seismik.org/v1/events/history",
+                 params={"days": 7, "format": "geojson"},
+                 headers={"X-Seismik-API-Key": "sk_test_TU_CLAVE"})
+sismos = gpd.GeoDataFrame.from_features(r.json()["features"], crs="EPSG:4326")</code></pre>
+          </div>
+
+          <h3 class="docs-title">Errores</h3>
+          <p class="docs-note docs-note-flush">Los errores HTTP controlados y de parámetros de la API incluyen <code>detail</code> y <code>code</code>: una cadena estable para que tu código decida qué hacer. Las respuestas de Cloudflare, del proxy o de fallos no controlados pueden tener otro formato; comprueba también el estado HTTP.</p>
+          <div class="code-card code-card-after">
+            <div class="code-tabs"><span>HTTP 429</span></div>
+            <pre><code>{ "detail": "Daily API quota exceeded", "code": "quota_daily" }
+Retry-After: 86400</code></pre>
+          </div>
+          <div class="error-table" role="table" aria-label="Códigos de error">
+            <div role="row"><code role="cell">400</code><span role="cell"><code>bad_request</code> Solicitud mal formada.</span></div>
+            <div role="row"><code role="cell">401</code><span role="cell"><code>api_key_missing_or_invalid</code> Falta el encabezado <code>X-Seismik-API-Key</code> o la clave no tiene el formato esperado.</span></div>
+            <div role="row"><code role="cell">401</code><span role="cell"><code>api_key_invalid</code> La clave no existe, fue revocada o rotada.</span></div>
+            <div role="row"><code role="cell">401</code><span role="cell"><code>unauthorized</code> Credencial ausente o inválida en rutas que no usan clave (sesión de dispositivo o de cuenta).</span></div>
+            <div role="row"><code role="cell">403</code><span role="cell"><code>scope_insufficient</code> La clave no tiene el permiso del endpoint (<code>events:read</code> o <code>stations:read</code>).</span></div>
+            <div role="row"><code role="cell">403</code><span role="cell"><code>forbidden</code> No tienes permiso para esa acción.</span></div>
+            <div role="row"><code role="cell">404</code><span role="cell"><code>not_found</code> La ruta o el recurso no existe.</span></div>
+            <div role="row"><code role="cell">422</code><span role="cell"><code>invalid_parameter</code> Un parámetro está fuera de rango o no es válido (por ejemplo <code>format=kml</code> o <code>days=99</code>). <code>detail</code> lista cuáles.</span></div>
+            <div role="row"><code role="cell">429</code><span role="cell"><code>rate_limit_minute</code> Superaste las solicitudes por minuto de tu plan. <code>Retry-After: 60</code>.</span></div>
+            <div role="row"><code role="cell">429</code><span role="cell"><code>quota_daily</code> Superaste las solicitudes del día (UTC). <code>Retry-After: 86400</code>.</span></div>
+            <div role="row"><code role="cell">429</code><span role="cell"><code>quota_monthly</code> Agotaste el cupo mensual. <code>Retry-After</code> son los segundos hasta el día 1.</span></div>
+            <div role="row"><code role="cell">429</code><span role="cell"><code>rate_limit_ip</code> Sólo la Always Free API: 30 solicitudes por minuto por IP. <code>Retry-After: 60</code>.</span></div>
+            <div role="row"><code role="cell">429</code><span role="cell"><code>too_many_requests</code> Otro límite de frecuencia; respeta <code>Retry-After</code>.</span></div>
+            <div role="row"><code role="cell">500</code><span role="cell"><code>internal_error</code> Falló algo de nuestro lado. Reintenta con espera creciente; si persiste, escríbenos.</span></div>
+            <div role="row"><code role="cell">503</code><span role="cell"><code>station_catalog_unavailable</code> El catálogo de estaciones no está disponible por ahora. Reintenta.</span></div>
+            <div role="row"><code role="cell">503</code><span role="cell"><code>usage_meter_busy</code> El contador de uso estaba ocupado. Reintenta tras <code>Retry-After: 1</code>.</span></div>
+            <div role="row"><code role="cell">503</code><span role="cell"><code>service_unavailable</code> Servicio no disponible temporalmente. Reintenta.</span></div>
+            <div role="row"><code role="cell">504</code><span role="cell"><code>gateway_timeout</code> La solicitud tardó demasiado. Reintenta o reduce <code>limit</code> y <code>days</code>.</span></div>
+          </div>
+          <p class="docs-note">Un <code>200</code> también puede traer fallos parciales: en <code>/v1/events/history</code>, si una fuente no responde, el resto de los eventos llega igual y la fuente aparece en <code>errors</code> (en GeoJSON, en <code>metadata.errors</code>).</p>
           <p class="docs-note">La API informa la agencia y el enlace oficial de cada evento. Seismik agrega y normaliza; no sustituye a las entidades sismológicas.</p>
         </div>
       </div>

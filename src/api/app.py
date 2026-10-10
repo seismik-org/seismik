@@ -20,6 +20,7 @@ from api.developer_keys import router as developer_keys_router
 from api.devices import router as devices_router
 from api.devices_store import DeviceRepository
 from api.edge_origin import EdgeOriginGuard
+from api.errors import install as install_error_codes
 from api.family import account_router as family_account_router
 from api.family import router as family_router
 from api.firebase_login import router as firebase_login_router
@@ -73,6 +74,7 @@ def create_app(settings: AppSettings | None = None) -> FastAPI:
         redoc_url="/redoc" if is_development else None,
         openapi_url="/openapi.json" if is_development else None,
     )
+    install_error_codes(app)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=list(resolved.developer_portal_origins),
