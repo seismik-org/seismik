@@ -15,7 +15,7 @@ from redis.asyncio import Redis
 from redis.exceptions import ResponseError
 
 from api.config import AppSettings, get_settings
-from api.runtime_controls import heartbeat
+from api.runtime_controls import heartbeat, service_info
 from integrations.catalog_alerts import CatalogAlertFeed
 from integrations.facebook_publisher import FacebookPublisher
 from integrations.security import derive_webhook_secret
@@ -179,7 +179,13 @@ async def run_integrations(*, serve_health: bool = True) -> None:
         "facebook": settings.facebook_publisher_enabled and not settings.facebook_publisher_dry_run
         and settings.facebook_page_id.isdecimal()
         and bool(settings.facebook_page_access_token.get_secret_value()),
-    }))
+    }, service_info("integrations", {
+        "x_publisher_enabled": settings.x_publisher_enabled, "x_publisher_dry_run": settings.x_publisher_dry_run,
+        "facebook_publisher_enabled": settings.facebook_publisher_enabled,
+        "facebook_publisher_dry_run": settings.facebook_publisher_dry_run,
+        "catalog_alerts_enabled": settings.catalog_alerts_enabled,
+        "catalog_alerts_minimum_intensity": settings.catalog_alerts_minimum_intensity,
+    })))
     background = (x_publisher, catalog_alerts, facebook_publisher, operations)
     health_server = start_health_server() if serve_health else None
     try:

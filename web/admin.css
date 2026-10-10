@@ -114,6 +114,14 @@
 .beta-phone input[type=checkbox],.check-field input {width:18px;height:18px;accent-color:var(--primary);}
 .chip {display:inline-block;margin-right:6px;padding:1px 8px;border:1px solid var(--line-strong);border-radius:99px;font-size:11px;color:var(--muted);}
 .chip.ok {color:var(--ok);border-color:currentColor;}.chip.warn {color:var(--warn);border-color:currentColor;}
+.blocks {display:grid;gap:22px;margin:22px 0;}
+.blocks .block h2 {margin-top:0;}
+.section-title {font-size:22px;margin:34px 0 0;}
+.report-stat.ok strong {color:var(--ok);}.report-stat.warn strong {color:var(--warn);}.report-stat.bad strong {color:var(--danger);}
+.block-note {margin:0;padding:12px 16px;border-left:3px solid var(--line-strong);background:var(--surface-2);border-radius:0 8px 8px 0;font-size:13px;color:var(--muted);}
+.block-note.warn {border-left-color:var(--warn);color:var(--text);}
+.heat-canvas {display:block;width:100%;max-width:720px;height:auto;margin:14px 0;border:1px solid var(--line);border-radius:8px;background:#fff;}
+.controls-list select {min-width:170px;}
 .admin-console .site-footer {margin:0;padding:0;border-top:1px solid var(--line);background:#fff;}
 .admin-console .footer-bottom {height:56px;min-height:0;padding:16px 36px;width:100%;max-width:none;display:flex;justify-content:flex-end;border:0;font-size:10px;color:var(--muted);}
 #status:not(:empty) {padding:28px 36px;}

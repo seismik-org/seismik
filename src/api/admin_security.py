@@ -136,7 +136,15 @@ async def require_admin(
     return str(user["email"])
 
 
+def readonly(settings: AppSettings, email: str) -> bool:
+    return email.strip().casefold() in {item.strip().casefold() for item in settings.admin_readonly_emails.split(",") if item.strip()}
+
+
 async def require_action(request: Request, redis: Redis, action: str) -> None:
+    user = getattr(request.state, "admin_user", None) or {}
+    settings = request.app.state.settings
+    if readonly(settings, str(user.get("email", ""))):
+        raise HTTPException(403, "Tu cuenta es de solo lectura: puede ver el panel, no cambiarlo")
     token = request.headers.get("x-seismik-admin-approval", "")
     session_id = digest(request.cookies.get(COOKIE, ""))
     raw = await redis.getdel("seismik:admin:approval:" + digest(token)) if token else None
@@ -260,6 +268,8 @@ ACTION = re.compile(
     # Teléfonos de prueba y simulacros: el sufijo es una huella (api.admin_beta, web/admin.js).
     r"|beta:(add|remove):[0-9a-f]{16}"
     r"|drill:[0-9a-f]{16}"
+    r"|deletion:delreq_[0-9a-f]{16}:(pending|verifying|in_progress|completed|rejected)"
+    r"|session:revoke:[0-9a-f]{16}"
 )
 
 
@@ -278,6 +288,8 @@ async def verify(body: Verification, request: Request,
     await rate(redis, identity, "mfa-hour", 20, 3600)
     if body.action and not valid_action(body.action):
         raise HTTPException(400, "Acción no permitida")
+    if body.action and readonly(settings, str(user.get("email", ""))):
+        raise HTTPException(403, "Tu cuenta es de solo lectura: puede ver el panel, no cambiarlo")
     code = body.code.strip().replace("-", "").replace(" ", "")
     key = MFA_PREFIX + identity
     pending_key = "seismik:admin:pending:" + digest(request.cookies[COOKIE])

@@ -18,6 +18,8 @@ from fastapi import APIRouter, Depends, HTTPException, Path, Request, Response
 from pydantic import BaseModel, ConfigDict, Field, StrictBool, field_validator
 from redis.asyncio import Redis
 
+from api.admin_notify import notify
+from api.admin_ops import list_templates
 from api.admin_security import digest, rate, require_action, require_admin
 from api.beta_phones import DRILL_INDEX_KEY, DRILL_KEY_PREFIX, PHONES_KEY, digest16, phone_ref
 from api.config import AppSettings
@@ -146,7 +148,7 @@ async def beta_phones(
         {"id": name, "place": profile.place, "latitude": profile.latitude, "longitude": profile.longitude,
          "magnitude": profile.magnitude, "depth_km": profile.depth_km, "country_code": profile.country_code}
         for name, profile in PROFILES.items()
-    ], "max_phones": MAX_PHONES}
+    ], "templates": await list_templates(redis), "max_phones": MAX_PHONES}
 
 
 @router.post("/beta-phones", status_code=201)
@@ -169,6 +171,7 @@ async def enroll_phone(
     if not await redis.hsetnx(PHONES_KEY, ref, json.dumps(record, ensure_ascii=False)):
         raise HTTPException(409, "Ese teléfono ya está inscrito")
     await _audit(redis, settings, {"action": "beta_phone.enrolled", "ref": ref, "by": admin})
+    notify(settings, f"{admin} inscribió un teléfono de prueba")
     return {"phones": await _phones(redis)}
 
 
@@ -185,6 +188,7 @@ async def remove_phone(
     await require_action(request, redis, f"beta:remove:{ref}")
     await redis.hdel(PHONES_KEY, ref)
     await _audit(redis, settings, {"action": "beta_phone.removed", "ref": ref, "by": admin})
+    notify(settings, f"{admin} quitó un teléfono de prueba")
     return {"phones": await _phones(redis)}
 
 
@@ -269,4 +273,5 @@ async def send_drill(
         "critical": "true" if body.critical else "false", "targets": str(len(device_ids)), "by": admin, "at": now,
     }, maxlen=settings.stream_maxlen, approximate=True)
     await pipe.execute()
+    notify(settings, f"{admin} envió un simulacro «{body.place}» (M {body.magnitude:.1f}) a {len(device_ids)} teléfono(s)")
     return {"id": drill_id, "drills": await _drills(redis)}

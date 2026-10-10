@@ -15,8 +15,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from pydantic import BaseModel, ConfigDict, StrictBool
 from redis.asyncio import Redis
 
+from api.admin_notify import notify
 from api.admin_privacy import view_for
-from api.admin_security import require_action, require_admin
+from api.admin_security import readonly, require_action, require_admin
 from api.config import AppSettings
 from api.dependencies import get_app_settings, get_redis
 from api.runtime_controls import FEATURES, PAUSE_KEY, state
@@ -113,8 +114,8 @@ async def _recent_count(redis: Redis, stream: str, since: datetime) -> int:
 
 
 @router.get("/me")
-async def admin_me(admin: str = Depends(require_admin)) -> dict[str, str]:
-    return {"email": admin}
+async def admin_me(admin: str = Depends(require_admin), settings: AppSettings = Depends(get_app_settings)) -> dict[str, Any]:
+    return {"email": admin, "readonly": readonly(settings, admin)}
 
 
 @router.get("/overview")
@@ -223,4 +224,5 @@ async def change_control(
         "at": datetime.now(timezone.utc).isoformat(),
     }, maxlen=settings.stream_maxlen, approximate=True)
     await pipe.execute()
+    notify(settings, f"{admin} {'reanudó' if change.enabled else 'pausó'}: {FEATURES[feature]}")
     return {"controls": await state(redis)}
