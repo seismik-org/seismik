@@ -425,3 +425,58 @@ def test_the_approval_fingerprint_is_the_one_the_panel_computes() -> None:
             "place": "Simulacro — Eje Cafetero", "origin_minutes_ago": 2, "country_code": "CO",
             "refs": ["d5659ff255ec655c"]}
     assert drill_action(DrillIn(**body)) == "drill:979dad1ae1e74393"
+
+
+def test_every_action_the_panel_asks_the_mfa_to_approve_is_accepted_by_the_verify_endpoint() -> None:
+    """`/v1/admin/auth/verify` sólo aprueba acciones de una lista cerrada. Se omitió al añadir esta
+    pestaña y el panel respondía «Acción no permitida»: las acciones salen de las funciones reales."""
+
+    from api.admin_security import valid_action
+
+    body = DrillIn(**drill_body(["d5659ff255ec655c"]))
+    for action in (f"beta:add:{phone_ref(PHONE)}", f"beta:remove:{phone_ref(PHONE)}", drill_action(body),
+                   "control:x:false", "review:felt:1-0:valid"):
+        assert valid_action(action), action
+    for action in ("beta:add:corto", f"beta:purge:{phone_ref(PHONE)}", "drill:", "drill:" + "G" * 16,
+                   f"drill:{phone_ref(PHONE)}:extra", "beta:add:" + "a" * 17, "admin:everything"):
+        assert not valid_action(action), action
+
+
+@pytest.mark.asyncio
+async def test_a_real_totp_code_approves_enrolling_a_phone_and_sending_a_drill_end_to_end() -> None:
+    """Sin atajos: el código sale del endpoint real `/v1/admin/auth/verify`, no se escribe en Redis."""
+
+    import base64
+
+    from cryptography.fernet import Fernet
+
+    from api.admin_security import otp
+
+    totp_secret = base64.b32encode(b"12345678901234567890").decode()
+    key = Fernet.generate_key().decode()
+    client, redis, settings = await api_client()
+    settings.__dict__["admin_mfa_encryption_key"] = SecretStr(key)  # misma instancia que usa la app
+    await redis.set(MFA_PREFIX + account({"uid": "admin-token"}), json.dumps({
+        "secret": Fernet(key.encode()).encrypt(totp_secret.encode()).decode(),
+        "version": "v1", "last_counter": -1, "recovery": []}))
+    headers = {k: v for k, v in COOKIE_HEADERS.items() if k != "X-Seismik-Admin-Approval"}
+    counter = [int(time.time() // 30) - 2]  # el servidor acepta el paso anterior, el actual y el siguiente
+
+    async def approval(action: str) -> dict[str, str]:
+        counter[0] += 1  # un código TOTP no se reutiliza: cada aprobación usa un paso nuevo
+        response = await client.post("/v1/admin/auth/verify", headers=headers,
+                                     json={"code": otp(totp_secret, counter[0]), "action": action})
+        assert response.status_code == 200, response.text
+        return {**headers, "X-Seismik-Admin-Approval": response.json()["approval"]}
+
+    await register_phone(redis, PHONE)
+    async with client:
+        enrolled = await client.post("/v1/admin/beta-phones", json={"device_id": PHONE, "label": "iPhone"},
+                                     headers=await approval(f"beta:add:{phone_ref(PHONE)}"))
+        assert enrolled.status_code == 201, enrolled.text
+        ref = enrolled.json()["phones"][0]["ref"]
+        body = drill_body([ref])
+        sent = await client.post("/v1/admin/drills", json=body, headers=await approval(action_for(body)))
+        assert sent.status_code == 202, sent.text
+        removed = await client.delete(f"/v1/admin/beta-phones/{ref}", headers=await approval(f"beta:remove:{ref}"))
+        assert removed.status_code == 200 and removed.json() == {"phones": []}
