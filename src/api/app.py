@@ -11,6 +11,7 @@ from redis.asyncio import Redis
 from api.account_deletion import router as account_deletion_router
 from api.admin import router as admin_router
 from api.admin_beta import router as admin_beta_router
+from api.admin_ops import router as admin_ops_router
 from api.admin_security import router as admin_security_router
 from api.alerts import router as alerts_router
 from api.bus import RedisEventBus
@@ -102,6 +103,7 @@ def create_app(settings: AppSettings | None = None) -> FastAPI:
     app.include_router(reporting_router)
     app.include_router(admin_router)
     app.include_router(admin_beta_router)
+    app.include_router(admin_ops_router)
     app.include_router(admin_security_router)
     app.include_router(account_deletion_router)
 

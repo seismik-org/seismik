@@ -60,6 +60,10 @@ class AppSettings(BaseSettings):
     # nadie, el panel falla cerrado. Vive en el entorno de Cloud Run, no en el
     # repositorio público.
     admin_emails: str = ""
+    # Cuentas que ven el panel pero no pueden cambiar nada (deben estar también en admin_emails).
+    admin_readonly_emails: str = ""
+    # Aviso opcional (compatible con Slack y Discord) cuando alguien hace una acción sensible.
+    admin_alert_webhook_url: SecretStr = SecretStr("")
     account_deletion_request_stream: str = "stream:seismik:account-deletion-requests"
     account_deletion_requests_per_hour: int = Field(default=5, ge=1, le=1_000)
     integration_stream: str = "stream:seismik:integrations"

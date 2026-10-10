@@ -4,6 +4,7 @@ import asyncio
 import json
 import logging
 import signal
+import time
 from datetime import datetime, timezone
 from typing import Any, cast
 
@@ -16,7 +17,7 @@ from api.config import AppSettings, get_settings
 from api.devices_store import DeviceRepository
 from api.family import family_members_key
 from api.family_automatic import share_alert_locations
-from api.runtime_controls import heartbeat, paused
+from api.runtime_controls import heartbeat, paused, service_info
 from api.schemas import DeviceTarget
 from dispatcher.policy import (
     CATALOG_ORIGIN,
@@ -265,16 +266,26 @@ class StreamConsumer:
                 if target is not None:
                     targets.append(target)
             push_event = {**event, "type": "official_report_update"}
+            started = time.monotonic()
             result = await self.push.send(push_event, targets, critical=critical)
+            push_ms = int((time.monotonic() - started) * 1000)
             await self._record_dry_run(push_event, result, critical=critical)
             await self._remove_invalid(result.invalid_device_ids)
         except Exception:
             await self.redis.delete(claim)
             raise
         status = "dry_run" if result.dry_run else "sent" if result.attempted else "no_targets"
+        finished = datetime.now(timezone.utc)
+        try:
+            queue_ms = int((finished - datetime.fromisoformat(str(event["requested_at"]))).total_seconds() * 1000) - push_ms
+        except (KeyError, ValueError):
+            queue_ms = -1
         await self.redis.hset(DRILL_KEY_PREFIX + drill_id, mapping={
             "status": status, "attempted": str(result.attempted), "succeeded": str(result.succeeded),
-            "finished_at": datetime.now(timezone.utc).isoformat(),
+            "ios": str(sum(1 for item in targets if item.platform.value == "ios")),
+            "android": str(sum(1 for item in targets if item.platform.value == "android")),
+            "push_ms": str(push_ms), "queue_ms": str(max(queue_ms, 0)),
+            "finished_at": finished.isoformat(),
         })
         LOGGER.info(
             "Admin drill drill_id=%s critical=%s attempted=%d succeeded=%d status=%s",
@@ -405,6 +416,11 @@ class StreamConsumer:
     async def _remove_invalid(self, device_ids: tuple[str, ...]) -> None:
         for device_id in device_ids:
             await self.devices.unregister(device_id)
+        if device_ids:
+            # Cuántos tokens rechazó APNs/FCM por día: el panel lo muestra agregado.
+            key = f"seismik:metrics:invalid-tokens:{datetime.now(timezone.utc):%Y%m%d}"
+            await self.redis.incrby(key, len(device_ids))
+            await self.redis.expire(key, 40 * 86_400)
 
     async def _record_dry_run(
         self, event: dict[str, Any], result: PushResult, *, critical: bool
@@ -501,7 +517,14 @@ async def run_dispatcher(*, serve_health: bool = True) -> None:
             loop.add_signal_handler(signal_name, worker.stop)
         except (NotImplementedError, RuntimeError):
             pass
-    operations = asyncio.create_task(heartbeat(redis, {"alerts": settings.push_enabled}))
+    operations = asyncio.create_task(heartbeat(
+        redis, {"alerts": settings.push_enabled},
+        service_info("alerts", {
+            "push_enabled": settings.push_enabled, "push_mode": settings.push_mode,
+            "push_test_devices": len(settings.push_test_device_ids),
+            "official_alarm_max_age_minutes": settings.official_alarm_max_age_minutes,
+        }),
+    ))
     try:
         await worker.run()
     finally:

@@ -215,7 +215,7 @@ async def test_overview_counts_streams_and_accounts_for_admins_only() -> None:
         user = await client.get("/v1/admin/overview", headers=session("user-token"))
         assert user.status_code == 403
         assert (await client.get("/v1/admin/me", headers=ADMIN)).json() == {
-            "email": "admin@example.com"
+            "email": "admin@example.com", "readonly": False
         }
         data = (await client.get("/v1/admin/overview", headers=ADMIN)).json()
     streams = {item["name"]: item for item in data["streams"]}

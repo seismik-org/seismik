@@ -69,8 +69,14 @@
       <aside class="admin-sidebar"><p class="sidebar-label">ESPACIO DE TRABAJO</p>
       <nav class="admin-tabs" role="tablist" aria-label="Secciones">
         <button type="button" role="tab" data-tab="overview" aria-selected="true" aria-controls="tab-overview"><span aria-hidden="true">◫</span> Resumen</button>
+        <button type="button" role="tab" data-tab="system" aria-selected="false" aria-controls="tab-system"><span aria-hidden="true">♥</span> Estado</button>
+        <button type="button" role="tab" data-tab="alerts" aria-selected="false" aria-controls="tab-alerts"><span aria-hidden="true">△</span> Alertas</button>
+        <button type="button" role="tab" data-tab="fleet" aria-selected="false" aria-controls="tab-fleet"><span aria-hidden="true">▤</span> Dispositivos</button>
         <button type="button" role="tab" data-tab="reports" aria-selected="false" aria-controls="tab-reports"><span aria-hidden="true">◎</span> Reportes</button>
         <button type="button" role="tab" data-tab="records" aria-selected="false" aria-controls="tab-records"><span aria-hidden="true">≡</span> Registros</button>
+        <button type="button" role="tab" data-tab="audit" aria-selected="false" aria-controls="tab-audit"><span aria-hidden="true">✎</span> Auditoría</button>
+        <button type="button" role="tab" data-tab="deletions" aria-selected="false" aria-controls="tab-deletions"><span aria-hidden="true">⌫</span> Solicitudes</button>
+        <button type="button" role="tab" data-tab="security" aria-selected="false" aria-controls="tab-security"><span aria-hidden="true">⚿</span> Seguridad</button>
         <button type="button" role="tab" data-tab="controls" aria-selected="false" aria-controls="tab-controls"><span aria-hidden="true">⌘</span> Controles</button>
         <button type="button" role="tab" data-tab="beta" aria-selected="false" aria-controls="tab-beta"><span aria-hidden="true">◈</span> Pruebas</button>
       </nav>
@@ -129,6 +135,79 @@
           </table>
         </div>
         <p id="reports-status" class="report-status" role="status" aria-live="polite"></p>
+        <h2 class="admin-subtitle">Mapa de reportes «¿Lo sentiste?»</h2>
+        <p class="reports-intro">Los reportes de un sismo agrupados en celdas de 0,5° (unos 55 km), sin ubicaciones individuales. Cada cuadro es una celda: el color es la intensidad media sentida y el número, cuántos reportes; ★ es el epicentro.</p>
+        <form id="heat-form" class="report-filters" aria-label="Sismo del mapa"><label>Sismo<select id="heat-event"></select></label></form>
+        <canvas id="heat-canvas" class="heat-canvas" width="720" height="420" role="img" aria-label="Mapa de celdas de reportes"></canvas>
+        <div class="report-table-wrap"><table class="report-table"><thead><tr><th scope="col">Celda (centro)</th><th scope="col">Reportes</th><th scope="col">Lo sintieron</th><th scope="col">MMI media</th><th scope="col">MMI esperada</th></tr></thead><tbody id="heat-rows"></tbody></table></div>
+        <p id="heat-status" class="report-status" role="status" aria-live="polite"></p>
+      </section>
+
+      <section id="tab-system" role="tabpanel" hidden>
+        <div class="reports-heading"><div><p class="eyebrow">Salud</p><h1>Estado y configuración efectiva</h1>
+          <p class="reports-intro">Qué versión corre cada servicio, con qué ajustes y si X y Facebook publican de verdad, según lo que cada servicio reporta cada 30 segundos.</p></div>
+          <button id="system-reload" class="button secondary compact keep" type="button">Actualizar ↻</button></div>
+        <div id="system-blocks" class="blocks"></div>
+        <p id="system-status" class="report-status" role="status" aria-live="polite"></p>
+      </section>
+
+      <section id="tab-alerts" role="tabpanel" hidden>
+        <div class="reports-heading"><div><p class="eyebrow">Alertas</p><h1>Alertas y su alcance</h1>
+          <p class="reports-intro">Lo que se detectó, lo que se publicó oficialmente y lo que realmente se envió, con cuántos dispositivos.</p></div>
+          <button id="alerts-reload" class="button secondary compact keep" type="button">Actualizar ↻</button></div>
+        <div id="alerts-blocks" class="blocks"></div>
+        <h2 class="admin-subtitle">¿Por qué sonó, o no, en este punto?</h2>
+        <p class="reports-intro">Aplica la política real del dispatcher a un teléfono imaginario. El ejemplo es el sismo de Occidente de 2026 visto desde Pereira.</p>
+        <form id="explain-form" class="report-filters drill-form" aria-label="Explicar una alerta">
+          <label>Latitud del punto<input id="ex-lat" type="number" min="-90" max="90" step="0.0001" value="4.81" required></label>
+          <label>Longitud del punto<input id="ex-lon" type="number" min="-180" max="180" step="0.0001" value="-75.69" required></label>
+          <label>Latitud del epicentro<input id="ex-elat" type="number" min="-90" max="90" step="0.0001" value="4.9" required></label>
+          <label>Longitud del epicentro<input id="ex-elon" type="number" min="-180" max="180" step="0.0001" value="-76.2" required></label>
+          <label>Magnitud<input id="ex-mag" type="number" min="1" max="9.5" step="0.1" value="7.4" required></label>
+          <label>Profundidad (km)<input id="ex-depth" type="number" min="0" max="700" step="0.1" value="108" required></label>
+          <label>Reporte de hace (min)<input id="ex-ago" type="number" min="0" max="1440" step="1" value="5" required></label>
+          <label>Radio del teléfono (km)<input id="ex-radius" type="number" min="10" max="2000" step="10" value="250" required></label>
+          <label>Magnitud mínima del teléfono<input id="ex-min" type="number" min="0" max="10" step="0.1" value="4" required></label>
+          <label class="check-field wide"><input id="ex-official" type="checkbox" checked> Recibe reportes oficiales</label>
+          <button class="button keep" type="submit">Explicar</button>
+        </form>
+        <div id="explain-blocks" class="blocks"></div>
+        <p id="alerts-status" class="report-status" role="status" aria-live="polite"></p>
+      </section>
+
+      <section id="tab-fleet" role="tabpanel" hidden>
+        <div class="reports-heading"><div><p class="eyebrow">Datos agregados</p><h1>Dispositivos y plataforma de desarrolladores</h1>
+          <p class="reports-intro">Cuántos hay, cómo están configurados y cómo se usa la API. Nada identifica a una persona: los grupos de menos de 5 se muestran como «&lt;5».</p></div>
+          <button id="fleet-reload" class="button secondary compact keep" type="button">Actualizar ↻</button></div>
+        <div id="fleet-blocks" class="blocks"></div>
+        <p id="fleet-status" class="report-status" role="status" aria-live="polite"></p>
+      </section>
+
+      <section id="tab-audit" role="tabpanel" hidden>
+        <div class="reports-heading"><div><p class="eyebrow">Trazabilidad</p><h1>Auditoría</h1>
+          <p class="reports-intro">Quién hizo qué en el panel y en la plataforma. Los correos de clientes salen ocultos; las acciones sensibles van marcadas.</p></div>
+          <button id="audit-reload" class="button secondary compact keep" type="button">Actualizar ↻</button></div>
+        <form id="audit-form" class="report-filters" aria-label="Filtro"><label class="check-field"><input id="audit-sensitive" type="checkbox"> Solo acciones sensibles</label></form>
+        <div id="audit-blocks" class="blocks"></div>
+        <p id="audit-status" class="report-status" role="status" aria-live="polite"></p>
+      </section>
+
+      <section id="tab-deletions" role="tabpanel" hidden>
+        <div class="reports-heading"><div><p class="eyebrow">Privacidad</p><h1>Solicitudes de borrado de cuenta</h1>
+          <p class="reports-intro">Cola con estado y plazo (30 días desde que llega). Aquí no se ve el correo ni lo que escribió la persona: es solo para seguir el avance. Cada cambio pide un código MFA.</p></div>
+          <button id="deletions-reload" class="button secondary compact keep" type="button">Actualizar ↻</button></div>
+        <p id="deletions-summary" class="reports-intro"></p>
+        <ul id="deletions-list" class="controls-list"></ul>
+        <p id="deletions-status" class="report-status" role="status" aria-live="polite"></p>
+      </section>
+
+      <section id="tab-security" role="tabpanel" hidden>
+        <div class="reports-heading"><div><p class="eyebrow">Seguridad del panel</p><h1>Sesiones de administración</h1>
+          <p class="reports-intro">Quién tiene el panel abierto ahora. Puedes cerrar la sesión de otra persona (pide un código MFA). Las cuentas de solo lectura se definen con SEISMIK_ADMIN_READONLY_EMAILS.</p></div>
+          <button id="security-reload" class="button secondary compact keep" type="button">Actualizar ↻</button></div>
+        <p id="security-summary" class="reports-intro"></p>
+        <ul id="sessions-list" class="controls-list"></ul>
+        <p id="security-status" class="report-status" role="status" aria-live="polite"></p>
       </section>
 
       <section id="tab-records" role="tabpanel" hidden>
@@ -183,6 +262,11 @@
           <label>País (código)<input id="drill-country" type="text" minlength="2" maxlength="2" pattern="[A-Za-z]{2}" value="CO" required autocomplete="off"></label>
           <label class="check-field wide"><input id="drill-critical" type="checkbox" checked> Alarma crítica (como un sismo fuerte)</label>
           <button id="drill-send" class="button keep" type="submit" disabled>Enviar simulacro</button>
+        </form>
+        <form id="template-form" class="report-filters beta-form" aria-label="Plantillas propias">
+          <label>Guardar estos datos como plantilla<input id="tpl-name" type="text" maxlength="30" pattern="[A-Za-z0-9ÁÉÍÓÚÜÑáéíóúüñ _.\-]{1,30}" title="Letras, números, espacios, punto, guion y guion bajo (hasta 30)" autocomplete="off" placeholder="Eje Cafetero M6.8"></label>
+          <button id="tpl-save" class="button secondary compact keep" type="submit">Guardar plantilla</button>
+          <button id="tpl-delete" class="button secondary compact keep" type="button">Borrar la plantilla elegida</button>
         </form>
         <p id="drill-help" class="reports-intro">Elige una plantilla y cambia lo que quieras: el epicentro, la magnitud y la profundidad definen la distancia y la intensidad que verá cada teléfono; «hace cuántos minutos» ajusta la hora del sismo. El lugar siempre empieza por «Simulacro». Marca uno o más teléfonos listos de la lista. Sin la casilla de alarma crítica llega como un aviso normal.</p>
         <h2 class="admin-subtitle">Últimos simulacros</h2>
