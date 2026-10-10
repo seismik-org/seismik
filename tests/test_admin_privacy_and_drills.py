@@ -416,3 +416,12 @@ def test_a_drill_notification_says_simulacro() -> None:
     assert "Simulacro" in body and data["event_id"] == "drill-abc" and data["critical"] is True
     real = {**event, "event_id": "official-1"}
     assert not notification_content(real, critical=True)[0].startswith("SIMULACRO")
+
+
+def test_the_approval_fingerprint_is_the_one_the_panel_computes() -> None:
+    """El panel (web/admin.js) calcula el mismo texto; tests/admin_panel.test.mjs fija el mismo valor."""
+
+    body = {"critical": True, "latitude": 5.0721, "longitude": -75.5138, "magnitude": 6.8, "depth_km": 12.5,
+            "place": "Simulacro — Eje Cafetero", "origin_minutes_ago": 2, "country_code": "CO",
+            "refs": ["d5659ff255ec655c"]}
+    assert drill_action(DrillIn(**body)) == "drill:979dad1ae1e74393"
