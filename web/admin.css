@@ -105,7 +105,10 @@
 .control-card h2 {font-size:16px;margin:0 0 6px;}
 .control-card p {font-size:12px;color:var(--muted);margin:0;}
 .beta-form {grid-template-columns:minmax(0,1fr) minmax(0,1.6fr) auto;align-items:end;}
-.beta-form input[type=text],.beta-form select {width:100%;}
+.beta-form input[type=text],.beta-form select,.drill-form input[type=text],.drill-form input[type=number],.drill-form select {width:100%;}
+.drill-form {grid-template-columns:repeat(4,minmax(0,1fr));align-items:end;}
+.drill-form .wide {grid-column:span 2;}
+.drill-form #drill-send {grid-column:span 2;justify-self:start;}
 .check-field {display:flex;align-items:center;gap:10px;align-self:center;font-size:13px;}
 .beta-phone .pick {display:flex;align-items:center;gap:14px;}
 .beta-phone input[type=checkbox],.check-field input {width:18px;height:18px;accent-color:var(--primary);}
@@ -124,6 +127,6 @@
 @media (max-width:520px) {
  .admin-console .user-label {display:none;}.admin-console .header-inner {padding:0 20px;}.auth-content {padding:30px 24px;}.qr-layout {grid-template-columns:1fr;gap:20px;}.qr-frame {width:220px;justify-self:center;}.qr-instructions {display:grid;grid-template-columns:24px 1fr;gap:0 10px;}.qr-instructions p {grid-column:2;}.qr-instructions h2 {margin-top:0;}.step-number {padding-top:3px;}
  .admin-workspace {padding:26px 18px;}.reports-heading h1 {font-size:28px;}.admin-stats {grid-template-columns:repeat(2,minmax(0,1fr));}.admin-stats .report-stat {border:0;border-bottom:1px solid var(--line);}.admin-stats .report-stat:not(:nth-child(3n)) {border-right:0;}.admin-stats .report-stat:nth-child(odd) {border-right:1px solid var(--line);}.admin-stats .report-stat:nth-last-child(-n+3) {border-bottom:1px solid var(--line);}.admin-stats .report-stat:last-child {border-bottom:0;}
- .admin-record-form,.beta-form {grid-template-columns:1fr;}.record-list summary {flex-direction:column;gap:4px;}.admin-tabs button {font-size:11px;padding:8px;}.admin-console .footer-bottom {padding:16px 20px;}.control-card {padding:22px;}
+ .admin-record-form,.beta-form,.drill-form {grid-template-columns:1fr;}.drill-form .wide,.drill-form #drill-send {grid-column:auto;}.record-list summary {flex-direction:column;gap:4px;}.admin-tabs button {font-size:11px;padding:8px;}.admin-console .footer-bottom {padding:16px 20px;}.control-card {padding:22px;}
 }
 @media (prefers-reduced-motion:reduce) {.admin-console * {scroll-behavior:auto;transition:none!important;}}

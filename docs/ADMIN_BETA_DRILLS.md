@@ -43,13 +43,20 @@ auditoría (`beta_phone.enrolled` / `beta_phone.removed`). Redis:
 
 ## Simulacros dirigidos
 
-`POST /v1/admin/drills` `{scenario: bogota|pacifico|atacama, critical, refs[1..10]}`.
+`POST /v1/admin/drills` con todos los datos del sismo simulado: `latitude`,
+`longitude` (hasta 4 decimales), `magnitude` (1,0–9,5) y `depth_km` (0–700, un
+decimal), `place` (hasta 60 caracteres; siempre queda como «Simulacro — …»),
+`origin_minutes_ago` (0–120; ajusta la hora del sismo), `country_code`,
+`critical` y `refs[1..10]`. Las plantillas (Bogotá, Pacífico, Atacama) sólo
+rellenan el formulario; el panel puede cambiar cada campo.
 
 - **Sólo a teléfonos inscritos y seleccionados.** La API comprueba que estén
   inscritos y con token; el dispatcher lo vuelve a comprobar al enviar, así que
   quitar un teléfono antes de que salga lo excluye.
-- **El MFA aprueba esa acción exacta:** escenario, alarma o aviso y esos
-  teléfonos (`drill:<escenario>:<critical|notice>:<huella>`). Se limita a 6 por hora.
+- **El MFA aprueba esa acción exacta:** todos los datos del sismo, alarma o aviso y
+  esos teléfonos (`drill:<huella>`, SHA-256 de un texto con formatos fijos que el
+  panel y la API calculan igual). Cambiar un solo dato invalida la aprobación. Se
+  limita a 6 simulacros **enviados** por hora; un código MFA equivocado no gasta cupo.
 - **Marcado como simulacro:** `event_id` = `drill-…` (la marca que ya reconocen
   las apps: no entra en el historial de sismos, ni en la memoria de alarmas, ni
   se ofrece para reportar), fuente `simulation`, título «SIMULACRO: …» y lugar

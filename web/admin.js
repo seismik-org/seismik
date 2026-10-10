@@ -18,6 +18,7 @@ let records = [];
 let recordRequest = 0;
 let controlsBusy = false;
 let betaPhones = [];
+let betaScenarios = [];
 let betaBusy = false;
 let drillPoll = 0;
 const picked = new Set();
@@ -266,8 +267,8 @@ function renderDrills(drills) {
     const info = element("div");
     const result = drill.status === "sent" ? `Enviado a ${drill.succeeded || 0} de ${drill.attempted || drill.targets}` : DRILL_STATUS[drill.status] || drill.status;
     info.append(
-      element("h2", "", `${$("#drill-scenario").querySelector(`option[value=${drill.scenario}]`)?.textContent || drill.scenario} · ${drill.critical === "true" ? "alarma crítica" : "aviso normal"}`),
-      element("p", "", `${dateTime(drill.at)} · ${ago(drill.at)} · ${drill.targets} teléfono${drill.targets === "1" ? "" : "s"}`),
+      element("h2", "", `${drill.place || "Simulacro"} · M ${drill.magnitude || "?"} · ${drill.critical === "true" ? "alarma crítica" : "aviso normal"}`),
+      element("p", "", `${dateTime(drill.at)} · ${ago(drill.at)} · ${drill.targets} teléfono${drill.targets === "1" ? "" : "s"}${drill.latitude ? ` · ${drill.latitude}, ${drill.longitude} · ${drill.depth_km} km` : ""}`),
     );
     card.append(info, element("span", "chip", result));
     return card;
@@ -291,11 +292,13 @@ async function loadBeta() {
     if (epoch !== adminEpoch) return false;
     betaPhones = phones.phones;
     if (!$("#drill-scenario").options.length) {
+      betaScenarios = phones.scenarios;
       for (const scenario of phones.scenarios) {
         const option = element("option", "", `${scenario.place.replace("Simulacro — ", "")} · M ${scenario.magnitude.toFixed(1)}`);
         option.value = scenario.id;
         $("#drill-scenario").append(option);
       }
+      applyTemplate();
     }
     renderPhones();
     renderDrills(drills.drills);
@@ -347,16 +350,47 @@ async function removePhone(phone) {
       $("#beta-status").textContent = `«${phone.label}» ya no está en la beta.`;
     });
 }
+// Los mismos datos, con los mismos formatos, que firma el servidor (`drill_action` en admin_beta.py).
+function readDrill(refs) {
+  const form = $("#drill-form");
+  if (!form.reportValidity()) return null;
+  let place = $("#drill-place").value.trim().replace(/\s+/g, " ");
+  if (!/^simulacro/i.test(place)) place = `Simulacro — ${place}`;
+  return {
+    critical: $("#drill-critical").checked,
+    latitude: $("#drill-lat").valueAsNumber, longitude: $("#drill-lon").valueAsNumber,
+    magnitude: $("#drill-mag").valueAsNumber, depth_km: $("#drill-depth").valueAsNumber,
+    place, origin_minutes_ago: $("#drill-ago").valueAsNumber, country_code: $("#drill-country").value.trim().toUpperCase(), refs,
+  };
+}
+async function drillAction(drill) {
+  const parts = [
+    drill.critical ? "critical" : "notice", drill.latitude.toFixed(4), drill.longitude.toFixed(4),
+    drill.magnitude.toFixed(1), drill.depth_km.toFixed(1), String(drill.origin_minutes_ago), drill.country_code, drill.place,
+    [...new Set(drill.refs)].sort().join(","),
+  ];
+  return `drill:${await sha16(parts.join("|"))}`;
+}
+function applyTemplate() {
+  const template = betaScenarios.find(item => item.id === $("#drill-scenario").value);
+  if (!template) return;
+  $("#drill-place").value = template.place.replace("Simulacro — ", "");
+  $("#drill-lat").value = template.latitude;
+  $("#drill-lon").value = template.longitude;
+  $("#drill-mag").value = template.magnitude.toFixed(1);
+  $("#drill-depth").value = template.depth_km.toFixed(1);
+  $("#drill-country").value = template.country_code;
+}
 async function sendDrill(event) {
   event.preventDefault();
   const refs = [...picked].filter(ref => betaPhones.some(phone => phone.ref === ref && phone.push_ready)).sort();
   if (!refs.length) return;
-  const scenario = $("#drill-scenario").value;
-  const critical = $("#drill-critical").checked;
+  const drill = readDrill(refs);
+  if (!drill) return;
   const names = betaPhones.filter(phone => refs.includes(phone.ref)).map(phone => phone.label).join(", ");
-  const action = `drill:${scenario}:${critical ? "critical" : "notice"}:${await sha16(refs.join(","))}`;
-  await betaChange(action, `enviar un simulacro ${critical ? "con alarma crítica" : "con aviso normal"} a: ${names}`,
-    approval => ["/v1/admin/drills", {method:"POST", approval, body:JSON.stringify({scenario, critical, refs})}],
+  const label = `enviar «${drill.place}» (M ${drill.magnitude.toFixed(1)}, ${drill.depth_km.toFixed(1)} km, ${drill.latitude.toFixed(4)}, ${drill.longitude.toFixed(4)}) ${drill.critical ? "con alarma crítica" : "con aviso normal"} a: ${names}`;
+  await betaChange(await drillAction(drill), label,
+    approval => ["/v1/admin/drills", {method:"POST", approval, body:JSON.stringify(drill)}],
     data => {
       renderPhones();
       renderDrills(data.drills);
@@ -401,6 +435,7 @@ $("#controls-reload").addEventListener("click", loadControls);
 $("#beta-reload").addEventListener("click", loadBeta);
 $("#beta-form").addEventListener("submit", enrollPhone);
 $("#drill-form").addEventListener("submit", sendDrill);
+$("#drill-scenario").addEventListener("change", applyTemplate);
 $("#record-q").addEventListener("input", renderRecords);
 $("#record-form").addEventListener("submit", event => event.preventDefault());
 start();

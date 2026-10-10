@@ -10,11 +10,12 @@ from __future__ import annotations
 import json
 import re
 import secrets
-from datetime import datetime, timezone
-from typing import Any, Literal, cast
+import time
+from datetime import datetime, timedelta, timezone
+from typing import Any, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Request, Response
-from pydantic import BaseModel, ConfigDict, Field, StrictBool
+from pydantic import BaseModel, ConfigDict, Field, StrictBool, field_validator
 from redis.asyncio import Redis
 
 from api.admin_security import digest, rate, require_action, require_admin
@@ -35,10 +36,37 @@ REF = r"^[0-9a-f]{16}$"
 REF_PATTERN = re.compile(REF)
 
 
-def drill_action(scenario: str, critical: bool, refs: list[str]) -> str:
-    """Lo que el MFA aprueba: ni otro escenario ni otros teléfonos."""
+def _decimals(value: float, places: int) -> float:
+    """El panel y el servidor firman el mismo texto: nada de redondeos distintos."""
 
-    return f"drill:{scenario}:{'critical' if critical else 'notice'}:{digest16(','.join(sorted(refs)))}"
+    scaled = value * 10**places
+    if abs(scaled - round(scaled)) > 1e-6:
+        raise ValueError(f"Usa como máximo {places} decimales")
+    return round(value, places)
+
+
+def _clean_place(value: str) -> str:
+    place = " ".join(value.split())
+    if not place or any(not char.isprintable() for char in place):
+        raise ValueError("El lugar no es válido")
+    # Nunca puede pasar por un lugar real: siempre empieza por «Simulacro».
+    return place if place.casefold().startswith("simulacro") else f"Simulacro — {place}"
+
+
+def drill_action(drill: "DrillIn") -> str:
+    """Lo que el MFA aprueba: este escenario exacto, esta alarma y estos teléfonos.
+
+    El panel arma el mismo texto (`web/admin.js`, `drillAction`) con los mismos
+    formatos; por eso los decimales se limitan antes de firmar.
+    """
+
+    parts = [
+        "critical" if drill.critical else "notice",
+        f"{drill.latitude:.4f}", f"{drill.longitude:.4f}", f"{drill.magnitude:.1f}",
+        f"{drill.depth_km:.1f}", str(drill.origin_minutes_ago), drill.country_code, drill.place,
+        ",".join(sorted(set(drill.refs))),
+    ]
+    return f"drill:{digest16('|'.join(parts))}"
 
 
 class PhoneIn(BaseModel):
@@ -48,10 +76,33 @@ class PhoneIn(BaseModel):
 
 
 class DrillIn(BaseModel):
+    """Un simulacro completo: el escenario base sólo existe como plantilla del panel."""
+
     model_config = ConfigDict(extra="forbid")
-    scenario: Literal["bogota", "pacifico", "atacama"]
     critical: StrictBool
+    latitude: float = Field(ge=-90, le=90)
+    longitude: float = Field(ge=-180, le=180)
+    magnitude: float = Field(ge=1.0, le=9.5)
+    depth_km: float = Field(ge=0, le=700)
+    place: str = Field(min_length=1, max_length=60)
+    origin_minutes_ago: int = Field(default=0, ge=0, le=120)
+    country_code: str = Field(default="CO", pattern=r"^[A-Z]{2}$")
     refs: list[str] = Field(min_length=1, max_length=MAX_DRILL_TARGETS)
+
+    @field_validator("latitude", "longitude")
+    @classmethod
+    def _coordinate(cls, value: float) -> float:
+        return _decimals(value, 4)
+
+    @field_validator("magnitude", "depth_km")
+    @classmethod
+    def _one_decimal(cls, value: float) -> float:
+        return _decimals(value, 1)
+
+    @field_validator("place")
+    @classmethod
+    def _place(cls, value: str) -> str:
+        return _clean_place(value)
 
 
 def _now() -> str:
@@ -90,8 +141,11 @@ async def beta_phones(
     response: Response, admin: str = Depends(require_admin), redis: Redis = Depends(get_redis),
 ) -> dict[str, Any]:
     response.headers["Cache-Control"] = "no-store"
+    # Plantillas para rellenar el formulario; el simulacro que se envía lleva todos sus datos.
     return {"phones": await _phones(redis), "scenarios": [
-        {"id": name, "place": profile.place, "magnitude": profile.magnitude} for name, profile in PROFILES.items()
+        {"id": name, "place": profile.place, "latitude": profile.latitude, "longitude": profile.longitude,
+         "magnitude": profile.magnitude, "depth_km": profile.depth_km, "country_code": profile.country_code}
+        for name, profile in PROFILES.items()
     ], "max_phones": MAX_PHONES}
 
 
@@ -172,27 +226,38 @@ async def send_drill(
         if await devices.resolve(device_id) is None:
             raise HTTPException(409, "Uno de los teléfonos no tiene notificaciones listas; ábrelo en la app e inténtalo de nuevo")
         device_ids.append(device_id)
-    await rate(redis, digest(admin), "drill", DRILLS_PER_HOUR, 3600)
-    await require_action(request, redis, drill_action(body.scenario, body.critical, refs))
+    # El tope cuenta simulacros enviados, no intentos con un código MFA equivocado.
+    sent_key = f"seismik:admin:rate:drill-sent:{digest(admin)}:{int(time.time() // 3600)}"
+    if int(await redis.get(sent_key) or 0) >= DRILLS_PER_HOUR:
+        raise HTTPException(429, "Demasiados simulacros en una hora; espera antes de enviar otro")
+    await require_action(request, redis, drill_action(body))
+    await redis.set(sent_key, 0, ex=7200, nx=True)
+    await redis.incr(sent_key)
 
-    profile = PROFILES[body.scenario]
     drill_id = "drill-" + secrets.token_hex(8)
-    now = _now()
+    moment = datetime.now(timezone.utc)
+    now = moment.isoformat()
+    origin = (moment - timedelta(minutes=body.origin_minutes_ago)).isoformat()
     event = {
         "type": "admin_drill", "event_id": drill_id, "device_ids": device_ids, "critical": body.critical,
-        "scenario": body.scenario, "requested_by": admin, "requested_at": now,
+        "requested_by": admin, "requested_at": now,
         "preferred_report": {
             "official_event_id": drill_id, "source_id": "simulation", "agency": "Simulacro Seismik",
-            "attribution": "Simulacro de Seismik", "place": profile.place,
-            "latitude": profile.latitude, "longitude": profile.longitude, "magnitude": profile.magnitude,
-            "depth_km": profile.depth_km, "origin_time": now, "jurisdiction": profile.country_code,
+            "attribution": "Simulacro de Seismik", "place": body.place,
+            "latitude": body.latitude, "longitude": body.longitude, "magnitude": body.magnitude,
+            "depth_km": body.depth_km, "origin_time": origin, "jurisdiction": body.country_code,
             "official_url": None,
         },
     }
+    summary: dict[Any, Any] = {
+        "place": body.place, "magnitude": f"{body.magnitude:.1f}", "depth_km": f"{body.depth_km:.1f}",
+        "latitude": f"{body.latitude:.4f}", "longitude": f"{body.longitude:.4f}",
+        "origin_minutes_ago": str(body.origin_minutes_ago), "country_code": body.country_code,
+    }
     pipe = redis.pipeline(transaction=True)
     pipe.hset(DRILL_KEY_PREFIX + drill_id, mapping={
-        "status": "queued", "scenario": body.scenario, "critical": "true" if body.critical else "false",
-        "targets": str(len(device_ids)), "by": admin, "at": now,
+        "status": "queued", "critical": "true" if body.critical else "false",
+        "targets": str(len(device_ids)), "by": admin, "at": now, **summary,
     })
     pipe.expire(DRILL_KEY_PREFIX + drill_id, DRILL_TTL)
     pipe.zadd(DRILL_INDEX_KEY, {drill_id: datetime.now(timezone.utc).timestamp()})
@@ -200,7 +265,7 @@ async def send_drill(
     pipe.xadd(settings.admin_drill_stream, {"payload": json.dumps(event, ensure_ascii=False, separators=(",", ":"))},
               maxlen=1_000, approximate=True)
     pipe.xadd(settings.developer_audit_stream, {
-        "action": "drill.requested", "drill_id": drill_id, "scenario": body.scenario,
+        "action": "drill.requested", "drill_id": drill_id, **summary,
         "critical": "true" if body.critical else "false", "targets": str(len(device_ids)), "by": admin, "at": now,
     }, maxlen=settings.stream_maxlen, approximate=True)
     await pipe.execute()

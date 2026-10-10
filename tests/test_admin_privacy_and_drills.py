@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import time
+from datetime import datetime
 
 import httpx
 import pytest
@@ -11,7 +12,7 @@ from fastapi import FastAPI
 from pydantic import SecretStr
 
 from api.admin import router as admin_router
-from api.admin_beta import drill_action
+from api.admin_beta import DrillIn, drill_action
 from api.admin_beta import router as beta_router
 from api.admin_privacy import PrivateView, pseudonym
 from api.admin_security import MFA_PREFIX, SESSION_PREFIX, account, digest
@@ -195,6 +196,8 @@ async def test_enrolling_a_phone_needs_mfa_and_a_registered_identifier() -> None
     assert phone["platform"] == "ios" and phone["critical_alerts"] is True
     assert PHONE not in json.dumps(listed), "el identificador completo no vuelve a salir"
     assert {item["id"] for item in listed["scenarios"]} == {"bogota", "pacifico", "atacama"}
+    bogota = next(item for item in listed["scenarios"] if item["id"] == "bogota")
+    assert {"latitude", "longitude", "magnitude", "depth_km", "country_code", "place"} <= set(bogota)
 
 
 @pytest.mark.asyncio
@@ -204,7 +207,7 @@ async def test_only_configured_admins_reach_the_beta_and_drill_routes() -> None:
         assert (await client.get("/v1/admin/beta-phones", headers=COOKIE_HEADERS)).status_code == 403
         assert (await client.get("/v1/admin/drills", headers=COOKIE_HEADERS)).status_code == 403
         assert (await client.post("/v1/admin/drills", headers=COOKIE_HEADERS,
-                                  json={"scenario": "bogota", "critical": True, "refs": ["a" * 16]})).status_code == 403
+                                  json=drill_body(["a" * 16]))).status_code == 403
     client, _, _ = await api_client()
     async with client:
         assert (await client.get("/v1/admin/beta-phones")).status_code == 401
@@ -217,36 +220,69 @@ async def enroll(redis: FakeRedis, device_id: str, label: str = "Prueba") -> str
     return ref
 
 
+def drill_body(refs: list[str], **changes: object) -> dict:
+    """Un simulacro con todos sus datos, como lo envía el panel."""
+
+    return {"critical": True, "latitude": 5.0721, "longitude": -75.5138, "magnitude": 6.8, "depth_km": 12.5,
+            "place": "Eje Cafetero", "origin_minutes_ago": 2, "country_code": "CO", "refs": refs, **changes}
+
+
+def action_for(body: dict) -> str:
+    return drill_action(DrillIn(**body))
+
+
 @pytest.mark.asyncio
-async def test_a_drill_goes_only_to_the_selected_enrolled_phones_and_is_bound_to_the_approval() -> None:
+async def test_a_drill_carries_the_chosen_epicentre_and_is_bound_to_the_approval() -> None:
     client, redis, settings = await api_client()
     ref, other = await enroll(redis, PHONE), await enroll(redis, OTHER_PHONE)
-    body = {"scenario": "bogota", "critical": True, "refs": [ref]}
+    body = drill_body([ref])
     async with client:
         assert (await client.post("/v1/admin/drills", json=body, headers=COOKIE_HEADERS)).status_code == 428
-        # Una aprobación para otros teléfonos o para otro escenario no sirve.
-        await approve(redis, drill_action("bogota", True, [ref, other]))
-        assert (await client.post("/v1/admin/drills", json=body, headers=COOKIE_HEADERS)).status_code == 428
-        await approve(redis, drill_action("pacifico", True, [ref]))
-        assert (await client.post("/v1/admin/drills", json=body, headers=COOKIE_HEADERS)).status_code == 428
-        await approve(redis, drill_action("bogota", True, [ref]))
+        # Una aprobación para otros teléfonos, otra magnitud, otro lugar o otro epicentro no sirve.
+        for changed in (drill_body([ref, other]), drill_body([ref], magnitude=7.9),
+                        drill_body([ref], place="Otro sitio"), drill_body([ref], latitude=4.65),
+                        drill_body([ref], critical=False), drill_body([ref], origin_minutes_ago=30)):
+            await approve(redis, action_for(changed))
+            assert (await client.post("/v1/admin/drills", json=body, headers=COOKIE_HEADERS)).status_code == 428
+        await approve(redis, action_for(body))
         sent = await client.post("/v1/admin/drills", json=body, headers=COOKIE_HEADERS)
         assert sent.status_code == 202
         # Quien no está inscrito no recibe nada, aunque se conozca su código.
-        await approve(redis, drill_action("bogota", True, ["f" * 16]))
-        ghost = await client.post("/v1/admin/drills", json={**body, "refs": ["f" * 16]}, headers=COOKIE_HEADERS)
-        assert ghost.status_code == 409
+        ghost_body = drill_body(["f" * 16])
+        await approve(redis, action_for(ghost_body))
+        assert (await client.post("/v1/admin/drills", json=ghost_body, headers=COOKIE_HEADERS)).status_code == 409
         history = (await client.get("/v1/admin/drills", headers=COOKIE_HEADERS)).json()["drills"]
 
     [(_, fields)] = await redis.xrange(settings.admin_drill_stream)
     event = json.loads(fields["payload"])
+    report = event["preferred_report"]
     assert event["type"] == "admin_drill" and event["event_id"].startswith("drill-")
     assert event["device_ids"] == [PHONE] and event["critical"] is True and event["requested_by"] == "admin@example.com"
-    assert event["preferred_report"]["source_id"] == "simulation"
+    assert report["source_id"] == "simulation" and report["place"] == "Simulacro — Eje Cafetero"
+    assert (report["latitude"], report["longitude"], report["magnitude"], report["depth_km"]) == (5.0721, -75.5138, 6.8, 12.5)
+    assert report["jurisdiction"] == "CO"
+    origin = datetime.fromisoformat(report["origin_time"])
+    assert 100 < (datetime.fromisoformat(event["requested_at"]) - origin).total_seconds() < 140  # «hace 2 min»
     assert history[0]["id"] == event["event_id"] and history[0]["status"] == "queued" and history[0]["targets"] == "1"
+    assert history[0]["magnitude"] == "6.8" and history[0]["place"] == "Simulacro — Eje Cafetero"
     assert PHONE not in json.dumps(history) and PHONE not in sent.text
     audit = [fields for _, fields in await redis.xrange(settings.developer_audit_stream)]
     assert audit[-1]["action"] == "drill.requested" and audit[-1]["by"] == "admin@example.com"
+
+
+@pytest.mark.asyncio
+async def test_a_drill_rejects_impossible_or_ambiguous_values_and_cannot_pass_for_a_real_quake() -> None:
+    client, redis, _ = await api_client()
+    ref = await enroll(redis, PHONE)
+    async with client:
+        for bad in ({"magnitude": 9.6}, {"magnitude": 0.5}, {"magnitude": 6.85}, {"latitude": 91}, {"longitude": -181},
+                    {"latitude": 4.123456}, {"depth_km": 701}, {"depth_km": -1}, {"origin_minutes_ago": 121},
+                    {"country_code": "col"}, {"place": "   "}, {"place": "x" * 61}, {"place": "Mal\x00lugar"},
+                    {"scenario": "bogota"}):
+            response = await client.post("/v1/admin/drills", json=drill_body([ref], **bad), headers=COOKIE_HEADERS)
+            assert response.status_code == 422, bad
+    assert DrillIn(**drill_body([ref], place="Sipí")).place == "Simulacro — Sipí"
+    assert DrillIn(**drill_body([ref], place="simulacro en Cali")).place == "simulacro en Cali"  # no se duplica
 
 
 @pytest.mark.asyncio
@@ -255,12 +291,12 @@ async def test_a_drill_is_rate_limited_and_needs_phones_that_can_receive_it() ->
     ref = await enroll(redis, PHONE)
     async with client:
         await redis.hset(f"seismik:device:{PHONE}", "token", "")
-        body = {"scenario": "bogota", "critical": False, "refs": [ref]}
+        body = drill_body([ref], critical=False)
         assert (await client.post("/v1/admin/drills", json=body, headers=COOKIE_HEADERS)).status_code == 409
         await redis.hset(f"seismik:device:{PHONE}", "token", "t" * 64)
         statuses = []
         for _ in range(8):
-            await approve(redis, drill_action("bogota", False, [ref]))
+            await approve(redis, action_for(body))
             statuses.append((await client.post("/v1/admin/drills", json=body, headers=COOKIE_HEADERS)).status_code)
     assert statuses[:6] == [202] * 6 and statuses[6:] == [429, 429]
 
@@ -306,7 +342,7 @@ class Push:
 def drill_event(drill_id: str = "drill-abc", devices: tuple[str, ...] = (PHONE,), critical: bool = True) -> dict:
     return {
         "type": "admin_drill", "event_id": drill_id, "device_ids": list(devices), "critical": critical,
-        "scenario": "bogota", "requested_by": "admin@example.com",
+        "requested_by": "admin@example.com",
         "preferred_report": {"official_event_id": drill_id, "source_id": "simulation", "agency": "Simulacro Seismik",
                              "place": "Simulacro — Sabana de Bogotá", "latitude": 4.65, "longitude": -74.05,
                              "magnitude": 5.2, "depth_km": 25.0, "origin_time": "2026-10-09T12:00:00+00:00",
