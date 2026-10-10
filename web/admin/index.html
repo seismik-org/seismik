@@ -72,6 +72,7 @@
         <button type="button" role="tab" data-tab="reports" aria-selected="false" aria-controls="tab-reports"><span aria-hidden="true">◎</span> Reportes</button>
         <button type="button" role="tab" data-tab="records" aria-selected="false" aria-controls="tab-records"><span aria-hidden="true">≡</span> Registros</button>
         <button type="button" role="tab" data-tab="controls" aria-selected="false" aria-controls="tab-controls"><span aria-hidden="true">⌘</span> Controles</button>
+        <button type="button" role="tab" data-tab="beta" aria-selected="false" aria-controls="tab-beta"><span aria-hidden="true">◈</span> Pruebas</button>
       </nav>
       <div class="sidebar-security"><span class="security-dot" aria-hidden="true"></span> Sesión con MFA<p>Los cambios sensibles requieren un código nuevo.</p></div></aside>
 
@@ -135,7 +136,7 @@
           <div>
             <p class="eyebrow">Registros</p>
             <h1>Últimas entradas</h1>
-            <p class="reports-intro">Lectura de los registros internos, de la más reciente a la más antigua. Tokens, firmas, secretos e IP se ocultan antes de salir de la API.</p>
+            <p class="reports-intro">Lectura de los registros internos, de la más reciente a la más antigua. Tokens, firmas, secretos e IP se ocultan antes de salir de la API. Tampoco se muestran datos privados de clientes: nombres (incluidos los de Familia), correos, mensajes y comentarios libres salen como «•••»; los identificadores de cuentas, círculos y dispositivos, como un código que no se puede revertir; y las ubicaciones de clientes, a unos 11 km.</p>
           </div>
         </div>
         <form id="record-form" class="report-filters admin-record-form" aria-label="Registro">
@@ -155,6 +156,31 @@
         <p class="reports-intro">Pausar alertas detiene las alarmas y avisos sísmicos a dispositivos. Los avisos de familia continúan. Los eventos omitidos durante una pausa no se vuelven a enviar al reanudar.</p>
         <ul id="controls-list" class="controls-list"></ul>
         <p id="controls-status" class="report-status" role="status" aria-live="polite"></p>
+      </section>
+
+      <section id="tab-beta" role="tabpanel" hidden>
+        <div class="reports-heading"><div><p class="eyebrow">Beta</p><h1>Teléfonos de prueba y simulacros</h1>
+          <p class="reports-intro">Inscribe los teléfonos de la beta y envíales un simulacro. Llega sólo a los teléfonos que marques aquí: nunca a la población, ni a webhooks, X, Facebook o familias, y siempre se anuncia como SIMULACRO. Inscribir, quitar y enviar piden un código MFA nuevo y quedan en la auditoría.</p></div>
+          <button id="beta-reload" class="button secondary compact keep" type="button">Actualizar ↻</button></div>
+        <h2 class="admin-subtitle">Inscribir un teléfono</h2>
+        <form id="beta-form" class="report-filters beta-form" aria-label="Inscribir un teléfono">
+          <label>Nombre para reconocerlo<input id="beta-label" type="text" maxlength="40" required autocomplete="off" placeholder="iPhone de Óscar"></label>
+          <label>Identificador del dispositivo<input id="beta-device" type="text" minlength="8" maxlength="128" pattern="[A-Za-z0-9._:\-]{8,128}" required autocomplete="off" spellcheck="false" placeholder="Pégalo desde Ajustes de la app"></label>
+          <button id="beta-add" class="button keep" type="submit">Inscribir</button>
+        </form>
+        <p class="reports-intro">En la app: Ajustes → «Identificador de este dispositivo» → copiar. El teléfono tiene que haber abierto la app con las notificaciones activas. Aquí sólo se muestran el nombre que le des y los últimos cuatro caracteres.</p>
+        <h2 class="admin-subtitle">Teléfonos inscritos</h2>
+        <ul id="beta-phones" class="controls-list"></ul>
+        <h2 class="admin-subtitle">Enviar un simulacro</h2>
+        <form id="drill-form" class="report-filters beta-form" aria-label="Enviar un simulacro">
+          <label>Escenario<select id="drill-scenario"></select></label>
+          <label class="check-field"><input id="drill-critical" type="checkbox" checked> Alarma crítica (como un sismo fuerte)</label>
+          <button id="drill-send" class="button keep" type="submit" disabled>Enviar simulacro</button>
+        </form>
+        <p id="drill-help" class="reports-intro">Marca uno o más teléfonos listos de la lista. Sin la casilla de alarma crítica llega como un aviso normal.</p>
+        <h2 class="admin-subtitle">Últimos simulacros</h2>
+        <ul id="drill-list" class="controls-list"></ul>
+        <p id="beta-status" class="report-status" role="status" aria-live="polite"></p>
       </section>
       </div>
     </div>

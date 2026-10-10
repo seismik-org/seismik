@@ -17,6 +17,12 @@ let adminEpoch = 0;
 let records = [];
 let recordRequest = 0;
 let controlsBusy = false;
+let betaPhones = [];
+let betaBusy = false;
+let drillPoll = 0;
+const picked = new Set();
+const PLATFORMS = {ios:"iPhone", android:"Android"};
+const DRILL_STATUS = {queued:"En cola", sent:"Enviado", dry_run:"Simulado (envío desactivado)", no_targets:"Sin destinos"};
 
 function clearData() {
   if (typeof clearMfa === "function") clearMfa();
@@ -25,7 +31,10 @@ function clearData() {
   loaded.clear();
   reports = [];
   records = [];
-  for (const selector of ["#rows", "#record-list", "#key-stats", "#stream-rows", "#stats", "#controls-list", "#record-stream"]) $(selector).replaceChildren();
+  betaPhones = [];
+  picked.clear();
+  clearTimeout(drillPoll);
+  for (const selector of ["#rows", "#record-list", "#key-stats", "#stream-rows", "#stats", "#controls-list", "#record-stream", "#beta-phones", "#drill-list", "#drill-scenario"]) $(selector).replaceChildren();
   $("#export").disabled = true;
 }
 function accessError(error) {
@@ -68,7 +77,7 @@ async function openTab(name) {
   for (const tab of document.querySelectorAll("[data-tab]")) tab.setAttribute("aria-selected", String(tab.dataset.tab === name));
   for (const panel of document.querySelectorAll("[role=tabpanel]")) panel.hidden = panel.id !== `tab-${name}`;
   if (loaded.has(name)) return;
-  const loaders = {overview:loadOverview, reports:loadReports, records:loadRecords, controls:loadControls};
+  const loaders = {overview:loadOverview, reports:loadReports, records:loadRecords, controls:loadControls, beta:loadBeta};
   if (await loaders[name]()) loaded.add(name);
 }
 
@@ -208,6 +217,153 @@ async function changeControl(control) {
   }
 }
 
+// El MFA aprueba una acción concreta: el servidor calcula esta misma huella con SHA-256.
+async function sha16(text) {
+  const bytes = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+  return [...new Uint8Array(bytes)].map(byte => byte.toString(16).padStart(2, "0")).join("").slice(0, 16);
+}
+function phoneDetails(phone) {
+  const wrap = element("p");
+  const chip = (text, tone) => wrap.append(element("span", `chip${tone ? ` ${tone}` : ""}`, text));
+  chip(PLATFORMS[phone.platform] || "Sin registrar");
+  chip(phone.push_ready ? "Listo para notificaciones" : phone.registered ? "Sin token de notificaciones" : "No registrado", phone.push_ready ? "ok" : "warn");
+  if (phone.push_ready) chip(phone.critical_alerts ? "Alertas críticas permitidas" : "Sin alertas críticas");
+  wrap.append(`…${phone.suffix}`);
+  return wrap;
+}
+function updateDrillButton() {
+  const count = [...picked].filter(ref => betaPhones.some(phone => phone.ref === ref && phone.push_ready)).length;
+  $("#drill-send").disabled = betaBusy || !count;
+  $("#drill-send").textContent = count ? `Enviar simulacro a ${count} teléfono${count === 1 ? "" : "s"}` : "Enviar simulacro";
+}
+function renderPhones() {
+  for (const ref of [...picked]) if (!betaPhones.some(phone => phone.ref === ref)) picked.delete(ref);
+  $("#beta-phones").replaceChildren(...(betaPhones.length ? betaPhones.map(phone => {
+    const card = element("li", "control-card beta-phone");
+    const info = element("div");
+    info.append(element("h2", "", phone.label || "Sin nombre"), phoneDetails(phone));
+    const pick = element("label", "pick");
+    const box = element("input");
+    box.type = "checkbox";
+    box.checked = picked.has(phone.ref);
+    box.disabled = !phone.push_ready;
+    box.addEventListener("change", () => { box.checked ? picked.add(phone.ref) : picked.delete(phone.ref); updateDrillButton(); });
+    pick.append(box, "Incluir en el simulacro");
+    const remove = element("button", "button secondary compact keep", "Quitar");
+    remove.type = "button";
+    remove.disabled = betaBusy;
+    remove.addEventListener("click", () => removePhone(phone));
+    const actions = element("div", "pick");
+    actions.append(pick, remove);
+    card.append(info, actions);
+    return card;
+  }) : [Object.assign(element("li", "control-card"), {textContent: "Todavía no hay teléfonos inscritos."})]));
+  updateDrillButton();
+}
+function renderDrills(drills) {
+  $("#drill-list").replaceChildren(...(drills.length ? drills.map(drill => {
+    const card = element("li", "control-card");
+    const info = element("div");
+    const result = drill.status === "sent" ? `Enviado a ${drill.succeeded || 0} de ${drill.attempted || drill.targets}` : DRILL_STATUS[drill.status] || drill.status;
+    info.append(
+      element("h2", "", `${$("#drill-scenario").querySelector(`option[value=${drill.scenario}]`)?.textContent || drill.scenario} · ${drill.critical === "true" ? "alarma crítica" : "aviso normal"}`),
+      element("p", "", `${dateTime(drill.at)} · ${ago(drill.at)} · ${drill.targets} teléfono${drill.targets === "1" ? "" : "s"}`),
+    );
+    card.append(info, element("span", "chip", result));
+    return card;
+  }) : [Object.assign(element("li", "control-card"), {textContent: "Aún no has enviado simulacros."})]));
+  clearTimeout(drillPoll);
+  // Un simulacro en cola se resuelve en segundos: se vuelve a consultar sin que lo pidas.
+  if (drills.some(drill => drill.status === "queued" && Date.now() - new Date(drill.at) < 120_000)) {
+    const epoch = adminEpoch;
+    drillPoll = setTimeout(() => { if (epoch === adminEpoch) refreshDrills(); }, 3000);
+  }
+}
+async function refreshDrills() {
+  try { renderDrills((await api("/v1/admin/drills")).drills); }
+  catch (error) { accessError(error); }
+}
+async function loadBeta() {
+  const epoch = adminEpoch;
+  $("#beta-status").textContent = "Cargando…";
+  try {
+    const [phones, drills] = await Promise.all([api("/v1/admin/beta-phones"), api("/v1/admin/drills")]);
+    if (epoch !== adminEpoch) return false;
+    betaPhones = phones.phones;
+    if (!$("#drill-scenario").options.length) {
+      for (const scenario of phones.scenarios) {
+        const option = element("option", "", `${scenario.place.replace("Simulacro — ", "")} · M ${scenario.magnitude.toFixed(1)}`);
+        option.value = scenario.id;
+        $("#drill-scenario").append(option);
+      }
+    }
+    renderPhones();
+    renderDrills(drills.drills);
+    $("#beta-status").textContent = "";
+    return true;
+  } catch (error) {
+    if (!accessError(error)) $("#beta-status").textContent = `No se pudieron cargar los teléfonos: ${error.message}`;
+    return false;
+  }
+}
+async function betaChange(action, label, request, done) {
+  const approval = await approveAction(action, label);
+  if (!approval) return;
+  betaBusy = true;
+  renderPhones();
+  $("#beta-status").textContent = "Guardando…";
+  try {
+    const data = await api(...request(approval));
+    betaBusy = false;
+    done(data);
+  } catch (error) {
+    betaBusy = false;
+    renderPhones();
+    if (!accessError(error)) $("#beta-status").textContent = `No se pudo completar: ${error.message}`;
+  }
+}
+async function enrollPhone(event) {
+  event.preventDefault();
+  const deviceId = $("#beta-device").value.trim();
+  const label = $("#beta-label").value.trim();
+  if (!deviceId || !label) return;
+  const ref = await sha16(deviceId);
+  await betaChange(`beta:add:${ref}`, `inscribir «${label}» en la beta`,
+    approval => ["/v1/admin/beta-phones", {method:"POST", approval, body:JSON.stringify({device_id:deviceId, label})}],
+    data => {
+      betaPhones = data.phones;
+      $("#beta-device").value = "";
+      $("#beta-label").value = "";
+      renderPhones();
+      $("#beta-status").textContent = `«${label}» quedó inscrito.`;
+    });
+}
+async function removePhone(phone) {
+  await betaChange(`beta:remove:${phone.ref}`, `quitar «${phone.label}» de la beta`,
+    approval => [`/v1/admin/beta-phones/${phone.ref}`, {method:"DELETE", approval}],
+    data => {
+      betaPhones = data.phones;
+      renderPhones();
+      $("#beta-status").textContent = `«${phone.label}» ya no está en la beta.`;
+    });
+}
+async function sendDrill(event) {
+  event.preventDefault();
+  const refs = [...picked].filter(ref => betaPhones.some(phone => phone.ref === ref && phone.push_ready)).sort();
+  if (!refs.length) return;
+  const scenario = $("#drill-scenario").value;
+  const critical = $("#drill-critical").checked;
+  const names = betaPhones.filter(phone => refs.includes(phone.ref)).map(phone => phone.label).join(", ");
+  const action = `drill:${scenario}:${critical ? "critical" : "notice"}:${await sha16(refs.join(","))}`;
+  await betaChange(action, `enviar un simulacro ${critical ? "con alarma crítica" : "con aviso normal"} a: ${names}`,
+    approval => ["/v1/admin/drills", {method:"POST", approval, body:JSON.stringify({scenario, critical, refs})}],
+    data => {
+      renderPhones();
+      renderDrills(data.drills);
+      $("#beta-status").textContent = "Simulacro enviado a la cola. Debería llegar en unos segundos.";
+    });
+}
+
 async function start() {
   $("#status").textContent = "Comprobando acceso…";
   try {
@@ -242,6 +398,9 @@ $("#record-stream").addEventListener("change", loadRecords);
 $("#record-limit").addEventListener("change", loadRecords);
 $("#record-reload").addEventListener("click", loadRecords);
 $("#controls-reload").addEventListener("click", loadControls);
+$("#beta-reload").addEventListener("click", loadBeta);
+$("#beta-form").addEventListener("submit", enrollPhone);
+$("#drill-form").addEventListener("submit", sendDrill);
 $("#record-q").addEventListener("input", renderRecords);
 $("#record-form").addEventListener("submit", event => event.preventDefault());
 start();

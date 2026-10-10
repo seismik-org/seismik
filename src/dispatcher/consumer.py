@@ -11,6 +11,7 @@ from redis.asyncio import Redis
 from redis.exceptions import ResponseError
 
 from api.accounts import devices_for_account
+from api.beta_phones import DRILL_KEY_PREFIX, PHONES_KEY, phone_ref
 from api.config import AppSettings, get_settings
 from api.devices_store import DeviceRepository
 from api.family import family_members_key
@@ -54,6 +55,7 @@ class StreamConsumer:
             settings.candidate_stream,
             settings.official_stream,
             settings.family_notification_stream,
+            settings.admin_drill_stream,
         )
         self._stop = asyncio.Event()
 
@@ -104,6 +106,8 @@ class StreamConsumer:
                 await self._handle_official(event)
             elif event_type == "family_status":
                 await self._handle_family_status(event)
+            elif event_type == "admin_drill":
+                await self._handle_admin_drill(event)
             else:
                 raise ValueError(f"Unsupported event type: {event_type}")
             await self.redis.xack(stream, self.settings.dispatcher_group, message_id)
@@ -236,6 +240,46 @@ class StreamConsumer:
             except Exception:
                 LOGGER.exception("Automatic family location failed; critical push already sent")
         return result
+
+    async def _handle_admin_drill(self, event: dict[str, Any]) -> None:
+        """Simulacro del panel de administración, sólo a teléfonos de prueba.
+
+        No pasa por la política de alertas ni por integraciones, bitácora,
+        webhooks, X, Facebook o ubicación familiar: es un push directo a los
+        teléfonos que el administrador inscribió y que siguen inscritos ahora.
+        """
+
+        drill_id = str(event["event_id"])
+        if not drill_id.startswith("drill-"):
+            raise ValueError("Un simulacro debe llevar un identificador drill-")
+        claim = f"seismik:admin:drill:push:{drill_id}"
+        if not await self.redis.set(claim, "1", nx=True, ex=86_400):
+            return
+        critical = event.get("critical") is True
+        try:
+            targets: list[DeviceTarget] = []
+            for device_id in event.get("device_ids") or []:
+                if not await self.redis.hexists(PHONES_KEY, phone_ref(str(device_id))):
+                    continue
+                target = await self.devices.resolve(str(device_id))
+                if target is not None:
+                    targets.append(target)
+            push_event = {**event, "type": "official_report_update"}
+            result = await self.push.send(push_event, targets, critical=critical)
+            await self._record_dry_run(push_event, result, critical=critical)
+            await self._remove_invalid(result.invalid_device_ids)
+        except Exception:
+            await self.redis.delete(claim)
+            raise
+        status = "dry_run" if result.dry_run else "sent" if result.attempted else "no_targets"
+        await self.redis.hset(DRILL_KEY_PREFIX + drill_id, mapping={
+            "status": status, "attempted": str(result.attempted), "succeeded": str(result.succeeded),
+            "finished_at": datetime.now(timezone.utc).isoformat(),
+        })
+        LOGGER.info(
+            "Admin drill drill_id=%s critical=%s attempted=%d succeeded=%d status=%s",
+            drill_id, critical, result.attempted, result.succeeded, status,
+        )
 
     async def _handle_family_status(self, event: dict[str, Any]) -> None:
         """Avisa al resto del círculo que alguien reportó su estado tras un sismo."""

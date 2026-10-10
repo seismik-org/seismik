@@ -237,7 +237,8 @@ async def test_records_hide_secrets_and_reject_unknown_streams() -> None:
         unknown = await client.get("/v1/admin/records/oauth-sessions", headers=ADMIN)
         anonymous = await client.get("/v1/admin/records/felt")
     entry = data["records"][0]["data"]
-    assert entry["email"] == "dev@example.com" and entry["action"] == "key_created"
+    # El correo de un cliente (aquí, de una cuenta de desarrollador) ya no sale del panel.
+    assert entry["email"] == "•••" and entry["action"] == "key_created"
     assert entry["api_key"] == entry["client_ip"] == entry["nested"]["session_token"] == "•••"
     assert unknown.status_code == 404
     assert anonymous.status_code == 401
