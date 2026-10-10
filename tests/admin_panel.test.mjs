@@ -18,6 +18,7 @@ function panel() {
   const requests=[];
   const context={ $, document:{querySelectorAll:()=>[]}, window:{addEventListener(){},confirm:()=>false},
     element:(tag,cls,text)=>Object.assign(new Node(),{textContent:text}),
+    crypto:globalThis.crypto, TextEncoder,
     dateTime:v=>v, ago:v=>v, reports:[], loadReports:async()=>true, adminAuthenticate:async()=>true,
     api:(url)=>url==='/v1/admin/me'
       ? Promise.reject(Object.assign(new Error('Login required'),{status:401}))
@@ -65,4 +66,19 @@ test('an expired session clears data and offers sign-in',async()=>{
   assert.equal($('#app').hidden,true);
   assert.equal($('#gate').hidden,false);
   assert.equal($('#record-list').children.length,0);
+});
+
+test('the drill approval fingerprint matches the one the API computes',async()=>{
+  const {context}=panel();
+  await new Promise(setImmediate);
+  // Mismo simulacro y mismo resultado que tests/test_admin_privacy_and_drills.py: si cambia un formato, cambia aquí y en la API.
+  const action=await vm.runInContext(`drillAction({critical:true,latitude:5.0721,longitude:-75.5138,magnitude:6.8,depth_km:12.5,
+    place:'Simulacro — Eje Cafetero',origin_minutes_ago:2,country_code:'CO',refs:['d5659ff255ec655c']})`,context);
+  assert.equal(action,'drill:979dad1ae1e74393');
+});
+
+test('clearing data without a running drill poll does not need timers',async()=>{
+  const {context}=panel();
+  await new Promise(setImmediate);
+  assert.doesNotThrow(()=>vm.runInContext('clearData()',context));
 });

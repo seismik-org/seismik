@@ -25,6 +25,9 @@ const picked = new Set();
 const PLATFORMS = {ios:"iPhone", android:"Android"};
 const DRILL_STATUS = {queued:"En cola", sent:"Enviado", dry_run:"Simulado (envío desactivado)", no_targets:"Sin destinos"};
 
+function stopDrillPoll() {
+  if (drillPoll) { clearTimeout(drillPoll); drillPoll = 0; }
+}
 function clearData() {
   if (typeof clearMfa === "function") clearMfa();
   adminEpoch++;
@@ -34,7 +37,7 @@ function clearData() {
   records = [];
   betaPhones = [];
   picked.clear();
-  clearTimeout(drillPoll);
+  stopDrillPoll();
   for (const selector of ["#rows", "#record-list", "#key-stats", "#stream-rows", "#stats", "#controls-list", "#record-stream", "#beta-phones", "#drill-list", "#drill-scenario"]) $(selector).replaceChildren();
   $("#export").disabled = true;
 }
@@ -273,7 +276,7 @@ function renderDrills(drills) {
     card.append(info, element("span", "chip", result));
     return card;
   }) : [Object.assign(element("li", "control-card"), {textContent: "Aún no has enviado simulacros."})]));
-  clearTimeout(drillPoll);
+  stopDrillPoll();
   // Un simulacro en cola se resuelve en segundos: se vuelve a consultar sin que lo pidas.
   if (drills.some(drill => drill.status === "queued" && Date.now() - new Date(drill.at) < 120_000)) {
     const epoch = adminEpoch;
