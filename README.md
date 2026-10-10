@@ -1,16 +1,37 @@
 # Seismik
 
 [![CI](https://github.com/seismik-org/seismik/actions/workflows/ci.yml/badge.svg)](https://github.com/seismik-org/seismik/actions/workflows/ci.yml)
-[![Licencia Apache-2.0](https://img.shields.io/badge/licencia-Apache--2.0-blue)](LICENSE)
+[![Código visible · uso restringido](https://img.shields.io/badge/licencia-c%C3%B3digo_visible_%C2%B7_uso_restringido-blue)](LICENSE)
 
 Plataforma de información sísmica, aplicaciones móviles y API para desarrolladores.
 Seismik reúne catálogos sismológicos, conserva la atribución de cada evento y
 desarrolla detección experimental mediante ondas y señales voluntarias de dispositivos.
 
-**Estado: beta en desarrollo. Última revisión: 3 de octubre de 2026.**
+**Estado: beta en desarrollo. Última revisión: 10 de octubre de 2026.**
 El portal y la API están desplegados. Android utiliza Flutter y Material 3;
 la interfaz de iOS es nativa en SwiftUI. Los planes comerciales están publicados,
 pero el checkout y los cobros automáticos siguen desactivados.
+
+### Estado comprobado
+
+- **Android 1.0.0 (61):** disponible en la prueba interna de Google Play.
+- **iOS 1.0.0 (61):** disponible en TestFlight interno. Apple aprobó Critical
+  Alerts para la app y se verificó el entitlement en el binario firmado.
+  Cada persona todavía debe conceder el permiso en su iPhone.
+- **Alertas y familia:** alarma Android al recibir la notificación, acción
+  «Silenciar» y ubicación familiar automática opcional, desactivada por defecto.
+  Comparte la última ubicación registrada, aproximada y reciente; no afirma
+  que la persona esté a salvo, necesite ayuda ni haya recibido la alerta.
+- **Web «¿Lo sentiste?»:** mapa, selección de sismo oficial y reporte de si se
+  sintió o no, sin nombre ni correo, con Turnstile y ubicación aproximada por defecto.
+  El diseño comparte los temas claro/oscuro del portal.
+- **Estado:** comprobaciones periódicas e historial de disponibilidad en el borde;
+  no depende de que alguien visite la página.
+- **Administración:** MFA y controles de alcance, sesiones, auditoría y privacidad.
+
+Estos canales de prueba no equivalen a una publicación general en ambas tiendas.
+La entrega sonora con Android bloqueado y los escenarios de permisos/Focus de
+iOS requieren pruebas físicas; las pruebas automatizadas no garantizan el sonido.
 
 > **Seismik es independiente: no representa a ninguna entidad pública ni es un
 > servicio oficial o certificado de alerta temprana.** No predice terremotos ni
@@ -27,6 +48,7 @@ pero el checkout y los cobros automáticos siguen desactivados.
 | Inicio de sesión web | [auth.seismik.org](https://auth.seismik.org/) |
 | API | [api.seismik.org](https://api.seismik.org/) |
 | Estado de servicios públicos | [status.seismik.org](https://status.seismik.org/) |
+| Reportar si sentiste un sismo | [ifeltit.seismik.org](https://ifeltit.seismik.org/) |
 | Contacto | [Página de contacto](https://seismik.org/contact/) · [support@seismik.org](mailto:support@seismik.org) |
 
 La página de estado consulta los servicios en tiempo de ejecución; no certifica
@@ -62,6 +84,13 @@ conserva control sobre notificaciones, sonido, No molestar y pantalla completa.
 La calibración, evaluación independiente, redundancia operativa y autorizaciones
 aplicables siguen siendo requisitos para cualquier uso de seguridad pública.
 
+La ML propia sigue **sin validación científica** (`failed_validation` en la
+evaluación local); la autorización operativa beta no equivale a `validated`.
+El detector en producción fue desplegado manualmente desde otra revisión y
+su integración completa de ML no está reconciliada con `main`. No redesplegarlo
+por CD desde este árbol sin verificar calibraciones, configuración y contratos
+de transporte. No se habilitan alertas a usuarios sólo por disponer de una ML.
+
 ## API y planes
 
 ### Prueba sin cuenta
@@ -71,8 +100,8 @@ curl "https://api.seismik.org/v1/public/showcase-events?limit=6"
 ```
 
 Este endpoint independiente no requiere clave. Publica eventos oficiales con
-magnitud mínima fija de 4,5, hasta 20 resultados y un límite de 30 solicitudes
-por minuto por IP. No ofrece los filtros de la API autenticada.
+umbral, límite y cuota por IP configurados por el servidor; la respuesta incluye
+el umbral aplicado. No ofrece los filtros de la API autenticada.
 
 ### Consulta con clave
 
@@ -171,6 +200,10 @@ Docker Compose local no reproduce toda la infraestructura productiva.
 
 ## Desarrollo local
 
+Los procedimientos siguientes son para mantenedores o personas con autorización
+escrita de uso. La visibilidad del repositorio no concede permiso para operar una
+réplica del servicio; consulta [la licencia](LICENSE).
+
 ### Backend con Docker Compose
 
 Copia `.env.example` a `.env`, configura valores locales y mantén
@@ -253,11 +286,15 @@ Consulta [Cloud Run](deploy/CLOUD_RUN.md),
 [protección contra abuso](docs/CLOUDFLARE_ABUSE_PROTECTION.md) y
 [política de seguridad](SECURITY.md). CI verifica backend, Flutter, Android e iOS,
 incluidas pruebas nativas, y despliega los servicios afectados cuando corresponde.
-Esta edición del README no cambia infraestructura.
+Las guías de sprints son referencias históricas: verifica la configuración y
+el código vigente antes de ejecutar comandos de producción.
 
 ## Documentación y colaboración
 
 - [Reportes ciudadanos, consentimiento y privacidad](docs/REPORTES_CIUDADANOS.md).
+- [Reportes web y Google Maps](docs/IFELTIT.md).
+- [Historial público de disponibilidad](docs/STATUS_HISTORY.md).
+- [Alertas, familia y Critical Alerts](docs/mobile-alert-family-critical-alerts-2026-10-09.md).
 - [Planificación y evidencias](docs/project-management/README.md): documentos
   fechados, no un indicador automático del estado actual.
 - [Referencia histórica de ingeniería](ENGINEERING_NOTES_LEGACY.md): README
@@ -265,6 +302,22 @@ Esta edición del README no cambia infraestructura.
 - [Contribuir](CONTRIBUTING.md), [gobernanza](GOVERNANCE.md) y
   [código de conducta](CODE_OF_CONDUCT.md).
 
-Código bajo [Apache-2.0](LICENSE). Las fuentes externas, marcas, datos y servicios
-conservan sus propios términos; la licencia del código no concede su propiedad
-ni autoriza a representar a las entidades citadas.
+## Licencia y privacidad del repositorio
+
+El material original nuevo se publica bajo [Seismik Source-Visible License 1.0](LICENSE):
+consulta y estudio, sin permiso para desplegar, redistribuir o ofrecer una réplica
+del código cubierto, salvo acuerdo escrito. **No es una licencia open source.**
+GitHub permite ver y hacer forks dentro de su plataforma; eso no concede por sí
+solo permiso para operar el software. No se restringen implementaciones independientes,
+ideas generales ni usos que la ley permita.
+
+Los permisos irrevocables de versiones previamente publicadas bajo Apache-2.0
+se conservan, al igual que los derechos de terceros y contribuyentes. La licencia
+anterior está en [docs/licenses/Apache-2.0.txt](docs/licenses/Apache-2.0.txt).
+Las fuentes externas, marcas y datos tienen términos separados. Las aplicaciones
+y la API oficiales se rigen por sus propios términos de servicio.
+
+No publiques credenciales, perfiles de firma, tokens, correos personales,
+identificadores de dispositivos ni ubicaciones de personas. `.gitignore` y las
+pruebas preventivas ayudan, pero borrar un archivo no retira una credencial del
+historial: se requiere evaluar su rotación y limpiar las referencias afectadas.

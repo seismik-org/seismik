@@ -25,6 +25,12 @@ PATTERNS = {
     "token de AWS": re.compile(r"AKIA[0-9A-Z]{16}"),
     "token de Slack": re.compile(r"xox[baprs]-[0-9A-Za-z-]{10,}"),
     "clave de Stripe": re.compile(r"sk_live_[0-9A-Za-z]{24,}"),
+    "token de GitHub": re.compile(
+        r"(?:gh[pousr]_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{50,})"
+    ),
+    "correo personal": re.compile(
+        r"[A-Za-z0-9._%+\-]+@(?:gmail|hotmail|outlook|yahoo)\.com", re.IGNORECASE
+    ),
 }
 
 # Extensiones que pueden contener código o configuración legible.
@@ -140,3 +146,15 @@ def test_secrets_that_ship_with_the_app_stay_untracked() -> None:
         "mobile_app/ios/Flutter/Seismik.xcconfig",
     ):
         assert path in gitignore, f"{path} debe seguir ignorado"
+
+
+def test_signing_artifacts_and_private_backups_are_not_tracked() -> None:
+    result = subprocess.run(
+        ["git", "ls-files", "-z"], capture_output=True, text=True,
+        encoding="utf-8", check=True,
+    )
+    forbidden = {".jks", ".keystore", ".p8", ".p12", ".mobileprovision", ".dpapi", ".bundle"}
+    findings = [name for name in result.stdout.split("\0") if name and (
+        Path(name).suffix.lower() in forbidden or name.startswith("private-backups/")
+    )]
+    assert not findings, "Artefactos privados versionados: " + ", ".join(findings)

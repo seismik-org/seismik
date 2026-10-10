@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "seismik"
 version = "0.3.0"
 description = "Seismik EEW detection, durable ingestion, push dispatch and mobile crowdsourcing"
-license = "Apache-2.0"
+license = {file = "LICENSE"}
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
@@ -34,6 +34,9 @@ seismik-dispatcher = "dispatcher.consumer:main"
 seismik-integrations = "dispatcher.integrations:main"
 seismik-x-publisher = "integrations.x_publisher:main"
 seismik-replay = "eew.replay:main"
+
+[tool.setuptools]
+license-files = ["LICENSE", "docs/licenses/Apache-2.0.txt"]
 
 [tool.setuptools.packages.find]
 where = ["src"]

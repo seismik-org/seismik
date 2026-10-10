@@ -26,12 +26,18 @@ mobile_app/ios/Flutter/Seismik.xcconfig
 *.keystore
 *.p8
 *.p12
+*.mobileprovision
+*.provisionprofile
+*.ipa
+*.aab
 *.pem
 *.key
 *.dpapi
 firebase-admin*.json
 service-account*.json
 secrets/
+private-backups/
+*.bundle
 deploy/artifacts/
 
 # Temporary Office lock and recovery files

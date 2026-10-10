@@ -17,5 +17,9 @@ Los cambios que alteren umbrales, coincidencia, alertas críticas, privacidad o
 enrutamiento oficial requieren revisión de dos mantenedores y evidencia de replay
 o simulación. Los proveedores externos deben tener licencia y términos documentados.
 
-Al contribuir aceptas publicar tu aporte bajo Apache-2.0 y respetar el
+El repositorio es de código visible, no de reutilización libre. Lee [LICENSE](LICENSE)
+antes de proponer un aporte. No envíes código de terceros sin sus permisos y avisos.
+Los derechos de aportes anteriores bajo Apache-2.0 se conservan. Para nuevos aportes,
+acuerda por escrito con los mantenedores los permisos de incorporación, modificación
+y distribución antes de aceptarlos; no se presume cesión de propiedad. Respeta el
 `CODE_OF_CONDUCT.md`.

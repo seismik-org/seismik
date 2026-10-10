@@ -455,7 +455,7 @@ public struct SettingsView: View {
                         browserDestination = BrowserDestination(url: URL(string: "https://seismik.org")!)
                     }
 
-                    Button("Documentación y código abierto") {
+                    Button("Documentación y código fuente") {
                         browserDestination = BrowserDestination(url: URL(string: "https://github.com/seismik-org/seismik")!)
                     }
 

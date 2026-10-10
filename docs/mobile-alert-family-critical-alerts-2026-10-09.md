@@ -1,6 +1,10 @@
 # Android alarms, automatic family location, and iOS Critical Alerts
 
-Local implementation, 2026-10-09. Not deployed or uploaded to either store.
+Implementation published 2026-10-09; status updated 2026-10-10.
+Build 61 is available to Google Play internal testers and the internal TestFlight
+group. Signed iOS provisioning and application entitlements were verified in
+GitHub. The compatible API and dispatcher were deployed and readiness checked.
+This is not an external TestFlight review, general-store promotion or scientific validation.
 
 ## Android
 
@@ -56,12 +60,11 @@ Local implementation, 2026-10-09. Not deployed or uploaded to either store.
   repeating flag, timeout and silence action. Mock tests cannot prove physical sound.
 - No Android was connected via adb. Still need delivery with screen locked, app
   backgrounded, silence/close, duplicate and permission-denied tests on a real device.
-- Windows cannot compile the native SwiftUI target. Need macOS/Xcode build and native
-  tests, regenerated provisioning profile, signed-entitlement verification and real
-  iPhone test (silent mode/Focus, permission enabled and denied).
-- Primary working tree is divergent from origin/main and contains unrelated work.
-  Integrate these scoped changes with the other-PC updates before any release;
-  do not push the old primary tree to main or overwrite production wholesale.
+- macOS GitHub builds and native tests passed; the provisioning profile was regenerated
+  after enabling Critical Alerts and the signed entitlement was checked.
+  Still need a real iPhone test (silent mode/Focus, permission enabled and denied).
+- Mobile changes were integrated with the other-PC authentication updates in an
+  isolated release branch. Never push an old divergent primary tree wholesale.
 
 UniCaldas/UNAL review should receive a clearly labeled experimental build and test
 evidence, not a claim of guaranteed early warning or emergency-service replacement.
