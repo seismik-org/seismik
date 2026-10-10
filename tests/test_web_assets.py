@@ -15,6 +15,22 @@ WEB = Path("web")
 PAGES = sorted(WEB.rglob("*.html"))
 HOME = WEB / "index.html"
 
+
+def test_felt_portal_shares_the_site_theme_and_navigation() -> None:
+    html = (WEB / "ifeltit.html").read_text(encoding="utf-8")
+    assert html.index('/styles.css?v=') < html.index('/ifeltit-theme.css?v=')
+    assert 'class="site-header"' in html
+    assert 'class="skip-link"' in html
+    for destination in ("https://status.seismik.org/", "https://seismik.org/contact/",
+                        "https://seismik.org/privacy.html"):
+        assert destination in html
+    assert "si lo sentiste o no" in html
+    assert 'name="precise" type="checkbox" checked' not in html
+    theme = (WEB / "ifeltit-theme.css").read_text(encoding="utf-8")
+    assert "--blue: var(--primary)" in theme
+    assert "color: var(--text)" in theme
+    assert "font-size: 16px" in theme
+
 # El logotipo completo mide más de 800 KB: enlazarlo como favicon obliga a
 # descargarlo entero para pintar 16 píxeles.
 MAX_ICON_KB = {
