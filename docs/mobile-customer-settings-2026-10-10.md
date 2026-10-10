@@ -25,6 +25,9 @@ https://developer.android.com/develop/ui/views/theming/dynamic-colors
 Verificación local: 644 pruebas de Python, 151 de Flutter, Ruff, mypy y análisis
 de Dart aprobados. Las pruebas incluyen preservación exacta de colores nativos,
 respuesta incompleta de la plataforma y los flujos PKCE de Apple/GitHub.
+La compilación de comprobación Android (`flutter build apk --debug --no-pub`)
+finalizó correctamente. El APK de depuración no es un release de distribución
+ni se instaló sobre la aplicación de Google Play.
 
 Pendiente para distribución: pruebas físicas de paleta clara/oscura y cambio de
 fondo en Samsung y Pixel; login/retorno y formulario de eliminación; compilación
