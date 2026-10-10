@@ -77,6 +77,9 @@ def test_the_html_carries_no_inline_script() -> None:
     for page in sorted(WEB.rglob("*.html")):
         html = page.read_text(encoding="utf-8")
         for match in re.finditer(r"<script\b([^>]*)>", html):
+            # JSON-LD es un bloque de datos para los buscadores: el navegador no lo ejecuta y la CSP no lo afecta.
+            if 'type="application/ld+json"' in match.group(1):
+                continue
             assert "src=" in match.group(1), (
                 f"{page}: hay un <script> inline y la CSP lo bloqueará"
             )

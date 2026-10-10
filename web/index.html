@@ -12,10 +12,48 @@
   <link rel="manifest" href="/site.webmanifest">
   <meta name="theme-color" content="#060a13" media="(prefers-color-scheme: dark)">
   <meta name="theme-color" content="#f5f7fb" media="(prefers-color-scheme: light)">
+  <link rel="canonical" href="https://seismik.org/">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Seismik">
+  <meta property="og:locale" content="es_CO">
   <meta property="og:title" content="Seismik · Alerta sísmica abierta y verificable">
   <meta property="og:description" content="Detección multiestación, perímetro de sacudida y confirmación oficial en un solo lugar.">
   <meta property="og:image" content="https://seismik.org/assets/icon-512.png">
+  <meta property="og:image:alt" content="Logo de Seismik">
   <meta property="og:url" content="https://seismik.org/">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Seismik · Alerta sísmica abierta y verificable">
+  <meta name="twitter:description" content="Detección multiestación, perímetro de sacudida y confirmación oficial en un solo lugar.">
+  <meta name="twitter:image" content="https://seismik.org/assets/icon-512.png">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Organization",
+        "@id": "https://seismik.org/#organization",
+        "name": "Seismik",
+        "alternateName": "Seismik alerta sísmica",
+        "url": "https://seismik.org/",
+        "logo": {"@type": "ImageObject", "url": "https://seismik.org/assets/icon-512.png", "width": 512, "height": 512},
+        "description": "Alerta sísmica abierta y verificable para Colombia y la región andina: detecta sismos con estaciones abiertas, estima dónde se sintieron y confirma cada evento con agencias oficiales.",
+        "areaServed": {"@type": "Country", "name": "Colombia"},
+        "sameAs": ["https://github.com/seismik-org"],
+        "contactPoint": {"@type": "ContactPoint", "contactType": "customer support", "email": "support@seismik.org", "availableLanguage": "es"}
+      },
+      {
+        "@type": "WebSite",
+        "@id": "https://seismik.org/#website",
+        "url": "https://seismik.org/",
+        "name": "Seismik",
+        "alternateName": "Seismik alerta sísmica",
+        "description": "Alerta sísmica abierta y verificable",
+        "inLanguage": "es",
+        "publisher": {"@id": "https://seismik.org/#organization"}
+      }
+    ]
+  }
+  </script>
   <!-- Verificación de propiedad de Google: pega aquí la etiqueta que entrega
        Search Console si no se usa el registro DNS. Ver docs/VERIFICACION_GOOGLE.md -->
   <link rel="stylesheet" href="/styles.css?v=__ASSET_VERSION__">
@@ -57,6 +95,7 @@
           <a href="/contact/">Contacto</a>
           <a href="https://status.seismik.org/">Estado del servicio</a>
           <a href="https://devs.seismik.org/">Desarrolladores</a>
+          <a href="/preguntas-frecuentes/">Preguntas frecuentes</a>
         </nav>
       </details>
     </div>
@@ -321,7 +360,7 @@
     </section>
   </main>
 
-  <footer class="site-footer"><div class="container footer-bottom"><span>© 2026 Seismik</span></div></footer>
+  <footer class="site-footer"><div class="container footer-bottom"><span>© 2026 Seismik</span> · <a href="/preguntas-frecuentes/">Preguntas frecuentes</a></div></footer>
   <script src="/site.js?v=__ASSET_VERSION__" defer></script>
 </body>
 </html>
