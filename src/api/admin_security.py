@@ -254,8 +254,19 @@ class Verification(BaseModel):
     action: str | None = Field(default=None, max_length=160)
 
 
+ACTION = re.compile(
+    r"control:(alerts|x|facebook):(true|false)"
+    r"|review:(felt|damage):\d{1,20}-\d{1,20}:(valid|dismissed|pending)"
+    # Teléfonos de prueba y simulacros: el sufijo es una huella (api.admin_beta, web/admin.js).
+    r"|beta:(add|remove):[0-9a-f]{16}"
+    r"|drill:[0-9a-f]{16}"
+)
+
+
 def valid_action(action: str) -> bool:
-    return bool(re.fullmatch(r"control:(alerts|x|facebook):(true|false)|review:(felt|damage):\d{1,20}-\d{1,20}:(valid|dismissed|pending)", action))
+    """Sólo estas acciones pueden aprobarse con un código MFA; todo lo demás se rechaza."""
+
+    return ACTION.fullmatch(action) is not None
 
 
 @router.post("/verify")
