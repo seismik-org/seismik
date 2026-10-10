@@ -9,6 +9,7 @@ import 'package:provider/provider.dart';
 import '../../data/models/family_circle.dart';
 import '../../data/models/seismic_event.dart';
 import '../../core/platform.dart';
+import '../../services/app_links.dart';
 import '../../state/family_state.dart';
 import '../widgets/adaptive.dart';
 
@@ -46,11 +47,19 @@ class FamilySafetyScreen extends StatelessWidget {
             ),
             PopupMenuButton<String>(
               tooltip: 'Cuenta',
-              onSelected: (_) => unawaited(family.signOut()),
+              onSelected: (value) => unawaited(
+                value == 'delete'
+                    ? AppLinks.open(context, AppLinks.deleteAccount)
+                    : family.signOut(),
+              ),
               itemBuilder: (context) => <PopupMenuEntry<String>>[
                 PopupMenuItem<String>(
                   value: 'signout',
                   child: Text('Cerrar sesión · ${family.account!.email}'),
+                ),
+                const PopupMenuItem<String>(
+                  value: 'delete',
+                  child: Text('Eliminar mi cuenta'),
                 ),
               ],
             ),
@@ -93,8 +102,9 @@ class _SignInPrompt extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         Text(
-          'Para saber quién es quién necesitas iniciar sesión. Seismik nunca '
-          'comparte tu ubicación sin que toques un botón.',
+          'Para saber quién es quién necesitas iniciar sesión. Seismik '
+          'comparte tu ubicación automáticamente sólo si lo autorizas en Familia. '
+          'También puedes compartirla al reportar «Estoy bien» o «Necesito ayuda».',
           style: theme.textTheme.bodySmall,
         ),
         if (family.error != null)
@@ -123,7 +133,37 @@ class _SignInPrompt extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         OutlinedButton.icon(
-          style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(52)),
+          style: OutlinedButton.styleFrom(
+            minimumSize: const Size.fromHeight(52),
+            foregroundColor: theme.brightness == Brightness.dark
+                ? Colors.black
+                : Colors.white,
+            backgroundColor: theme.brightness == Brightness.dark
+                ? Colors.white
+                : Colors.black,
+          ),
+          onPressed: family.signingIn
+              ? null
+              : () => family.signIn(provider: 'apple'),
+          icon: const Icon(Icons.apple),
+          label: const Text('Iniciar sesión con Apple'),
+        ),
+        const SizedBox(height: 12),
+        OutlinedButton.icon(
+          style: OutlinedButton.styleFrom(
+            minimumSize: const Size.fromHeight(52),
+          ),
+          onPressed: family.signingIn
+              ? null
+              : () => family.signIn(provider: 'github'),
+          icon: const Icon(Icons.code_rounded),
+          label: const Text('Iniciar sesión con GitHub'),
+        ),
+        const SizedBox(height: 12),
+        OutlinedButton.icon(
+          style: OutlinedButton.styleFrom(
+            minimumSize: const Size.fromHeight(52),
+          ),
           onPressed: family.signingIn
               ? null
               : () => family.signIn(provider: 'email'),

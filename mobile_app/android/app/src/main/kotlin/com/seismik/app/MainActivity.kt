@@ -29,6 +29,11 @@ class MainActivity : FlutterActivity() {
         }
         oauthChannel = channel
         configureWearChannel(flutterEngine)
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.seismik.app/dynamic-colors")
+            .setMethodCallHandler { call, result ->
+                if (call.method != "getSchemes") result.notImplemented()
+                else result.success(SystemDynamicColors.read(this))
+            }
         capture(intent)
     }
 

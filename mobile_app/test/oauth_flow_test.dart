@@ -82,4 +82,29 @@ void main() {
       throwsA(isA<SignInCancelled>()),
     );
   });
+
+  for (final provider in ['apple', 'github']) {
+    test(
+      '$provider uses the same PKCE browser flow without exposing tokens',
+      () async {
+        Uri? opened;
+        final flow = OAuthBrowserFlow(
+          channel: channel,
+          launcher: (uri) async {
+            opened = uri;
+            return false;
+          },
+        );
+        addTearDown(flow.dispose);
+        await expectLater(
+          flow.authorize(provider: provider, challenge: 'c' * 43),
+          throwsA(isA<SignInCancelled>()),
+        );
+        expect(opened!.queryParameters['provider'], provider);
+        expect(opened!.queryParameters['app_challenge'], 'c' * 43);
+        expect(opened!.queryParameters['origin'], 'app');
+        expect(opened!.queryParameters.containsKey('token'), isFalse);
+      },
+    );
+  }
 }

@@ -6,6 +6,8 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../services/map_launcher.dart';
+import '../../services/app_links.dart';
+import 'government_sources_screen.dart';
 import '../../state/mobile_settings.dart';
 import '../../state/seismik_state.dart';
 
@@ -38,16 +40,14 @@ class IosSettingsScreen extends StatelessWidget {
                 _SwitchRow(
                   label: 'Alertas tempranas',
                   value: settings.receiveEarlyAlerts,
-                  onChanged: (value) => unawaited(
-                    settings.setReceiveEarlyAlerts(value),
-                  ),
+                  onChanged: (value) =>
+                      unawaited(settings.setReceiveEarlyAlerts(value)),
                 ),
                 _SwitchRow(
                   label: 'Actualizaciones oficiales',
                   value: settings.receiveOfficialUpdates,
-                  onChanged: (value) => unawaited(
-                    settings.setReceiveOfficialUpdates(value),
-                  ),
+                  onChanged: (value) =>
+                      unawaited(settings.setReceiveOfficialUpdates(value)),
                 ),
                 CupertinoListTile(
                   title: const Text('Magnitud mínima'),
@@ -67,10 +67,15 @@ class IosSettingsScreen extends StatelessWidget {
                 ),
                 CupertinoListTile(
                   title: const Text('Probar alerta'),
-                  subtitle: const Text('Sólo en este iPhone; no avisa a otras personas.'),
+                  subtitle: const Text(
+                    'Sólo en este iPhone; no avisa a otras personas.',
+                  ),
                   trailing: const CupertinoListTileChevron(),
                   onTap: () => unawaited(
-                    context.read<SeismikState>().notifications.runCriticalAlertTest(),
+                    context
+                        .read<SeismikState>()
+                        .notifications
+                        .runCriticalAlertTest(),
                   ),
                 ),
               ],
@@ -96,16 +101,14 @@ class IosSettingsScreen extends StatelessWidget {
                 _SwitchRow(
                   label: 'Detección colaborativa',
                   value: settings.crowdsourcingEnabled,
-                  onChanged: (value) => unawaited(
-                    settings.setCrowdsourcingEnabled(value),
-                  ),
+                  onChanged: (value) =>
+                      unawaited(settings.setCrowdsourcingEnabled(value)),
                 ),
                 _SwitchRow(
                   label: 'Ubicación precisa en reportes',
                   value: settings.preciseLocationByDefault,
-                  onChanged: (value) => unawaited(
-                    settings.setPreciseLocationByDefault(value),
-                  ),
+                  onChanged: (value) =>
+                      unawaited(settings.setPreciseLocationByDefault(value)),
                 ),
               ],
             ),
@@ -131,14 +134,16 @@ class IosSettingsScreen extends StatelessWidget {
                       ),
                     },
                     onValueChanged: (value) {
-                      if (value != null) unawaited(settings.setThemeMode(value));
+                      if (value != null) {
+                        unawaited(settings.setThemeMode(value));
+                      }
                     },
                   ),
                 ),
               ],
             ),
             CupertinoListSection.insetGrouped(
-              header: const Text('BETA'),
+              header: const Text('DISPOSITIVO'),
               children: <Widget>[
                 FutureBuilder<String>(
                   future: context.read<SeismikState>().api.ensureDeviceId(),
@@ -149,13 +154,40 @@ class IosSettingsScreen extends StatelessWidget {
                         ? CupertinoButton(
                             padding: EdgeInsets.zero,
                             onPressed: () => unawaited(
-                              Clipboard.setData(ClipboardData(text: snapshot.data!)),
+                              Clipboard.setData(
+                                ClipboardData(text: snapshot.data!),
+                              ),
                             ),
                             child: const Icon(CupertinoIcons.doc_on_doc),
                           )
                         : null,
                   ),
                 ),
+              ],
+            ),
+            CupertinoListSection.insetGrouped(
+              header: const Text('INFORMACIÓN Y CUENTA'),
+              children: <Widget>[
+                CupertinoListTile(
+                  title: const Text('Fuentes y aviso legal'),
+                  trailing: const CupertinoListTileChevron(),
+                  onTap: () => Navigator.of(context).push(
+                    CupertinoPageRoute<void>(
+                      builder: (_) => const GovernmentSourcesScreen(),
+                    ),
+                  ),
+                ),
+                for (final link in <(String, String)>[
+                  ('Términos del servicio', AppLinks.terms),
+                  ('Privacidad', AppLinks.privacy),
+                  ('Código fuente y licencia', AppLinks.source),
+                  ('Eliminar mi cuenta', AppLinks.deleteAccount),
+                ])
+                  CupertinoListTile(
+                    title: Text(link.$1),
+                    trailing: const CupertinoListTileChevron(),
+                    onTap: () => unawaited(AppLinks.open(context, link.$2)),
+                  ),
               ],
             ),
           ],
@@ -234,22 +266,23 @@ class IosSettingsScreen extends StatelessWidget {
         context: context,
         builder: (sheetContext) => CupertinoActionSheet(
           title: const Text('Abrir epicentros con'),
-          actions: <MapProvider>[
-            MapProvider.apple,
-            MapProvider.google,
-            MapProvider.system,
-          ]
-              .map(
-                (provider) => CupertinoActionSheetAction(
-                  isDefaultAction: provider == settings.mapProvider,
-                  onPressed: () {
-                    unawaited(settings.setMapProvider(provider));
-                    Navigator.pop(sheetContext);
-                  },
-                  child: Text(provider.label),
-                ),
-              )
-              .toList(growable: false),
+          actions:
+              <MapProvider>[
+                    MapProvider.apple,
+                    MapProvider.google,
+                    MapProvider.system,
+                  ]
+                  .map(
+                    (provider) => CupertinoActionSheetAction(
+                      isDefaultAction: provider == settings.mapProvider,
+                      onPressed: () {
+                        unawaited(settings.setMapProvider(provider));
+                        Navigator.pop(sheetContext);
+                      },
+                      child: Text(provider.label),
+                    ),
+                  )
+                  .toList(growable: false),
           cancelButton: CupertinoActionSheetAction(
             onPressed: () => Navigator.pop(sheetContext),
             child: const Text('Cancelar'),
@@ -268,16 +301,26 @@ class _AccountHeader extends StatelessWidget {
       children: <Widget>[
         ClipRRect(
           borderRadius: BorderRadius.circular(16),
-          child: Image.asset('assets/images/seismik_logo.png', width: 64, height: 64),
+          child: Image.asset(
+            'assets/images/seismik_logo.png',
+            width: 64,
+            height: 64,
+          ),
         ),
         const SizedBox(width: 14),
         const Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-              Text('Seismik', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700)),
+              Text(
+                'Seismik',
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700),
+              ),
               SizedBox(height: 2),
-              Text('Alertas y reportes sísmicos', style: TextStyle(color: CupertinoColors.secondaryLabel)),
+              Text(
+                'Alertas y reportes sísmicos',
+                style: TextStyle(color: CupertinoColors.secondaryLabel),
+              ),
             ],
           ),
         ),

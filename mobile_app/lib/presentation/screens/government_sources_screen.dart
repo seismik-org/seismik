@@ -8,7 +8,7 @@ class GovernmentSourcesScreen extends StatelessWidget {
   const GovernmentSourcesScreen({super.key});
 
   static const String disclaimer =
-      'Seismik es una aplicación independiente y experimental. No representa, '
+      'Seismik es una aplicación independiente. No representa, '
       'no está afiliada a, no cuenta con aval de, ni presta servicios en nombre '
       'de ninguna entidad pública, incluido el Servicio Geológico Colombiano (SGC). '
       'No es un servicio de emergencias ni un sistema público certificado de alerta temprana.';

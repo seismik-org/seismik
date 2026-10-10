@@ -50,7 +50,7 @@ public struct SettingsView: View {
                                 .font(.system(size: 14, weight: .semibold, design: .rounded))
                                 .foregroundColor(SeismikColors.systemBlue)
 
-                            Text("Beta experimental")
+                            Text("Información sísmica y conexión familiar")
                                 .font(.system(size: 12, weight: .regular))
                                 .foregroundColor(.secondary)
                         }
@@ -95,7 +95,7 @@ public struct SettingsView: View {
                                 Text("Activar alertas")
                                     .font(.body)
                                     .foregroundColor(.primary)
-                                Text("Apple aprobó Critical Alerts para Seismik. Este build debe estar firmado con la capacidad y tú debes permitirla.")
+                                Text("Permite las alertas críticas para recibir sonido incluso con el teléfono en silencio o con un modo de concentración activo.")
                                     .font(.caption)
                                     .foregroundColor(.secondary)
                             }
@@ -110,7 +110,7 @@ public struct SettingsView: View {
                         Text("Permiso de alertas críticas")
                         Spacer()
                         Text(criticalNotificationStatus == .enabled ? "Permitido" :
-                            criticalNotificationStatus == .disabled ? "Desactivado" : "No disponible en este build")
+                            criticalNotificationStatus == .disabled ? "Desactivado" : "No disponible")
                             .foregroundColor(.secondary)
                     }
                     Button("Abrir permisos del iPhone", action: openSystemSettings)
@@ -382,10 +382,10 @@ public struct SettingsView: View {
                     }
                 }
 
-                // Diagnóstico de la beta
+                // Estado del dispositivo
                 Section(
-                    header: Text("Diagnóstico de la beta"),
-                    footer: Text("Este identificador permite incluir el teléfono en la lista cerrada de pruebas push. No es un dato personal.")
+                    header: Text("Estado del dispositivo"),
+                    footer: Text("Identificador usado para registrar las alertas y atender solicitudes de soporte. Compártelo sólo con soporte.")
                 ) {
                     HStack {
                         Label("Registro de alertas", systemImage: state.isRegistered ? "checkmark.shield.fill" : "exclamationmark.shield")
@@ -441,7 +441,7 @@ public struct SettingsView: View {
                 // Acerca de Seismik
                 Section(
                     header: Text("Acerca de Seismik"),
-                    footer: Text("Los cambios quedan guardados en el teléfono y se aplican inmediatamente. Seismik continúa en beta experimental y no sustituye a las autoridades.")
+                    footer: Text("Los cambios quedan guardados en el teléfono y se aplican inmediatamente. Seismik es independiente y no sustituye a las autoridades ni a los servicios de emergencia.")
                 ) {
                     HStack {
                         Text("Versión")
@@ -465,6 +465,20 @@ public struct SettingsView: View {
 
                     Button("Términos del servicio") {
                         browserDestination = BrowserDestination(url: URL(string: "https://seismik.org/terms-of-service")!)
+                    }
+                    Button("Eliminar mi cuenta") {
+                        browserDestination = BrowserDestination(url: URL(string: "https://seismik.org/delete-account/")!)
+                    }
+                }
+
+                Section(header: Text("Fuentes y aviso legal")) {
+                    Text("Seismik no representa ni está afiliada a ninguna entidad pública, incluido el Servicio Geológico Colombiano. No es un servicio de emergencias ni un sistema público certificado de alerta temprana. Los reportes preliminares pueden cambiar; confirma la información en la fuente original.")
+                        .font(.footnote)
+                    ForEach(Self.legalSources.indices, id: \.self) { index in
+                        let source = Self.legalSources[index]
+                        Button(source.name) {
+                            browserDestination = BrowserDestination(url: URL(string: source.url)!)
+                        }
                     }
                 }
             }
@@ -604,6 +618,17 @@ public struct SettingsView: View {
                 : "Prueba normal en 10 segundos; Critical Alerts aún no está permitido."
         } catch { notificationTestMessage = "No se pudo programar la prueba local." }
     }
+
+    private static let legalSources: [(name: String, url: String)] = [
+        ("Servicio Geológico Colombiano (SGC)", "https://sismo.sgc.gov.co/"),
+        ("USGS", "https://www.usgs.gov/programs/earthquake-hazards"),
+        ("Instituto Geofísico del Perú", "https://censis.igp.gob.pe/"),
+        ("INGV · Italia", "https://terremoti.ingv.it/"),
+        ("GeoNet · Nueva Zelanda", "https://www.geonet.org.nz/earthquake"),
+        ("BMKG · Indonesia", "https://www.bmkg.go.id/gempabumi"),
+        ("JMA · Japón", "https://www.data.jma.go.jp/multi/quake/index.html?lang=en"),
+        ("EMSC/CSEM", "https://www.emsc-csem.org/")
+    ]
 
     private func startSignIn(provider: String) {
         SeismikOAuthSignIn.shared.start(provider: provider) { result in

@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/cupertino.dart';
-import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
@@ -11,6 +10,7 @@ import 'core/constants.dart';
 import 'core/felt_area.dart';
 import 'core/platform.dart';
 import 'core/theme.dart';
+import 'core/system_dynamic_colors.dart';
 import 'data/models/seismic_event.dart';
 import 'presentation/screens/alert_overlay.dart';
 import 'presentation/screens/damage_report_screen.dart';
@@ -65,7 +65,7 @@ class SeismikApp extends StatelessWidget {
         },
       ),
     ],
-    child: DynamicColorBuilder(
+    child: SystemDynamicColorBuilder(
       builder: (ColorScheme? systemLight, ColorScheme? systemDark) {
         return Consumer<MobileSettings>(
           builder: (context, settings, _) {

@@ -7,6 +7,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
 
 import '../../services/map_launcher.dart';
+import '../../services/app_links.dart';
 import '../../services/background_motion_service.dart';
 import '../../state/mobile_settings.dart';
 import '../../state/seismik_state.dart';
@@ -221,7 +222,7 @@ class SettingsScreen extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           _Section(
-            title: 'Diagnóstico de la beta',
+            title: 'Estado del dispositivo',
             icon: Icons.science_outlined,
             children: <Widget>[
               FutureBuilder<String>(
@@ -252,7 +253,7 @@ class SettingsScreen extends StatelessWidget {
               const Padding(
                 padding: EdgeInsets.fromLTRB(16, 0, 16, 14),
                 child: Text(
-                  'Este identificador permite incluir el teléfono en la lista cerrada de pruebas push. No es un dato personal.',
+                  'Identificador usado para registrar las alertas y atender solicitudes de soporte. Compártelo sólo con soporte.',
                 ),
               ),
             ],
@@ -412,9 +413,27 @@ class SettingsScreen extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 16),
+          _Section(
+            title: 'Información y cuenta',
+            icon: Icons.info_outline_rounded,
+            children: <Widget>[
+              for (final link in <(String, String)>[
+                ('Términos del servicio', AppLinks.terms),
+                ('Privacidad', AppLinks.privacy),
+                ('Código fuente y licencia', AppLinks.source),
+                ('Eliminar mi cuenta', AppLinks.deleteAccount),
+              ])
+                ListTile(
+                  title: Text(link.$1),
+                  trailing: const Icon(Icons.open_in_new_rounded),
+                  onTap: () => unawaited(AppLinks.open(context, link.$2)),
+                ),
+            ],
+          ),
+          const SizedBox(height: 16),
           Text(
             'Los cambios quedan guardados en el teléfono y se aplican inmediatamente. '
-            'Seismik continúa en beta experimental y no sustituye a las autoridades.',
+            'Seismik es independiente y no sustituye a las autoridades ni a los servicios de emergencia.',
             style: TextStyle(color: colors.onSurfaceVariant),
           ),
         ],
@@ -445,7 +464,7 @@ class _Header extends StatelessWidget {
                   'Seismik',
                   style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900),
                 ),
-                Text('Beta experimental 0.6.6'),
+                Text('Información sísmica y conexión familiar'),
               ],
             ),
           ),
