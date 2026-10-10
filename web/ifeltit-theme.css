@@ -1,0 +1,44 @@
+/* Shared Seismik tokens override the legacy reporting palette in both themes.
+   Form dimensions stay intact; Maps controls are not restyled. */
+:root { --blue: var(--primary); font-family: var(--font); background: var(--bg); color: var(--text); }
+.felt-page header.site-header { max-width: none; padding: 0; margin: 0; display: block; border-color: var(--line); }
+.felt-page .brand { font-size: .95rem; letter-spacing: .14em; color: var(--text); }
+.felt-page .brand img { width: 32px; height: 32px; }
+.felt-nav { display: flex; gap: 24px; margin-left: auto; font-size: .85rem; }
+.felt-nav a { color: var(--muted); text-decoration: none; }
+.felt-nav a:hover { color: var(--primary); }
+.felt-page h1 { margin: 16px 0; }
+.felt-page h2 { font-size: 1.02rem; margin: 0 0 5px; }
+.intro { color: var(--muted); }
+.felt-page fieldset, #result { background: var(--surface); border-color: var(--line-strong); border-radius: var(--radius); box-shadow: var(--shadow); }
+.felt-page fieldset { scroll-margin-top: 92px; }
+.felt-page input, .felt-page select { background: var(--bg-soft); border-color: var(--line-strong); color: var(--text); min-height: 48px; }
+.felt-page input::placeholder { color: var(--muted); }
+.felt-page .check input { min-height: 18px; }
+.felt-page option { color: var(--text); background: var(--surface); }
+.section-number, .magnitude { background: var(--surface-3); border-color: var(--line-strong); }
+.event-card { background: var(--surface-2); border-color: var(--line-strong); }
+.event-card .distance { color: var(--text); }
+.steps li { border-color: var(--line-strong); }
+.steps [aria-current] { border-color: var(--primary); }
+.safety, .plausibility { border-color: color-mix(in srgb, var(--warn) 35%, var(--line)); background: color-mix(in srgb, var(--warn) 7%, var(--surface)); color: var(--text); }
+.map-shell { border-color: var(--line-strong); background: var(--bg-soft); }
+.map-message { background: var(--surface-2); }
+.felt-page form button, #result button { color: var(--primary-ink); min-height: 44px; }
+.felt-page form button:hover, #result button:hover { background: var(--primary-strong); }
+.felt-page button.secondary { background: var(--surface-2); color: var(--text); border-color: var(--line-strong); }
+.felt-page button.secondary:hover { background: var(--surface-3); }
+.felt-page button.text-button, .felt-page button.text-button:hover { color: var(--primary); background: transparent; }
+#status { color: var(--text); background: var(--surface); border-left: 3px solid var(--warn); padding: 10px 16px; }
+.felt-page footer.site-footer { max-width: none; display: block; padding: 0; border-color: var(--line); }
+.felt-footer { padding-block: 28px; display: grid; gap: 16px; color: var(--muted); font-size: .8rem; }
+.felt-footer p { margin: 0; }
+.felt-footer nav { display: flex; flex-wrap: wrap; gap: 12px 24px; }
+@media (max-width: 680px) {
+  .header-inner { gap: 12px; }
+  .felt-nav { gap: 14px; font-size: .75rem; }
+  .hero-note span { display: block; }
+  .felt-page fieldset { border-radius: var(--radius-sm); }
+  /* Avoid automatic iOS focus zoom without disabling pinch-to-zoom. */
+  .felt-page input, .felt-page select { font-size: 16px; }
+}
