@@ -17,6 +17,7 @@ import '../widgets/map_markers.dart';
 import '../widgets/perimeter_circles.dart';
 import '../widgets/status_pill.dart';
 import 'event_detail_screen.dart';
+import 'government_sources_screen.dart';
 
 /// Historial de sismos como mapa interactivo con panel inferior deslizable.
 ///
@@ -132,6 +133,15 @@ class _MonitorScreenState extends State<MonitorScreen> {
         '${settings.historyDays} días · M ≥ '
         '${settings.minimumHistoryMagnitude.toStringAsFixed(1)} · '
         '${settings.historySources.map(_sourceLabel).join(' + ')}',
+      ),
+      TextButton.icon(
+        onPressed: () => Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => const GovernmentSourcesScreen(),
+          ),
+        ),
+        icon: const Icon(Icons.info_outline_rounded),
+        label: const Text('App independiente · Fuentes y aviso legal'),
       ),
       if (perimeters.isNotEmpty)
         Padding(

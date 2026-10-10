@@ -15,9 +15,12 @@ import 'alert_memory.dart';
 /// Marca de los avisos que llegaron en silencio porque su sismo ya sonó:
 /// abrirlos no vuelve a mostrar la pantalla de alarma.
 const String _quietKey = 'seismik_quiet';
+// Android channels are immutable: migrate the app-owned sound configuration.
+const String criticalAlarmChannelId = 'seismic_critical_alarm_v2';
+String _effectiveCriticalChannelId = criticalAlarmChannelId;
 
 const AndroidNotificationChannel _criticalChannel = AndroidNotificationChannel(
-  SeismikConstants.criticalChannelId,
+  criticalAlarmChannelId,
   'Alertas sísmicas críticas',
   description: 'Alertas inmediatas de detección sísmica Seismik.',
   importance: Importance.max,
@@ -70,6 +73,7 @@ class FamilyNotification {
     required this.displayName,
     required this.needsHelp,
     required this.opened,
+    this.locationOnly = false,
   });
 
   factory FamilyNotification.fromData(
@@ -79,22 +83,28 @@ class FamilyNotification {
     displayName: (data['display_name'] ?? 'Tu familiar').toString(),
     needsHelp: data['status']?.toString() == 'need_help',
     opened: opened,
+    locationOnly: data['status']?.toString() == 'location_only',
   );
 
   static const String type = 'family_status';
 
   final String displayName;
   final bool needsHelp;
+  final bool locationOnly;
 
   /// La persona tocó el aviso: hay que llevarla a la pestaña Familia.
   final bool opened;
 
-  String get title =>
-      needsHelp ? '$displayName necesita ayuda' : '$displayName está bien';
+  String get title => locationOnly
+      ? '$displayName: ubicación disponible'
+      : needsHelp
+      ? '$displayName necesita ayuda'
+      : '$displayName está bien';
 }
 
 class NotificationService {
-  NotificationService({AlertMemory? memory}) : _memory = memory ?? AlertMemory();
+  NotificationService({AlertMemory? memory})
+    : _memory = memory ?? AlertMemory();
 
   final AlertMemory _memory;
   final FlutterLocalNotificationsPlugin _local =
@@ -128,6 +138,7 @@ class NotificationService {
     await _initializeLocalPlugin(
       _local,
       onResponse: (NotificationResponse response) {
+        if (response.actionId == 'silence-critical') return;
         _emitPayload(response.payload);
       },
     );
@@ -235,7 +246,8 @@ class NotificationService {
       for (final ActiveNotification notification in active) {
         final int? id = notification.id;
         if (id != null &&
-            notification.channelId == SeismikConstants.criticalChannelId) {
+            (notification.channelId == criticalAlarmChannelId ||
+                notification.channelId == SeismikConstants.criticalChannelId)) {
           await _local.cancel(id: id, tag: notification.tag);
         }
       }
@@ -314,7 +326,21 @@ Future<void> _initializeLocalPlugin(
       .resolvePlatformSpecificImplementation<
         AndroidFlutterLocalNotificationsPlugin
       >();
-  await android?.createNotificationChannel(_criticalChannel);
+  final List<AndroidNotificationChannel>? channels = await android
+      ?.getNotificationChannels();
+  _effectiveCriticalChannelId = criticalAlarmChannelId;
+  for (final AndroidNotificationChannel channel
+      in channels ?? <AndroidNotificationChannel>[]) {
+    if (channel.id == SeismikConstants.criticalChannelId &&
+        (channel.importance.value < Importance.high.value ||
+            !channel.playSound)) {
+      // Never migrate around a user's muted/lowered legacy channel.
+      _effectiveCriticalChannelId = channel.id;
+    }
+  }
+  if (_effectiveCriticalChannelId == criticalAlarmChannelId) {
+    await android?.createNotificationChannel(_criticalChannel);
+  }
   await android?.createNotificationChannel(_updatesChannel);
 }
 
@@ -329,8 +355,8 @@ Future<bool> _presentCritical(
     await _showQuietFollowUp(plugin, data);
     return false;
   }
-  await memory.remember(data);
   await _showCriticalNotification(plugin, data);
+  await memory.remember(data);
   return true;
 }
 
@@ -338,7 +364,9 @@ Future<bool> _presentCritical(
 /// String no está garantizado entre procesos.
 int _notificationId(Map<String, dynamic> data) {
   final String id = (data['event_id'] ?? '').toString();
-  if (id.isEmpty) return DateTime.now().millisecondsSinceEpoch.remainder(1 << 31);
+  if (id.isEmpty) {
+    return DateTime.now().millisecondsSinceEpoch.remainder(1 << 31);
+  }
   int hash = 0x811c9dc5;
   for (final int unit in utf8.encode(id)) {
     hash = ((hash ^ unit) * 0x01000193) & 0xffffffff;
@@ -385,9 +413,9 @@ Future<void> _showCriticalNotification(
     body: official
         ? _strongShakingBody(data)
         : 'Busca protección: agáchate, cúbrete y sujétate.',
-    notificationDetails: const NotificationDetails(
+    notificationDetails: NotificationDetails(
       android: AndroidNotificationDetails(
-        SeismikConstants.criticalChannelId,
+        _effectiveCriticalChannelId,
         'Alertas sísmicas críticas',
         channelDescription: 'Alertas inmediatas de detección sísmica Seismik.',
         importance: Importance.max,
@@ -396,13 +424,24 @@ Future<void> _showCriticalNotification(
         fullScreenIntent: true,
         ongoing: true,
         autoCancel: false,
+        // FLAG_INSISTENT repeats the sound at delivery, without opening Flutter.
+        // Bound the alarm to one minute; dismissal cancels it immediately.
+        additionalFlags: Int32List.fromList(<int>[4]),
+        timeoutAfter: 60000,
+        actions: const <AndroidNotificationAction>[
+          AndroidNotificationAction(
+            'silence-critical',
+            'Silenciar',
+            cancelNotification: true,
+          ),
+        ],
         // Si el mismo aviso se vuelve a publicar, actualiza el texto sin sonar.
         onlyAlertOnce: true,
         visibility: NotificationVisibility.public,
-        sound: RawResourceAndroidNotificationSound('alarm'),
+        sound: const RawResourceAndroidNotificationSound('alarm'),
         audioAttributesUsage: AudioAttributesUsage.alarm,
       ),
-      iOS: DarwinNotificationDetails(
+      iOS: const DarwinNotificationDetails(
         presentAlert: true,
         presentBadge: true,
         presentSound: true,

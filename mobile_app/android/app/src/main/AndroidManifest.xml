@@ -6,6 +6,10 @@
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
 
     <!-- Android 11+ oculta las apps instaladas salvo las declaradas aquí. Sin
          estos filtros, abrir el epicentro en mapas o una fuente oficial
@@ -22,11 +26,21 @@
     </queries>
 
     <application
-        android:label="Seismik"
+        android:label="${SEISMIK_APP_LABEL}"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:allowBackup="false"
         android:usesCleartextTraffic="false">
+        <!-- User-initiated, visible earthquake motion monitoring; not dataSync
+             (which is time-limited). No boot launch or background location grant. -->
+        <service
+            android:name="com.pravera.flutter_foreground_task.service.ForegroundService"
+            android:exported="false"
+            android:stopWithTask="false"
+            android:foregroundServiceType="location|specialUse">
+            <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="User-enabled continuous earthquake motion sensing with a persistent stop notification. Only qualifying motion summaries are sent to the existing crowdsourcing API." />
+        </service>
         <meta-data
             android:name="com.google.android.geo.API_KEY"
             android:value="${SEISMIK_GOOGLE_MAPS_API_KEY}" />
@@ -62,6 +76,9 @@
                 <data android:scheme="seismik" android:host="auth" android:path="/callback" />
             </intent-filter>
         </activity>
+        <receiver
+            android:name="com.dexterous.flutterlocalnotifications.ActionBroadcastReceiver"
+            android:exported="false" />
         <meta-data android:name="flutterEmbedding" android:value="2" />
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_channel_id"

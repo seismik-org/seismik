@@ -17,6 +17,7 @@ public struct DamageReportView: View {
     @State private var showSuccessAlert = false
     @State private var submissionMessage = ""
     @State private var showErrorAlert = false
+    @State private var selectedEvent: SeismicEvent?
 
     public init(preselectedEvent: SeismicEvent?, showsCloseButton: Bool = true) {
         self.preselectedEvent = preselectedEvent
@@ -26,6 +27,8 @@ public struct DamageReportView: View {
     public var body: some View {
         CompatibleNavigationStack {
             Form {
+                ReportEventSelection(selectedEvent: $selectedEvent, suggested: preselectedEvent)
+                    .disabled(isSubmitting)
                 Section(header: Text("SEVERIDAD DE DAÑOS")) {
                     ForEach(DamageSeverity.allCases) { severity in
                         HStack {
@@ -101,6 +104,7 @@ public struct DamageReportView: View {
             }
             .alert("Reporte Transmitido", isPresented: $showSuccessAlert) {
                 Button("Entendido") {
+                    selectedEvent = nil
                     if showsCloseButton { dismiss() }
                 }
             } message: {
@@ -125,7 +129,7 @@ public struct DamageReportView: View {
         }
         .buttonStyle(.borderedProminent)
         .tint(.red)
-        .disabled(isSubmitting)
+        .disabled(isSubmitting || selectedEvent == nil)
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
         .background(.bar)
@@ -133,6 +137,7 @@ public struct DamageReportView: View {
     }
 
     private func submitReport() {
+        guard let selectedEvent else { return }
         guard let coordinate = LocationManager.shared.userCoordinate else {
             submissionMessage = "Se necesita tu ubicación para asociar el reporte al lugar correcto. Activa la ubicación de Seismik en Ajustes e inténtalo de nuevo."
             HapticManager.error()
@@ -150,8 +155,8 @@ public struct DamageReportView: View {
 
         let payload = DamageReportPayload(
             deviceId: SeismikAPIClient.shared.deviceId,
-            earthquakeEventId: preselectedEvent?.id,
-            officialEventId: preselectedEvent?.officialEventId,
+            earthquakeEventId: selectedEvent.id,
+            officialEventId: selectedEvent.officialEventId,
             observedAt: ISO8601DateFormatter().string(from: Date()),
             latitude: coordinate.latitude,
             longitude: coordinate.longitude,

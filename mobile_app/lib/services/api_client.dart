@@ -101,6 +101,11 @@ class ApiClient {
     return session != null && session.isNotEmpty;
   }
 
+  Future<bool> hasCrowdToken() async {
+    final String? token = await _crowdToken();
+    return token != null && token.isNotEmpty;
+  }
+
   Future<String?> _deviceSession() async =>
       _sessionToken ??= await _secureStorage.read(key: _deviceSessionKey);
 
@@ -225,6 +230,44 @@ class ApiClient {
     }
     await _secureStorage.write(key: _deviceSessionKey, value: deviceSession);
     _sessionToken = deviceSession;
+  }
+
+  Future<void> sendCrowdShadow(
+    Map<String, dynamic> summary, {
+    required bool presence,
+  }) async {
+    final token = await _crowdToken();
+    if (token == null) {
+      throw const SeismikApiException('Device is not registered', null);
+    }
+    final timestamp = (DateTime.now().millisecondsSinceEpoch / 1000)
+        .toStringAsFixed(3);
+    final body = jsonEncode(<String, dynamic>{
+      ...summary,
+      'device_id': await ensureDeviceId(),
+      if (!presence) 'report_id': const Uuid().v4(),
+    });
+    final response = await _http
+        .post(
+          _uri('/v1/crowd/v2/${presence ? 'presence' : 'observation'}'),
+          headers: <String, String>{
+            ..._jsonHeaders(),
+            'X-Seismik-Timestamp': timestamp,
+            'X-Seismik-Signature': SeismikSecurity.hmacSha256Hex(
+              secret: token,
+              timestamp: timestamp,
+              bodyBytes: utf8.encode(body),
+            ),
+          },
+          body: body,
+        )
+        .timeout(const Duration(seconds: 3));
+    if (response.statusCode != 202) {
+      throw SeismikApiException(
+        'Experimental sensor summary rejected',
+        response.statusCode,
+      );
+    }
   }
 
   Future<void> sendShake({
@@ -875,6 +918,17 @@ class ApiClient {
         .delete(_uri('/v1/family/location'), headers: await _accountHeaders())
         .timeout(const Duration(seconds: 8));
     if (response.statusCode != 204) _decode(response);
+  }
+
+  Future<void> setAutomaticFamilyLocation(bool enabled) async {
+    final response = await _http
+        .put(
+          _uri('/v1/family/automatic-location'),
+          headers: await _accountHeaders(),
+          body: jsonEncode(<String, dynamic>{'enabled': enabled}),
+        )
+        .timeout(const Duration(seconds: 8));
+    _decode(response);
   }
 
   /// «Estoy bien» o «Necesito ayuda». Con coordenadas las comparte con la
