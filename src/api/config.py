@@ -181,6 +181,7 @@ class AppSettings(BaseSettings):
     push_mode: Literal["dry_run", "testers", "production"] = "dry_run"
     push_test_device_ids: tuple[str, ...] = ()
     push_audit_stream: str = "stream:seismik:push-test"
+    admin_drill_stream: str = "stream:seismik:admin-drills"
     apns_key_path: str | None = None
     apns_key_id: str | None = None
     apns_team_id: str | None = None

@@ -15,6 +15,7 @@ from pydantic import BaseModel, ConfigDict
 from redis.asyncio import Redis
 
 from api.admin import redact, require_admin
+from api.admin_privacy import view_for
 from api.admin_security import require_action
 from api.config import AppSettings
 from api.dependencies import get_app_settings, get_redis
@@ -65,6 +66,7 @@ async def list_reports(
     reports: list[dict[str, Any]] = []
     streams = (("felt", settings.felt_reports_stream), ("damage", settings.damage_reports_stream))
     for kind, stream in streams:
+        private = view_for(kind, settings)
         entries = await _entries(redis, stream, limit)
         reviews = cast(list[str | None], await redis.hmget(
             REVIEW_KEY, [f"{stream}|{stream_id}" for stream_id, _ in entries]
@@ -78,7 +80,7 @@ async def list_reports(
                     "received_at": _received_at(stream_id),
                     "kind": kind,
                     "source": "web" if payload.get("source") == "web" else "app",
-                    "report": redact({k: v for k, v in payload.items() if k not in HIDDEN_FIELDS}),
+                    "report": private(redact({k: v for k, v in payload.items() if k not in HIDDEN_FIELDS})),
                     "event": event,
                     # Se recalcula: el sismo pudo revisarse después del envío.
                     "plausibility": assess(payload, event),

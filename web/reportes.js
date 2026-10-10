@@ -114,7 +114,7 @@ function placeCell(item) {
   cell.append(element("strong", "", country(item.report.country_code)));
   const {latitude, longitude} = item.report;
   if (Number.isFinite(latitude) && Number.isFinite(longitude)) {
-    const link = element("a", "", `${latitude.toFixed(2)}, ${longitude.toFixed(2)} ↗`);
+    const link = element("a", "", `≈ ${latitude.toFixed(1)}, ${longitude.toFixed(1)} ↗`);
     link.href = `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`;
     link.target = "_blank"; link.rel = "noopener noreferrer";
     cell.append(link);

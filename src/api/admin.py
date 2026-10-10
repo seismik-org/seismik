@@ -15,6 +15,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from pydantic import BaseModel, ConfigDict, StrictBool
 from redis.asyncio import Redis
 
+from api.admin_privacy import view_for
 from api.admin_security import require_action, require_admin
 from api.config import AppSettings
 from api.dependencies import get_app_settings, get_redis
@@ -175,12 +176,14 @@ async def records(
         raise HTTPException(404, "Registro desconocido")
     stream, title = available[name]
     raw = cast(list[tuple[str, dict[str, str]]], await redis.xrevrange(stream, count=limit))
+    # Nombres, correos, mensajes y ubicaciones de clientes no salen de la API.
+    private = view_for(name, settings)
     return {
         "name": name,
         "title": title,
         "total": int(await redis.xlen(stream)),
         "records": [
-            {"id": stream_id, "at": _stream_time(stream_id).isoformat(), "data": redact(_decode(fields))}
+            {"id": stream_id, "at": _stream_time(stream_id).isoformat(), "data": private(redact(_decode(fields)))}
             for stream_id, fields in raw
         ],
     }

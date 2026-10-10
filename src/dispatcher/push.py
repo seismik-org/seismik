@@ -327,6 +327,8 @@ def notification_content(
             "place": report.get("place"),
             "official_url": report.get("official_url"),
         }
+        if str(event["event_id"]).startswith("drill-"):
+            title = f"SIMULACRO: {title}"
         if critical:
             data["critical"] = True
         return title, body, data
