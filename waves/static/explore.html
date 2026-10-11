@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="es">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Explorador de ondas · Waves · Seismik</title><link rel="icon" href="/assets/favicon-32.png"><link rel="stylesheet" href="/assets/waves.css"><link rel="stylesheet" href="/assets/theme.css"><link rel="stylesheet" href="/assets/brand.css"><link rel="stylesheet" href="/assets/about.css"><link rel="stylesheet" href="/assets/explore.css">
+<script src="/assets/theme.js"></script><script type="module" src="/assets/explore.js"></script></head>
+<body><a class="skip" href="#main">Ir al contenido</a>
+<header class="site-header"><div class="header-inner"><a class="brand" href="https://seismik.org/" aria-label="Seismik, inicio"><img class="brand-logo" src="/assets/seismik_logo.webp" width="32" height="32" alt="">SEISMIK <span class="brand-tag">WAVES</span></a>
+<nav class="primary-nav" aria-label="Portales Seismik"><a href="https://seismik.org/">Inicio</a><a href="https://devs.seismik.org/">Desarrolladores</a><a href="/" aria-current="page">Waves</a><a href="https://status.seismik.org/">Estado</a></nav><div class="header-actions"><a class="button compact" href="/#catalog-panel">← Catálogo</a></div></div></header>
+<main id="main" class="viewer">
+<p id="state" class="fine" role="status" aria-live="polite">Cargando la grabación…</p>
+<div id="gate" class="gate" hidden><h1>Necesitas una sesión aprobada.</h1><p id="gate-text"></p><a class="button" href="/login">Entrar con tu cuenta Seismik</a> <a class="button secondary" href="/">Volver a Waves</a></div>
+<div id="viewer" hidden>
+<p class="eyebrow" id="kicker">GRABACIÓN</p><h1 id="title"></h1>
+<div class="context" id="context"></div>
+<section class="panel" aria-labelledby="plot-title"><div class="panel-head"><h2 id="plot-title">Formas de onda</h2>
+<div class="controls"><label>Estación<select id="station"></select></label><label>Escala<select id="scale"><option value="trace">Cada canal con la suya</option><option value="station">Común a la estación</option><option value="all">Común a toda la grabación</option></select></label></div></div>
+<p class="fine">Eje horizontal: tiempo en UTC. Eje vertical: cuentas del sensor, con el promedio de cada canal restado sólo para dibujar. Es una reducción de 600 intervalos por canal, sin filtros ni corrección instrumental: sirve para mirar, no para medir.</p>
+<div id="plots" class="plots"></div>
+<p id="readout" class="readout" aria-live="off">Pasa el cursor sobre una onda para leer el tiempo y la amplitud.</p></section>
+<section class="panel" aria-labelledby="channels-title"><h2 id="channels-title">Canales de la grabación</h2><div class="table-wrap"><table><thead><tr><th>Canal</th><th>Tasa</th><th>Inicio (UTC)</th><th>Duración</th><th>Muestras</th><th>Pico</th><th>RMS</th></tr></thead><tbody id="channels"></tbody></table></div></section>
+<section class="panel" aria-labelledby="file-title"><h2 id="file-title">Archivo y procedencia</h2><dl class="facts" id="file"></dl>
+<div class="actions"><button id="download" class="button" type="button" hidden>Descargar MiniSEED completo</button></div><p id="download-status" class="fine" role="status" aria-live="polite"></p><p class="fine">La descarga es el archivo MiniSEED original, con todas sus estaciones y canales y sin reducción. La huella SHA-256 identifica el archivo exacto y el servidor la comprueba antes de entregarlo.</p></section>
+</div></main>
+<footer class="site-footer"><div class="footer-inner"><a class="brand" href="https://seismik.org/"><img class="brand-logo" src="/assets/seismik_logo.webp" width="32" height="32" alt="">SEISMIK</a><p class="footer-description">Datos sísmicos para construir con responsabilidad.<br>Waves forma parte de la plataforma Seismik.</p><nav aria-label="Servicios Seismik"><a href="https://seismik.org/">Portal principal</a><a href="https://devs.seismik.org/">Desarrolladores</a><a href="https://status.seismik.org/">Estado del servicio</a><a href="https://seismik.org/contact/">Contacto</a></nav><nav aria-label="Legal"><a href="https://seismik.org/terms-of-privacy/">Privacidad</a><a href="https://seismik.org/terms-of-service/">Términos</a></nav><p class="footer-bottom">© 2026 Seismik · Waves · Piloto para investigación</p></div></footer></body></html>

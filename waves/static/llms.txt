@@ -1,0 +1,25 @@
+# Seismik Waves
+
+> Waves es el archivo de formas de onda de Seismik: grabaciones sísmicas históricas de Colombia, organizadas y verificables, para investigación y evaluación reproducible. Es un piloto de acceso por aprobación; la portada es pública y el catálogo es privado.
+
+Waves no es una red de alerta temprana ni un servicio de emergencia, no publica eventos en vivo y no sustituye a las agencias sismológicas oficiales.
+
+## Qué contiene
+
+- 560 grabaciones MiniSEED (unos 548 MB) importadas el 10 de octubre de 2026, en cuatro conjuntos: evaluación de magnitud, sismos históricos de referencia, casos de estudio y pruebas de reproducción.
+- Cada grabación trae su identificador, tamaño y huella SHA-256; el contexto del sismo viene del catálogo ISC/RSNC o del USGS.
+- Visor de formas de onda por estación y canal y descarga del MiniSEED original completo, para personas aprobadas.
+
+## Páginas públicas
+
+- [Waves](https://waves.seismik.org/): qué es, qué contiene, alcance del piloto y preguntas frecuentes.
+
+## Más de Seismik
+
+- [Seismik](https://seismik.org/): alerta sísmica abierta y verificable para Colombia y la región andina.
+- [Seismik Developers](https://devs.seismik.org/): API de eventos, estaciones y webhooks.
+- [Estado del servicio](https://status.seismik.org/)
+
+## Condiciones
+
+Las grabaciones proceden de servicios del Servicio Geológico Colombiano, EarthScope y catálogos de referencia, y cada fuente conserva sus condiciones de uso y su atribución. Seismik es independiente y no representa a esas entidades.

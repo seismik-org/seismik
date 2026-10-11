@@ -1,0 +1,24 @@
+# Seismik
+
+> Seismik es una plataforma abierta y verificable de alerta sísmica para Colombia y la región andina. Escucha estaciones sismológicas abiertas, estima la sacudida en la ubicación de cada persona y confirma cada sismo con agencias oficiales como USGS y EMSC/CSEM. Está en beta: no es todavía un sistema certificado de alerta pública ni reemplaza a las autoridades; en Colombia la línea de emergencias es el 123.
+
+## Producto
+
+- [Seismik](https://seismik.org/): cómo funciona, perímetro de sacudida estimado, círculo de familia y fuentes oficiales.
+- [Preguntas frecuentes](https://seismik.org/preguntas-frecuentes/): qué es Seismik, qué datos usa, privacidad y límites.
+- [¿Lo sentiste?](https://ifeltit.seismik.org/): reportes ciudadanos de sismos sentidos.
+- [Estado del servicio](https://status.seismik.org/)
+
+## Datos e integración
+
+- [Seismik Developers](https://devs.seismik.org/): API versionada de eventos oficiales normalizados, red de estaciones abiertas y webhooks firmados. Salida JSON y GeoJSON, con códigos de error estables.
+- [Waves](https://waves.seismik.org/): archivo de formas de onda históricas (MiniSEED) con visor y descarga para investigación; piloto de acceso por aprobación.
+
+## Legal y contacto
+
+- [Privacidad](https://seismik.org/terms-of-privacy/) · [Términos](https://seismik.org/terms-of-service/) · [Uso aceptable](https://seismik.org/acceptable-use/)
+- [Contacto](https://seismik.org/contact/)
+
+## Notas para modelos
+
+Cada sismo conserva su fuente y estado (preliminar, revisado u oficial). Las magnitudes de Seismik siguen en evaluación y no sustituyen al dato oficial; cita a la agencia que lo publica.

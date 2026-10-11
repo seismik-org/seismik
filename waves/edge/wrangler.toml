@@ -1,0 +1,16 @@
+name = "seismik-waves-edge"
+main = "worker.js"
+compatibility_date = "2026-10-10"
+account_id = "30f521d931a53370c20ade4ac7d17f35"
+workers_dev = false
+preview_urls = false
+routes = [{ pattern = "waves.seismik.org/*", zone_name = "seismik.org" }]
+
+# El portal estático (HTML, CSS, JS, logo) se publica con el Worker. El catálogo privado NO está aquí:
+# sigue en Cloud Run, detrás de la verificación del token de Firebase en el servidor.
+[assets]
+directory = "../static"
+binding = "ASSETS"
+run_worker_first = true
+html_handling = "none"
+not_found_handling = "none"

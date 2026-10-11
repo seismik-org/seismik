@@ -1,0 +1,5 @@
+catalog.json
+__pycache__/
+.pytest_cache/
+catalog-view.json
+previews/

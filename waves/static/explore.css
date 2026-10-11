@@ -1,0 +1,24 @@
+/* Explorador de ondas de Waves. Hereda las variables de waves.css, brand.css y theme.css. */
+.viewer { padding: 40px 0 70px; }
+.viewer h1 { font-size: clamp(1.8rem, 3.4vw, 2.7rem); margin-bottom: 18px; }
+.gate { padding: 60px 0; max-width: 560px; }
+.context { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 14px; margin: 0 0 30px; }
+.context div { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 16px 18px; }
+.context dt, .context span.k { display: block; color: var(--blue); font: 700 .66rem/1.5 ui-monospace, monospace; letter-spacing: .09em; text-transform: uppercase; }
+.context strong { display: block; margin-top: 4px; font-size: 1.15rem; letter-spacing: -.02em; }
+.context small { display: block; margin-top: 4px; color: var(--muted); font-size: .78rem; }
+.context a { color: var(--blue); }
+.panel { margin: 0 0 30px; padding: 26px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); }
+.panel h2 { font-size: 1.4rem; margin: 0; }
+.panel-head { display: flex; flex-wrap: wrap; gap: 16px; align-items: end; justify-content: space-between; margin-bottom: 14px; }
+.controls { display: flex; flex-wrap: wrap; gap: 14px; }
+.controls label { min-width: 190px; }
+.plots { display: grid; gap: 4px; margin-top: 14px; }
+.plot { position: relative; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); overflow: hidden; }
+.plot canvas { display: block; width: 100%; height: 96px; }
+.plot .tag { position: absolute; left: 10px; top: 6px; font: 700 .68rem ui-monospace, monospace; letter-spacing: .06em; color: var(--muted); pointer-events: none; }
+.plot .peak { position: absolute; right: 10px; top: 6px; font: .66rem ui-monospace, monospace; color: var(--muted); pointer-events: none; }
+.plot.axis canvas { height: 34px; }
+.readout { margin: 12px 0 0; min-height: 1.6em; font: .8rem ui-monospace, monospace; color: var(--text); }
+.panel .facts { margin: 0; padding: 0; border: 0; background: transparent; }
+.panel .facts dd { overflow-wrap: anywhere; }

@@ -1,0 +1,33 @@
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg: #f5f8fc;
+  --surface: #ffffff;
+  --line: #ced9e7;
+  --text: #14243a;
+  --muted: #50627c;
+  --blue: #075da5;
+  --mint: #087561;
+}
+:root[data-theme="dark"] { color-scheme: dark; }
+header { flex-wrap: wrap; }
+:root[data-theme="light"] body {
+  background: radial-gradient(ellipse at 80% 0, #c7e6f666, transparent 45%), var(--bg);
+}
+:root[data-theme="light"] .button:not(.secondary) { color: #ffffff; }
+:root[data-theme="light"] .signal {
+  background: linear-gradient(145deg, #e4eff9, var(--surface));
+  border-color: var(--line);
+  box-shadow: 0 28px 80px #193e6514;
+}
+:root[data-theme="light"] .signal svg pattern path { stroke: #8098b0; }
+:root[data-theme="light"] .signal svg g path:nth-child(1) { stroke: #075da5; }
+:root[data-theme="light"] .signal svg g path:nth-child(2) { stroke: #087561; }
+:root[data-theme="light"] .signal svg g path:nth-child(3) { stroke: #975321; }
+:root[data-theme="light"] .pill { background: #0875610a; border-color: #08756140; }
+:root[data-theme="light"] .notice { background: #fff8ed; border-color: #d5b68a; }
+:root[data-theme="light"] .notice strong { color: #80501b; }
+:root[data-theme="light"] #session-status[data-state="error"] { color: #ae261d; }
+@media (max-width: 560px) {
+  header { display: grid; grid-template-columns: 1fr auto; gap: 18px 10px; }
+  header nav { grid-column: 1 / -1; grid-row: 2; flex-wrap: wrap; }
+}

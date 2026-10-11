@@ -1,0 +1,6 @@
+__pycache__/
+.pytest_cache/
+tests/
+*.ps1
+*.md
+build-previews.py

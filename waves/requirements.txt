@@ -1,0 +1,4 @@
+fastapi>=0.141,<0.142
+uvicorn>=0.52,<0.53
+httpx>=0.28,<0.29
+google-cloud-storage>=2.18,<4
