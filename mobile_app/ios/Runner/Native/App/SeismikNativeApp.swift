@@ -81,5 +81,81 @@ public struct SeismikNativeAppRoot: View {
                 await state.refreshData()
             }
         }
+        // Lo primero que ve una persona nueva: los permisos que una alerta necesita para llegar, pedidos de entrada
+        // y no escondidos en Configuración.
+        .task { await state.evaluatePermissionsOnboarding() }
+        .fullScreenCover(isPresented: $state.showPermissionsOnboarding) {
+            PermissionsOnboardingView(state: state)
+        }
+    }
+}
+
+/// Bienvenida con los permisos esenciales. «Activar ahora» dispara los diálogos del sistema en orden:
+/// notificaciones y alertas críticas, y ubicación. «Ahora no» la cierra sin pedir nada; vuelve a aparecer en la
+/// siguiente apertura mientras la persona no haya decidido, y deja de insistir en cuanto concede o niega.
+struct PermissionsOnboardingView: View {
+    @ObservedObject var state: SeismikState
+    @State private var working = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            Spacer(minLength: 16)
+            Image(systemName: "bell.badge.fill")
+                .font(.system(size: 46))
+                .foregroundColor(.red)
+            Text("Activa lo esencial para que la alerta te llegue")
+                .font(.title.bold())
+            Text("Seismik avisa en segundos. Para que el aviso suene aunque el teléfono esté en silencio o con un modo de concentración, necesita estos permisos desde el principio.")
+                .font(.body)
+                .foregroundColor(.secondary)
+            permissionRow(
+                icon: "bell.and.waves.left.and.right.fill",
+                title: "Notificaciones y alertas críticas",
+                text: "Suenan con el teléfono en silencio y los simulacros llegan como una alerta real. iPhone te preguntará dos veces: acepta ambas."
+            )
+            permissionRow(
+                icon: "location.fill",
+                title: "Ubicación mientras usas la app",
+                text: "Calcula si la sacudida fuerte te alcanza. Se comparte aproximada por defecto."
+            )
+            Spacer()
+            Button {
+                Task {
+                    working = true
+                    await state.requestEssentialPermissions()
+                    working = false
+                }
+            } label: {
+                Text(working ? "Solicitando…" : "Activar ahora")
+                    .font(.headline)
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(Color.red)
+                    .foregroundColor(.white)
+                    .cornerRadius(14)
+            }
+            .disabled(working)
+            Button("Ahora no") { state.finishPermissionsOnboarding() }
+                .frame(maxWidth: .infinity)
+                .foregroundColor(.secondary)
+            Text("Si ya los negaste, puedes cambiarlos en Configuración > Alertas críticas.")
+                .font(.caption)
+                .foregroundColor(.secondary)
+        }
+        .padding(24)
+        .interactiveDismissDisabled()
+    }
+
+    private func permissionRow(icon: String, title: String, text: String) -> some View {
+        HStack(alignment: .top, spacing: 14) {
+            Image(systemName: icon)
+                .font(.system(size: 22))
+                .frame(width: 30)
+                .foregroundColor(.red)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title).font(.headline)
+                Text(text).font(.subheadline).foregroundColor(.secondary)
+            }
+        }
     }
 }

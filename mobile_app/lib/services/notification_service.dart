@@ -11,6 +11,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import '../core/constants.dart';
 import '../data/models/seismic_event.dart';
 import 'alert_memory.dart';
+import 'first_run_permissions.dart';
 
 /// Marca de los avisos que llegaron en silencio porque su sismo ya sonó:
 /// abrirlos no vuelve a mostrar la pantalla de alarma.
@@ -219,6 +220,14 @@ class NotificationService {
         >();
     await android?.requestNotificationsPermission();
     return await android?.requestFullScreenIntentPermission() ?? false;
+  }
+
+  /// Lleva a la persona, una sola vez y de entrada, a autorizar la pantalla
+  /// completa de las alertas críticas (Android 14+), en lugar de dejarla buscar
+  /// el permiso en Configuración.
+  Future<void> requestCriticalAccessOnFirstRun() async {
+    if (!Platform.isAndroid) return;
+    await const FirstRunPermissions().runOnce(requestCriticalAlertAccess);
   }
 
   Future<void> runCriticalAlertTest() async {

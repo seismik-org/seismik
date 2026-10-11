@@ -40,9 +40,10 @@ import SwiftUI
       }
     }
 
-    // Registrar APNs no muestra un permiso. El permiso de presentación se
-    // solicita de forma contextual desde Ajustes, cuando la persona activa
-    // alertas; así el primer arranque no muestra dos diálogos consecutivos.
+    // Registrar APNs no muestra un permiso. El permiso de presentación (con las
+    // alertas críticas) lo pide la bienvenida del primer arranque
+    // (PermissionsOnboardingView) y, después, Configuración: sin él los avisos
+    // y los simulacros llegan al teléfono pero iOS no los muestra.
     UNUserNotificationCenter.current().delegate = SeismikNotificationPresenter.shared
     application.registerForRemoteNotifications()
 

@@ -120,6 +120,9 @@ public struct SeismicEvent: Identifiable, Codable, Hashable {
     public let critical: Bool?
 
     public var isCriticalOfficial: Bool { notificationType == "official_report_update" && critical == true }
+    /// Los simulacros del panel de administración llevan el prefijo `drill-`: suenan como una alerta, pero nunca
+    /// forman parte del historial real ni se ofrecen para reportar.
+    public var isDrill: Bool { id.hasPrefix("drill-") }
 
     enum CodingKeys: String, CodingKey {
         case id

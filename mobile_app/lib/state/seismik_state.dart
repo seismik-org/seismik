@@ -147,6 +147,9 @@ class SeismikState extends ChangeNotifier with WidgetsBindingObserver {
     ]);
     initializing = false;
     _notify();
+    // Con los diálogos de notificaciones y ubicación ya resueltos: lo único que
+    // falta de las alertas críticas es la pantalla completa de Android 14+.
+    unawaited(_requestCriticalAccessOnFirstRun());
 
     if (position != null) {
       final bool registered = await _registerAndStartSensors();
@@ -191,6 +194,14 @@ class SeismikState extends ChangeNotifier with WidgetsBindingObserver {
     } catch (error) {
       statusMessage = 'Notificaciones pendientes: $error';
       _notify();
+    }
+  }
+
+  Future<void> _requestCriticalAccessOnFirstRun() async {
+    try {
+      await notifications.requestCriticalAccessOnFirstRun();
+    } catch (_) {
+      // Sin plugin (pruebas) o sin ese permiso en este Android: se sigue.
     }
   }
 

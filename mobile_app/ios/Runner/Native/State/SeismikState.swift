@@ -1,4 +1,5 @@
 import Combine
+import CoreLocation
 import Foundation
 import SwiftUI
 import UserNotifications
@@ -46,6 +47,10 @@ public final class SeismikState: ObservableObject {
     @AppStorage("seismik.precise_location") public var preciseLocationByDefault: Bool = false
     @AppStorage("seismik.history_sources") public var historySourcesRaw: String = "sgc_colombia,usgs_global,emsc_global,seismik_seedlink_preliminary"
     @AppStorage("seismik.emsc_history_migrated") private var emscHistoryMigrated: Bool = false
+    /// La bienvenida con los permisos esenciales ya se mostró al menos una vez.
+    @AppStorage("seismik.permissions_onboarded_v1") public var permissionsOnboarded: Bool = false
+    /// La raíz presenta la bienvenida de permisos mientras esto sea verdadero.
+    @Published public var showPermissionsOnboarding: Bool = false
 
     private let apiClient = SeismikAPIClient.shared
     private let locationManager = LocationManager.shared
@@ -195,8 +200,31 @@ public final class SeismikState: ObservableObject {
         syncCrowdsourcing()
     }
 
-    /// Solicita permisos de aviso únicamente tras una acción explícita en
-    /// Ajustes. APNs ya se registró en AppDelegate sin mostrar este diálogo.
+    /// Decide si la pantalla de bienvenida con los permisos esenciales debe verse: en el primer arranque y mientras
+    /// la persona no haya decidido (ni concedido ni negado) las notificaciones o la ubicación. Si ya negó alguno,
+    /// no se le insiste: se le dice dónde cambiarlo desde Configuración.
+    public func evaluatePermissionsOnboarding() async {
+        let settings = await UNUserNotificationCenter.current().notificationSettings()
+        let notificationsUndecided = settings.authorizationStatus == .notDetermined
+        let locationUndecided = LocationManager.shared.authorizationStatus == .notDetermined
+        showPermissionsOnboarding = !permissionsOnboarded || notificationsUndecided || locationUndecided
+    }
+
+    /// Pide lo esencial de una vez, en este orden: notificaciones (con alertas críticas) y ubicación. El sistema
+    /// muestra sus propios diálogos; las alertas críticas aparecen como una segunda pregunta justo después.
+    public func requestEssentialPermissions() async {
+        _ = await requestNotificationPermission()
+        LocationManager.shared.requestPermission()
+        finishPermissionsOnboarding()
+    }
+
+    public func finishPermissionsOnboarding() {
+        permissionsOnboarded = true
+        showPermissionsOnboarding = false
+    }
+
+    /// Solicita permisos de aviso. Se hace al primer arranque desde la bienvenida y, después, desde Configuración.
+    /// APNs ya se registró en AppDelegate sin mostrar este diálogo.
     public func requestNotificationPermission() async -> UNAuthorizationStatus {
         let center = UNUserNotificationCenter.current()
         let granted = try? await center.requestAuthorization(
@@ -338,7 +366,8 @@ public final class SeismikState: ObservableObject {
             Task { await refreshData() }
             return
         }
-        if !events.contains(where: { $0.id == event.id }) {
+        // Un simulacro suena como una alerta real, pero no entra en el historial.
+        if !event.isDrill, !events.contains(where: { $0.id == event.id }) {
             events.insert(event, at: 0)
         }
         if SeismikNotificationPresenter.shouldPresentAlarm(for: event) {

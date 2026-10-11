@@ -411,6 +411,21 @@ final class NativeNotificationPolicyTests: XCTestCase {
         XCTAssertEqual(try JSONDecoder().decode(SeismicEvent.self, from: JSONEncoder().encode(event)), event)
     }
 
+    func testAdminDrillPushRingsLikeAnAlarmButStaysOutOfTheHistory() throws {
+        // APNs entrega los booleanos del payload como números y las cifras como números JSON.
+        let payload: [AnyHashable: Any] = ["event_id": "drill-0123456789abcdef", "type": "official_report_update",
+            "critical": true, "magnitude": 6.2, "depth_km": 18.0, "latitude": 4.65, "longitude": -74.07,
+            "place": "Simulacro — Bogotá", "agency": "Simulacro", "origin_time": "2026-10-10T12:00:00Z"]
+        let drill = try XCTUnwrap(SeismicEvent(notificationUserInfo: payload))
+        XCTAssertTrue(drill.isDrill)
+        XCTAssertEqual(drill.critical, true)
+        XCTAssertTrue(SeismikNotificationPresenter.shouldPresentAlarm(for: drill))
+        XCTAssertEqual(drill.magnitude, 6.2)
+        var real = payload
+        real["event_id"] = "usgs:us7000abcd"
+        XCTAssertFalse(try XCTUnwrap(SeismicEvent(notificationUserInfo: real)).isDrill)
+    }
+
     func testEarlyCandidateKeepsItsCopyAndFamilyIsNotAQuake() throws {
         let candidate = try XCTUnwrap(SeismicEvent(notificationUserInfo: ["event_id": "early", "type": "earthquake_candidate"]))
         XCTAssertTrue(SeismikNotificationPresenter.shouldPresentAlarm(for: candidate))
