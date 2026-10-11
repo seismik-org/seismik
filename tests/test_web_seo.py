@@ -105,4 +105,17 @@ def test_the_faq_keeps_the_same_promises_as_the_terms_of_service() -> None:
 
 
 def test_the_faq_is_linked_from_the_home_page() -> None:
-    assert read("index.html").count('href="/preguntas-frecuentes/"') >= 2
+    assert read("index.html").count('href="/preguntas-frecuentes/"') >= 1  # el pie de página; el menú móvil sólo lleva lo esencial
+
+
+def test_the_home_menu_is_short_and_mentions_waves() -> None:
+    home = read("index.html")
+    menu = home.split('<nav class="menu-panel" aria-label="Menú">')[1].split("</nav>")[0]
+    links = re.findall(r'<a href="([^"]+)">', menu)
+
+    assert len(links) <= 7, "el menú de las tres rayas lleva sólo lo esencial"
+    assert "https://waves.seismik.org/" in links and "https://devs.seismik.org/" in links and "https://ifeltit.seismik.org/" in links
+    assert home.count('href="https://waves.seismik.org/"') >= 3, "menú móvil, barra de escritorio y la sección de Waves"
+    assert 'id="waves"' in home and "Ir a Waves" in home
+    for page in ("contact/index.html", "developers.html"):
+        assert 'href="https://waves.seismik.org/"' in read(page), page

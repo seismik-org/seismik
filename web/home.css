@@ -229,6 +229,11 @@
     linear-gradient(135deg, var(--surface-2), var(--surface));
 }
 .dev-band h2 { margin-top: 0; }
+.waves-facts { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 0; padding: 0; list-style: none; }
+.waves-facts li { padding: 18px 20px; border-radius: 18px; border: 1px solid var(--line-strong); background: color-mix(in srgb, var(--surface) 80%, transparent); }
+.waves-facts strong { display: block; font-size: 1.35rem; letter-spacing: -0.02em; }
+.waves-facts span { display: block; margin-top: 4px; color: var(--muted); font-size: 0.86rem; }
+@media (max-width: 520px) { .waves-facts { grid-template-columns: 1fr; } }
 .dev-band .button { margin-top: 12px; }
 @media (max-width: 900px) { .dev-band { grid-template-columns: 1fr; } }
 
