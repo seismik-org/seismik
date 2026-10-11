@@ -90,7 +90,10 @@ async function portal(request, env, source) {
     const found = await env.ASSETS.fetch(new Request(new URL(file, source), {method: request.method}));
     if (found.status === 200) {
       const result = hardened(found);
-      if (["/robots.txt", "/sitemap.xml", "/llms.txt"].includes(file)) result.headers.set("Cache-Control", "public, max-age=3600");
+      if (["/robots.txt", "/sitemap.xml", "/llms.txt"].includes(file)) {
+        result.headers.set("Cache-Control", "public, max-age=3600");
+        result.headers.set("Content-Type", file.endsWith(".xml") ? "application/xml; charset=utf-8" : "text/plain; charset=utf-8");
+      }
       return result;
     }
   }

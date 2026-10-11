@@ -89,6 +89,7 @@ const cookies = response => response.headers.getSetCookie();
     assert.equal(await found.text(), body, route);
     assert.equal(found.headers.get('Cache-Control'), 'public, max-age=3600', route);
     assert.equal(found.headers.get('set-cookie'), null);
+    assert.match(found.headers.get('Content-Type'), /charset=utf-8$/, route);
   }
   assert.equal((await get('https://waves.seismik.org/robots.txt', {headers: {'User-Agent': 'GPTBot/1.1'}})).status, 200, 'los rastreadores de IA no reciben un trato distinto');
 
