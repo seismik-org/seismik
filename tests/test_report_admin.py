@@ -266,6 +266,24 @@ async def test_login_returns_to_admin_only_with_the_fixed_marker() -> None:
 
 
 @pytest.mark.asyncio
+async def test_login_returns_to_waves_only_with_the_fixed_marker() -> None:
+    user = {"uid": "u-1", "email": "support@example.com", "name": "Support"}
+
+    waves = await _finish_login(login_request("seismik_after_login=waves"), user, None)
+
+    assert waves.headers["location"] == "https://waves.seismik.org/"
+    cookies = waves.headers.getlist("set-cookie")
+    assert any(item.startswith("seismik_session=") for item in cookies), "la sesión se emite igual que siempre"
+    cleared = next(item for item in cookies if item.startswith("seismik_after_login="))
+    assert "Max-Age=0" in cleared and "Domain=.seismik.org" in cleared, "el marcador se borra al volver"
+    for value in ("waves:https://evil.example", "https://waves.evil.example", "WAVES", "waves2"):
+        other = await _finish_login(login_request(f"seismik_after_login={value}"), user, None)
+        assert other.headers["location"] == "https://devs.seismik.org/", value
+    mobile = await _finish_login(login_request("seismik_after_login=waves"), user, "seismik://auth/callback")
+    assert mobile.headers["location"].startswith("seismik://auth/callback?code="), "la app nunca se desvía a Waves"
+
+
+@pytest.mark.asyncio
 async def test_admin_rejects_csrf_including_sibling_domains() -> None:
     client, redis = await setup()
     stream_id = (await redis.xrevrange(AppSettings().felt_reports_stream, count=1))[0][0]

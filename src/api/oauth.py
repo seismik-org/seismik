@@ -67,6 +67,7 @@ def _cookie_name() -> str:
 
 
 AFTER_LOGIN_COOKIE = "seismik_after_login"
+WAVES_MARKER = "waves"
 
 
 def _mobile_return_to(value: str | None) -> str | None:
@@ -116,6 +117,11 @@ async def _finish_login(
         ex=settings.oauth_session_ttl_seconds,
     )
     target = settings.developer_portal_url
+    # Waves sólo marca con un valor fijo que quiere volver a su portal; el destino es una constante de
+    # la configuración, nunca algo que venga de la cookie (no hay redirección abierta).
+    back_to_waves = not return_to and request.cookies.get(AFTER_LOGIN_COOKIE) == WAVES_MARKER
+    if back_to_waves:
+        target = settings.waves_portal_url
     if return_to:
         code = secrets.token_urlsafe(32)
         await request.app.state.redis.set(
@@ -130,6 +136,11 @@ async def _finish_login(
         secure=True, httponly=True, samesite="lax", path="/",
         domain=settings.oauth_cookie_domain,
     )
+    if back_to_waves:
+        response.delete_cookie(
+            AFTER_LOGIN_COOKIE, path="/", domain=settings.oauth_cookie_domain,
+            secure=True, httponly=True, samesite="none",
+        )
     return response
 
 

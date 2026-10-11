@@ -56,7 +56,7 @@ async function screen(options = {}) {
     fetch: async (url, init) => {
       if (url.endsWith('/config')) return { ok: true, json: async () => ({ enabled: true, firebase: {} }) };
       calls.push(['exchange', JSON.parse(init.body)]);
-      return { ok: true, json: async () => ({ redirect: 'https://devs.seismik.org/' }) };
+      return { ok: true, json: async () => ({ redirect: options.redirect || 'https://devs.seismik.org/' }) };
     },
   });
   vm.runInContext(source, context);
@@ -98,6 +98,16 @@ test('verified login exchanges only token, flow and explicit linking intent', as
   await ui.submit();
   assert.deepEqual(ui.calls.find(([name]) => name === 'exchange')[1], { id_token: 'opaque-id-token', flow_id: null, link: true });
   assert.deepEqual(ui.calls.slice(-2), [['signout'], ['redirect', 'https://devs.seismik.org/']]);
+});
+test('a login that started in Waves may return to Waves, and only to Waves', async () => {
+  const waves = await screen({ redirect: 'https://waves.seismik.org/' });
+  await waves.submit();
+  assert.deepEqual(waves.calls.slice(-2), [['signout'], ['redirect', 'https://waves.seismik.org/']]);
+  for (const redirect of ['https://waves.seismik.org.evil.example/', 'https://evil.example/', 'http://waves.seismik.org/']) {
+    const rejected = await screen({ redirect });
+    await rejected.submit();
+    assert.equal(rejected.calls.some(([name]) => name === 'redirect'), false, redirect);
+  }
 });
 test('unknown and existing emails receive the same registration/recovery message', async () => {
   const normal = await screen();

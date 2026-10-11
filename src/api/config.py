@@ -34,6 +34,7 @@ class AppSettings(BaseSettings):
     developer_portal_url: str = "https://devs.seismik.org/"
     admin_mfa_encryption_key: SecretStr = SecretStr("")
     admin_portal_url: str = "https://admin.seismik.org/"
+    waves_portal_url: str = "https://waves.seismik.org/"
     developer_terms_version: str = "2026-08-30"
     developer_max_active_keys: int = Field(default=3, ge=1, le=20)
     developer_free_requests_per_minute: int = Field(default=60, ge=1, le=10_000)
