@@ -58,7 +58,8 @@ final class AdaptiveTransferTests: XCTestCase {
             earthquakeEventId: "known-event", officialEventId: nil,
             latitude: 4.6, longitude: -74, countryCode: "CO", felt: true,
             intensityMmi: 3, indoors: true, floor: nil, wokeUp: nil, difficultyStanding: nil)
-        XCTAssertEqual(try await client.submitFeltReport(report), .queued)
+        let submission = try await client.submitFeltReport(report)
+        XCTAssertEqual(submission, .queued)
         let pending = OfflineReportQueue.shared.load()
         XCTAssertEqual(pending.count, 1)
         XCTAssertEqual(pending[0].reportId, report.reportId)
