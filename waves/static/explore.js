@@ -107,7 +107,7 @@ function onMove(event, canvas) {
 function render() {
   const {context, record} = data, c = context;
   $("kicker").textContent = ({evento: "SISMO", ruido: "VENTANA DE RUIDO", caso: "CASO DE ESTUDIO"})[c.kind] || "GRABACIÓN";
-  $("title").textContent = c.title; document.title = `${c.title} · Waves · Seismik`;
+  $("title").textContent = c.title; document.title = `${c.title} · Seismik`;
   const box = $("context"); box.replaceChildren();
   if (c.origin_time) box.append(card("Origen (referencia)", when(c.origin_time), c.reference ? `Según ${c.reference}` : ""));
   if (typeof c.magnitude === "number") box.append(card("Magnitud", `${c.magnitude.toFixed(1)}${c.magnitude_type ? ` ${c.magnitude_type}` : ""}`, c.detail && c.kind === "evento" ? c.detail : "", c.reference_url || undefined));

@@ -1250,67 +1250,285 @@ public struct FamilySafetyView: View {
 
 
 /// Local emergency kit: no authentication or network calls to open this screen.
+/// Guía de emergencia que funciona sin red ni sesión. Se enciende sola cuando el teléfono pierde la señal y se
+/// apaga sola cuando vuelve; también se puede abrir desde Configuración y dejar fija.
 struct OfflineEmergencyView: View {
     @ObservedObject var state: SeismikState
+    var showsCloseButton = false
+    @Environment(\.dismiss) private var dismiss
     @AppStorage("seismik.emergency.meeting_notes") private var notes = ""
     @State private var cached: [SeismicEvent] = []
     @State private var cacheDate: Date?
     @State private var showReport = false
+    @State private var syncing = false
+    @State private var syncMessage: String?
+
+    private static let notesLimit = 1000
 
     var body: some View {
         CompatibleNavigationStack {
-            Form {
-                Section(header: Text("Disponible sin conexión ni inicio de sesión")) {
-                    Text("Sin red no recibes sismos nuevos ni se actualiza la ubicación de tu familia. Los datos guardados no confirman que alguien esté a salvo.")
-                    Toggle("Usar datos guardados", isOn: Binding(
-                        get: { state.offlineEmergencyMode },
-                        set: { state.setOfflineEmergencyMode($0) }
-                    ))
-                    Text("Pospone descargas y envíos; no desactiva las alertas push si vuelve la red.")
-                    if let date = cacheDate {
-                        Text("Última copia descargada: \(date.formatted(date: .abbreviated, time: .shortened))")
-                    } else { Text("Todavía no hay una copia descargada.") }
-                    Text("\(state.pendingReportCount) reportes pendientes; no se han entregado.")
-                    Button("Buscar conexión y sincronizar") {
-                        state.setOfflineEmergencyMode(false)
-                        Task {
-                            await state.refreshData()
-                            cached = SeismikAPIClient.shared.cachedEvents()
-                            cacheDate = SeismikAPIClient.shared.cachedEventsDate
-                        }
-                    }
+            ScrollView {
+                VStack(spacing: 16) {
+                    statusCard
+                    shakingCard
+                    afterCard
+                    meetingCard
+                    reportsCard
+                    savedQuakesCard
+                    optionsCard
+                    footer
                 }
-                Section(header: Text("Durante la sacudida, dentro de un edificio")) {
-                    Text("Agáchate, protege cabeza y cuello bajo una mesa sólida y sujétate hasta que pare la sacudida. Aléjate de ventanas y objetos que puedan caer.")
-                    Text("Guía guardada de CDC · Seismik es independiente y no representa a una entidad pública.")
-                    Link("Fuente de la guía (necesita conexión)", destination: URL(string: "https://www.cdc.gov/earthquakes/safety/index.html")!)
-                }
-                Section(header: Text("Punto de encuentro y notas locales")) {
-                    TextEditor(text: $notes).frame(minHeight: 100)
-                        .onChange(of: notes) { value in if value.count > 1000 { notes = String(value.prefix(1000)) } }
-                    Text("Se guardan sólo en este teléfono. No se envían automáticamente.")
-                    Button("Preparar un reporte") { showReport = true }
-                    Text("Selecciona un sismo conocido. Sin conexión queda pendiente, no enviado.")
-                }
-                Section(header: Text("Sismos guardados · no son datos en vivo")) {
-                    if cached.isEmpty {
-                        Text("Aún no hay sismos descargados. La guía y las notas sí funcionan sin red.")
-                    }
-                    ForEach(Array(cached.prefix(20))) { event in
-                        VStack(alignment: .leading) {
-                            Text(event.displayPlace ?? "Epicentro en revisión")
-                            Text(event.detectedAt?.formatted(date: .abbreviated, time: .shortened) ?? "Fecha no disponible")
-                                .font(.caption).foregroundStyle(.secondary)
-                        }
+                .padding(16)
+            }
+            .background(Color(.systemGroupedBackground).ignoresSafeArea())
+            .navigationTitle("Modo de emergencia")
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    if showsCloseButton {
+                        Button("Listo") { dismiss() }
                     }
                 }
             }
-            .navigationTitle("Modo de emergencia")
             .sheet(isPresented: $showReport) { FeltReportView(preselectedEvent: nil) }
-            .onAppear {
-                cached = SeismikAPIClient.shared.cachedEvents()
-                cacheDate = SeismikAPIClient.shared.cachedEventsDate
+            .onAppear(perform: reloadCache)
+        }
+    }
+
+    // MARK: - Tarjetas
+
+    private var statusCard: some View {
+        let active = state.offlineEmergencyMode
+        let tint: Color = state.hasSignal ? (active ? SeismikColors.amber : SeismikColors.emerald) : SeismikColors.crimson
+        return card(
+            title: state.hasSignal ? (active ? "Modo de emergencia fijado" : "Hay señal") : "Sin señal",
+            systemImage: state.hasSignal ? (active ? "bolt.shield.fill" : "antenna.radiowaves.left.and.right") : "wifi.slash",
+            tint: tint
+        ) {
+            Text(statusText)
+                .font(.subheadline)
+            Text("Sin red no llegan sismos nuevos ni se actualiza la ubicación de tu familia. Lo guardado en el teléfono no confirma que alguien esté a salvo.")
+                .font(.footnote)
+                .foregroundColor(.secondary)
+            Button {
+                Task { await retry() }
+            } label: {
+                HStack {
+                    if syncing { ProgressView().padding(.trailing, 4) }
+                    Text(syncing ? "Buscando señal…" : "Buscar señal y sincronizar")
+                        .fontWeight(.semibold)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
+                .background(SeismikColors.systemBlue)
+                .foregroundColor(.white)
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            }
+            .disabled(syncing)
+            if let syncMessage {
+                Text(syncMessage).font(.footnote).foregroundColor(.secondary)
             }
         }
+    }
+
+    private var statusText: String {
+        if !state.hasSignal {
+            return "El modo de emergencia está activo. Usa la guía y tus notas de abajo. Los reportes quedan en cola y salen solos cuando vuelva la señal."
+        }
+        if state.offlineEmergencyMode {
+            return "Seguirá activo aunque haya señal, porque lo fijaste. Puedes apagarlo al final de esta pantalla."
+        }
+        return "Se activa solo si pierdes la señal y se apaga solo cuando vuelve."
+    }
+
+    private var shakingCard: some View {
+        card(title: "Si está temblando", systemImage: "exclamationmark.triangle.fill", tint: SeismikColors.crimson) {
+            step(1, "Agáchate", "Ponte de rodillas y protege tu cabeza y tu cuello.")
+            step(2, "Cúbrete", "Métete bajo una mesa sólida o pégate a un muro interior.")
+            step(3, "Sujétate", "Quédate así hasta que pare la sacudida.")
+            Text("Aléjate de ventanas y de objetos que puedan caer. No uses ascensores.")
+                .font(.footnote)
+                .foregroundColor(.secondary)
+        }
+    }
+
+    private var afterCard: some View {
+        card(title: "Cuando pare", systemImage: "checkmark.shield.fill", tint: SeismikColors.emerald) {
+            bullet("Revisa si hay personas heridas y pide ayuda: en Colombia, llama al 123.")
+            bullet("Prepárate para réplicas: vuelve a agacharte, cubrirte y sujetarte.")
+            bullet("Si hueles gas o ves daños, sal con cuidado y aléjate del edificio.")
+            bullet("Escribe mensajes de texto y deja las llamadas libres para las emergencias.")
+        }
+    }
+
+    private var meetingCard: some View {
+        card(title: "Punto de encuentro y notas", systemImage: "mappin.and.ellipse", tint: SeismikColors.systemBlue) {
+            ZStack(alignment: .topLeading) {
+                TextEditor(text: $notes)
+                    .frame(minHeight: 110)
+                    .padding(6)
+                    .background(Color(.tertiarySystemGroupedBackground))
+                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    .onChange(of: notes) { value in
+                        if value.count > Self.notesLimit { notes = String(value.prefix(Self.notesLimit)) }
+                    }
+                if notes.isEmpty {
+                    Text("Dónde se reúne tu familia, teléfonos, medicinas…")
+                        .foregroundColor(.secondary)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 14)
+                        .allowsHitTesting(false)
+                }
+            }
+            HStack {
+                Text("Se guardan sólo en este teléfono; no se envían a Seismik ni a tu familia.")
+                Spacer(minLength: 8)
+                Text("\(notes.count)/\(Self.notesLimit)")
+            }
+            .font(.caption)
+            .foregroundColor(.secondary)
+        }
+    }
+
+    private var reportsCard: some View {
+        card(title: "Reportes", systemImage: "square.and.pencil", tint: SeismikColors.amber) {
+            Text(pendingText)
+                .font(.subheadline)
+            Button {
+                showReport = true
+            } label: {
+                Label("Preparar un reporte «Lo sentí»", systemImage: "waveform.path.ecg")
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            Text("Sin señal queda guardado en el teléfono y no se entrega hasta que vuelva.")
+                .font(.footnote)
+                .foregroundColor(.secondary)
+        }
+    }
+
+    private var pendingText: String {
+        switch state.pendingReportCount {
+        case 0: return "No tienes reportes pendientes."
+        case 1: return "1 reporte pendiente. Aún no se ha entregado."
+        default: return "\(state.pendingReportCount) reportes pendientes. Aún no se han entregado."
+        }
+    }
+
+    private var savedQuakesCard: some View {
+        card(title: "Últimos sismos guardados", systemImage: "clock.arrow.circlepath", tint: SeismikColors.glacier) {
+            if let date = cacheDate {
+                Text("Copia del \(date.formatted(date: .abbreviated, time: .shortened)). No son datos en vivo.")
+                    .font(.footnote)
+                    .foregroundColor(.secondary)
+            }
+            if cached.isEmpty {
+                Text("Todavía no hay sismos guardados. La guía y las notas funcionan igual sin red.")
+                    .font(.subheadline)
+            }
+            ForEach(Array(cached.prefix(8))) { event in
+                HStack(alignment: .firstTextBaseline, spacing: 10) {
+                    Text(event.magnitude.map { String(format: "M %.1f", $0) } ?? "M —")
+                        .font(.subheadline.weight(.semibold))
+                        .frame(width: 58, alignment: .leading)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(event.displayPlace ?? "Epicentro en revisión")
+                            .font(.subheadline)
+                        Text(event.detectedAt?.formatted(date: .abbreviated, time: .shortened) ?? "Fecha no disponible")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    Spacer(minLength: 0)
+                }
+            }
+        }
+    }
+
+    private var optionsCard: some View {
+        card(title: "Opciones", systemImage: "slider.horizontal.3", tint: .secondary) {
+            Toggle("Mantener activo aunque haya señal", isOn: Binding(
+                get: { state.emergencyPinned },
+                set: { state.setEmergencyPinned($0) }
+            ))
+            Text("Útil si la señal es tan débil que nada carga. No apaga las alertas: seguirás recibiéndolas cuando haya red.")
+                .font(.footnote)
+                .foregroundColor(.secondary)
+        }
+    }
+
+    private var footer: some View {
+        VStack(spacing: 6) {
+            Text("Guía basada en las recomendaciones de los CDC. Seismik es independiente y no representa a ninguna entidad pública.")
+            if let url = URL(string: "https://www.cdc.gov/earthquakes/safety/index.html") {
+                Link("Fuente de la guía (necesita conexión)", destination: url)
+            }
+        }
+        .font(.caption)
+        .foregroundColor(.secondary)
+        .multilineTextAlignment(.center)
+        .padding(.horizontal, 8)
+        .padding(.bottom, 12)
+    }
+
+    // MARK: - Piezas
+
+    private func card<Content: View>(
+        title: String,
+        systemImage: String,
+        tint: Color,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 10) {
+                Image(systemName: systemImage)
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundColor(tint)
+                    .frame(width: 26)
+                Text(title).font(.headline)
+            }
+            content()
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(16)
+        .background(Color(.secondarySystemGroupedBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+
+    private func step(_ number: Int, _ title: String, _ detail: String) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Text("\(number)")
+                .font(.headline)
+                .foregroundColor(.white)
+                .frame(width: 28, height: 28)
+                .background(SeismikColors.crimson)
+                .clipShape(Circle())
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title).font(.title3.weight(.bold))
+                Text(detail).font(.subheadline).foregroundColor(.secondary)
+            }
+        }
+    }
+
+    private func bullet(_ text: String) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Text("•").font(.subheadline.weight(.bold))
+            Text(text).font(.subheadline)
+        }
+    }
+
+    // MARK: - Acciones
+
+    private func reloadCache() {
+        cached = SeismikAPIClient.shared.cachedEvents()
+        cacheDate = SeismikAPIClient.shared.cachedEventsDate
+    }
+
+    private func retry() async {
+        syncing = true
+        syncMessage = nil
+        let connected = await state.retryConnection()
+        reloadCache()
+        syncMessage = connected
+            ? "Sincronizado con la señal disponible."
+            : "Sigue sin haber señal. Lo intentamos solos en cuanto vuelva."
+        syncing = false
     }
 }

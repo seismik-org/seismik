@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import time
 from datetime import datetime, timedelta, timezone
@@ -301,6 +302,12 @@ async def test_admin_rejects_csrf_including_sibling_domains() -> None:
 
 @pytest.mark.asyncio
 async def test_admin_requires_recent_valid_session_and_limits_queries() -> None:
+    # El límite cuenta por minuto de reloj (`time.time() // 60`): si el cambio de minuto cae entre las 121
+    # solicitudes el contador empieza de cero y la última responde 200. Se espera al minuto siguiente
+    # cuando faltan menos de 8 s, así la prueba no depende de a qué segundo la lance el CI.
+    remaining = 60 - time.time() % 60
+    if remaining < 8:
+        await asyncio.sleep(remaining + 0.2)
     client, redis = await setup()
     key = SESSION_PREFIX + digest("admin-token")
     valid = await redis.get(key)

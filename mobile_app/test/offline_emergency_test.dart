@@ -77,12 +77,10 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
+      expect(find.text('Si está temblando'), findsOneWidget);
+      expect(find.text('Agáchate'), findsOneWidget);
       expect(
-        find.text('Disponible sin conexión ni inicio de sesión'),
-        findsOneWidget,
-      );
-      expect(
-        find.textContaining('datos guardados no confirman'),
+        find.textContaining('no confirma que alguien esté a salvo'),
         findsOneWidget,
       );
       expect(requests, 0);

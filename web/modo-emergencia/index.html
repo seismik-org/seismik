@@ -3,22 +3,24 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Modo Emergencia: recursos para sismos sin conexión | Seismik</title>
+  <title>Modo de emergencia · Seismik</title>
   <meta name="description" content="Prepara tu app de sismos: guía sin conexión, notas del plan familiar, historial guardado y reportes pendientes en Android y iPhone. Conoce sus límites.">
   <link rel="canonical" href="https://seismik.org/modo-emergencia/">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Seismik">
   <meta property="og:locale" content="es_CO">
-  <meta property="og:title" content="Modo Emergencia: recursos para sismos sin conexión | Seismik">
+  <meta property="og:title" content="Modo de emergencia · Seismik">
   <meta property="og:description" content="Guía, notas locales e historial guardado en la app. Sin Internet no hay sismos nuevos ni ubicación familiar actualizada.">
   <meta property="og:url" content="https://seismik.org/modo-emergencia/">
   <meta property="og:image" content="https://seismik.org/assets/icon-512.png">
   <meta property="og:image:alt" content="Logo de Seismik">
   <meta name="twitter:card" content="summary">
-  <meta name="twitter:title" content="Modo Emergencia: recursos para sismos sin conexión | Seismik">
+  <meta name="twitter:title" content="Modo de emergencia · Seismik">
   <meta name="twitter:description" content="Guía, notas locales e historial guardado en la app. Sin Internet no hay sismos nuevos ni ubicación familiar actualizada.">
   <meta name="twitter:image" content="https://seismik.org/assets/icon-512.png">
   <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" sizes="16x16" href="/assets/favicon-16.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32.png">
   <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
   <link rel="stylesheet" href="/styles.css?v=__ASSET_VERSION__">
   <link rel="stylesheet" href="/logo.css?v=__ASSET_VERSION__">
@@ -58,14 +60,14 @@
   <main id="contenido" class="narrow">
     <p class="eyebrow">Funcionalidad de la app · Android y iPhone · Beta</p>
     <h1>Modo Emergencia: recursos para sismos sin conexión.</h1>
-    <p class="lead">Un terremoto puede interrumpir Internet. Prepara antes tu teléfono: Seismik mantiene a mano una guía breve, tus notas y la información sísmica que ya haya guardado. Disponible desde el build 64 de las apps en beta.</p>
+    <p class="lead">Un terremoto puede interrumpir Internet. Por eso Seismik pasa sola al Modo Emergencia cuando el teléfono se queda sin señal y vuelve a la normalidad cuando regresa: una franja roja arriba de la app abre una guía breve, tus notas y la información sísmica que ya haya guardado. Disponible desde la versión 65 de las apps en beta.</p>
     <section class="section prose" aria-labelledby="preparar">
-      <h2 id="preparar">Cómo prepararlo antes de perder la señal</h2>
+      <h2 id="preparar">Prepáralo antes de perder la señal</h2>
       <ol>
-        <li>Instala la versión actual de la beta de Android o iPhone y abre la app mientras tengas conexión.</li>
-        <li>Deja que se actualice el historial. En Monitor o Ajustes, abre <strong>Modo Emergencia</strong> y revisa la fecha de la copia guardada.</li>
+        <li>Instala la versión actual de la beta de Android o iPhone (la 65 o una posterior) y abre la app mientras tengas conexión, para que guarde el historial.</li>
+        <li>En Configuración, abre <strong>Modo de emergencia sin conexión</strong> y revisa la fecha de la copia guardada.</li>
         <li>Escribe tus notas: por ejemplo, el punto de encuentro acordado con tu familia. Se guardan en ese teléfono, no se envían al círculo familiar.</li>
-        <li>Cuando necesites trabajar con lo guardado, activa el modo sin conexión. Para actualizar o enviar pendientes, desactívalo y usa la opción de sincronizar cuando vuelva Internet.</li>
+        <li>No tienes que activar nada: si pierdes la señal, el modo se enciende solo en unos segundos y se apaga solo cuando vuelve, y entonces se envía lo pendiente. Si la señal es tan débil que nada carga, puedes dejarlo fijo con <strong>Mantener activo aunque haya señal</strong>.</li>
       </ol>
       <p>La pantalla de emergencia no exige iniciar sesión. Sin embargo, no omite la autenticación ni los permisos que requieren los reportes y las funciones familiares.</p>
       <h2>Qué puedes consultar sin Internet</h2>
@@ -76,10 +78,10 @@
         <li><strong>Pendientes:</strong> consulta cuántos reportes esperan envío. Guardado no significa recibido por Seismik ni por tu familia.</li>
       </ul>
       <h2>Si tienes una conexión muy lenta</h2>
-      <p>La app adapta las consultas según su respuesta: reduce los lotes de eventos, espacia las actualizaciones y permite cargar mapas bajo demanda. Esto reduce transferencias, pero no garantiza funcionar con cualquier señal 2G o 3G: también importan la cobertura, la latencia y que la conexión HTTPS se complete.</p>
+      <p>La app adapta las consultas según su respuesta: reduce los lotes de eventos, espacia las actualizaciones y permite cargar mapas bajo demanda. Esto reduce transferencias, pero no garantiza funcionar con cualquier señal 2G o 3G: también importan la cobertura, la latencia y que la conexión HTTPS se complete. El modo sabe que hay red por lo que ve el teléfono: un Wi-Fi sin salida a Internet puede no activarlo, y entonces conviene dejarlo fijo.</p>
       <h2>Qué no funciona sin conexión</h2>
       <p><strong>No se reciben sismos nuevos ni se actualiza la ubicación familiar sin Internet.</strong> La copia del historial no es un monitor en vivo. Los mapas externos pueden necesitar red; no se descargan mapas completos para uso offline. La app no envía mensajes por SMS, radio o satélite.</p>
-      <p>El modo pausa la consulta del historial y el envío de pendientes, pero no apaga las radios del teléfono ni desactiva las notificaciones push: si existe conexión, estas siguen dependiendo del sistema, los permisos y el servicio. Los pendientes se reintentan fuera del modo sin conexión y respetan los límites y la caducidad de la app; no se garantiza su entrega.</p>
+      <p>El modo pausa la consulta del historial y el envío de pendientes, pero no apaga las radios del teléfono ni desactiva las notificaciones push: si existe conexión, estas siguen dependiendo del sistema, los permisos y el servicio. Los pendientes se envían solos cuando el modo se apaga porque vuelve la señal, y respetan los límites y la caducidad de la app; no se garantiza su entrega.</p>
       <h2>Preparación sísmica y fuentes</h2>
       <p>La guía breve de la app se basa en las recomendaciones de los <a href="https://www.cdc.gov/earthquakes/safety/index.html" rel="noopener noreferrer">CDC sobre seguridad ante terremotos</a>. Consulta esa fuente mientras tengas conexión y acuerda tu plan con las personas de tu hogar. Sigue las indicaciones de las autoridades locales para tu situación.</p>
       <p><strong>Seismik es independiente y no representa a ninguna entidad pública.</strong> No es un sistema público certificado de alerta temprana ni sustituye a los servicios de emergencia. No garantiza avisar antes de la sacudida. En Colombia, la línea de emergencias es el 123; una llamada también depende de la disponibilidad de la red telefónica.</p>
