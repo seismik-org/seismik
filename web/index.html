@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="description" content="Seismik detecta sismos con estaciones abiertas, estima dónde se sintieron y qué tan fuerte, y confirma cada evento con agencias oficiales como USGS y EMSC/CSEM.">
-  <title>Seismik · Alerta sísmica abierta y verificable</title>
+  <meta name="description" content="App de sismos en Colombia para Android y iPhone: reportes con fuentes, intensidad estimada y Modo Emergencia con guía e historial guardado sin conexión. En beta.">
+  <title>Sismos en Colombia y app de terremotos | Seismik</title>
   <link rel="icon" href="/favicon.ico" sizes="any">
   <link rel="icon" type="image/png" sizes="16x16" href="/assets/favicon-16.png">
   <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32.png">
@@ -16,14 +16,14 @@
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Seismik">
   <meta property="og:locale" content="es_CO">
-  <meta property="og:title" content="Seismik · Alerta sísmica abierta y verificable">
-  <meta property="og:description" content="Detección multiestación, perímetro de sacudida y confirmación oficial en un solo lugar.">
+  <meta property="og:title" content="Sismos en Colombia y app de terremotos | Seismik">
+  <meta property="og:description" content="Reportes sísmicos con fuentes, intensidad estimada y Modo Emergencia con guía e historial guardado sin conexión. Apps en beta.">
   <meta property="og:image" content="https://seismik.org/assets/icon-512.png">
   <meta property="og:image:alt" content="Logo de Seismik">
   <meta property="og:url" content="https://seismik.org/">
   <meta name="twitter:card" content="summary">
-  <meta name="twitter:title" content="Seismik · Alerta sísmica abierta y verificable">
-  <meta name="twitter:description" content="Detección multiestación, perímetro de sacudida y confirmación oficial en un solo lugar.">
+  <meta name="twitter:title" content="Sismos en Colombia y app de terremotos | Seismik">
+  <meta name="twitter:description" content="Reportes sísmicos con fuentes, intensidad estimada y Modo Emergencia con guía e historial guardado sin conexión. Apps en beta.">
   <meta name="twitter:image" content="https://seismik.org/assets/icon-512.png">
   <script type="application/ld+json">
   {
@@ -36,7 +36,7 @@
         "alternateName": "Seismik alerta sísmica",
         "url": "https://seismik.org/",
         "logo": {"@type": "ImageObject", "url": "https://seismik.org/assets/icon-512.png", "width": 512, "height": 512},
-        "description": "Alerta sísmica abierta y verificable para Colombia y la región andina: detecta sismos con estaciones abiertas, estima dónde se sintieron y confirma cada evento con agencias oficiales.",
+        "description": "App e información sísmica en beta para Colombia y la región andina: estaciones abiertas, intensidad estimada, reportes de agencias oficiales y Modo Emergencia con recursos guardados sin conexión.",
         "areaServed": {"@type": "Country", "name": "Colombia"},
         "sameAs": ["https://github.com/seismik-org"],
         "contactPoint": {"@type": "ContactPoint", "contactType": "customer support", "email": "support@seismik.org", "availableLanguage": "es"}
@@ -47,9 +47,19 @@
         "url": "https://seismik.org/",
         "name": "Seismik",
         "alternateName": "Seismik alerta sísmica",
-        "description": "Alerta sísmica abierta y verificable",
+        "description": "Sismos en Colombia, reportes de temblores y Modo Emergencia sin conexión en la app",
         "inLanguage": "es",
         "publisher": {"@id": "https://seismik.org/#organization"}
+      },
+      {
+        "@type": "WebPage",
+        "@id": "https://seismik.org/#webpage",
+        "url": "https://seismik.org/",
+        "name": "Sismos en Colombia y app de terremotos | Seismik",
+        "inLanguage": "es",
+        "isPartOf": {"@id": "https://seismik.org/#website"},
+        "about": ["Sismos en Colombia", "Reportes de temblores", "Preparación ante terremotos"],
+        "hasPart": {"@type": "WebPage", "@id": "https://seismik.org/modo-emergencia/", "url": "https://seismik.org/modo-emergencia/", "name": "Modo Emergencia: recursos para sismos sin conexión"}
       }
     ]
   }
@@ -72,6 +82,7 @@
         <a href="#como-funciona">Cómo funciona</a>
         <a href="#perimetro">Perímetro</a>
         <a href="#familia">Familia</a>
+        <a href="/modo-emergencia/">Modo Emergencia</a>
         <a href="#asi-se-ve">En vivo</a>
         <a href="https://ifeltit.seismik.org/">¿Lo sentiste?</a>
         <a href="https://waves.seismik.org/">Waves</a>
@@ -85,7 +96,7 @@
       <details class="mobile-menu">
         <summary aria-label="Abrir menú"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></summary>
         <nav class="menu-panel" aria-label="Menú">
-          <a href="#como-funciona">Cómo funciona</a>
+          <a href="/modo-emergencia/">Modo Emergencia sin conexión</a>
           <a href="https://ifeltit.seismik.org/">¿Lo sentiste? Reporta un sismo</a>
           <a href="https://waves.seismik.org/">Waves · Archivo de ondas</a>
           <a href="https://devs.seismik.org/">Desarrolladores</a>
@@ -102,8 +113,8 @@
     <section class="hero container">
       <div class="hero-copy">
         <p class="pill"><b>Beta</b> Colombia y la región andina</p>
-        <h1>Sabe cuándo tiembla, <span class="gradient-text">dónde se sintió</span> y qué tan fuerte.</h1>
-        <p class="lead">Seismik escucha estaciones sismológicas abiertas, estima la sacudida en tu ubicación y confirma cada sismo con agencias oficiales como USGS y EMSC/CSEM.</p>
+        <h1>Sismos en Colombia: <span class="gradient-text">información para tu ubicación.</span></h1>
+        <p class="lead">Una app de terremotos para Android y iPhone, en beta. Consulta reportes de temblores con sus fuentes, distingue la magnitud de la intensidad estimada y prepara tus recursos de emergencia antes de perder la conexión.</p>
         <div class="actions">
           <a class="button" href="#beta">Unirse a la beta
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
@@ -178,7 +189,7 @@
     <section id="asi-se-ve" class="section container showcase-section" aria-labelledby="asi-se-ve-titulo">
       <div class="section-heading">
         <p class="eyebrow">En vivo</p>
-        <h2 id="asi-se-ve-titulo">Así se ve Seismik.</h2>
+        <h2 id="asi-se-ve-titulo">Últimos sismos reportados por agencias oficiales.</h2>
         <p>Los últimos sismos de magnitud considerable que confirmaron las agencias oficiales, servidos por la misma API pública que puedes consumir tú. <a href="https://devs.seismik.org/">Ver la documentación</a>.</p>
       </div>
       <ul id="showcase-list" class="showcase-list" aria-live="polite">
@@ -282,13 +293,33 @@
       </div>
     </section>
 
+    <!-- Recursos locales de las apps: no confundir con alertas sin Internet -->
+    <section id="modo-emergencia" class="section container split" aria-labelledby="emergencia-titulo">
+      <div>
+        <p class="eyebrow">Modo Emergencia · Android y iPhone</p>
+        <h2 id="emergencia-titulo">Si la red falla, tus recursos guardados siguen contigo.</h2>
+        <p class="lead">Abre el Modo Emergencia desde Monitor o Ajustes, sin iniciar sesión. Consulta una guía breve, escribe tus notas y revisa el historial que tu teléfono haya guardado antes de perder Internet.</p>
+        <a class="button secondary" href="/modo-emergencia/">Qué puedes hacer sin conexión</a>
+      </div>
+      <article class="card">
+        <h3>Preparación antes de un temblor</h3>
+        <ul class="check-list">
+          <li><span><strong>Historial con fecha:</strong> diferencia una copia guardada de información nueva.</span></li>
+          <li><span><strong>Notas en tu celular:</strong> anota tu punto de encuentro y tu plan familiar.</span></li>
+          <li><span><strong>Reportes pendientes:</strong> el teléfono los guarda para reintentar el envío cuando salgas del modo sin conexión y vuelva la red.</span></li>
+          <li><span><strong>Conexión lenta:</strong> consultas más pequeñas y mapas bajo demanda para reducir datos.</span></li>
+        </ul>
+        <p class="fine-print"><strong>No recibe sismos nuevos ni actualiza la ubicación familiar sin Internet.</strong> No ofrece comunicación por SMS, radio o satélite. Un reporte pendiente todavía no ha llegado a Seismik.</p>
+      </article>
+    </section>
+
     <!-- Más -->
     <section class="section container tight">
       <div class="grid-3">
         <article class="card">
           <div class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
           <h3>Reportes ciudadanos</h3>
-          <p>Cuenta si lo sentiste o si hubo daños. Si no hay red, el reporte espera en el teléfono y se envía solo.</p>
+          <p>Cuenta si lo sentiste o si hubo daños. Si no hay red, el reporte queda pendiente en el teléfono; el envío se reintenta al recuperar conexión, fuera del modo sin conexión.</p>
         </article>
         <article class="card">
           <div class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></div>
@@ -337,7 +368,7 @@
         <ul class="platforms">
           <li>
             <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.6 9.48l1.84-3.18a.38.38 0 0 0-.66-.38l-1.87 3.23A11.4 11.4 0 0 0 12 8.2a11.4 11.4 0 0 0-4.91.95L5.22 5.92a.38.38 0 0 0-.66.38l1.84 3.18A10.7 10.7 0 0 0 1 18h22a10.7 10.7 0 0 0-5.4-8.52zM7 15.25A1.25 1.25 0 1 1 8.25 14 1.25 1.25 0 0 1 7 15.25zm10 0A1.25 1.25 0 1 1 18.25 14 1.25 1.25 0 0 1 17 15.25z"/></svg>
-            <div><strong>Android</strong><small>APK de la beta privada</small></div>
+            <div><strong>Android</strong><small>Prueba interna de Google Play</small></div>
           </li>
           <li>
             <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16.37 12.63c-.02-2.3 1.88-3.4 1.96-3.46-1.07-1.56-2.73-1.77-3.32-1.8-1.41-.14-2.76.83-3.47.83-.72 0-1.82-.81-3-.79-1.54.02-2.96.9-3.76 2.28-1.6 2.78-.41 6.9 1.15 9.16.76 1.1 1.67 2.34 2.86 2.3 1.15-.05 1.58-.74 2.97-.74 1.38 0 1.77.74 2.98.72 1.23-.02 2.01-1.12 2.76-2.23.87-1.28 1.23-2.52 1.25-2.58-.03-.01-2.4-.92-2.42-3.66zM14.1 5.9c.63-.77 1.06-1.83.94-2.9-.91.04-2.02.61-2.67 1.37-.58.67-1.1 1.76-.96 2.8 1.02.08 2.06-.51 2.69-1.27z"/></svg>
@@ -352,7 +383,7 @@
       <div class="dev-band">
         <div>
           <p class="eyebrow">Para desarrolladores e instituciones</p>
-          <h2>Los mismos datos, en tu sistema.</h2>
+          <h2>API de sismos para tu proyecto.</h2>
           <p class="lead">Historial oficial normalizado, red de estaciones y webhooks firmados para simulacros e investigación. Claves revocables y cuotas claras.</p>
           <a class="button" href="https://devs.seismik.org/">Ir a Seismik Developers</a>
         </div>
@@ -374,7 +405,7 @@
     </section>
   </main>
 
-  <footer class="site-footer"><div class="container footer-bottom"><span>© 2026 Seismik</span> · <a href="/preguntas-frecuentes/">Preguntas frecuentes</a></div></footer>
+  <footer class="site-footer"><div class="container footer-bottom"><span>© 2026 Seismik</span> · <a href="/modo-emergencia/">Modo Emergencia</a> · <a href="/preguntas-frecuentes/">Preguntas frecuentes</a></div></footer>
   <script src="/site.js?v=__ASSET_VERSION__" defer></script>
 </body>
 </html>

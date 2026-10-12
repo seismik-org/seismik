@@ -14,6 +14,7 @@ SITE = "https://seismik.org"
 NAMESPACE = {"s": "http://www.sitemaps.org/schemas/sitemap/0.9"}
 PUBLIC_PAGES = {
     "/": "index.html",
+    "/modo-emergencia/": "modo-emergencia/index.html",
     "/preguntas-frecuentes/": "preguntas-frecuentes/index.html",
     "/contact/": "contact/index.html",
     "/terms-of-privacy/": "terms-of-privacy/index.html",
@@ -89,7 +90,7 @@ def test_the_faq_structured_data_matches_the_visible_questions_and_answers() -> 
     }
 
     structured = {item["name"]: item["acceptedAnswer"]["text"] for item in faq["mainEntity"]}
-    assert len(structured) == 11
+    assert len(structured) == 13
     assert structured == visible, "Google ignora (o penaliza) un FAQ cuyo texto visible no coincide con los datos estructurados"
 
 
@@ -106,6 +107,34 @@ def test_the_faq_keeps_the_same_promises_as_the_terms_of_service() -> None:
 
 def test_the_faq_is_linked_from_the_home_page() -> None:
     assert read("index.html").count('href="/preguntas-frecuentes/"') >= 1  # el pie de página; el menú móvil sólo lleva lo esencial
+
+
+def test_emergency_feature_is_discoverable_and_honest_about_offline_limits() -> None:
+    home = read("index.html")
+    assert 'id="modo-emergencia"' in home
+    assert home.count('href="/modo-emergencia/"') >= 3
+    page = read("modo-emergencia/index.html")
+    visible = text_of(page.split("<body>")[1]).lower()
+    for phrase in ("no se reciben sismos nuevos", "ni se actualiza la ubicación familiar",
+                   "historial guardado", "no exige iniciar sesión", "reportes", "pendientes",
+                   "no garantiza avisar antes de la sacudida", "no representa a ninguna entidad pública"):
+        assert phrase in visible
+    assert "https://www.cdc.gov/earthquakes/safety/index.html" in page
+    assert "SoftwareApplication" not in page  # no inventar disponibilidad pública o calificaciones
+    nodes = json_ld("modo-emergencia/index.html")
+    assert {node["@type"] for node in nodes} == {"WebPage", "BreadcrumbList"}
+    assert "https://seismik.org/modo-emergencia/" in read("llms.txt")
+
+
+@pytest.mark.parametrize("page", ["index.html", "modo-emergencia/index.html", "preguntas-frecuentes/index.html"])
+def test_discovery_titles_social_tags_and_visible_headings_are_consistent(page: str) -> None:
+    document = read(page)
+    [title] = re.findall(r"<title>([^<]+)</title>", document)
+    assert "sismos" in title.lower() and "Seismik" in title
+    assert re.findall(r'<meta property="og:title" content="([^"]+)">', document) == [title]
+    assert re.findall(r'<meta name="twitter:title" content="([^"]+)">', document) == [title]
+    assert len(re.findall(r"<h1[ >]", document)) == 1
+    assert 'name="keywords"' not in document  # Google no utiliza esta etiqueta para posicionar
 
 
 def test_the_home_menu_is_short_and_mentions_waves() -> None:
