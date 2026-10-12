@@ -1,8 +1,45 @@
 import Combine
 import CoreLocation
 import Foundation
+import Network
 import SwiftUI
 import UserNotifications
+
+/// Cuándo está activo el modo de emergencia: solo, sin señal; apagado, con señal. La persona puede dejarlo fijo
+/// (por ejemplo con una señal tan débil que nada carga) y entonces sólo ella lo apaga.
+enum EmergencyModePolicy {
+    static func isActive(hasSignal: Bool, pinned: Bool) -> Bool { !hasSignal || pinned }
+}
+
+/// Avisa cuando el teléfono pierde o recupera la red. Un corte de unos segundos (un túnel, un cambio de antena) no
+/// activa el modo, y una red que acaba de volver espera un instante a estabilizarse antes de apagarlo.
+@MainActor
+final class ConnectivityMonitor {
+    private let monitor = NWPathMonitor()
+    private let queue = DispatchQueue(label: "org.seismik.connectivity")
+    private var pending: Task<Void, Never>?
+    private var last: Bool?
+    var onChange: (@MainActor (Bool) -> Void)?
+
+    func start() {
+        monitor.pathUpdateHandler = { [weak self] path in
+            let reachable = path.status == .satisfied
+            Task { @MainActor in self?.consider(reachable) }
+        }
+        monitor.start(queue: queue)
+    }
+
+    private func consider(_ reachable: Bool) {
+        pending?.cancel()
+        let delay: UInt64 = reachable ? 1_500_000_000 : 4_000_000_000
+        pending = Task { @MainActor [weak self] in
+            try? await Task.sleep(nanoseconds: delay)
+            guard !Task.isCancelled, let self, self.last != reachable else { return }
+            self.last = reachable
+            self.onChange?(reachable)
+        }
+    }
+}
 
 /// Estado global reactivo para la aplicación Seismik en iOS.
 @MainActor
@@ -20,10 +57,48 @@ public final class SeismikState: ObservableObject {
     @Published public var lowBandwidth: Bool = false
     @Published public var offlineEmergencyMode = UserDefaults.standard.bool(forKey: SeismikAPIClient.emergencyModeKey)
 
+    /// La red está disponible (el sistema la ve). Cambia sola: nadie la toca a mano.
+    @Published public var hasSignal: Bool = true
+    /// La persona dejó el modo de emergencia fijo aunque haya señal.
+    @AppStorage("seismik.emergency.pinned") public var emergencyPinned: Bool = false
+    private let connectivity = ConnectivityMonitor()
+
     public func setOfflineEmergencyMode(_ enabled: Bool) {
         offlineEmergencyMode = enabled
         UserDefaults.standard.set(enabled, forKey: SeismikAPIClient.emergencyModeKey)
         if enabled { isOnline = false }
+    }
+
+    public func setEmergencyPinned(_ pinned: Bool) {
+        emergencyPinned = pinned
+        applyEmergencyMode()
+    }
+
+    private func signalChanged(_ reachable: Bool) {
+        hasSignal = reachable
+        applyEmergencyMode()
+    }
+
+    /// Enciende o apaga el modo según la señal y lo fijado. Al apagarlo se sincroniza lo que quedó pendiente.
+    private func applyEmergencyMode() {
+        let wanted = EmergencyModePolicy.isActive(hasSignal: hasSignal, pinned: emergencyPinned)
+        guard wanted != offlineEmergencyMode else { return }
+        setOfflineEmergencyMode(wanted)
+        guard !wanted else { return }
+        Task {
+            await updateRegistration()
+            await refreshData()
+            await flushPendingReports()
+            await syncMissedAlerts()
+        }
+    }
+
+    /// «Buscar señal y sincronizar»: si el sistema ve red, apaga lo fijado y sincroniza; si no, lo dice.
+    public func retryConnection() async -> Bool {
+        guard hasSignal else { return false }
+        if emergencyPinned { setEmergencyPinned(false) } else { applyEmergencyMode() }
+        await refreshData()
+        return true
     }
     private var lastRefreshAttempt = Date.distantPast
     private var refreshRequestedAgain = false
@@ -97,6 +172,13 @@ public final class SeismikState: ObservableObject {
                     await self?.refreshData()
                 }
             }
+        // El modo de emergencia ya no se hereda de la última vez: arranca sólo si la persona lo fijó, y la señal
+        // lo enciende o lo apaga a partir de ahí.
+        let pinned = emergencyPinned
+        UserDefaults.standard.set(pinned, forKey: SeismikAPIClient.emergencyModeKey)
+        offlineEmergencyMode = pinned
+        connectivity.onChange = { [weak self] reachable in self?.signalChanged(reachable) }
+        connectivity.start()
         Task {
             // La ubicación se pide sólo al centrar el mapa, compartirla o
             // enviar un reporte. Al arrancar se registra la zona global.

@@ -20,6 +20,8 @@ import 'presentation/screens/felt_report_screen.dart';
 import 'presentation/screens/government_sources_screen.dart';
 import 'presentation/screens/ios_settings_screen.dart';
 import 'presentation/screens/monitor_screen.dart';
+import 'presentation/screens/offline_emergency_screen.dart';
+import 'presentation/widgets/emergency_banner.dart';
 import 'presentation/screens/settings_screen.dart';
 import 'state/family_state.dart';
 import 'state/mobile_settings.dart';
@@ -228,16 +230,46 @@ class _SeismikShellState extends State<_SeismikShell> {
       );
     } else {
       final bool keyboardVisible = MediaQuery.viewInsetsOf(context).bottom > 0;
+      final bool emergency = context.select<SeismikState, bool>(
+        (s) => s.offlineEmergencyMode,
+      );
+      final bool hasSignal = context.select<SeismikState, bool>(
+        (s) => s.hasSignal,
+      );
+      final Widget pages = IndexedStack(
+        index: _selectedIndex,
+        children: <Widget>[
+          const MonitorScreen(),
+          FeltReportScreen(event: latestEvent),
+          DamageReportScreen(event: latestEvent),
+          const FamilySafetyScreen(),
+          SettingsScreen(dynamicColorAvailable: widget.dynamicColorAvailable),
+        ],
+      );
       base = Scaffold(
         resizeToAvoidBottomInset: true,
-        body: IndexedStack(
-          index: _selectedIndex,
+        // Sin señal el modo de emergencia se enciende solo y esta franja aparece
+        // arriba de todo, fuera del mapa; con señal se apaga sola y desaparece.
+        body: Column(
           children: <Widget>[
-            const MonitorScreen(),
-            FeltReportScreen(event: latestEvent),
-            DamageReportScreen(event: latestEvent),
-            const FamilySafetyScreen(),
-            SettingsScreen(dynamicColorAvailable: widget.dynamicColorAvailable),
+            if (emergency)
+              EmergencyBanner(
+                hasSignal: hasSignal,
+                onOpen: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => const OfflineEmergencyScreen(),
+                  ),
+                ),
+              ),
+            Expanded(
+              child: emergency
+                  ? MediaQuery.removePadding(
+                      context: context,
+                      removeTop: true,
+                      child: pages,
+                    )
+                  : pages,
+            ),
           ],
         ),
         bottomNavigationBar: keyboardVisible

@@ -13,6 +13,7 @@ import '../services/background_motion_service.dart';
 import '../services/api_client.dart';
 import '../services/notification_service.dart';
 import '../services/offline_queue.dart';
+import '../services/connectivity_watcher.dart';
 import '../services/emergency_store.dart';
 import 'mobile_settings.dart';
 
@@ -111,7 +112,13 @@ class SeismikState extends ChangeNotifier with WidgetsBindingObserver {
   bool _disposed = false;
   Future<void> _sensorSync = Future<void>.value();
   bool _visible = true;
+
+  /// El modo de emergencia está activo: se enciende solo sin señal y se apaga
+  /// solo cuando vuelve; [emergencyPinned] lo deja fijo aunque haya señal.
   bool offlineEmergencyMode = false;
+  bool emergencyPinned = false;
+  bool hasSignal = true;
+  ConnectivityWatcher? _connectivity;
 
   Future<void> setOfflineEmergencyMode(bool value) async {
     offlineEmergencyMode = value;
@@ -121,7 +128,50 @@ class SeismikState extends ChangeNotifier with WidgetsBindingObserver {
     }
     await EmergencyStore.setEnabled(value);
     _notify();
-    if (!value) unawaited(refreshNetworkData());
+    if (!value) {
+      unawaited(refreshNetworkData());
+      unawaited(flushPendingReports());
+    }
+  }
+
+  Future<void> setEmergencyPinned(bool value) async {
+    emergencyPinned = value;
+    await EmergencyStore.setPinned(value);
+    await _applyEmergencyMode();
+  }
+
+  @visibleForTesting
+  Future<void> onSignalChangedForTesting(bool reachable) =>
+      _onSignalChanged(reachable);
+
+  Future<void> _onSignalChanged(bool reachable) async {
+    hasSignal = reachable;
+    await _applyEmergencyMode();
+  }
+
+  Future<void> _applyEmergencyMode() async {
+    final bool wanted = emergencyModeWanted(
+      hasSignal: hasSignal,
+      pinned: emergencyPinned,
+    );
+    if (wanted == offlineEmergencyMode) {
+      _notify();
+      return;
+    }
+    await setOfflineEmergencyMode(wanted);
+  }
+
+  /// «Buscar señal y sincronizar»: si el sistema ve red, apaga lo fijado y
+  /// sincroniza; si no, lo dice y sigue esperando la señal.
+  Future<bool> retryConnection() async {
+    if (!hasSignal) return false;
+    if (emergencyPinned) {
+      await setEmergencyPinned(false);
+    } else {
+      await _applyEmergencyMode();
+    }
+    await refreshNetworkData();
+    return true;
   }
 
   void _onBackgroundStatus() {
@@ -141,7 +191,13 @@ class SeismikState extends ChangeNotifier with WidgetsBindingObserver {
   String? syncMessage;
 
   Future<void> initialize() async {
-    offlineEmergencyMode = await EmergencyStore.enabled();
+    // El modo ya no se hereda de la última vez: arranca sólo si la persona lo
+    // fijó, y la señal lo enciende o lo apaga a partir de ahí.
+    emergencyPinned = await EmergencyStore.pinned();
+    offlineEmergencyMode = emergencyPinned;
+    await EmergencyStore.setEnabled(offlineEmergencyMode);
+    _connectivity ??= ConnectivityWatcher();
+    unawaited(_connectivity!.start(_onSignalChanged));
     _foregroundRefreshTimer ??= Timer.periodic(const Duration(seconds: 15), (
       _,
     ) {
@@ -751,6 +807,7 @@ class SeismikState extends ChangeNotifier with WidgetsBindingObserver {
     settings.removeListener(_onSettingsChanged);
     BackgroundMotionService.status.removeListener(_onBackgroundStatus);
     unawaited(_notificationSubscription?.cancel());
+    unawaited(_connectivity?.dispose());
     unawaited(accelerometer.stop());
     unawaited(notifications.dispose());
     api.close();

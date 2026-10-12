@@ -745,3 +745,12 @@ final class MapProviderChoiceTests: XCTestCase {
         XCTAssertEqual(MapProviderChoice.stored("apple"), .apple)
     }
 }
+
+final class EmergencyModePolicyTests: XCTestCase {
+    func testTheModeFollowsTheSignalAndOnlyStaysOnWhenPinned() {
+        XCTAssertTrue(EmergencyModePolicy.isActive(hasSignal: false, pinned: false), "sin señal se enciende solo")
+        XCTAssertFalse(EmergencyModePolicy.isActive(hasSignal: true, pinned: false), "con señal se apaga solo")
+        XCTAssertTrue(EmergencyModePolicy.isActive(hasSignal: true, pinned: true), "fijado, sigue activo con señal")
+        XCTAssertTrue(EmergencyModePolicy.isActive(hasSignal: false, pinned: true))
+    }
+}

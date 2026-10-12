@@ -25,7 +25,6 @@ public struct MonitorView: View {
     @State private var showSettings = false
     @State private var showEventList = false
     @State private var loadMapOnSlowConnection = false
-    @State private var showOfflineEmergency = false
 
     /// Alto que ocupa la barra del historial; el mapa no centra nada debajo.
     private static let historyBarInset: CGFloat = 92
@@ -58,9 +57,6 @@ public struct MonitorView: View {
                     .padding(.top, max(8, geometry.safeAreaInsets.top + 4))
 
                 VStack(alignment: .trailing, spacing: 12) {
-                    Button { showOfflineEmergency = true } label: {
-                        Label("Modo de emergencia", systemImage: "bolt.shield")
-                    }
                     mapControls
                     // Una barra fija en lugar del panel arrastrable: se toca y la
                     // lista abre en la hoja nativa de iOS. Una hoja siempre visible
@@ -88,7 +84,6 @@ public struct MonitorView: View {
             SeismicSheetView(state: state, locationManager: locationManager)
                 .modalSheetPresentation()
         }
-        .sheet(isPresented: $showOfflineEmergency) { OfflineEmergencyView(state: state) }
     }
 
     /// Botones flotantes de control de mapa.

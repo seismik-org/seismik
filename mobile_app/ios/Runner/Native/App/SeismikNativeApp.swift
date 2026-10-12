@@ -4,6 +4,7 @@ import SwiftUI
 public struct SeismikNativeAppRoot: View {
     @StateObject private var state = SeismikState.shared
     @State private var selectedTab = 0
+    @State private var showEmergency = false
     @Environment(\.scenePhase) private var scenePhase
 
     public init() {}
@@ -96,6 +97,51 @@ public struct SeismikNativeAppRoot: View {
         .fullScreenCover(isPresented: $state.showPermissionsOnboarding) {
             PermissionsOnboardingView(state: state)
         }
+        // Sin señal el modo de emergencia se enciende solo y esta franja aparece arriba de todo, fuera del mapa;
+        // con señal se apaga sola y desaparece.
+        .safeAreaInset(edge: .top, spacing: 0) {
+            if state.offlineEmergencyMode {
+                EmergencyBanner(hasSignal: state.hasSignal) { showEmergency = true }
+                    .transition(.move(edge: .top).combined(with: .opacity))
+            }
+        }
+        .animation(.easeInOut(duration: 0.25), value: state.offlineEmergencyMode)
+        .sheet(isPresented: $showEmergency) {
+            OfflineEmergencyView(state: state, showsCloseButton: true)
+        }
+    }
+}
+
+/// Franja fija en la parte alta mientras el modo de emergencia está activo. Toda ella es el botón que abre la guía.
+struct EmergencyBanner: View {
+    let hasSignal: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 12) {
+                Image(systemName: hasSignal ? "bolt.shield.fill" : "wifi.slash")
+                    .font(.system(size: 20, weight: .semibold))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(hasSignal ? "Modo de emergencia activo" : "Sin señal · Modo de emergencia activo")
+                        .font(.subheadline.weight(.semibold))
+                    Text("Toca para abrir la guía y tus notas")
+                        .font(.caption)
+                        .opacity(0.9)
+                }
+                Spacer(minLength: 8)
+                Image(systemName: "chevron.right")
+                    .font(.footnote.weight(.semibold))
+            }
+            .foregroundColor(.white)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            .frame(maxWidth: .infinity)
+            .background(Color.red)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(hasSignal ? "Modo de emergencia activo" : "Sin señal. Modo de emergencia activo")
+        .accessibilityHint("Abre la guía de emergencia")
     }
 }
 
