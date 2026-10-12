@@ -4,7 +4,7 @@
 
 ## Producto
 
-- [Seismik](https://seismik.org/): cómo funciona, perímetro de sacudida estimado, círculo de familia y fuentes oficiales.
+- [Seismik](https://seismik.org/): alertas, perímetro de sacudida estimado, círculo de familia y fuentes oficiales.
 - [Modo Emergencia](https://seismik.org/modo-emergencia/): guía, notas locales, historial previamente guardado y pendientes en Android y iPhone desde el build 64. Sin Internet no recibe sismos nuevos ni actualiza la ubicación familiar; no ofrece comunicación por SMS, radio o satélite.
 - [Preguntas frecuentes](https://seismik.org/preguntas-frecuentes/): qué es Seismik, qué datos usa, privacidad y límites.
 - [¿Lo sentiste?](https://ifeltit.seismik.org/): reportes ciudadanos de sismos sentidos.

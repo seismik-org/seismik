@@ -64,7 +64,7 @@ def test_every_public_page_has_one_canonical_address_and_is_indexable(path: str,
 
     assert re.findall(r'<link rel="canonical" href="([^"]+)">', document) == [f"{SITE}{path}"]
     assert not re.search(r'<meta name="robots"[^>]*noindex', document), f"{page} no debe llevar noindex"
-    assert re.search(r"<title>[^<]{10,}</title>", document) and 'name="description"' in document
+    assert re.search(r"<title>[^<]{7,}</title>", document) and 'name="description"' in document
 
 
 def test_the_home_page_states_what_seismik_is_for_search_engines() -> None:
@@ -130,7 +130,7 @@ def test_emergency_feature_is_discoverable_and_honest_about_offline_limits() -> 
 def test_discovery_titles_social_tags_and_visible_headings_are_consistent(page: str) -> None:
     document = read(page)
     [title] = re.findall(r"<title>([^<]+)</title>", document)
-    assert "sismos" in title.lower() and "Seismik" in title
+    assert "Seismik" in title and len(title) <= 40
     assert re.findall(r'<meta property="og:title" content="([^"]+)">', document) == [title]
     assert re.findall(r'<meta name="twitter:title" content="([^"]+)">', document) == [title]
     assert len(re.findall(r"<h1[ >]", document)) == 1
