@@ -41,6 +41,33 @@ final class FamilyNicknameAndReportChoiceTests: XCTestCase {
 /// pasa con un reporte cuando no hay conexión, cuándo un ping colaborativo se
 /// considera sismo y cuándo un rechazo del servidor merece reintentarse.
 final class AdaptiveTransferTests: XCTestCase {
+    func testEmergencyModeQueuesBeforeRegistrationOrHTTP() async throws {
+        let defaults = UserDefaults.standard
+        let oldMode = defaults.object(forKey: SeismikAPIClient.emergencyModeKey)
+        let oldQueue = defaults.object(forKey: "seismik.pending_reports")
+        defer {
+            if let oldMode { defaults.set(oldMode, forKey: SeismikAPIClient.emergencyModeKey) }
+            else { defaults.removeObject(forKey: SeismikAPIClient.emergencyModeKey) }
+            if let oldQueue { defaults.set(oldQueue, forKey: "seismik.pending_reports") }
+            else { defaults.removeObject(forKey: "seismik.pending_reports") }
+        }
+        defaults.set(true, forKey: SeismikAPIClient.emergencyModeKey)
+        defaults.removeObject(forKey: "seismik.pending_reports")
+        let client = SeismikAPIClient(baseURL: URL(string: "https://offline.invalid")!)
+        let report = FeltReportPayload(reportId: "offline-native", deviceId: "local-device",
+            earthquakeEventId: "known-event", officialEventId: nil,
+            latitude: 4.6, longitude: -74, countryCode: "CO", felt: true,
+            intensityMmi: 3, indoors: true, floor: nil, wokeUp: nil, difficultyStanding: nil)
+        XCTAssertEqual(try await client.submitFeltReport(report), .queued)
+        let pending = OfflineReportQueue.shared.load()
+        XCTAssertEqual(pending.count, 1)
+        XCTAssertEqual(pending[0].reportId, report.reportId)
+        let stored = try JSONDecoder().decode(FeltReportPayload.self, from: pending[0].body)
+        XCTAssertEqual(stored.observedAt, report.observedAt)
+        let flush = await client.flushPendingReports()
+        XCTAssertEqual(flush.sent, 0)
+        XCTAssertEqual(flush.remaining, 1)
+    }
     func testMeasuredQualityAndRecovery() {
         let policy = AdaptiveTransferNative()
         XCTAssertEqual(policy.eventLimit, 50)

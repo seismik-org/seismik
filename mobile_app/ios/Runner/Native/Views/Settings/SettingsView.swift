@@ -32,6 +32,11 @@ public struct SettingsView: View {
     public var body: some View {
         CompatibleNavigationStack {
             Form {
+                Section {
+                    NavigationLink(destination: OfflineEmergencyView(state: state)) {
+                        Label("Modo de emergencia sin conexión", systemImage: "bolt.shield")
+                    }
+                }
                 // Encabezado de Identidad y Versión
                 Section {
                     HStack(spacing: 14) {
@@ -1240,5 +1245,72 @@ public struct FamilySafetyView: View {
             message = nil
             await appState.updateRegistration()
         } catch { message = "No se pudo borrar tu ubicación. Revisa tu conexión." }
+    }
+}
+
+
+/// Local emergency kit: no authentication or network calls to open this screen.
+struct OfflineEmergencyView: View {
+    @ObservedObject var state: SeismikState
+    @AppStorage("seismik.emergency.meeting_notes") private var notes = ""
+    @State private var cached: [SeismicEvent] = []
+    @State private var cacheDate: Date?
+    @State private var showReport = false
+
+    var body: some View {
+        CompatibleNavigationStack {
+            Form {
+                Section(header: Text("Disponible sin conexión ni inicio de sesión")) {
+                    Text("Sin red no recibes sismos nuevos ni se actualiza la ubicación de tu familia. Los datos guardados no confirman que alguien esté a salvo.")
+                    Toggle("Usar datos guardados", isOn: Binding(
+                        get: { state.offlineEmergencyMode },
+                        set: { state.setOfflineEmergencyMode($0) }
+                    ))
+                    Text("Pospone descargas y envíos; no desactiva las alertas push si vuelve la red.")
+                    if let date = cacheDate {
+                        Text("Última copia descargada: \(date.formatted(date: .abbreviated, time: .shortened))")
+                    } else { Text("Todavía no hay una copia descargada.") }
+                    Text("\(state.pendingReportCount) reportes pendientes; no se han entregado.")
+                    Button("Buscar conexión y sincronizar") {
+                        state.setOfflineEmergencyMode(false)
+                        Task {
+                            await state.refreshData()
+                            cached = SeismikAPIClient.shared.cachedEvents()
+                            cacheDate = SeismikAPIClient.shared.cachedEventsDate
+                        }
+                    }
+                }
+                Section(header: Text("Durante la sacudida, dentro de un edificio")) {
+                    Text("Agáchate, protege cabeza y cuello bajo una mesa sólida y sujétate hasta que pare la sacudida. Aléjate de ventanas y objetos que puedan caer.")
+                    Text("Guía guardada de CDC · Seismik es independiente y no representa a una entidad pública.")
+                    Link("Fuente de la guía (necesita conexión)", destination: URL(string: "https://www.cdc.gov/earthquakes/safety/index.html")!)
+                }
+                Section(header: Text("Punto de encuentro y notas locales")) {
+                    TextEditor(text: $notes).frame(minHeight: 100)
+                        .onChange(of: notes) { value in if value.count > 1000 { notes = String(value.prefix(1000)) } }
+                    Text("Se guardan sólo en este teléfono. No se envían automáticamente.")
+                    Button("Preparar un reporte") { showReport = true }
+                    Text("Selecciona un sismo conocido. Sin conexión queda pendiente, no enviado.")
+                }
+                Section(header: Text("Sismos guardados · no son datos en vivo")) {
+                    if cached.isEmpty {
+                        Text("Aún no hay sismos descargados. La guía y las notas sí funcionan sin red.")
+                    }
+                    ForEach(Array(cached.prefix(20))) { event in
+                        VStack(alignment: .leading) {
+                            Text(event.displayPlace ?? "Epicentro en revisión")
+                            Text(event.detectedAt?.formatted(date: .abbreviated, time: .shortened) ?? "Fecha no disponible")
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Modo de emergencia")
+            .sheet(isPresented: $showReport) { FeltReportView(preselectedEvent: nil) }
+            .onAppear {
+                cached = SeismikAPIClient.shared.cachedEvents()
+                cacheDate = SeismikAPIClient.shared.cachedEventsDate
+            }
+        }
     }
 }

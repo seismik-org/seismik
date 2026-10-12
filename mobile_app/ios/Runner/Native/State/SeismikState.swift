@@ -18,6 +18,13 @@ public final class SeismikState: ObservableObject {
     @Published public var isRefreshing: Bool = false
     @Published public var isOnline: Bool = true
     @Published public var lowBandwidth: Bool = false
+    @Published public var offlineEmergencyMode = UserDefaults.standard.bool(forKey: SeismikAPIClient.emergencyModeKey)
+
+    public func setOfflineEmergencyMode(_ enabled: Bool) {
+        offlineEmergencyMode = enabled
+        UserDefaults.standard.set(enabled, forKey: SeismikAPIClient.emergencyModeKey)
+        if enabled { isOnline = false }
+    }
     private var lastRefreshAttempt = Date.distantPast
     private var refreshRequestedAgain = false
     @Published public var lastUpdated: Date?
@@ -65,6 +72,9 @@ public final class SeismikState: ObservableObject {
     private var registrationPending = false
 
     public init() {
+        self.events = apiClient.cachedEvents()
+        self.lastUpdated = apiClient.cachedEventsDate
+        self.isOnline = false
         self.isRegistered = apiClient.isRegistered
         self.pendingReportCount = apiClient.pendingReportCount
         // Un perfil sin sesión en Keychain no sirve para hablar con el servidor.
@@ -242,6 +252,7 @@ public final class SeismikState: ObservableObject {
 
     /// Actualiza el catálogo de sismos y estaciones desde la red.
     public func refreshData() async {
+        if offlineEmergencyMode { return }
         guard !isRefreshing else { refreshRequestedAgain = true; return }
         lastRefreshAttempt = Date()
         isRefreshing = true

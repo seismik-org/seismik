@@ -21,6 +21,7 @@ import '../data/models/seismic_event.dart';
 import '../data/models/station.dart';
 import 'wear_bridge.dart';
 import 'adaptive_transfer.dart';
+import 'emergency_store.dart';
 
 class SeismikApiException implements Exception {
   const SeismikApiException(this.message, this.statusCode);
@@ -1046,6 +1047,10 @@ class ApiClient {
       final SharedPreferences preferences =
           await SharedPreferences.getInstance();
       await preferences.setString(_eventCacheKey, encoded);
+      await preferences.setInt(
+        EmergencyStore.cacheDateKey,
+        DateTime.now().millisecondsSinceEpoch,
+      );
       _eventsCacheSignature = signature;
     } catch (_) {
       // La caché es un respaldo: la próxima respuesta vuelve a intentarlo.

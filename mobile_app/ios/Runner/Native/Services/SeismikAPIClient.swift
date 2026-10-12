@@ -265,6 +265,9 @@ public final class SeismikAPIClient {
     private let encoder = JSONEncoder()
     let transfer = AdaptiveTransferNative()
     public var lowBandwidth: Bool { transfer.constrained }
+    static let emergencyModeKey = "seismik.emergency.offline_mode"
+    public var offlineEmergencyMode: Bool { UserDefaults.standard.bool(forKey: Self.emergencyModeKey) }
+    public var cachedEventsDate: Date? { UserDefaults.standard.object(forKey: "seismik.events_cached_at") as? Date }
     private static let stationsCacheKey = "seismik.native.stations.cache"
     private static let stationsCacheDateKey = "seismik.native.stations.date"
 
@@ -591,7 +594,10 @@ public final class SeismikAPIClient {
     /// Reenvía los reportes que quedaron guardados sin conexión.
     @discardableResult
     public func flushPendingReports() async -> QueueFlushResult {
-        await queue.flush { [weak self] pending in
+        if offlineEmergencyMode {
+            return QueueFlushResult(sent: 0, remaining: queue.pendingCount, discarded: 0, lastError: nil)
+        }
+        return await queue.flush { [weak self] pending in
             guard let self else { return }
             _ = try await self.deliver(kind: pending.kind, body: pending.body)
         }
@@ -602,6 +608,10 @@ public final class SeismikAPIClient {
         reportId: String,
         body: Data
     ) async throws -> ReportSubmission {
+        if offlineEmergencyMode {
+            queue.enqueue(PendingReport(reportId: reportId, kind: kind, body: body))
+            return .queued
+        }
         if !isRegistered { _ = try? await registerDevice() }
         do {
             let duplicate = try await deliver(kind: kind, body: body)
@@ -1016,6 +1026,7 @@ public final class SeismikAPIClient {
         // Una lista vacía también es la respuesta vigente: con filtros que no
         // dejan ningún sismo no debe reaparecer la lista anterior.
         UserDefaults.standard.set(data, forKey: Self.eventCacheKey)
+        UserDefaults.standard.set(Date(), forKey: "seismik.events_cached_at")
         return events
     }
 

@@ -13,6 +13,7 @@ import '../services/background_motion_service.dart';
 import '../services/api_client.dart';
 import '../services/notification_service.dart';
 import '../services/offline_queue.dart';
+import '../services/emergency_store.dart';
 import 'mobile_settings.dart';
 
 /// Ajustes que obligan a hablar con el servidor.
@@ -110,6 +111,18 @@ class SeismikState extends ChangeNotifier with WidgetsBindingObserver {
   bool _disposed = false;
   Future<void> _sensorSync = Future<void>.value();
   bool _visible = true;
+  bool offlineEmergencyMode = false;
+
+  Future<void> setOfflineEmergencyMode(bool value) async {
+    offlineEmergencyMode = value;
+    if (value) {
+      networkOnline = false;
+      statusMessage = 'Modo de emergencia · datos guardados';
+    }
+    await EmergencyStore.setEnabled(value);
+    _notify();
+    if (!value) unawaited(refreshNetworkData());
+  }
 
   void _onBackgroundStatus() {
     if (!_disposed) unawaited(settings.reloadBackgroundCrowdsourcing());
@@ -128,6 +141,7 @@ class SeismikState extends ChangeNotifier with WidgetsBindingObserver {
   String? syncMessage;
 
   Future<void> initialize() async {
+    offlineEmergencyMode = await EmergencyStore.enabled();
     _foregroundRefreshTimer ??= Timer.periodic(const Duration(seconds: 15), (
       _,
     ) {
@@ -364,6 +378,10 @@ class SeismikState extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   Future<void> _refreshOnce() async {
+    if (offlineEmergencyMode) {
+      await _showCachedData();
+      return;
+    }
     _lastRefreshAttempt = DateTime.now();
     // Se piden a la vez. Las estaciones casi siempre salen de la caché y nunca
     // retrasan los sismos, que es lo que la persona espera ver.
@@ -447,6 +465,7 @@ class SeismikState extends ChangeNotifier with WidgetsBindingObserver {
       _flushPendingReports().whenComplete(() => _flushInFlight = null);
 
   Future<void> _flushPendingReports() async {
+    if (offlineEmergencyMode) return;
     final int previousCount = pendingReportCount;
     final String? previousMessage = syncMessage;
     final QueueFlushResult result = await reportQueue.flush(_sendPending);
@@ -516,6 +535,14 @@ class SeismikState extends ChangeNotifier with WidgetsBindingObserver {
     required bool preciseLocation,
     bool emergencyActionRecommended = false,
   }) async {
+    if (offlineEmergencyMode) {
+      return _queueReport(
+        kind: kind,
+        payload: payload,
+        preciseLocation: preciseLocation,
+        emergencyActionRecommended: emergencyActionRecommended,
+      );
+    }
     try {
       final ReportResult result = await api.sendReport(kind.path, payload);
       await flushPendingReports();

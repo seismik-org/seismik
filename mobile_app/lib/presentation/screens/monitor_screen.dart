@@ -18,6 +18,7 @@ import '../widgets/perimeter_circles.dart';
 import '../widgets/status_pill.dart';
 import 'event_detail_screen.dart';
 import 'government_sources_screen.dart';
+import 'offline_emergency_screen.dart';
 
 /// Historial de sismos como mapa interactivo con panel inferior deslizable.
 ///
@@ -115,6 +116,15 @@ class _MonitorScreenState extends State<MonitorScreen> {
       const _SheetHandle(),
       const SizedBox(height: 12),
       StatusPill(online: online),
+      TextButton.icon(
+        onPressed: () => Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => const OfflineEmergencyScreen(),
+          ),
+        ),
+        icon: const Icon(Icons.offline_bolt_outlined),
+        label: const Text('Modo de emergencia'),
+      ),
       if (state.api.lowBandwidth)
         const Text(
           'Conexión limitada · historial reducido · reportes prioritarios',

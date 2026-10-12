@@ -12,6 +12,7 @@ import '../../services/background_motion_service.dart';
 import '../../state/mobile_settings.dart';
 import '../../state/seismik_state.dart';
 import 'government_sources_screen.dart';
+import 'offline_emergency_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({required this.dynamicColorAvailable, super.key});
@@ -41,6 +42,15 @@ class SettingsScreen extends StatelessWidget {
         children: <Widget>[
           const _Header(),
           const SizedBox(height: 12),
+          ListTile(
+            leading: const Icon(Icons.offline_bolt_outlined),
+            title: const Text('Modo de emergencia sin conexión'),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => const OfflineEmergencyScreen(),
+              ),
+            ),
+          ),
           _Section(
             title: 'Alertas críticas',
             icon: Icons.notification_important_outlined,
