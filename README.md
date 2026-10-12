@@ -3,20 +3,46 @@
 [![CI](https://github.com/seismik-org/seismik/actions/workflows/ci.yml/badge.svg)](https://github.com/seismik-org/seismik/actions/workflows/ci.yml)
 [![Código visible · uso restringido](https://img.shields.io/badge/licencia-c%C3%B3digo_visible_%C2%B7_uso_restringido-blue)](LICENSE)
 
-Plataforma de información sísmica, aplicaciones móviles y API para desarrolladores.
+**Sismos en Colombia · app de terremotos para Android y iPhone · API de datos sísmicos.**
+
+Plataforma de información sísmica, aplicaciones móviles y API para desarrolladores,
+con reportes ciudadanos, estimación de intensidad y recursos de emergencia sin conexión.
 Seismik reúne catálogos sismológicos, conserva la atribución de cada evento y
 desarrolla detección experimental mediante ondas y señales voluntarias de dispositivos.
 
-**Estado: beta en desarrollo. Última revisión: 10 de octubre de 2026.**
+### What is Seismik? / English overview
+
+Seismik is an independent **earthquake information app and seismic data API for
+Colombia and the Andean region**, currently in beta. Android uses Flutter;
+iPhone uses a native SwiftUI interface. Features include earthquake catalogs
+with source attribution, estimated shaking intensity, felt reports, an opt-in
+family circle and an offline emergency kit with a short guide, local notes and
+previously cached events. Without Internet it cannot receive new earthquakes
+or update family locations. The API provides JSON/GeoJSON; **Seismik Waves** is
+a pilot historical MiniSEED waveform archive for research, with approved access.
+
+Official website: [seismik.org](https://seismik.org/) ·
+[Emergency mode](https://seismik.org/modo-emergencia/) ·
+[Seismic API](https://devs.seismik.org/) ·
+[Waveform archive](https://waves.seismik.org/) ·
+[Service status](https://status.seismik.org/).
+
+Seismik is not a government service, does not predict earthquakes and does not
+guarantee early warning or delivery. Experimental local magnitudes remain
+scientifically unvalidated. **Source-available, not OSI open source**: viewing
+this repository does not grant unrestricted replication or commercial use;
+see [LICENSE](LICENSE). Seismik is unrelated to the sales software named Seismic.
+
+**Estado: beta en desarrollo. Última revisión: 12 de octubre de 2026.**
 El portal y la API están desplegados. Android utiliza Flutter y Material 3;
 la interfaz de iOS es nativa en SwiftUI. Los planes comerciales están publicados,
 pero el checkout y los cobros automáticos siguen desactivados.
 
 ### Estado comprobado
 
-- **Android 1.0.0 (62):** disponible en la prueba interna de Google Play.
-- **iOS 1.0.0 (62):** compilado, firmado y subido a TestFlight; queda por confirmar
-  su disponibilidad en el grupo interno. El build 61 ya estaba disponible. Apple aprobó Critical
+- **Android 1.0.0 (64):** disponible en la prueba interna de Google Play desde el 11 de octubre.
+- **iOS 1.0.0 (64):** compilado, firmado y subido a TestFlight; queda por confirmar
+  su procesamiento y disponibilidad en el grupo interno. Apple aprobó Critical
   Alerts para la app y se verificó el entitlement en el binario firmado.
   Cada persona todavía debe conceder el permiso en su iPhone.
 - **Alertas y familia:** alarma Android al recibir la notificación, acción
@@ -34,6 +60,10 @@ pero el checkout y los cobros automáticos siguen desactivados.
   resueltos en Android 14+, con compatibilidad dinámica en Android 12–13.
 - **GeoJSON:** eventos recientes, historial, estaciones y showcase ofrecen
   `format=geojson` sin cambiar permisos, cuotas ni el JSON por defecto.
+- **Modo Emergencia (build 64):** guía breve, notas locales, copia del historial
+  con fecha y reportes pendientes; la pantalla se consulta sin iniciar sesión.
+  Sin Internet no llegan sismos nuevos ni se actualiza la ubicación familiar.
+  Las consultas se adaptan a conexiones lentas y los mapas cargan bajo demanda.
 
 Estos canales de prueba no equivalen a una publicación general en ambas tiendas.
 La entrega sonora con Android bloqueado y los escenarios de permisos/Focus de
@@ -50,6 +80,9 @@ iOS requieren pruebas físicas; las pruebas automatizadas no garantizan el sonid
 | Recurso | Dirección |
 | --- | --- |
 | Portal | [seismik.org](https://seismik.org/) |
+| Modo Emergencia sin conexión | [Funciones, preparación y límites](https://seismik.org/modo-emergencia/) |
+| Preguntas sobre sismos y alertas | [Preguntas frecuentes](https://seismik.org/preguntas-frecuentes/) |
+| Archivo de ondas históricas | [waves.seismik.org](https://waves.seismik.org/) |
 | Desarrolladores y planes | [devs.seismik.org](https://devs.seismik.org/) |
 | Inicio de sesión web | [auth.seismik.org](https://auth.seismik.org/) |
 | API | [api.seismik.org](https://api.seismik.org/) |
