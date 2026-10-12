@@ -20,6 +20,7 @@ import '../data/models/seismik_account.dart';
 import '../data/models/seismic_event.dart';
 import '../data/models/station.dart';
 import 'wear_bridge.dart';
+import 'adaptive_transfer.dart';
 
 class SeismikApiException implements Exception {
   const SeismikApiException(this.message, this.statusCode);
@@ -56,7 +57,7 @@ class ApiClient {
   /// que desde una red móvil cuesta cientos de milisegundos por llamada.
   static http.Client _persistentHttpClient() => IOClient(
     HttpClient()
-      ..connectionTimeout = const Duration(seconds: 6)
+      ..connectionTimeout = const Duration(seconds: 20)
       ..idleTimeout = const Duration(seconds: 45),
   );
 
@@ -84,6 +85,8 @@ class ApiClient {
   static const int backgroundParseThreshold = 32 * 1024;
 
   final http.Client _http;
+  final AdaptiveTransfer transfer = AdaptiveTransfer();
+  bool get lowBandwidth => transfer.constrained;
   static const FlutterSecureStorage _secureStorage = FlutterSecureStorage();
 
   // El almacén seguro de Android descifra en cada lectura: la sesión se lee
@@ -209,7 +212,7 @@ class ApiClient {
           headers: _jsonHeaders(),
           body: jsonEncode(payload),
         )
-        .timeout(const Duration(seconds: 8));
+        .timeout(const Duration(seconds: 25));
     final Map<String, dynamic> decoded = _decode(response);
     final String? crowdToken = decoded['crowd_token']?.toString();
     final String? deviceSession = decoded['device_session_token']?.toString();
@@ -539,7 +542,7 @@ class ApiClient {
           },
           body: body,
         )
-        .timeout(const Duration(seconds: 8));
+        .timeout(transfer.timeout);
     return _decode(response);
   }
 
@@ -563,6 +566,7 @@ class ApiClient {
   Future<List<SeismicStation>> fetchStations({
     bool forceRefresh = false,
   }) async {
+    if (lowBandwidth && !forceRefresh) return readCachedStations();
     final DateTime now = DateTime.now();
     if (!forceRefresh) {
       final List<SeismicStation> known =
@@ -678,12 +682,30 @@ class ApiClient {
         'sources': (sourceIds.toList()..sort()).join(','),
         'days': days.toString(),
         'minimum_magnitude': minimumMagnitude.toStringAsFixed(1),
-        'limit': '200',
+        'limit': transfer.eventLimit.toString(),
       },
     );
-    final http.Response response = await _http
-        .get(historyUri, headers: await _mobileHeaders())
-        .timeout(const Duration(seconds: 12));
+    final Stopwatch clock = Stopwatch()..start();
+    final http.Response response;
+    try {
+      response = await _http
+          .get(historyUri, headers: await _mobileHeaders())
+          .timeout(transfer.timeout);
+      if (response.statusCode >= 500 || response.statusCode == 429) {
+        transfer.failed();
+      } else if (response.statusCode >= 200 && response.statusCode < 300) {
+        transfer.succeeded(clock.elapsed, response.bodyBytes.length);
+      }
+    } on TimeoutException {
+      transfer.failed();
+      rethrow;
+    } on SocketException {
+      transfer.failed();
+      rethrow;
+    } on http.ClientException {
+      transfer.failed();
+      rethrow;
+    }
     // Sólo un servidor anterior al historial combinado responde 404. Ante otros
     // fallos, repetir contra la ruta antigua sumaba hasta 8 s de espera antes
     // de que la app mostrara lo que ya tenía guardado.
@@ -715,7 +737,7 @@ class ApiClient {
     );
     final http.Response response = await _http
         .get(uri, headers: await _mobileHeaders())
-        .timeout(const Duration(seconds: 8));
+        .timeout(transfer.timeout);
     if (response.statusCode == 404) return <SeismicEvent>[];
     final Map<String, dynamic> decoded = _decode(response);
     final String? nextCursor = decoded['cursor']?.toString();
@@ -790,13 +812,15 @@ class ApiClient {
   }
 
   Future<void> clearAccount() async {
-    final String? token = _accountToken ??
-        await _secureStorage.read(key: _accountSessionKey);
+    final String? token =
+        _accountToken ?? await _secureStorage.read(key: _accountSessionKey);
     if (token != null && token.isNotEmpty) {
       try {
         await _http
             .post(
-              Uri.parse('${SeismikConstants.authBaseUrl}/v1/oauth/mobile/logout'),
+              Uri.parse(
+                '${SeismikConstants.authBaseUrl}/v1/oauth/mobile/logout',
+              ),
               headers: <String, String>{'X-Seismik-Account-Session': token},
             )
             .timeout(const Duration(seconds: 5));
@@ -1063,6 +1087,7 @@ class ApiClient {
   Uri _uri(String path) => Uri.parse('${SeismikConstants.apiBaseUrl}$path');
 
   Map<String, String> _jsonHeaders() => <String, String>{
+    'Accept-Encoding': 'gzip',
     'Accept': 'application/json',
     'Content-Type': 'application/json',
   };

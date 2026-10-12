@@ -9,6 +9,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 import '../core/constants.dart';
+import '../core/epicenter_label.dart';
 import '../data/models/seismic_event.dart';
 import 'alert_memory.dart';
 import 'first_run_permissions.dart';
@@ -465,7 +466,14 @@ Future<void> _showCriticalNotification(
 
 String _strongShakingBody(Map<String, dynamic> data) {
   final double? magnitude = double.tryParse('${data['magnitude'] ?? ''}');
-  final String place = (data['place'] ?? data['agency'] ?? '').toString();
+  final String place = epicenterLabel(
+    data['place']?.toString(),
+    double.tryParse('${data['latitude'] ?? data['estimated_latitude'] ?? ''}'),
+    double.tryParse(
+      '${data['longitude'] ?? data['estimated_longitude'] ?? ''}',
+    ),
+    sourceId: data['source_id']?.toString(),
+  );
   return <String>[
     if (magnitude != null) 'M ${magnitude.toStringAsFixed(1)}',
     if (place.isNotEmpty) place,

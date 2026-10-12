@@ -81,6 +81,15 @@ public struct SeismikNativeAppRoot: View {
                 await state.refreshData()
             }
         }
+        .task {
+            while !Task.isCancelled {
+                do { try await Task.sleep(nanoseconds: 15_000_000_000) }
+                catch { break }
+                if UIApplication.shared.applicationState == .active {
+                    await state.refreshIfStale()
+                }
+            }
+        }
         // Lo primero que ve una persona nueva: los permisos que una alerta necesita para llegar, pedidos de entrada
         // y no escondidos en Configuración.
         .task { await state.evaluatePermissionsOnboarding() }

@@ -17,6 +17,9 @@ public final class SeismikState: ObservableObject {
     @Published public var activeAlert: SeismicEvent?
     @Published public var isRefreshing: Bool = false
     @Published public var isOnline: Bool = true
+    @Published public var lowBandwidth: Bool = false
+    private var lastRefreshAttempt = Date.distantPast
+    private var refreshRequestedAgain = false
     @Published public var lastUpdated: Date?
     @Published public var isRegistered: Bool = false
     @Published public var pendingReportCount: Int = 0
@@ -239,9 +242,17 @@ public final class SeismikState: ObservableObject {
 
     /// Actualiza el catálogo de sismos y estaciones desde la red.
     public func refreshData() async {
+        guard !isRefreshing else { refreshRequestedAgain = true; return }
+        lastRefreshAttempt = Date()
         isRefreshing = true
         HapticManager.light()
-        defer { isRefreshing = false }
+        defer {
+            isRefreshing = false
+            if refreshRequestedAgain {
+                refreshRequestedAgain = false
+                Task { await refreshData() }
+            }
+        }
 
         do {
             // El historial es el dato esencial. Antes se esperaba también la
@@ -275,6 +286,10 @@ public final class SeismikState: ObservableObject {
             self.isOnline = false
         }
 
+        lowBandwidth = apiClient.lowBandwidth
+        await flushPendingReports()
+        await syncMissedAlerts()
+
         // La capa de estaciones es enriquecimiento visual, nunca una razón
         // para impedir que se vea el historial o los reportes oficiales.
         do {
@@ -285,11 +300,16 @@ public final class SeismikState: ObservableObject {
             // permanece utilizable aunque SeedLink o su índice estén lentos.
         }
 
-        await flushPendingReports()
-        await syncMissedAlerts()
     }
 
     // MARK: - Cuenta y familia
+    public func refreshIfStale() async {
+        guard !isRefreshing else { return }
+        let interval: TimeInterval = lowBandwidth ? 180 : 60
+        if Date().timeIntervalSince(lastRefreshAttempt) >= interval {
+            await refreshData()
+        }
+    }
 
     /// Guarda la cuenta recién iniciada y asocia este iPhone a ella. El círculo
     /// que el teléfono tenía antes de exigir cuenta pasa a la persona.

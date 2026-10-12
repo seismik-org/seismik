@@ -40,6 +40,37 @@ final class FamilyNicknameAndReportChoiceTests: XCTestCase {
 /// Cubre lo que un iPhone en la mano no puede verificar de forma barata: qué
 /// pasa con un reporte cuando no hay conexión, cuándo un ping colaborativo se
 /// considera sismo y cuándo un rechazo del servidor merece reintentarse.
+final class AdaptiveTransferTests: XCTestCase {
+    func testMeasuredQualityAndRecovery() {
+        let policy = AdaptiveTransferNative()
+        XCTAssertEqual(policy.eventLimit, 50)
+        policy.succeeded(seconds: 0.5, bytes: 20000)
+        policy.succeeded(seconds: 0.5, bytes: 20000)
+        XCTAssertEqual(policy.eventLimit, 200)
+        policy.succeeded(seconds: 6, bytes: 20000)
+        XCTAssertEqual(policy.eventLimit, 30)
+        XCTAssertEqual(policy.timeout, 40)
+        policy.succeeded(seconds: 1, bytes: 20000)
+        policy.succeeded(seconds: 1, bytes: 20000)
+        XCTAssertTrue(policy.constrained)
+        policy.succeeded(seconds: 1, bytes: 20000)
+        XCTAssertFalse(policy.constrained)
+        policy.failed()
+        XCTAssertTrue(policy.constrained)
+    }
+
+    func testOfflineEpicenterAndOriginalAttribution() {
+        let event = SeismicEvent(id: "sgc:test", place: "WRONG REGION", magnitude: 4.2,
+            depthKm: 10, latitude: 4.6534, longitude: -76.6435, detectedAt: Date(), sourceId: "sgc_colombia")
+        XCTAssertEqual(event.displayPlace, "Sipí, Chocó")
+        XCTAssertEqual(event.place, "WRONG REGION")
+        XCTAssertEqual(event.magnitude, 4.2)
+        XCTAssertEqual(SeismikEpicenter.label(nil, latitude: 4.3758, longitude: -73.2155), "Paratebueno, Cundinamarca")
+        XCTAssertEqual(SeismikEpicenter.label(nil, latitude: nil, longitude: nil), "Epicentro en revisión")
+        XCTAssertEqual(SeismikEpicenter.label("48 km WSW of Alaska", latitude: nil, longitude: nil), "48 km al OSO de Alaska")
+    }
+}
+
 final class OfflineReportQueueTests: XCTestCase {
     private var defaults: UserDefaults!
     private var suiteName: String!

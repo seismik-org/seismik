@@ -1,3 +1,5 @@
+import '../../core/epicenter_label.dart';
+
 class SeismicEvent {
   const SeismicEvent({
     required this.id,
@@ -91,6 +93,18 @@ class SeismicEvent {
   final double? depthKm;
   final String? agency;
   final String? place;
+
+  /// Source text remains available for attribution; UI uses our offline label.
+  String? get displayPlace =>
+      id.startsWith('drill-') || sourceId == 'simulation'
+      ? (place ?? 'Epicentro simulado')
+      : epicenterLabel(
+          place,
+          latitude,
+          longitude,
+          sourceId: sourceId,
+          countryCode: countryCode,
+        );
   final String? officialUrl;
   final String? officialEventId;
   final String? countryCode;

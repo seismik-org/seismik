@@ -120,7 +120,7 @@ public struct EventDetailView: View {
                         .foregroundColor(.secondary)
                 }
 
-                Text(event.place ?? (event.zoneId.map { "Zona técnica \($0)" } ?? "Zona técnica CO"))
+                Text(event.displayPlace ?? (event.zoneId.map { "Zona técnica \($0)" } ?? "Zona técnica CO"))
                     .font(.system(size: 22, weight: .bold))
                     .foregroundColor(.primary)
             } else {
@@ -134,7 +134,7 @@ public struct EventDetailView: View {
                         .foregroundColor(.secondary)
                 }
 
-                Text(event.place ?? "Epicentro no determinado")
+                Text(event.displayPlace ?? "Epicentro no determinado")
                     .font(.system(size: 20, weight: .bold))
                     .foregroundColor(.primary)
             }
@@ -285,7 +285,7 @@ public struct EventDetailView: View {
     }
 
     private func epicenterMapSection(_ coord: CLLocationCoordinate2D) -> some View {
-        EpicenterMapView(coordinate: coord, title: event.place, magnitude: event.magnitude, isPreliminary: event.isPreliminary, rings: FeltArea.perimeter(for: event))
+        EpicenterMapView(coordinate: coord, title: event.displayPlace, magnitude: event.magnitude, isPreliminary: event.isPreliminary, rings: FeltArea.perimeter(for: event))
             .frame(height: 220)
             .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
             .overlay {
@@ -470,7 +470,7 @@ public struct EventDetailView: View {
         let lat = coordinate.latitude
         let lon = coordinate.longitude
         let query = "\(lat),\(lon)"
-        let encodedPlace = (event.place ?? "Epicentro").addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "Epicentro"
+        let encodedPlace = (event.displayPlace ?? "Epicentro").addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "Epicentro"
 
         switch MapProviderChoice.stored(mapProvider) {
         case .google:
@@ -485,7 +485,7 @@ public struct EventDetailView: View {
         case .apple:
             let placemark = MKPlacemark(coordinate: coordinate)
             let item = MKMapItem(placemark: placemark)
-            item.name = "Epicentro: \(event.place ?? "Sismo")"
+            item.name = "Epicentro: \(event.displayPlace ?? "Sismo")"
             if !item.openInMaps() {
                 if let webURL = URL(string: "https://maps.apple.com/?ll=\(query)&q=\(encodedPlace)") {
                     UIApplication.shared.open(webURL)

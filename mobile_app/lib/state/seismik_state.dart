@@ -100,6 +100,8 @@ class SeismikState extends ChangeNotifier with WidgetsBindingObserver {
   StreamSubscription<NotificationEnvelope>? _notificationSubscription;
   Timer? _alertPreferencesTimer;
   Timer? _historyFilterTimer;
+  Timer? _foregroundRefreshTimer;
+  DateTime _lastRefreshAttempt = DateTime.fromMillisecondsSinceEpoch(0);
   Future<void>? _refreshInFlight;
   bool _refreshRequestedAgain = false;
   Future<void>? _flushInFlight;
@@ -126,6 +128,18 @@ class SeismikState extends ChangeNotifier with WidgetsBindingObserver {
   String? syncMessage;
 
   Future<void> initialize() async {
+    _foregroundRefreshTimer ??= Timer.periodic(const Duration(seconds: 15), (
+      _,
+    ) {
+      final int interval = api.lowBandwidth ? 180 : 60;
+      if (!_disposed &&
+          _visible &&
+          !initializing &&
+          DateTime.now().difference(_lastRefreshAttempt).inSeconds >=
+              interval) {
+        unawaited(refreshNetworkData());
+      }
+    });
     statusMessage = 'Conectando servicios en segundo plano…';
     _notify();
     _notificationSubscription = notifications.events.listen(_onNotification);
@@ -350,6 +364,7 @@ class SeismikState extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   Future<void> _refreshOnce() async {
+    _lastRefreshAttempt = DateTime.now();
     // Se piden a la vez. Las estaciones casi siempre salen de la caché y nunca
     // retrasan los sismos, que es lo que la persona espera ver.
     List<SeismicEvent>? loadedEvents;
@@ -364,11 +379,6 @@ class SeismikState extends ChangeNotifier with WidgetsBindingObserver {
           (List<SeismicEvent> value) => loadedEvents = value,
           onError: (Object error) => failure = error,
         );
-    final Future<List<SeismicStation>> stationsReady = _orDefault(
-      api.fetchStations(),
-      stations,
-    );
-
     await eventsReady;
     if (_disposed) return;
     final List<SeismicEvent>? fresh = loadedEvents;
@@ -382,19 +392,21 @@ class SeismikState extends ChangeNotifier with WidgetsBindingObserver {
     }
     _notify();
 
-    final List<SeismicStation> nextStations = await stationsReady;
+    // Small outgoing reports and missed alerts go before the heavy map layer.
+    // A tiny POST can succeed even when downloading history timed out.
+    await Future.wait(<Future<void>>[
+      _orDefault(flushPendingReports(), null),
+      syncMissedAlerts(),
+    ]);
+    final List<SeismicStation> nextStations = await _orDefault(
+      networkOnline ? api.fetchStations() : api.readCachedStations(),
+      stations,
+    );
     if (_disposed) return;
     // La misma lista significa el mismo catálogo: el mapa no se reconstruye.
     if (!identical(nextStations, stations) && nextStations.isNotEmpty) {
       stations = nextStations;
       _notify();
-    }
-
-    if (networkOnline) {
-      await Future.wait(<Future<void>>[
-        _orDefault(flushPendingReports(), null),
-        syncMissedAlerts(),
-      ]);
     }
   }
 
@@ -706,6 +718,7 @@ class SeismikState extends ChangeNotifier with WidgetsBindingObserver {
     _disposed = true;
     _alertPreferencesTimer?.cancel();
     _historyFilterTimer?.cancel();
+    _foregroundRefreshTimer?.cancel();
     registrations.dispose();
     WidgetsBinding.instance.removeObserver(this);
     settings.removeListener(_onSettingsChanged);

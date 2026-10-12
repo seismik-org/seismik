@@ -1104,7 +1104,7 @@ public struct FamilySafetyView: View {
 
     private func eventLabel(_ event: SeismicEvent) -> String {
         let magnitude = event.magnitude.map { String(format: "M %.1f", $0) } ?? "Sismo"
-        guard let place = event.place else { return magnitude }
+        guard let place = event.displayPlace else { return magnitude }
         return "\(magnitude) · \(place)"
     }
 

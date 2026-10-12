@@ -134,7 +134,7 @@ class EventDetailScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    event.place ?? 'Epicentro en revisión',
+                    event.displayPlace ?? 'Epicentro en revisión',
                     style: const TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.w700,
@@ -172,7 +172,7 @@ class EventDetailScreen extends StatelessWidget {
               ],
             ),
             Text(
-              event.place ?? 'Epicentro en revisión',
+              event.displayPlace ?? 'Epicentro en revisión',
               style: Theme.of(context).textTheme.headlineSmall,
             ),
             const SizedBox(height: 16),
@@ -304,7 +304,7 @@ class EventDetailScreen extends StatelessWidget {
                       markerId: MarkerId(event.id),
                       position: epicenter,
                       infoWindow: InfoWindow(
-                        title: event.place ?? 'Epicentro',
+                        title: event.displayPlace ?? 'Epicentro',
                         snippet: event.agency,
                       ),
                       icon: BitmapDescriptor.defaultMarkerWithHue(

@@ -24,6 +24,7 @@ public struct MonitorView: View {
     @State private var cameraCommand: MapCameraCommand = .none
     @State private var showSettings = false
     @State private var showEventList = false
+    @State private var loadMapOnSlowConnection = false
 
     /// Alto que ocupa la barra del historial; el mapa no centra nada debajo.
     private static let historyBarInset: CGFloat = 92
@@ -34,6 +35,14 @@ public struct MonitorView: View {
         GeometryReader { geometry in
             ZStack(alignment: .top) {
                 // Mapa nativo de Apple MapKit interactivo a pantalla completa
+                if state.lowBandwidth && !loadMapOnSlowConnection {
+                    VStack(spacing: 12) {
+                        Text("Conexión limitada · historial reducido")
+                        Text("Priorizamos alertas y reportes.")
+                        Button("Cargar mapa (usa más datos)") { loadMapOnSlowConnection = true }
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
                 NativeMapView(
                     state: state,
                     cameraCommand: cameraCommand,
@@ -42,6 +51,7 @@ public struct MonitorView: View {
                     state.selectEvent(selectedEvent)
                 }
                 .ignoresSafeArea()
+                }
 
                 FloatingHeaderView(state: state, showSettings: $showSettings)
                     .padding(.top, max(8, geometry.safeAreaInsets.top + 4))
@@ -437,7 +447,7 @@ private class SeismicPointAnnotation: NSObject, MKAnnotation {
         super.init()
     }
 
-    var title: String? { event.place ?? "Sismo" }
+    var title: String? { event.displayPlace ?? "Sismo" }
 }
 
 private class StationPointAnnotation: NSObject, MKAnnotation {

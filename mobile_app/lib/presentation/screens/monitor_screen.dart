@@ -32,6 +32,7 @@ class MonitorScreen extends StatefulWidget {
 }
 
 class _MonitorScreenState extends State<MonitorScreen> {
+  bool _loadMapOnSlowConnection = false;
   static const double _collapsed = 0.16;
   static const double _resting = 0.36;
   static const double _expanded = 0.86;
@@ -114,6 +115,10 @@ class _MonitorScreenState extends State<MonitorScreen> {
       const _SheetHandle(),
       const SizedBox(height: 12),
       StatusPill(online: online),
+      if (state.api.lowBandwidth)
+        const Text(
+          'Conexión limitada · historial reducido · reportes prioritarios',
+        ),
       if (pendingReports > 0 || syncMessage != null) ...<Widget>[
         const SizedBox(height: 8),
         _SyncBanner(
@@ -182,22 +187,31 @@ class _MonitorScreenState extends State<MonitorScreen> {
     ];
     final Widget content = Stack(
       children: <Widget>[
-        GoogleMap(
-          initialCameraPosition: CameraPosition(target: center, zoom: 5.8),
-          markers: markers,
-          circles: perimeters,
-          clusterManagers: _clusterManagers,
-          onTap: (_) => state.selectEvent(null),
-          myLocationEnabled: hasPosition,
-          myLocationButtonEnabled: hasPosition,
-          compassEnabled: false,
-          zoomControlsEnabled: false,
-          mapToolbarEnabled: false,
-          // El padding evita que los controles nativos queden bajo la hoja.
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.sizeOf(context).height * _collapsed,
+        if (state.api.lowBandwidth && !_loadMapOnSlowConnection)
+          Center(
+            child: TextButton.icon(
+              onPressed: () => setState(() => _loadMapOnSlowConnection = true),
+              icon: const Icon(Icons.map_outlined),
+              label: const Text('Cargar mapa (usa más datos)'),
+            ),
+          )
+        else
+          GoogleMap(
+            initialCameraPosition: CameraPosition(target: center, zoom: 5.8),
+            markers: markers,
+            circles: perimeters,
+            clusterManagers: _clusterManagers,
+            onTap: (_) => state.selectEvent(null),
+            myLocationEnabled: hasPosition,
+            myLocationButtonEnabled: hasPosition,
+            compassEnabled: false,
+            zoomControlsEnabled: false,
+            mapToolbarEnabled: false,
+            // El padding evita que los controles nativos queden bajo la hoja.
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.sizeOf(context).height * _collapsed,
+            ),
           ),
-        ),
         DraggableScrollableSheet(
           controller: _sheet,
           initialChildSize: _resting,
@@ -276,7 +290,7 @@ class _MonitorScreenState extends State<MonitorScreen> {
       '${_shortAgency(event)}';
 
   static String _markerSnippet(SeismicEvent event) =>
-      event.place ??
+      event.displayPlace ??
       (event.isPreliminary ? 'Candidato preliminar' : 'Evento oficial');
 
   static String _sourceLabel(String id) => switch (id) {
@@ -589,7 +603,7 @@ class _EventTile extends StatelessWidget {
             ),
           ),
           title: Text(
-            event.place ?? 'Evento sísmico',
+            event.displayPlace ?? 'Evento sísmico',
             style: const TextStyle(
               fontSize: 15.5,
               fontWeight: FontWeight.w600,
@@ -631,7 +645,7 @@ class _EventTile extends StatelessWidget {
                 : event.magnitude?.toStringAsFixed(1) ?? '?',
           ),
         ),
-        title: Text(event.place ?? 'Evento sísmico'),
+        title: Text(event.displayPlace ?? 'Evento sísmico'),
         subtitle: Text(
           <String>[
             _agencyLabel(event),

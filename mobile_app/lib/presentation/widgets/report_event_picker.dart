@@ -72,7 +72,7 @@ class _ReportEventPickerState extends State<ReportEventPicker> {
     final time = event.detectedAt.toLocal();
     final date =
         '${time.day}/${time.month} ${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
-    return '${event.place ?? 'Ubicación no determinada'} · $date'
+    return '${event.displayPlace ?? 'Ubicación no determinada'} · $date'
         '${event.magnitude == null ? '' : ' · M${event.magnitude!.toStringAsFixed(1)}'}'
         '${distance == null ? '' : ' · ${distance.round()} km de tu ubicación'}';
   }

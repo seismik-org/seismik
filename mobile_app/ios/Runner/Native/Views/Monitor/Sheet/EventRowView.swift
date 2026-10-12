@@ -18,7 +18,7 @@ public struct EventRowView: View {
 
                 // Datos descriptivos
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(event.place ?? "Evento sísmico")
+                    Text(event.displayPlace ?? "Evento sísmico")
                         .font(.system(size: 15, weight: .semibold))
                         .foregroundColor(.primary)
                         .lineLimit(1)

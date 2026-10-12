@@ -235,6 +235,26 @@ public enum ReportSubmission: Equatable {
 /// Cliente de red nativo en Swift con async/await para la API de Seismik.
 /// Maneja autenticación segura de sesión en Keychain, registro de dispositivo,
 /// firma criptográfica HMAC de reportes y persistencia local de contingencia.
+final class AdaptiveTransferNative {
+    private let lock = NSLock()
+    private var slow = false
+    private var fast = 0
+    var constrained: Bool { lock.withLock { slow } }
+    var eventLimit: Int { lock.withLock { slow ? 30 : (fast >= 2 ? 200 : 50) } }
+    var timeout: TimeInterval { constrained ? 40 : 25 }
+    func succeeded(seconds: Double, bytes: Int) {
+        lock.withLock {
+            if seconds >= 5 || (bytes >= 8192 && seconds > 1 && Double(bytes)/seconds < 8000) {
+                slow = true; fast = 0
+            } else if seconds < 3 {
+                fast += 1
+                if fast >= 3 { slow = false }
+            } else { fast = 0 }
+        }
+    }
+    func failed() { lock.withLock { slow = true; fast = 0 } }
+}
+
 public final class SeismikAPIClient {
     public static let shared = SeismikAPIClient()
 
@@ -243,6 +263,10 @@ public final class SeismikAPIClient {
     private let keychain: KeychainStore
     private let queue = OfflineReportQueue.shared
     private let encoder = JSONEncoder()
+    let transfer = AdaptiveTransferNative()
+    public var lowBandwidth: Bool { transfer.constrained }
+    private static let stationsCacheKey = "seismik.native.stations.cache"
+    private static let stationsCacheDateKey = "seismik.native.stations.date"
 
     private static let sessionTokenKey = "seismik.device_session_token"
     private static let crowdTokenKey = "seismik.crowd_token"
@@ -272,10 +296,11 @@ public final class SeismikAPIClient {
         self.baseURL = baseURL ?? Self.resolveBaseURL(configured: configuredURL)
         self.keychain = keychain
         let config = URLSessionConfiguration.default
-        config.timeoutIntervalForRequest = 12.0
-        config.timeoutIntervalForResource = 30.0
+        config.timeoutIntervalForRequest = 40.0
+        config.timeoutIntervalForResource = 60.0
         config.httpAdditionalHeaders = [
             "Accept": "application/json",
+            "Accept-Encoding": "gzip",
             "Content-Type": "application/json",
             "User-Agent": "Seismik-iOS-Native/1.0.0"
         ]
@@ -439,7 +464,7 @@ public final class SeismikAPIClient {
             URLQueryItem(name: "sources", value: sources.sorted().joined(separator: ",")),
             URLQueryItem(name: "days", value: "\(days)"),
             URLQueryItem(name: "minimum_magnitude", value: String(format: "%.1f", minimumMagnitude)),
-            URLQueryItem(name: "limit", value: "200")
+            URLQueryItem(name: "limit", value: "\(transfer.eventLimit)")
         ]
 
         guard let url = components?.url else {
@@ -454,7 +479,7 @@ public final class SeismikAPIClient {
         // Un fallo se informa. Devolver aquí la copia guardada hacía que la app
         // dijera «Sincronizado» con sismos de hace días; SeismikState la muestra
         // marcada como sin conexión.
-        let (data, response) = try await session.data(for: request)
+        let (data, response) = try await historyTransfer(request)
         guard let httpResponse = response as? HTTPURLResponse else {
             throw SeismikAPIError.malformedResponse
         }
@@ -464,7 +489,7 @@ public final class SeismikAPIClient {
             let registered = try await registerDevice()
             if registered, let freshToken = deviceSessionToken {
                 request.setValue(freshToken, forHTTPHeaderField: "X-Seismik-Device-Session")
-                let (retryData, retryResponse) = try await session.data(for: request)
+                let (retryData, retryResponse) = try await historyTransfer(request)
                 if let retryHttp = retryResponse as? HTTPURLResponse, (200...299).contains(retryHttp.statusCode) {
                     return try parseAndCacheEvents(retryData)
                 }
@@ -482,10 +507,36 @@ public final class SeismikAPIClient {
         loadCachedEvents()
     }
 
+    private func historyTransfer(_ original: URLRequest) async throws -> (Data, URLResponse) {
+        var request = original
+        request.timeoutInterval = transfer.timeout
+        request.cachePolicy = .reloadIgnoringLocalCacheData
+        let started = Date()
+        do {
+            let result = try await session.data(for: request)
+            if let http = result.1 as? HTTPURLResponse {
+                if (200...299).contains(http.statusCode) {
+                    transfer.succeeded(seconds: Date().timeIntervalSince(started), bytes: result.0.count)
+                } else if http.statusCode >= 500 || http.statusCode == 429 { transfer.failed() }
+            }
+            return result
+        } catch {
+            if let error = error as? URLError, error.code != .cancelled { transfer.failed() }
+            throw error
+        }
+    }
+
     // MARK: - Estaciones Sismológicas
 
     /// Obtiene el listado de estaciones sismológicas activas de la red.
     public func fetchStations() async throws -> [SeismicStation] {
+        let defaults = UserDefaults.standard
+        let saved = defaults.data(forKey: Self.stationsCacheKey)
+        let savedAt = defaults.double(forKey: Self.stationsCacheDateKey)
+        let cached = saved.flatMap { try? JSONDecoder().decode([SeismicStation].self, from: $0) } ?? []
+        if lowBandwidth || (!cached.isEmpty && Date().timeIntervalSince1970 - savedAt < 43200) {
+            return cached
+        }
         if !isRegistered { _ = try await registerDevice() }
         let url = baseURL.appendingPathComponent("v1/network/stations")
         var request = URLRequest(url: url)
@@ -508,10 +559,15 @@ public final class SeismikAPIClient {
             }
 
             if let decoded = try? JSONDecoder().decode(StationsResponse.self, from: data) {
+                if let encoded = try? JSONEncoder().encode(decoded.stations) {
+                    defaults.set(encoded, forKey: Self.stationsCacheKey)
+                    defaults.set(Date().timeIntervalSince1970, forKey: Self.stationsCacheDateKey)
+                }
                 return decoded.stations
             }
             throw SeismikAPIError.malformedResponse
         } catch {
+            if !cached.isEmpty { return cached }
             throw error
         }
     }

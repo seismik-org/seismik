@@ -33,7 +33,7 @@ class OpenInMapsButton extends StatelessWidget {
     final bool opened = await launcher.openEpicenter(
       latitude: event.latitude!,
       longitude: event.longitude!,
-      label: event.place ?? 'Epicentro',
+      label: event.displayPlace ?? 'Epicentro',
       provider: provider,
     );
     if (!opened) {

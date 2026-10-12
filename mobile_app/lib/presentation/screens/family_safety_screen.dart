@@ -802,5 +802,7 @@ String _eventLabel(SeismicEvent event) {
   final String magnitude = event.magnitude == null
       ? 'Sismo'
       : 'M ${event.magnitude!.toStringAsFixed(1)}';
-  return event.place == null ? magnitude : '$magnitude · ${event.place}';
+  return event.displayPlace == null
+      ? magnitude
+      : '$magnitude · ${event.displayPlace}';
 }

@@ -44,7 +44,7 @@ public struct EmergencyAlertView: View {
                         .foregroundColor(.white)
                         .multilineTextAlignment(.center)
 
-                    Text(event.place ?? "Sismo detectado en tu región")
+                    Text(event.displayPlace ?? "Sismo detectado en tu región")
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundColor(.white.opacity(0.9))
                         .multilineTextAlignment(.center)

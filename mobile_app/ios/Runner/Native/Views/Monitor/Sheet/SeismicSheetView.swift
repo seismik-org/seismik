@@ -220,7 +220,7 @@ struct HistoryBarView: View {
             return state.isRefreshing ? "Sincronizando red de sismos..." : "No hay sismos con estos filtros"
         }
         let magnitude = latest.magnitude.map { String(format: "M %.1f", $0) } ?? "Preliminar"
-        return "\(magnitude) · \(latest.place ?? "Epicentro") · \(latest.relativeTimeFormatted)"
+        return "\(magnitude) · \(latest.displayPlace ?? "Epicentro") · \(latest.relativeTimeFormatted)"
     }
 }
 

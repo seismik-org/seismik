@@ -293,7 +293,7 @@ struct ReportEventSelection: View {
         let time = event.detectedAt.map { DateFormatter.localizedString(from: $0, dateStyle: .short, timeStyle: .short) } ?? "Hora no disponible"
         let magnitude = event.magnitude.map { String(format: " · M%.1f", $0) } ?? ""
         let distance = ReportEventChoices.distance(event, from: location.currentCoordinate).map { " · \(Int($0.rounded())) km de tu ubicación" } ?? ""
-        return "\(event.place ?? "Ubicación no determinada") · \(time)\(magnitude)\(distance)"
+        return "\(event.displayPlace ?? "Ubicación no determinada") · \(time)\(magnitude)\(distance)"
     }
 
     @MainActor private func refresh() async {
