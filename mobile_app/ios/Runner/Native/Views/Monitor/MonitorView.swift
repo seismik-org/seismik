@@ -36,7 +36,7 @@ public struct MonitorView: View {
         GeometryReader { geometry in
             ZStack(alignment: .top) {
                 // Mapa nativo de Apple MapKit interactivo a pantalla completa
-                if state.lowBandwidth && !loadMapOnSlowConnection {
+                if (state.offlineEmergencyMode || state.lowBandwidth) && !loadMapOnSlowConnection {
                     VStack(spacing: 12) {
                         Text("Conexión limitada · historial reducido")
                         Text("Priorizamos alertas y reportes.")

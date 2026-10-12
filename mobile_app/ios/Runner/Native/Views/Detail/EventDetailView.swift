@@ -8,6 +8,7 @@ public struct EventDetailView: View {
     @AppStorage("seismik.map_provider") private var mapProvider = MapProviderChoice.apple.rawValue
 
     @State private var showFeltReport = false
+    @AppStorage("seismik.emergency.offline_mode") private var cachedOnly = false
     @State private var showDamageReport = false
     @State private var browserDestination: BrowserDestination?
     @ObservedObject private var locationManager = LocationManager.shared
@@ -42,7 +43,7 @@ public struct EventDetailView: View {
                     }
 
                     // 6. Mini Mapa del Epicentro
-                    if let coord = event.coordinate {
+                    if let coord = event.coordinate, !cachedOnly, !SeismikAPIClient.shared.lowBandwidth {
                         epicenterMapSection(coord)
                     }
                     perimeterCard

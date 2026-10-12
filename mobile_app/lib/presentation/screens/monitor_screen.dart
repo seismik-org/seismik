@@ -197,7 +197,8 @@ class _MonitorScreenState extends State<MonitorScreen> {
     ];
     final Widget content = Stack(
       children: <Widget>[
-        if (state.api.lowBandwidth && !_loadMapOnSlowConnection)
+        if ((state.offlineEmergencyMode || state.api.lowBandwidth) &&
+            !_loadMapOnSlowConnection)
           Center(
             child: TextButton.icon(
               onPressed: () => setState(() => _loadMapOnSlowConnection = true),

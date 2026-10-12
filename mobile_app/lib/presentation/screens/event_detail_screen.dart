@@ -25,6 +25,9 @@ class EventDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ColorScheme colors = Theme.of(context).colorScheme;
+    final bool deferMap = context.select<SeismikState, bool>(
+      (s) => s.offlineEmergencyMode || s.api.lowBandwidth,
+    );
     final LatLng epicenter = LatLng(event.latitude ?? 0, event.longitude ?? 0);
     final List<PerimeterRing> rings = feltPerimeter(event);
     final Position? position = context.select<SeismikState, Position?>(
@@ -279,7 +282,9 @@ class EventDetailScreen extends StatelessWidget {
             ),
           ],
           const SizedBox(height: 22),
-          if (event.latitude != null && event.longitude != null) ...<Widget>[
+          if (!deferMap &&
+              event.latitude != null &&
+              event.longitude != null) ...<Widget>[
             SizedBox(
               height: 360,
               child: ClipRRect(
