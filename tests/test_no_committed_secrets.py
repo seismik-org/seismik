@@ -137,7 +137,11 @@ def test_native_ios_maps_do_not_require_a_google_maps_key() -> None:
         ):
             assert obsolete not in content, f"{path} mantiene configuración Maps obsoleta"
     # La retirada de Maps no debe retirar Firebase/App Check del registro.
-    assert "FirebaseApp.configure()" in delegate
+    assert "FirebaseApp.configure(options: options)" in delegate
+    assert "FirebaseOptions(contentsOfFile: path)" in delegate
+    assert "try? SeismikFirebaseRuntime.prepare()" in delegate
+    client = Path("mobile_app/ios/Runner/Native/Services/SeismikAPIClient.swift").read_text(encoding="utf-8")
+    assert "try SeismikFirebaseRuntime.prepare()" in client
     assert "AppCheck.setAppCheckProviderFactory" in delegate
     assert not PATTERNS["clave de API de Google"].search(delegate), (
         "Hay una clave de Google escrita en AppDelegate.swift"
