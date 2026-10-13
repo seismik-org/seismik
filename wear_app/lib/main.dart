@@ -9,6 +9,7 @@ import 'package:seismik_shared/felt_area.dart';
 
 import 'api.dart';
 import 'event.dart';
+import 'event_detail_screen.dart';
 import 'family.dart';
 import 'family_screen.dart';
 import 'rotary.dart';
@@ -167,10 +168,19 @@ class _WatchHomeState extends State<WatchHome> {
                 else if (latest == null && !_loading)
                   const _Message(text: 'Sin sismos recientes.')
                 else if (latest != null) ...<Widget>[
-                  HeroCard(event: latest, position: _position),
+                  OpensEventDetail(
+                    event: latest,
+                    child: HeroCard(event: latest, position: _position),
+                  ),
                   const SizedBox(height: 14),
-                  for (final WearEvent event in _events.skip(1).take(6))
-                    _EventRow(event: event, position: _position),
+                  for (final WearEvent event
+                      in _events
+                          .where((WearEvent e) => e.id != latest.id)
+                          .take(6))
+                    OpensEventDetail(
+                      event: event,
+                      child: _EventRow(event: event, position: _position),
+                    ),
                 ],
                 const SizedBox(height: 10),
                 SizedBox(
@@ -213,6 +223,36 @@ class _WatchHomeState extends State<WatchHome> {
       ),
     );
   }
+}
+
+/// Un toque en un sismo abre su detalle con la magnitud de cada organización.
+class OpensEventDetail extends StatelessWidget {
+  const OpensEventDetail({
+    required this.event,
+    required this.child,
+    super.key,
+  });
+
+  final WearEvent event;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    button: true,
+    hint: 'Abre las magnitudes por organización',
+    child: GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (BuildContext context) => WearEventDetailScreen(
+            event: event,
+            accent: magnitudeColor(event),
+          ),
+        ),
+      ),
+      child: child,
+    ),
+  );
 }
 
 class _Header extends StatelessWidget {

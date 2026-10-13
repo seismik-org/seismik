@@ -22,6 +22,15 @@ final class AssociatedSourceReportsTests: XCTestCase {
         let legacy = try JSONDecoder().decode(SeismicEvent.self, from: Data("{\"event_id\":\"old\"}".utf8))
         XCTAssertTrue(legacy.sourceReports.isEmpty)
     }
+
+    func testMalformedReportsDoNotDropTheEarthquake() throws {
+        let json = "{\"event_id\":\"sgc:1\",\"magnitude\":4.2,\"source_reports\":[{\"agency\":\"SGC\"}],\"related_event_ids\":[1,2]}"
+        let event = try JSONDecoder().decode(SeismicEvent.self, from: Data(json.utf8))
+        XCTAssertEqual(event.id, "sgc:1")
+        XCTAssertEqual(event.magnitude, 4.2)
+        XCTAssertTrue(event.sourceReports.isEmpty)
+        XCTAssertTrue(event.relatedEventIds.isEmpty)
+    }
 }
 
 final class FamilyNicknameAndReportChoiceTests: XCTestCase {

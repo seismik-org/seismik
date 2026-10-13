@@ -1,5 +1,54 @@
 import 'package:seismik_shared/felt_area.dart';
 
+/// Lo que una organización informó de un mismo sismo, sin tocarlo: cada una
+/// conserva su valor, su escala y su estado de revisión. No se promedian.
+class WearSourceReport {
+  const WearSourceReport({
+    required this.agency,
+    this.magnitude,
+    this.magnitudeText,
+    this.magnitudeType,
+    this.reviewStatus,
+  });
+
+  factory WearSourceReport.fromMap(Map<String, dynamic> map) {
+    final Object? raw = map['magnitude'];
+    final double? magnitude = switch (raw) {
+      final num value => value.toDouble(),
+      final String value => double.tryParse(value.trim()),
+      _ => null,
+    };
+    String? text(String key) {
+      final String value = '${map[key] ?? ''}'.trim();
+      return value.isEmpty ? null : value;
+    }
+
+    return WearSourceReport(
+      agency: text('agency') ?? text('source_id') ?? 'Fuente',
+      magnitude: magnitude,
+      // Se conserva la precisión con que la organización publicó el valor:
+      // 3.13 no debe leerse como 3.1 al compararlo con otra escala.
+      magnitudeText: magnitude == null
+          ? null
+          : raw is String
+          ? raw.trim()
+          : raw is int
+          ? '$raw.0'
+          : '$magnitude',
+      magnitudeType: text('magnitude_type'),
+      reviewStatus: text('review_status'),
+    );
+  }
+
+  final String agency;
+  final double? magnitude;
+  final String? magnitudeText;
+  final String? magnitudeType;
+  final String? reviewStatus;
+
+  String get valueLabel => magnitudeText ?? 'Sin magnitud';
+}
+
 /// Un sismo, con lo justo para una pantalla de reloj.
 class WearEvent {
   const WearEvent({
@@ -12,6 +61,8 @@ class WearEvent {
     this.place,
     this.agency,
     this.preliminary = false,
+    this.sourceReports = const <WearSourceReport>[],
+    this.relatedEventIds = const <String>[],
   });
 
   factory WearEvent.fromMap(Map<String, dynamic> map) {
@@ -35,7 +86,46 @@ class WearEvent {
       place: map['place'] as String?,
       agency: map['agency'] as String?,
       preliminary: type == 'earthquake_candidate' || map['preliminary'] == true,
+      sourceReports: <WearSourceReport>[
+        for (final Object? report
+            in (map['source_reports'] is List
+                ? map['source_reports'] as List<Object?>
+                : const <Object?>[]))
+          if (report is Map<String, dynamic>) WearSourceReport.fromMap(report),
+      ],
+      relatedEventIds: <String>[
+        for (final Object? id
+            in (map['related_event_ids'] is List
+                ? map['related_event_ids'] as List<Object?>
+                : const <Object?>[]))
+          if (id != null && '$id'.isNotEmpty) '$id',
+      ],
     );
+  }
+
+  /// Lista del servidor o de la caché, con un solo elemento por sismo.
+  ///
+  /// La API ya agrupa los reportes de cada organización, pero una caché guardada
+  /// por una versión anterior, o un reintento, puede traer el mismo sismo bajo
+  /// otro identificador: se reconoce por los identificadores asociados.
+  static List<WearEvent> parseList(Object? raw) {
+    final List<WearEvent> parsed = <WearEvent>[
+      if (raw is List)
+        for (final Object? item in raw)
+          if (item is Map<String, dynamic>) WearEvent.fromMap(item),
+    ];
+    final Set<String> known = <String>{};
+    final List<WearEvent> unique = <WearEvent>[];
+    for (final WearEvent event in parsed) {
+      final Set<String> ids = <String>{
+        if (event.id.isNotEmpty) event.id,
+        ...event.relatedEventIds,
+      };
+      if (ids.isNotEmpty && ids.any(known.contains)) continue;
+      known.addAll(ids);
+      unique.add(event);
+    }
+    return List<WearEvent>.unmodifiable(unique);
   }
 
   final String id;
@@ -47,6 +137,8 @@ class WearEvent {
   final String? place;
   final String? agency;
   final bool preliminary;
+  final List<WearSourceReport> sourceReports;
+  final List<String> relatedEventIds;
 
   String get magnitudeLabel =>
       magnitude == null ? '—' : magnitude!.toStringAsFixed(1);

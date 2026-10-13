@@ -296,8 +296,9 @@ public struct SeismicEvent: Identifiable, Codable, Hashable {
         algorithm = try container.decodeIfPresent(String.self, forKey: .algorithm)
         magnitudeEstimateStatus = try container.decodeIfPresent(String.self, forKey: .magnitudeEstimateStatus)
         stations = (try? container.decodeIfPresent([StationTrigger].self, forKey: .stations)) ?? []
-        sourceReports = try container.decodeIfPresent([SeismicSourceReport].self, forKey: .sourceReports) ?? []
-        relatedEventIds = try container.decodeIfPresent([String].self, forKey: .relatedEventIds) ?? []
+        // Un reporte mal formado no debe hacer desaparecer el sismo entero del historial.
+        sourceReports = (try? container.decodeIfPresent([SeismicSourceReport].self, forKey: .sourceReports)) ?? []
+        relatedEventIds = (try? container.decodeIfPresent([String].self, forKey: .relatedEventIds)) ?? []
         notificationType = try container.decodeIfPresent(String.self, forKey: .notificationType)
         if let value = try? container.decode(Bool.self, forKey: .critical) {
             critical = value

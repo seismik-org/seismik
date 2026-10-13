@@ -140,11 +140,7 @@ class SeismikWearApi {
     }
     final Map<String, dynamic> payload =
         jsonDecode(response.body) as Map<String, dynamic>;
-    final List<WearEvent> events = <WearEvent>[
-      for (final Object? item
-          in (payload['events'] as List<Object?>? ?? const <Object?>[]))
-        if (item is Map<String, dynamic>) WearEvent.fromMap(item),
-    ];
+    final List<WearEvent> events = WearEvent.parseList(payload['events']);
     final SharedPreferences preferences = await SharedPreferences.getInstance();
     await preferences.setString(_cacheKey, jsonEncode(payload['events']));
     await _refreshSurfaces();
@@ -172,12 +168,7 @@ class SeismikWearApi {
     final String? raw = preferences.getString(_cacheKey);
     if (raw == null) return <WearEvent>[];
     try {
-      final Object? decoded = jsonDecode(raw);
-      if (decoded is! List) return <WearEvent>[];
-      return <WearEvent>[
-        for (final Object? item in decoded)
-          if (item is Map<String, dynamic>) WearEvent.fromMap(item),
-      ];
+      return WearEvent.parseList(jsonDecode(raw));
     } on FormatException {
       return <WearEvent>[];
     }

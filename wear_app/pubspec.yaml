@@ -3,7 +3,7 @@ description: "Seismik para Wear OS: el último sismo y la sacudida estimada en t
 publish_to: none
 # Los códigos del reloj van en su propia banda para no chocar con los
 # del teléfono dentro de la misma ficha de Play.
-version: 1.0.0+10002
+version: 1.0.0+10003
 
 environment:
   sdk: ">=3.11.0 <4.0.0"
