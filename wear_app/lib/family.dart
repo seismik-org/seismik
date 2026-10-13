@@ -26,10 +26,7 @@ class FamilyMember {
       reportedAt: report == null
           ? null
           : DateTime.tryParse(
-              '${report['reported_at'] ?? ''}'.replaceAll(
-                RegExp(r'\.\d+'),
-                '',
-              ),
+              '${report['reported_at'] ?? ''}'.replaceAll(RegExp(r'\.\d+'), ''),
             )?.toUtc(),
     );
   }
@@ -100,8 +97,9 @@ class WearFamily {
     return _session;
   }
 
-  Future<Map<String, String>> _headers(String token) async =>
-      <String, String>{'X-Seismik-Account-Session': token};
+  Future<Map<String, String>> _headers(String token) async => <String, String>{
+    'X-Seismik-Account-Session': token,
+  };
 
   /// El círculo con el estado de cada quien.
   Future<FamilyCircle?> circle() async {

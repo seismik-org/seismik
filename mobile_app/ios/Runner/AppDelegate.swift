@@ -7,7 +7,6 @@ import SwiftUI
 
 @main
 @objc class AppDelegate: FlutterAppDelegate {
-  private let appCheckProviderFactory = SeismikAppCheckProviderFactory()
 
   override func application(
     _ application: UIApplication,
@@ -26,10 +25,9 @@ import SwiftUI
     // La interfaz es SwiftUI nativa, por lo que no hay un `Firebase.initializeApp`
     // de Dart que configure App Check por nosotros. El proveedor debe instalarse
     // antes de crear la app Firebase para que el primer registro sea verificable.
-    AppCheck.setAppCheckProviderFactory(appCheckProviderFactory)
-    if FirebaseApp.app() == nil {
-      FirebaseApp.configure()
-    }
+    // A missing configuration must not abort the process. Registration retries
+    // the same preparation and reports a configuration error, not a signal error.
+    try? SeismikFirebaseRuntime.prepare()
 
     GeneratedPluginRegistrant.register(with: self)
     let launched = super.application(application, didFinishLaunchingWithOptions: launchOptions)
@@ -94,6 +92,24 @@ enum SeismikLaunchEnvironment {
     #else
     return false
     #endif
+  }
+}
+
+enum SeismikFirebaseRuntime {
+  private static let lock = NSLock()
+  private static let provider = SeismikAppCheckProviderFactory()
+
+  static func prepare() throws {
+    lock.lock()
+    defer { lock.unlock() }
+    if FirebaseApp.app() != nil { return }
+    guard !SeismikLaunchEnvironment.isHostingUnitTests,
+          let path = Bundle.main.path(forResource: "GoogleService-Info", ofType: "plist"),
+          let options = FirebaseOptions(contentsOfFile: path) else {
+      throw SeismikAPIError.rejected(status: 503, message: "La configuración de verificación de esta versión no está disponible. Actualiza Seismik; no es un fallo de señal.")
+    }
+    AppCheck.setAppCheckProviderFactory(provider)
+    FirebaseApp.configure(options: options)
   }
 }
 

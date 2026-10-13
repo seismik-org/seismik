@@ -9,6 +9,9 @@ plugins {
 if (file("google-services.json").isFile) {
     apply(plugin = "com.google.gms.google-services")
 }
+if (!System.getenv("SEISMIK_KEYSTORE").isNullOrEmpty() && !file("google-services.json").isFile) {
+    throw GradleException("Signed distributions require production google-services.json.")
+}
 
 android {
     namespace = "com.seismik.seismik_wear"

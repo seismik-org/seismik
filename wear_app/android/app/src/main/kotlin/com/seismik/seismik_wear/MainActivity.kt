@@ -24,6 +24,11 @@ class MainActivity : FlutterActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.seismik.app/wear-colors")
+            .setMethodCallHandler { call, result ->
+                if (call.method == "getColors") result.success(WatchDynamicColors.read(this))
+                else result.notImplemented()
+            }
         EventChannel(flutterEngine.dartExecutor.binaryMessenger, ROTARY_CHANNEL)
             .setStreamHandler(
                 object : EventChannel.StreamHandler {

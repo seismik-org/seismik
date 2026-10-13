@@ -110,9 +110,10 @@ class LatestQuakeTileService : TileService() {
         else -> 0xFFFFB300.toInt()
     }
 
+    private val WHITE: Int get() = WatchDynamicColors.read(this)?.get("on_surface")?.toInt() ?: 0xFFFFFFFF.toInt()
+    private val MUTED: Int get() = WatchDynamicColors.read(this)?.get("on_surface_variant")?.toInt() ?: 0xFF9DADC8.toInt()
+
     private companion object {
         const val RESOURCES_VERSION = "1"
-        val WHITE = 0xFFFFFFFF.toInt()
-        val MUTED = 0xFF9DADC8.toInt()
     }
 }

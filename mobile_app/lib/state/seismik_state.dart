@@ -302,6 +302,9 @@ class SeismikState extends ChangeNotifier with WidgetsBindingObserver {
   Future<bool> _registerAndStartSensors() async {
     try {
       await _registerWithRetry();
+      // If initial notification startup failed, Firebase registration has now
+      // recovered. Attach listeners too; successful startup is idempotent.
+      await _initializeNotifications();
     } catch (error) {
       statusMessage = 'Registro del dispositivo pendiente: $error';
       _notify();

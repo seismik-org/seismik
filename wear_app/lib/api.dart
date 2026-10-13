@@ -141,7 +141,8 @@ class SeismikWearApi {
     final Map<String, dynamic> payload =
         jsonDecode(response.body) as Map<String, dynamic>;
     final List<WearEvent> events = <WearEvent>[
-      for (final Object? item in (payload['events'] as List<Object?>? ?? const <Object?>[]))
+      for (final Object? item
+          in (payload['events'] as List<Object?>? ?? const <Object?>[]))
         if (item is Map<String, dynamic>) WearEvent.fromMap(item),
     ];
     final SharedPreferences preferences = await SharedPreferences.getInstance();
@@ -155,7 +156,9 @@ class SeismikWearApi {
   /// parte nativa.
   Future<void> _refreshSurfaces() async {
     try {
-      await const MethodChannel('seismik/wear').invokeMethod<void>('refreshSurfaces');
+      await const MethodChannel(
+        'seismik/wear',
+      ).invokeMethod<void>('refreshSurfaces');
     } on PlatformException {
       // Sin tile ni complicación instalados no hay nada que actualizar.
     } on MissingPluginException {

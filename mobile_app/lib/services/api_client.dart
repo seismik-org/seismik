@@ -22,6 +22,7 @@ import '../data/models/station.dart';
 import 'wear_bridge.dart';
 import 'adaptive_transfer.dart';
 import 'emergency_store.dart';
+import 'firebase_runtime.dart';
 
 class SeismikApiException implements Exception {
   const SeismikApiException(this.message, this.statusCode);
@@ -132,6 +133,9 @@ class ApiClient {
     double alertRadiusKm = 250.0,
   }) async {
     final String deviceId = await ensureDeviceId();
+    // Registration can be requested by settings/family before notifications
+    // finish. Every path must await the same Firebase/App Check readiness gate.
+    await FirebaseRuntime.ensureReady();
     String? integrityToken;
     try {
       // Sin forzar: el SDK devuelve el token vigente (dura cerca de una hora)

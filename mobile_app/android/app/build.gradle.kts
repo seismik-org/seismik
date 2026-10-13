@@ -15,6 +15,10 @@ if (motionProbe && gradle.startParameter.taskNames.any { it.contains("Release", 
 if (!motionProbe && file("google-services.json").isFile) {
     apply(plugin = "com.google.gms.google-services")
 }
+if (!motionProbe && !System.getenv("SEISMIK_KEYSTORE").isNullOrEmpty()
+    && !file("google-services.json").isFile) {
+    throw GradleException("Signed distributions require production google-services.json; refusing a build without Firebase.")
+}
 
 android {
     namespace = "com.seismik.app"

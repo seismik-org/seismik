@@ -990,6 +990,7 @@ public final class SeismikAPIClient {
     /// Obtiene un token efímero emitido por Firebase App Check y respaldado
     /// por DeviceCheck. Nunca se persiste.
     private func currentAppCheckToken() async throws -> String {
+        try SeismikFirebaseRuntime.prepare()
         // Sin FirebaseApp, AppCheck.appCheck() lanza una excepción de Objective-C
         // que cierra la app. Mejor un error transitorio: el registro se reintenta.
         guard FirebaseApp.app() != nil else {

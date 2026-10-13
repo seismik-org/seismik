@@ -13,6 +13,7 @@ import 'family.dart';
 import 'family_screen.dart';
 import 'rotary.dart';
 import 'theme.dart';
+import 'system_theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -33,20 +34,13 @@ class SeismikWearApp extends StatelessWidget {
   const SeismikWearApp({super.key});
 
   @override
-  Widget build(BuildContext context) => MaterialApp(
-    title: 'Seismik',
-    debugShowCheckedModeBanner: false,
-    theme: ThemeData(
-      useMaterial3: true,
-      brightness: Brightness.dark,
-      scaffoldBackgroundColor: wearBackground,
-      colorScheme: const ColorScheme.dark(
-        surface: wearBackground,
-        primary: wearPrimary,
-      ),
-      fontFamily: 'Roboto',
+  Widget build(BuildContext context) => WatchSystemTheme(
+    builder: (theme) => MaterialApp(
+      title: 'Seismik',
+      debugShowCheckedModeBanner: false,
+      theme: theme,
+      home: const WatchHome(),
     ),
-    home: const WatchHome(),
   );
 }
 
@@ -161,7 +155,7 @@ class _WatchHomeState extends State<WatchHome> {
           controller: _scroll,
           child: RefreshIndicator(
             onRefresh: _refresh,
-            backgroundColor: wearSurface,
+            backgroundColor: Theme.of(context).colorScheme.surfaceContainer,
             child: ListView(
               controller: _scroll,
               // Margen generoso: en una pantalla redonda las esquinas se pierden.
@@ -189,8 +183,10 @@ class _WatchHomeState extends State<WatchHome> {
                       ),
                     ),
                     style: FilledButton.styleFrom(
-                      backgroundColor: wearSurface,
-                      foregroundColor: Colors.white,
+                      backgroundColor: Theme.of(
+                        context,
+                      ).colorScheme.surfaceContainer,
+                      foregroundColor: Theme.of(context).colorScheme.onSurface,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(22),
                       ),
@@ -237,7 +233,7 @@ class _Header extends StatelessWidget {
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             color: loading
-                ? const Color(0xFF7CC4FF)
+                ? Theme.of(context).colorScheme.primary
                 : offline
                 ? const Color(0xFFFBBF24)
                 : const Color(0xFF4ADE80),
@@ -250,8 +246,8 @@ class _Header extends StatelessWidget {
               : offline
               ? 'Sin conexión'
               : 'SEISMIK',
-          style: const TextStyle(
-            color: wearMuted,
+          style: TextStyle(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
             fontSize: 11,
             fontWeight: FontWeight.w800,
             letterSpacing: 1.4,
@@ -273,7 +269,11 @@ class _Message extends StatelessWidget {
     child: Text(
       text,
       textAlign: TextAlign.center,
-      style: const TextStyle(color: wearMuted, fontSize: 13, height: 1.4),
+      style: TextStyle(
+        color: Theme.of(context).colorScheme.onSurfaceVariant,
+        fontSize: 13,
+        height: 1.4,
+      ),
     ),
   );
 }
@@ -301,7 +301,7 @@ class HeroCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
       decoration: BoxDecoration(
-        color: wearSurface,
+        color: Theme.of(context).colorScheme.surfaceContainer,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: magnitudeColor(event).withValues(alpha: 0.5)),
       ),
@@ -326,9 +326,12 @@ class HeroCard extends StatelessWidget {
               ),
               if (event.preliminary) ...<Widget>[
                 const SizedBox(width: 8),
-                const Text(
+                Text(
                   'preliminar',
-                  style: TextStyle(color: wearMuted, fontSize: 10),
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    fontSize: 10,
+                  ),
                 ),
               ],
             ],
@@ -339,8 +342,8 @@ class HeroCard extends StatelessWidget {
             textAlign: TextAlign.center,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: Colors.white,
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurface,
               fontSize: 13,
               height: 1.2,
               fontWeight: FontWeight.w600,
@@ -349,7 +352,10 @@ class HeroCard extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             event.ago(),
-            style: const TextStyle(color: wearMuted, fontSize: 11),
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              fontSize: 11,
+            ),
           ),
           const SizedBox(height: 8),
           _ShakingLine(
@@ -382,7 +388,10 @@ class _ShakingLine extends StatelessWidget {
       return Text(
         located ? 'Sin epicentro para estimar' : 'Buscando tu ubicación…',
         textAlign: TextAlign.center,
-        style: const TextStyle(color: wearMuted, fontSize: 11),
+        style: TextStyle(
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
+          fontSize: 11,
+        ),
       );
     }
     final String far = distanceKm == null ? '' : ' · a ${_km(distanceKm!)}';
@@ -391,7 +400,11 @@ class _ShakingLine extends StatelessWidget {
         'No se sintió aquí$far',
         textAlign: TextAlign.center,
         maxLines: 2,
-        style: const TextStyle(color: wearMuted, fontSize: 11, height: 1.3),
+        style: TextStyle(
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
+          fontSize: 11,
+          height: 1.3,
+        ),
       );
     }
     final Color color = intensityColor(intensity);
@@ -442,7 +455,7 @@ class _EventRow extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: wearSurface,
+        color: Theme.of(context).colorScheme.surfaceContainer,
         borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
@@ -466,13 +479,19 @@ class _EventRow extends StatelessWidget {
                   event.place ?? 'Sin ubicar',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: Colors.white, fontSize: 12),
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurface,
+                    fontSize: 12,
+                  ),
                 ),
                 Text(
                   intensity == null
                       ? event.ago()
                       : '${event.ago()} · aquí ${intensityRoman(intensity)}',
-                  style: const TextStyle(color: wearMuted, fontSize: 11),
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    fontSize: 11,
+                  ),
                 ),
               ],
             ),

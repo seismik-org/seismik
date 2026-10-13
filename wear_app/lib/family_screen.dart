@@ -206,7 +206,7 @@ class _MemberRow extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: wearSurface,
+        color: Theme.of(context).colorScheme.surfaceContainer,
         borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
@@ -225,7 +225,10 @@ class _MemberRow extends StatelessWidget {
                   member.isYou ? '${member.name} · Tú' : member.name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: Colors.white, fontSize: 12),
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurface,
+                    fontSize: 12,
+                  ),
                 ),
                 Text(
                   member.statusLabel,
@@ -249,6 +252,10 @@ class _Note extends StatelessWidget {
   Widget build(BuildContext context) => Text(
     text,
     textAlign: TextAlign.center,
-    style: const TextStyle(color: wearMuted, fontSize: 11, height: 1.35),
+    style: TextStyle(
+      color: Theme.of(context).colorScheme.onSurfaceVariant,
+      fontSize: 11,
+      height: 1.35,
+    ),
   );
 }
