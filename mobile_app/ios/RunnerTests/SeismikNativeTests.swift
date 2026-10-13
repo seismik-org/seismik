@@ -3,6 +3,27 @@ import MapKit
 
 @testable import Runner
 
+final class AssociatedSourceReportsTests: XCTestCase {
+    func testReportsAndAliasesSurviveOfflineCacheRoundTrip() throws {
+        let json = """
+        {"event_id":"sgc:1","origin_time":"2026-10-12T12:00:00Z",
+        "related_event_ids":["sgc:1","usgs:2"],"source_reports":[
+        {"event_id":"sgc:1","agency":"SGC","magnitude":4.2,"magnitude_type":"ML"},
+        {"event_id":"usgs:2","agency":"USGS","magnitude":4.8,"magnitude_type":"Mw"}]}
+        """
+        let event = try JSONDecoder().decode(SeismicEvent.self, from: Data(json.utf8))
+        XCTAssertEqual(event.sourceReports.count, 2)
+        XCTAssertEqual(event.sourceReports[0].magnitudeType, "ML")
+        XCTAssertEqual(event.sourceReports[1].magnitude, 4.8)
+        XCTAssertEqual(event.relatedEventIds, ["sgc:1", "usgs:2"])
+        let cached = try JSONDecoder().decode(SeismicEvent.self, from: JSONEncoder().encode(event))
+        XCTAssertEqual(cached.sourceReports, event.sourceReports)
+        XCTAssertEqual(cached.relatedEventIds, event.relatedEventIds)
+        let legacy = try JSONDecoder().decode(SeismicEvent.self, from: Data("{\"event_id\":\"old\"}".utf8))
+        XCTAssertTrue(legacy.sourceReports.isEmpty)
+    }
+}
+
 final class FamilyNicknameAndReportChoiceTests: XCTestCase {
     func testNicknamesPersistLocallyAndAreScopedToAccountAndCircle() {
         let suite = "seismik.nicknames.tests.\(UUID().uuidString)"

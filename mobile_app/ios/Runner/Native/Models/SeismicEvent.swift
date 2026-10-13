@@ -91,6 +91,31 @@ public struct StationTrigger: Identifiable, Codable, Hashable {
 
 
 /// Modelo de datos para un evento sísmico detectado o reportado.
+public struct SeismicSourceReport: Identifiable, Codable, Hashable {
+    public let id: String
+    public let agency: String?
+    public let magnitude: Double?
+    public let magnitudeType: String?
+    public let reviewStatus: String?
+    public let officialUrl: String?
+    public let originTime: String?
+    public let updatedAt: String?
+    public let sourceId: String?
+    public let officialEventId: String?
+    public let attribution: String?
+
+    enum CodingKeys: String, CodingKey {
+        case id = "event_id", agency, magnitude, attribution
+        case magnitudeType = "magnitude_type"
+        case reviewStatus = "review_status"
+        case officialUrl = "official_url"
+        case originTime = "origin_time"
+        case updatedAt = "updated_at"
+        case sourceId = "source_id"
+        case officialEventId = "official_event_id"
+    }
+}
+
 public struct SeismicEvent: Identifiable, Codable, Hashable {
     public let id: String
     public let place: String?
@@ -122,6 +147,8 @@ public struct SeismicEvent: Identifiable, Codable, Hashable {
     public let stations: [StationTrigger]
     public let notificationType: String?
     public let critical: Bool?
+    public let sourceReports: [SeismicSourceReport]
+    public let relatedEventIds: [String]
 
     public var isCriticalOfficial: Bool { notificationType == "official_report_update" && critical == true }
     /// Los simulacros del panel de administración llevan el prefijo `drill-`: suenan como una alerta, pero nunca
@@ -162,6 +189,8 @@ public struct SeismicEvent: Identifiable, Codable, Hashable {
         case stations
         case notificationType = "type"
         case critical
+        case sourceReports = "source_reports"
+        case relatedEventIds = "related_event_ids"
     }
 
     public init(
@@ -190,7 +219,9 @@ public struct SeismicEvent: Identifiable, Codable, Hashable {
         magnitudeEstimateStatus: String? = nil,
         stations: [StationTrigger] = [],
         notificationType: String? = nil,
-        critical: Bool? = nil
+        critical: Bool? = nil,
+        sourceReports: [SeismicSourceReport] = [],
+        relatedEventIds: [String] = []
     ) {
         self.id = id
         self.place = place
@@ -218,6 +249,8 @@ public struct SeismicEvent: Identifiable, Codable, Hashable {
         self.stations = stations
         self.notificationType = notificationType
         self.critical = critical
+        self.sourceReports = sourceReports
+        self.relatedEventIds = relatedEventIds
     }
 
     public init(from decoder: Decoder) throws {
@@ -263,6 +296,8 @@ public struct SeismicEvent: Identifiable, Codable, Hashable {
         algorithm = try container.decodeIfPresent(String.self, forKey: .algorithm)
         magnitudeEstimateStatus = try container.decodeIfPresent(String.self, forKey: .magnitudeEstimateStatus)
         stations = (try? container.decodeIfPresent([StationTrigger].self, forKey: .stations)) ?? []
+        sourceReports = try container.decodeIfPresent([SeismicSourceReport].self, forKey: .sourceReports) ?? []
+        relatedEventIds = try container.decodeIfPresent([String].self, forKey: .relatedEventIds) ?? []
         notificationType = try container.decodeIfPresent(String.self, forKey: .notificationType)
         if let value = try? container.decode(Bool.self, forKey: .critical) {
             critical = value
@@ -295,6 +330,8 @@ public struct SeismicEvent: Identifiable, Codable, Hashable {
 
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(sourceReports, forKey: .sourceReports)
+        try container.encode(relatedEventIds, forKey: .relatedEventIds)
         try container.encode(id, forKey: .id)
         try container.encodeIfPresent(place, forKey: .place)
         try container.encodeIfPresent(magnitude, forKey: .magnitude)

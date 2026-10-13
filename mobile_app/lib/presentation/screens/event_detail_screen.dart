@@ -124,7 +124,7 @@ class EventDetailScreen extends StatelessWidget {
                       Text(
                         event.magnitudeType == null
                             ? 'M'
-                            : 'M${event.magnitudeType!.toLowerCase()}',
+                            : event.magnitudeType!,
                         style: TextStyle(
                           fontSize: 24,
                           fontWeight: FontWeight.w600,
@@ -163,9 +163,7 @@ class EventDetailScreen extends StatelessWidget {
                 Padding(
                   padding: const EdgeInsets.only(top: 12, left: 4),
                   child: Text(
-                    event.magnitudeType == null
-                        ? 'M'
-                        : 'M${event.magnitudeType!.toLowerCase()}',
+                    event.magnitudeType == null ? 'M' : event.magnitudeType!,
                     style: TextStyle(
                       fontSize: 22,
                       color: colors.onSurfaceVariant,
@@ -344,6 +342,39 @@ class EventDetailScreen extends StatelessWidget {
                 ),
               ),
             ),
+            const SizedBox(height: 10),
+          ],
+          if (event.sourceReports.isNotEmpty) ...<Widget>[
+            Text(
+              'Magnitudes por organización',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Cada fuente conserva su valor y escala. No se promedian; pueden cambiar tras la revisión.',
+            ),
+            for (final report in event.sourceReports)
+              Card(
+                child: ListTile(
+                  title: Text(report.agency),
+                  subtitle: Text(
+                    '${report.magnitudeType ?? "M"} · ${report.reviewStatus ?? "Sin estado de revisión"}',
+                  ),
+                  trailing: Text(
+                    report.magnitude?.toStringAsFixed(1) ?? 'Sin magnitud',
+                  ),
+                  onTap: report.officialUrl == null
+                      ? null
+                      : () {
+                          final url = Uri.tryParse(report.officialUrl!);
+                          if (url != null &&
+                              url.scheme == 'https' &&
+                              url.host.isNotEmpty) {
+                            openWebLink(url);
+                          }
+                        },
+                ),
+              ),
             const SizedBox(height: 10),
           ],
           if (event.officialUrl != null)

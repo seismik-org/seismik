@@ -489,7 +489,9 @@ class SeismikState extends ChangeNotifier with WidgetsBindingObserver {
 
   List<SeismicEvent> _withRecoveredAlerts(List<SeismicEvent> history) {
     if (_recoveredAlerts.isEmpty) return history;
-    final Set<String> ids = history.map((event) => event.id).toSet();
+    final Set<String> ids = history
+        .expand((event) => <String>[event.id, ...event.relatedEventIds])
+        .toSet();
     final List<SeismicEvent> missing = _recoveredAlerts
         .where((event) => !ids.contains(event.id))
         .toList(growable: false);
@@ -566,7 +568,9 @@ class SeismikState extends ChangeNotifier with WidgetsBindingObserver {
     try {
       final List<SeismicEvent> missed = await api.fetchMissedAlerts();
       if (missed.isEmpty || _disposed) return;
-      final Set<String> known = recentEvents.map((event) => event.id).toSet();
+      final Set<String> known = recentEvents
+          .expand((event) => <String>[event.id, ...event.relatedEventIds])
+          .toSet();
       final List<SeismicEvent> added = missed
           .where((event) => !known.contains(event.id))
           .toList(growable: false);
@@ -766,7 +770,10 @@ class SeismikState extends ChangeNotifier with WidgetsBindingObserver {
     // Un reporte oficial entra al historial también cuando llegó como alarma
     // de sacudida fuerte, y una sola vez aunque el aviso se abra de nuevo.
     if (event.isOfficial &&
-        !recentEvents.any((known) => known.id == event.id)) {
+        !recentEvents.any(
+          (known) =>
+              known.id == event.id || known.relatedEventIds.contains(event.id),
+        )) {
       recentEvents = <SeismicEvent>[event, ...recentEvents];
     }
     _notify();

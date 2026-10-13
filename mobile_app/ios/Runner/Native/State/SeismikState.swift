@@ -270,7 +270,7 @@ public final class SeismikState: ObservableObject {
     public func syncMissedAlerts() async {
         let missed = await apiClient.fetchMissedAlerts()
         guard !missed.isEmpty else { return }
-        let known = Set(events.map(\.id))
+        let known = Set(events.flatMap { [$0.id] + $0.relatedEventIds })
         let added = missed.filter { !known.contains($0.id) }
         guard !added.isEmpty else { return }
         events = (added + events)
@@ -480,7 +480,7 @@ public final class SeismikState: ObservableObject {
             return
         }
         // Un simulacro suena como una alerta real, pero no entra en el historial.
-        if !event.isDrill, !events.contains(where: { $0.id == event.id }) {
+        if !event.isDrill, !events.contains(where: { $0.id == event.id || $0.relatedEventIds.contains(event.id) }) {
             events.insert(event, at: 0)
         }
         if SeismikNotificationPresenter.shouldPresentAlarm(for: event) {
