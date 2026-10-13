@@ -361,7 +361,7 @@ class EventDetailScreen extends StatelessWidget {
                     '${report.magnitudeType ?? "M"} · ${report.reviewStatus ?? "Sin estado de revisión"}',
                   ),
                   trailing: Text(
-                    report.magnitude?.toStringAsFixed(1) ?? 'Sin magnitud',
+                    report.magnitude?.toString() ?? 'Sin magnitud',
                   ),
                   onTap: report.officialUrl == null
                       ? null

@@ -98,7 +98,7 @@ public struct EventDetailView: View {
                     HStack {
                         Text(report.agency ?? report.sourceId ?? "Fuente").font(.subheadline.bold())
                         Spacer()
-                        Text(report.magnitude.map { String(format: "%.1f", $0) } ?? "Sin magnitud")
+                        Text(report.magnitude.map { String($0) } ?? "Sin magnitud")
                     }
                     Text("\(report.magnitudeType ?? "M") · \(report.reviewStatus ?? "Sin estado de revisión")")
                         .font(.caption).foregroundColor(.secondary)
