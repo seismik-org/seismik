@@ -345,6 +345,9 @@ el código vigente antes de ejecutar comandos de producción.
 
 ## Licencia y privacidad del repositorio
 
+La licencia del código original nuevo cambió el 10 de octubre de 2026;
+esa fecha es independiente de la revisión actual de este README.
+
 El material original nuevo se publica bajo [Seismik Source-Visible License 1.0](LICENSE):
 consulta y estudio, sin permiso para desplegar, redistribuir o ofrecer una réplica
 del código cubierto, salvo acuerdo escrito. **No es una licencia open source.**
