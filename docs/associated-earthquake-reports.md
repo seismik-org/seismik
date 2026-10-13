@@ -31,3 +31,14 @@ No se cambian dispatcher, push, Critical Alerts ni la magnitud experimental de
 Seismik. Desplegar requiere reconstruir solo la API; los clientes requieren una
 nueva entrega. Antes de desplegar, reconciliar el árbol de producción manual
 con el clon: no sobrescribir cambios API de Claude o ML beta fuera de `main`.
+
+## Wear OS
+
+El reloj consulta `GET /v1/events/history` con su propia sesión, así que no hereda
+los cambios del teléfono. Desde 1.0.0+10003 lee `source_reports` y
+`related_event_ids`, muestra un solo elemento por sismo (también si una caché
+anterior trae el mismo sismo bajo otro identificador) y abre un detalle con valor,
+escala, estado de revisión y organización, conservando la precisión original
+(3.13 sigue siendo 3.13). Las alarmas siguen dependiendo del teléfono: el reloj
+no añade alarmas propias.
+
