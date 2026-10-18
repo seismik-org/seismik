@@ -50,3 +50,12 @@ def test_footer_links_the_three_legal_documents(page: str) -> None:
 @pytest.mark.parametrize("path", LEGAL.values())
 def test_the_legal_documents_exist(path: str) -> None:
     assert (WEB / path.strip("/") / "index.html").is_file()
+
+
+def test_privacy_policy_is_published_without_drafting_placeholders() -> None:
+    text = (WEB / "terms-of-privacy/index.html").read_text(encoding="utf-8")
+    body = re.search(r"<main.*?</main>", text, re.S).group(0)  # type: ignore[union-attr]
+    assert not re.search(r"\[[^\]]*(CONFIRMAR|DEFINIR|PENDIENTE|RECOMENDADO)[^\]]*\]", body, re.I)
+    assert "menores de 13 años" in body and "Vigente desde" in body
+    for provider in ("Google", "Apple", "Cloudflare", "Turnstile"):
+        assert provider in body
