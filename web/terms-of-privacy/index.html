@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="description" content="Política de privacidad de Seismik.">
+  <meta name="description" content="Qué datos personales trata Seismik, para qué, con quién los comparte, cuánto tiempo los conserva y cómo ejercer tus derechos.">
   <title>Política de privacidad · Seismik</title>
   <link rel="canonical" href="https://seismik.org/terms-of-privacy/">
   <link rel="icon" href="/favicon.ico" sizes="any">
@@ -23,51 +23,80 @@
   </header>
   <main class="narrow">
     <p class="eyebrow">SEISMIK · POLÍTICA DE PRIVACIDAD</p>
-    <h1>Tu información no es el producto.</h1>
-    <p class="lead">Esta política explica qué datos usa Seismik, para qué y qué control conservas. Vigente desde el 5 de septiembre de 2026.</p>
+    <h1>Qué datos usa Seismik y qué control tienes.</h1>
+    <p class="lead">Esta política explica qué datos personales trata Seismik, para qué, con quién los comparte y cómo ejercer tus derechos. Seismik es un proyecto independiente en etapa beta; no es una entidad pública ni representa a ninguna. Vigente desde el 18 de octubre de 2026.</p>
 
     <section class="section prose">
-      <h2>1. Responsable y alcance</h2>
-      <p>Seismik es un proyecto abierto en etapa beta que investiga detección sísmica, alertas geolocalizadas y reportes voluntarios de comunidad. Para consultas, solicitudes de privacidad o ejercicio de derechos, escribe a <a href="mailto:support@seismik.org">support@seismik.org</a>.</p>
-      <p>Esta política aplica al sitio seismik.org, la aplicación móvil Seismik, devs.seismik.org y api.seismik.org. No reemplaza las políticas de entidades oficiales ni de los proveedores que uses desde enlaces externos.</p>
+      <h2>1. Responsable y contacto</h2>
+      <p>El responsable del tratamiento es <strong>Seismik</strong>, un proyecto independiente que todavía no está constituido como persona jurídica. Cuando se constituya, actualizaremos esta política con sus datos de identificación.</p>
+      <p>Para consultas, reclamos o ejercicio de tus derechos escribe a <a href="mailto:support@seismik.org">support@seismik.org</a>. Si no estás de acuerdo con nuestra respuesta, puedes acudir a la Superintendencia de Industria y Comercio de Colombia.</p>
 
-      <h2>2. Datos que podemos tratar</h2>
+      <h2>2. A qué se aplica</h2>
+      <p>A los sitios seismik.org, auth.seismik.org, devs.seismik.org, waves.seismik.org, status.seismik.org y el formulario «¿Lo sentiste?»; a la API api.seismik.org; y a las aplicaciones de Seismik para Android, iPhone y Wear OS.</p>
+
+      <h2>3. Qué datos tratamos</h2>
       <ul>
-        <li><strong>Datos técnicos:</strong> identificador aleatorio de instalación, versión de la app, plataforma, idioma, configuración de alertas y token de notificaciones. No solicitamos el número de teléfono, contactos ni identidad civil para usar la app.</li>
-        <li><strong>Ubicación:</strong> coordenadas aproximadas o precisas únicamente si concedes el permiso. Se usan para calcular relevancia, radio de alerta y contexto de reportes. Puedes revocar el permiso desde el sistema operativo.</li>
-        <li><strong>Señales colaborativas:</strong> aceleración pico, marca de tiempo y área aproximada, solo si activas la participación de crowdsourcing.</li>
-        <li><strong>Reportes voluntarios:</strong> respuestas de “Sismo sentido”, daños, comentario, momento observado y ubicación elegida. La beta actual no solicita ni almacena fotografías, videos, documentos ni audio en estos reportes.</li>
-        <li><strong>Círculos familiares:</strong> alias elegido, membresía de un círculo creado por invitación y ubicación compartida voluntariamente. La ubicación aproximada se redondea antes de conservarse; la precisa exige una acción adicional. Cada ubicación compartida vence en 15 minutos, 1 hora o 4 horas, o se borra antes cuando la persona selecciona “Dejar de compartir”.</li>
-        <li><strong>Portal de desarrolladores:</strong> correo y perfil básico provistos al iniciar sesión con Google, además de identificadores, permisos y métricas mínimas de las claves API.</li>
+        <li><strong>Datos del dispositivo:</strong> un identificador aleatorio de instalación, versión de la app, sistema operativo, idioma, país según la configuración del teléfono, preferencias de alertas y el token con el que Google o Apple entregan notificaciones. No pedimos tu número de teléfono, tus contactos ni tu identidad civil para usar la app.</li>
+        <li><strong>Verificación de la app:</strong> usamos Firebase App Check, con Play Integrity en Android y la verificación de Apple en iPhone, para comprobar que las solicitudes vienen de una app genuina. Google y Apple reciben datos técnicos del dispositivo para emitirla.</li>
+        <li><strong>Ubicación:</strong> solo si concedes el permiso. La app envía a nuestros servidores la ubicación que el sistema le entrega, precisa o aproximada según el permiso que hayas dado, junto con tus preferencias, para calcular la distancia a un sismo y decidir si te avisamos. Se actualiza cada vez que la app se registra. Puedes retirar el permiso en cualquier momento desde el sistema operativo.</li>
+        <li><strong>Detección colaborativa:</strong> mientras la app está abierta, usa el acelerómetro y, si detecta un movimiento compatible con un sismo, envía la aceleración máxima, la hora y tu ubicación. Puedes desactivarla en Ajustes. Si activas además el modo en segundo plano, que viene apagado, la app lo hace también con la pantalla apagada mediante un servicio en primer plano con notificación visible.</li>
+        <li><strong>Reportes voluntarios:</strong> tus respuestas de «Sismo sentido» y de daños, un comentario opcional, el momento observado y la ubicación que elijas, que si es aproximada se redondea a unos 1 km. Cada reporte desde la app queda asociado al identificador de tu dispositivo. No pedimos fotos, videos ni audio. El formulario «¿Lo sentiste?» de la web no pide nombre ni correo.</li>
+        <li><strong>Cuenta:</strong> si inicias sesión con Google, GitHub, Apple o un código enviado a tu correo, recibimos tu correo electrónico y tu nombre. No recibimos tu contraseña del proveedor.</li>
+        <li><strong>Círculos familiares:</strong> un alias que eliges, tu pertenencia a un círculo creado por invitación y la ubicación que decidas compartir. La ubicación aproximada se redondea a unos 1 km antes de guardarse; la precisa exige tu consentimiento expreso. Compartes tu ubicación de tres maneras: a mano, durante 15 minutos a 4 horas; junto con un aviso de «estoy bien» o «necesito ayuda», durante 4 horas por defecto y hasta 12; o de forma automática, solo si activas esa opción: cuando se emite una alerta, compartimos con tu círculo tu última ubicación aproximada registrada en la última hora, durante 1 hora. Puedes dejar de compartir en cualquier momento. Solo las personas que aceptaron una invitación a tu mismo círculo pueden consultar una ubicación vigente. Los círculos no hacen rastreo continuo.</li>
+        <li><strong>Portal de desarrolladores y Waves:</strong> en el portal de desarrolladores, tu correo, tu perfil básico, las claves de API que crees, sus permisos y métricas mínimas de uso. En Waves, el acceso exige un correo autorizado, y de cada descarga guardamos el identificador del archivo y una huella parcial del correo, no el correo.</li>
+        <li><strong>Registros técnicos:</strong> nuestros servidores registran la dirección IP, la fecha y hora y la dirección solicitada de cada petición, para seguridad y para limitar abusos.</li>
+        <li><strong>Formularios web:</strong> usamos Cloudflare Turnstile para distinguir a las personas de los programas automáticos. Cloudflare recibe datos técnicos del navegador para ello.</li>
+      </ul>
+      <p>Se quedan solo en tu teléfono las notas del Modo Emergencia, la copia del historial para consultar sin conexión y los reportes pendientes de envío.</p>
+      <p>No usamos publicidad, no vendemos datos y no incluimos herramientas de analítica ni de reporte de fallos de terceros.</p>
+
+      <h2>4. Para qué los usamos</h2>
+      <p>Para registrar tu dispositivo y entregarte alertas; estimar la sacudida donde estás; recibir y sincronizar reportes, también los hechos sin conexión; permitir el inicio de sesión y los círculos familiares; operar el portal de desarrolladores y Waves; prevenir fraude y abuso; mejorar la calidad de la detección; y atender solicitudes de soporte. Las señales y los reportes pueden usarse de forma agregada o anonimizada para investigación y evaluación de riesgo.</p>
+
+      <h2>5. Autorización</h2>
+      <p>Las funciones que usan ubicación, sensores, notificaciones o reportes requieren tu permiso del sistema operativo y puedes desactivarlas cuando quieras. La detección colaborativa con la app abierta está activada por defecto; puedes apagarla en Ajustes. Retirar tu autorización puede limitar las alertas cercanas, los reportes o la detección colaborativa, pero no impide consultar la información pública. El tratamiento técnico mínimo necesario para la seguridad y para que funcione una cuenta o una clave de API puede ser necesario para prestar el servicio.</p>
+
+      <h2>6. Con quién compartimos datos</h2>
+      <p>No vendemos datos personales. Usamos proveedores para operar Seismik, bajo medidas de seguridad apropiadas:</p>
+      <ul>
+        <li><strong>Google:</strong> infraestructura (Cloud), Firebase (notificaciones, verificación de app y autenticación), Play Integrity, mapas e inicio de sesión.</li>
+        <li><strong>Apple:</strong> notificaciones, verificación de la app e inicio de sesión.</li>
+        <li><strong>Cloudflare:</strong> red, DNS y Turnstile.</li>
+        <li><strong>GitHub:</strong> inicio de sesión, si lo eliges.</li>
+      </ul>
+      <p>Algunos procesan datos fuera de Colombia, incluso en Estados Unidos; al usar Seismik aceptas esa transferencia, que se hace solo para operar el servicio.</p>
+      <p>Si abres un formulario de una entidad externa (por ejemplo, el SGC o el USGS), ese trámite se rige por la política de esa entidad; Seismik <strong>no envía automáticamente</strong> tus reportes a ninguna entidad. Podemos revelar datos cuando una autoridad competente lo exija conforme a la ley.</p>
+
+      <h2>7. Cuánto tiempo los conservamos</h2>
+      <ul>
+        <li><strong>Ubicación compartida con tu familia:</strong> hasta el tiempo que elijas (de 15 minutos a 12 horas según la función; 1 hora la automática), o hasta que dejes de compartir.</li>
+        <li><strong>Pertenencia a un círculo:</strong> hasta 365 días sin actividad. <strong>Estado familiar:</strong> 3 días. <strong>Código de invitación:</strong> 24 horas.</li>
+        <li><strong>Sesión del dispositivo:</strong> 30 días. <strong>Sesión de cuenta móvil:</strong> 90 días. <strong>Sesión web:</strong> 24 horas.</li>
+        <li><strong>Registro del dispositivo</strong> (identificador, token, preferencias y última ubicación enviada): hasta que pidas su eliminación. Retiramos el token cuando Google o Apple lo declaran inválido.</li>
+        <li><strong>Señales colaborativas:</strong> unos segundos para agruparlas; solo se conservan métricas agregadas durante 35 días.</li>
+        <li><strong>Reportes voluntarios:</strong> mientras no pidas su eliminación y mientras haya espacio en el sistema, que descarta primero los más antiguos.</li>
+        <li><strong>Registros técnicos del servidor:</strong> 30 días.</li>
+        <li><strong>Cuenta y claves de API:</strong> mientras la cuenta exista o hasta que pidas su eliminación.</li>
+        <li><strong>Datos anonimizados o agregados:</strong> pueden conservarse para investigación y fiabilidad, porque ya no te identifican.</li>
       </ul>
 
-      <h2>3. Finalidades</h2>
-      <p>Tratamos esos datos para registrar el dispositivo, entregar alertas y actualizaciones solicitadas, segmentar por distancia y preferencias, evitar fraude y abuso, mejorar la calidad de detección, recibir y sincronizar reportes offline, responder solicitudes de soporte y operar el portal de API. Las señales y reportes pueden usarse de forma agregada, seudonimizada o anonimizada para investigación, evaluación de riesgo y mejora del servicio.</p>
+      <h2>8. Seguridad</h2>
+      <p>Usamos comunicaciones cifradas, controles de acceso y separación de credenciales. Ninguna medida elimina por completo el riesgo; evita incluir en tus reportes datos sensibles, documentos, direcciones exactas innecesarias o información de terceros.</p>
 
-      <h2>4. Base de tratamiento y controles</h2>
-      <p>La participación en ubicación, sensores, notificaciones y reportes es voluntaria. Al activar una función que requiere datos, autorizas su tratamiento para la finalidad explicada. El tratamiento técnico mínimo para seguridad, prevención de fraude y funcionamiento de una cuenta o clave API puede ser necesario para prestar el servicio.</p>
-      <p>Puedes desactivar alertas, crowdsourcing y permisos de ubicación en cualquier momento. Desactivar una función puede limitar alertas cercanas, reportes o detección colaborativa, pero no impide consultar información pública disponible.</p>
-      <p>Los círculos familiares no activan rastreo continuo ni en segundo plano. Sólo las personas que aceptaron una invitación al mismo círculo pueden consultar una ubicación que siga vigente. No debes usar esta función para vigilar a otra persona sin su conocimiento y autorización.</p>
+      <h2>9. Tus derechos</h2>
+      <p>Puedes conocer, actualizar y rectificar tus datos; pedir prueba de tu autorización; pedir información sobre el uso que les damos; revocar tu autorización; solicitar su supresión; y presentar quejas ante la Superintendencia de Industria y Comercio. Para eliminar tu cuenta o tus datos usa el <a href="/delete-account/">formulario de eliminación</a> o escribe a <a href="mailto:support@seismik.org">support@seismik.org</a>. Una persona de nuestro equipo revisa cada solicitud y verifica razonablemente que viene del titular antes de borrar. Procuramos completarla en un máximo de 30 días calendario. Respondemos las consultas en un máximo de 10 días hábiles y los reclamos en un máximo de 15 días hábiles, prorrogables en los casos que prevé la ley.</p>
 
-      <h2>5. Compartición y destinatarios</h2>
-      <p>No vendemos datos personales ni los usamos para publicidad basada en perfiles. Podemos usar proveedores de infraestructura, notificaciones, autenticación, seguridad, DNS y mapas para operar Seismik, bajo instrucciones y medidas de seguridad apropiadas. Algunos pueden procesar información fuera de Colombia.</p>
-      <p>La app puede enlazar formularios de entidades como SGC o USGS. Seismik <strong>no envía automáticamente</strong> tu reporte a dichas entidades: si eliges abrir y completar un formulario externo, ese tratamiento se rige por la política de la entidad correspondiente.</p>
+      <h2>10. Menores de edad</h2>
+      <p>Seismik no está dirigido a menores de 13 años y no recoge a sabiendas datos personales de ellos. Entre los 13 y los 17 años, su uso requiere la autorización de su madre, padre o representante legal. Si crees que un menor de 13 años o un menor sin esa autorización aportó datos, escríbenos y los eliminaremos o revisaremos.</p>
 
-      <h2>6. Conservación y seguridad</h2>
-      <p>Conservamos datos identificables solo mientras sean necesarios para la beta, la seguridad, una alerta pendiente, una solicitud o una obligación aplicable. Los tokens inválidos se eliminan al detectarse; puedes pedir eliminación de un dispositivo o datos asociados escribiendo a soporte. Las métricas agregadas o anonimizadas pueden conservarse para investigación y fiabilidad.</p>
-      <p>Usamos comunicaciones cifradas, controles de acceso, claves separadas y minimización de datos. Ninguna medida elimina completamente el riesgo; evita incluir en reportes datos sensibles, documentos, direcciones exactas innecesarias o información de terceros.</p>
+      <h2>11. Información oficial</h2>
+      <p>Seismik no es una entidad pública ni parte del sistema nacional de gestión del riesgo. La información oficial sobre sismos la emite el Servicio Geológico Colombiano (SGC), y las directrices de preparación y respuesta, las autoridades de gestión del riesgo. Esta política solo trata los datos personales que recogemos nosotros.</p>
 
-      <h2>7. Tus derechos</h2>
-      <p>Según la normativa aplicable, puedes conocer, actualizar, rectificar, solicitar prueba de autorización, pedir información sobre el uso, revocar autorización cuando corresponda y solicitar supresión de datos. Consulta las <a href="/delete-account/">instrucciones para eliminar una cuenta o datos</a>, o escribe a <a href="mailto:support@seismik.org">support@seismik.org</a> indicando la solicitud y el identificador de dispositivo si lo tienes. Verificaremos razonablemente que la solicitud proviene del titular antes de responder.</p>
-
-      <h2>8. Menores de edad</h2>
-      <p>Seismik no está diseñado para que menores de 14 años aporten datos personales sin autorización de su madre, padre o representante legal. Si crees que un menor compartió información personal sin esa autorización, contáctanos para revisarlo.</p>
-
-      <h2>9. Cambios y contacto</h2>
-      <p>Podemos actualizar esta política al evolucionar la beta, los datos tratados o la normativa. Publicaremos la fecha de vigencia y, ante cambios materiales, procuraremos avisar desde el sitio o la app. Consultas: <a href="mailto:support@seismik.org">support@seismik.org</a>.</p>
+      <h2>12. Cambios</h2>
+      <p>Podemos actualizar esta política cuando cambien la beta, los datos tratados o la normativa. Publicaremos la nueva fecha de vigencia y, si el cambio es material, avisaremos desde el sitio o la app. Consultas: <a href="mailto:support@seismik.org">support@seismik.org</a>.</p>
     </section>
   </main>
-  <footer class="site-footer"><div class="container footer-bottom"><span>© 2026 Seismik</span></div></footer>
+  <footer class="site-footer"><div class="container footer-bottom"><span>© 2026 Seismik</span> · <a href="/terms-of-privacy/">Privacidad</a> · <a href="/terms-of-service/">Términos</a> · <a href="/delete-account/">Eliminar cuenta y datos</a></div></footer>
   <script src="/site.js?v=__ASSET_VERSION__" defer></script>
 </body>
 </html>
