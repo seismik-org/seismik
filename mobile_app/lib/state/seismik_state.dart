@@ -243,7 +243,6 @@ class SeismikState extends ChangeNotifier with WidgetsBindingObserver {
     // Toda apertura salvo la primera ya tiene sesión: los datos se piden en
     // paralelo con la ubicación y el registro, sin esperarlos.
     final bool hadSession = await _orDefault(api.hasDeviceSession(), false);
-    alertRegistrationReady = hadSession;
     if (hadSession) unawaited(refreshNetworkData());
 
     await Future.wait(<Future<void>>[
@@ -391,6 +390,7 @@ class SeismikState extends ChangeNotifier with WidgetsBindingObserver {
     try {
       await _registerWithRetry();
     } catch (error) {
+      alertRegistrationReady = false;
       diagnosticError = error.toString();
       statusMessage =
           'Tus preferencias de alerta no se han sincronizado. Vuelve a intentarlo.';
