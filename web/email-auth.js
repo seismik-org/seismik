@@ -13,6 +13,25 @@ let resetting = false;
 let mode = "login";
 let busy = false;
 const actionSettings = { url: "https://auth.seismik.org/id", handleCodeInApp: false };
+// Los correos de verificación y recuperación salen de Seismik (diseño propio y enlace directo a esta página).
+// Si ese envío no está disponible, se usa el correo de Firebase: nadie se queda sin poder entrar.
+async function viaSeismik(path, payload) {
+  try {
+    const response = await fetch(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+    return response.ok;
+  } catch (_) {
+    return false;
+  }
+}
+async function sendVerification(user) {
+  if (await viaSeismik("/v1/oauth/email/verify-request", { id_token: await user.getIdToken() })) return;
+  await sendEmailVerification(user, actionSettings);
+}
+async function sendRecovery(email) {
+  if (await viaSeismik("/v1/oauth/email/reset-request", { email })) return;
+  try { await sendPasswordResetEmail(auth, email, actionSettings); }
+  catch (error) { if (error.code !== "auth/user-not-found") throw error; }
+}
 function message(text, error = false) {
   $("email-message").textContent = text;
   $("email-message").hidden = false;
@@ -144,7 +163,7 @@ async function initialize() {
           if (error.code !== "auth/email-already-in-use") throw error;
         }
         if (user) {
-          try { await sendEmailVerification(user, actionSettings); }
+          try { await sendVerification(user); }
           catch (_) {
             $("verification-actions").hidden = false;
             throw { safeMessage: "No se pudo enviar el correo de verificación. Puedes reenviarlo aquí o iniciar sesión más tarde para hacerlo." };
@@ -155,8 +174,7 @@ async function initialize() {
         return;
       }
       if (mode === "recover") {
-        try { await sendPasswordResetEmail(auth, $("email").value.trim(), actionSettings); }
-        catch (error) { if (error.code !== "auth/user-not-found") throw error; }
+        await sendRecovery($("email").value.trim());
         message("Si el correo tiene acceso, recibirás instrucciones de Seismik para recuperar la contraseña.");
         return;
       }
@@ -166,7 +184,7 @@ async function initialize() {
   });
   $("email-verify").addEventListener("click", () => run(async () => {
     if (!auth.currentUser) throw { safeMessage: "Entra con tu correo para reenviar la verificación." };
-    await sendEmailVerification(auth.currentUser, actionSettings);
+    await sendVerification(auth.currentUser);
     message("Enlace enviado. Revisa tu correo y la carpeta de spam.");
   }));
   $("email-check").addEventListener("click", () => run(finish));
