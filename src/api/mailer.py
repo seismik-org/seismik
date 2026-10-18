@@ -33,6 +33,8 @@ class Message:
     subject: str
     text: str
     sender: Literal["cuentas", "noreply"] = "cuentas"
+    # Versión HTML ya diseñada; sin ella se genera una sencilla a partir del texto.
+    html: str | None = None
     # Evita un segundo correo si el mismo hecho se notifica dos veces (reintentos).
     idempotency_key: str | None = None
 
@@ -69,7 +71,7 @@ class Mailer:
             "to": [message.to],
             "subject": message.subject,
             "text": body,
-            "html": _html(body),
+            "html": message.html or _html(body),
         }
         if message.sender == "cuentas" and self.settings.mail_reply_to:
             payload["reply_to"] = self.settings.mail_reply_to

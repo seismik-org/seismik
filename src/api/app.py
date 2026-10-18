@@ -21,6 +21,7 @@ from api.developer_keys import router as developer_keys_router
 from api.devices import router as devices_router
 from api.devices_store import DeviceRepository
 from api.edge_origin import EdgeOriginGuard
+from api.email_actions import router as email_actions_router
 from api.errors import install as install_error_codes
 from api.family import account_router as family_account_router
 from api.family import router as family_router
@@ -110,6 +111,7 @@ def create_app(settings: AppSettings | None = None) -> FastAPI:
     app.include_router(admin_security_router)
     app.include_router(account_deletion_router)
     app.include_router(account_erasure_router)
+    app.include_router(email_actions_router)
 
     @app.get("/health/live", tags=["health"])
     async def live() -> dict[str, str]:

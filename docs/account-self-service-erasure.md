@@ -44,3 +44,10 @@ sesión, y acuse de recibo del formulario (uno por correo y día). Ningún corre
 Activar: crear en Resend una clave `seismik-api` con permiso de envío limitado a seismik.org, guardarla en
 Secret Manager (`seismik-resend-api-key`) y montarla en Cloud Run como `SEISMIK_RESEND_API_KEY`.
 Al activarlo, la política de privacidad debe nombrar a Resend (envíos desde São Paulo).
+
+## Correos de acceso propios
+`src/api/email_actions.py`: `POST /v1/oauth/email/reset-request` y `/verify-request` (sólo con `Origin: https://auth.seismik.org`).
+El servidor pide a Firebase el código de acción (Admin SDK), arma el enlace directo a `auth.seismik.org/id?mode=…&oobCode=…`
+(esa página ya aplica el código) y envía el correo con diseño propio (`mail_templates.py`) por Resend desde `cuentas@`.
+Recuperación: siempre responde 202, exista o no la cuenta; 3 correos/hora por dirección. Verificación: exige un ID token válido.
+Si el envío no está disponible (sin clave o error), `web/email-auth.js` usa el correo de Firebase como respaldo.

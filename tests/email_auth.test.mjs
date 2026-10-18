@@ -7,6 +7,7 @@ const source = readFileSync('web/email-auth.js', 'utf8').replace(/^import[\s\S]*
 async function screen(options = {}) {
   const elements = new Map();
   const calls = [];
+  const mail = [];
   const node = (id) => {
     if (!elements.has(id)) elements.set(id, {
       value: '', hidden: true, checked: false, dataset: {}, listeners: {},
@@ -55,6 +56,10 @@ async function screen(options = {}) {
     confirmPasswordReset: async () => calls.push(['confirm-reset']),
     fetch: async (url, init) => {
       if (url.endsWith('/config')) return { ok: true, json: async () => ({ enabled: true, firebase: {} }) };
+      if (url.endsWith('/verify-request') || url.endsWith('/reset-request')) {
+        mail.push([url.split('/').pop(), JSON.parse(init.body)]);
+        return { ok: options.seismikMail === true, json: async () => ({ accepted: true }) };
+      }
       calls.push(['exchange', JSON.parse(init.body)]);
       return { ok: true, json: async () => ({ redirect: options.redirect || 'https://devs.seismik.org/' }) };
     },
@@ -70,7 +75,7 @@ async function screen(options = {}) {
     node('password-confirm').value = 'temporary-test-password';
   }
   fill();
-  return { node, calls, fill, async click(id) { node(id).listeners.click(); await settled(); }, async submit() { node('email-form').listeners.submit({ preventDefault() {} }); await settled(); } };
+  return { node, calls, mail, fill, async click(id) { node(id).listeners.click(); await settled(); }, async submit() { node('email-form').listeners.submit({ preventDefault() {} }); await settled(); } };
 }
 
 test('registration sends credentials only to Firebase, then verification', async () => {
@@ -206,4 +211,35 @@ test('password reset delegates new password to Firebase and returns to login', a
   assert.equal(ui.calls.some(([name]) => name === 'confirm-reset'), true);
   assert.equal(ui.calls.some(([name]) => name === 'exchange'), false);
   assert.deepEqual(ui.calls.slice(-2), [['signout'], ['replace', '/id']]);
+});
+
+test('verification and recovery go through Seismik when its mail is available, without using Firebase email', async () => {
+  const ui = await screen({ seismikMail: true });
+  await ui.click('email-register');
+  ui.fill();
+  await ui.submit();
+  assert.deepEqual(ui.mail, [['verify-request', { id_token: 'opaque-id-token' }]]);
+  assert.equal(ui.calls.some(([name]) => name === 'verify-email'), false);
+
+  const recovery = await screen({ seismikMail: true });
+  await recovery.click('email-recover');
+  recovery.fill();
+  await recovery.submit();
+  assert.deepEqual(recovery.mail, [['reset-request', { email: 'test@example.invalid' }]]);
+  assert.equal(recovery.calls.some(([name]) => name === 'recovery'), false);
+});
+
+test('when Seismik mail is unavailable the Firebase email is used as a fallback', async () => {
+  const ui = await screen();
+  await ui.click('email-register');
+  ui.fill();
+  await ui.submit();
+  assert.equal(ui.mail.length, 1);
+  assert.equal(ui.calls.some(([name]) => name === 'verify-email'), true);
+
+  const recovery = await screen();
+  await recovery.click('email-recover');
+  recovery.fill();
+  await recovery.submit();
+  assert.equal(recovery.calls.some(([name]) => name === 'recovery'), true);
 });
