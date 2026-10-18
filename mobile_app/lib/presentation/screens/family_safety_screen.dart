@@ -435,9 +435,7 @@ class _CheckInCardState extends State<_CheckInCard> {
         context,
         !located
             ? 'Aviso enviado sin ubicación. Activa la ubicación para compartirla.'
-            : needsHelp
-            ? 'Tu familia sabe que necesitas ayuda y ve dónde estás.'
-            : 'Tu familia sabe que estás bien.',
+            : 'Seismik recibió tu aviso. Esto no confirma que tu familia lo haya leído.',
       );
     } catch (_) {
       if (mounted) {

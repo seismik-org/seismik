@@ -118,6 +118,26 @@ class SeismikState extends ChangeNotifier with WidgetsBindingObserver {
   bool offlineEmergencyMode = false;
   bool emergencyPinned = false;
   bool hasSignal = true;
+  bool alertRegistrationReady = false;
+  String? diagnosticError;
+
+  String get connectionLabel {
+    if (offlineEmergencyMode) return 'Modo de emergencia · datos guardados';
+    if (!hasSignal) return 'Sin red · datos guardados';
+    if (!networkOnline) return 'No se pudo sincronizar con Seismik';
+    if (api.lowBandwidth) return 'Conexión limitada · historial sincronizado';
+    return 'Historial sincronizado';
+  }
+
+  /// Registration and history are separate: a successful GET is not proof
+  /// that push registration or system notification permissions are ready.
+  Future<void> retryAlertRegistration() async {
+    if (position == null) await _resolveLocationSafely();
+    if (position == null) return;
+    await _registerAndStartSensors();
+    _notify();
+  }
+
   ConnectivityWatcher? _connectivity;
 
   Future<void> setOfflineEmergencyMode(bool value) async {
@@ -223,6 +243,7 @@ class SeismikState extends ChangeNotifier with WidgetsBindingObserver {
     // Toda apertura salvo la primera ya tiene sesión: los datos se piden en
     // paralelo con la ubicación y el registro, sin esperarlos.
     final bool hadSession = await _orDefault(api.hasDeviceSession(), false);
+    alertRegistrationReady = hadSession;
     if (hadSession) unawaited(refreshNetworkData());
 
     await Future.wait(<Future<void>>[
@@ -276,7 +297,9 @@ class SeismikState extends ChangeNotifier with WidgetsBindingObserver {
     try {
       await notifications.initialize();
     } catch (error) {
-      statusMessage = 'Notificaciones pendientes: $error';
+      diagnosticError = error.toString();
+      statusMessage =
+          'No se pudieron preparar las notificaciones. Revisa sus permisos en Configuración.';
       _notify();
     }
   }
@@ -293,7 +316,9 @@ class SeismikState extends ChangeNotifier with WidgetsBindingObserver {
     try {
       await _resolveLocation();
     } catch (error) {
-      statusMessage = 'Ubicación pendiente: $error';
+      diagnosticError = error.toString();
+      statusMessage =
+          'No se pudo obtener tu ubicación. Revisa el permiso de ubicación.';
       _notify();
     }
   }
@@ -306,7 +331,10 @@ class SeismikState extends ChangeNotifier with WidgetsBindingObserver {
       // recovered. Attach listeners too; successful startup is idempotent.
       await _initializeNotifications();
     } catch (error) {
-      statusMessage = 'Registro del dispositivo pendiente: $error';
+      alertRegistrationReady = false;
+      diagnosticError = error.toString();
+      statusMessage =
+          'El registro para recibir alertas está pendiente. Reintenta desde Configuración.';
       _notify();
       return false;
     }
@@ -363,7 +391,9 @@ class SeismikState extends ChangeNotifier with WidgetsBindingObserver {
     try {
       await _registerWithRetry();
     } catch (error) {
-      statusMessage = 'Preferencias de alerta sin sincronizar: $error';
+      diagnosticError = error.toString();
+      statusMessage =
+          'Tus preferencias de alerta no se han sincronizado. Vuelve a intentarlo.';
       _notify();
     }
   }
@@ -408,6 +438,7 @@ class SeismikState extends ChangeNotifier with WidgetsBindingObserver {
           alertRadiusKm: settings.alertRadiusKm,
         );
         registrations.value++;
+        alertRegistrationReady = true;
         return;
       } catch (error) {
         // Reintentar un 401/403/422 sólo demora el arranque y consume cuota:
@@ -465,7 +496,9 @@ class SeismikState extends ChangeNotifier with WidgetsBindingObserver {
       statusMessage = null;
     } else {
       networkOnline = false;
-      statusMessage = 'Sincronización pendiente: $failure';
+      diagnosticError = failure.toString();
+      statusMessage =
+          'No se pudo actualizar el historial. Conservamos los datos guardados; vuelve a intentarlo.';
     }
     _notify();
 
@@ -531,7 +564,9 @@ class SeismikState extends ChangeNotifier with WidgetsBindingObserver {
     final String? previousMessage = syncMessage;
     final QueueFlushResult result = await reportQueue.flush(_sendPending);
     pendingReportCount = result.remaining;
-    if (result.sent > 0) {
+    if (result.lastError == 'Hay reportes antiguos guardados pendientes de revisión.') {
+      syncMessage = result.lastError;
+    } else if (result.sent > 0) {
       syncMessage = result.sent == 1
           ? 'Se envió 1 reporte guardado sin conexión.'
           : 'Se enviaron ${result.sent} reportes guardados sin conexión.';

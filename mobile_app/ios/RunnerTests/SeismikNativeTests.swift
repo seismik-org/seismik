@@ -247,7 +247,7 @@ final class OfflineReportQueueTests: XCTestCase {
         XCTAssertEqual(queue.pendingCount, 0)
     }
 
-    func testAnExpiredReportIsDroppedWithoutSending() async {
+    func testAnExpiredReportIsPreservedWithoutSending() async {
         let queue = makeQueue(maxAge: 60)
         queue.enqueue(report("viejo", queuedAt: Date().addingTimeInterval(-120)))
 
@@ -255,17 +255,39 @@ final class OfflineReportQueueTests: XCTestCase {
         let result = await queue.flush { _ in attempts += 1 }
 
         XCTAssertEqual(attempts, 0)
-        XCTAssertEqual(result.discarded, 1)
-        XCTAssertEqual(queue.pendingCount, 0)
+        XCTAssertEqual(result.discarded, 0)
+        XCTAssertEqual(queue.pendingCount, 1)
     }
 
-    func testAReportThatExhaustsItsAttemptsLeavesTheQueue() async {
+    func testAReportThatExhaustsItsAttemptsStaysInTheQueue() async {
         let queue = makeQueue(maxAttempts: 3)
         queue.enqueue(report("a", attempts: 2))
 
         let result = await queue.flush { _ in throw URLError(.timedOut) }
 
-        XCTAssertEqual(result.discarded, 1)
+        XCTAssertEqual(result.discarded, 0)
+        XCTAssertEqual(queue.pendingCount, 1)
+    }
+
+    func testEnqueueDuringFlushSurvivesAndNestedFlushDoesNotSendAgain() async {
+        let queue = makeQueue()
+        queue.enqueue(report("a"))
+        let result = await queue.flush { _ in
+            queue.enqueue(self.report("b"))
+            let nested = await queue.flush { _ in XCTFail("duplicate delivery") }
+            XCTAssertEqual(nested.sent, 0)
+        }
+        XCTAssertEqual(result.sent, 1)
+        XCTAssertEqual(queue.load().map(\.reportId), ["b"])
+    }
+
+    func testClearDuringFailedFlushDoesNotResurrectReports() async {
+        let queue = makeQueue()
+        queue.enqueue(report("a"))
+        _ = await queue.flush { _ in
+            queue.clear()
+            throw URLError(.timedOut)
+        }
         XCTAssertEqual(queue.pendingCount, 0)
     }
 

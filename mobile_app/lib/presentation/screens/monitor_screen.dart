@@ -79,6 +79,12 @@ class _MonitorScreenState extends State<MonitorScreen> {
     final bool online = context.select<SeismikState, bool>(
       (s) => s.networkOnline,
     );
+    final String connectionLabel = context.select<SeismikState, String>(
+      (s) => s.connectionLabel,
+    );
+    final bool registrationReady = context.select<SeismikState, bool>(
+      (s) => s.alertRegistrationReady,
+    );
     final int pendingReports = context.select<SeismikState, int>(
       (s) => s.pendingReportCount,
     );
@@ -114,7 +120,12 @@ class _MonitorScreenState extends State<MonitorScreen> {
     final List<Widget> header = <Widget>[
       const _SheetHandle(),
       const SizedBox(height: 12),
-      StatusPill(online: online),
+      StatusPill(online: online, label: connectionLabel),
+      Text(
+        registrationReady
+            ? 'Dispositivo registrado · revisa los permisos de alertas en Configuración'
+            : 'Registro para alertas pendiente · abre Configuración',
+      ),
       if (state.api.lowBandwidth)
         const Text(
           'Conexión limitada · historial reducido · reportes prioritarios',

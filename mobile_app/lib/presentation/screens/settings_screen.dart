@@ -42,6 +42,23 @@ class SettingsScreen extends StatelessWidget {
         children: <Widget>[
           const _Header(),
           const SizedBox(height: 12),
+          Consumer<SeismikState>(
+            builder: (context, state, _) => ListTile(
+              leading: const Icon(Icons.health_and_safety_outlined),
+              title: const Text('Estado de conexión y alertas'),
+              subtitle: Text(
+                '${state.connectionLabel}\n'
+                '${state.alertRegistrationReady ? "Dispositivo registrado" : "Registro para alertas pendiente"}\n'
+                'El registro no sustituye los permisos del sistema. La prueba local no comprueba la entrega remota.',
+              ),
+              isThreeLine: true,
+              trailing: IconButton(
+                tooltip: 'Reintentar registro de alertas',
+                icon: const Icon(Icons.refresh),
+                onPressed: () => unawaited(state.retryAlertRegistration()),
+              ),
+            ),
+          ),
           ListTile(
             leading: const Icon(Icons.offline_bolt_outlined),
             title: const Text('Modo de emergencia sin conexión'),

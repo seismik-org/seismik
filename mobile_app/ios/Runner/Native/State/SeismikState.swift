@@ -59,6 +59,13 @@ public final class SeismikState: ObservableObject {
 
     /// La red está disponible (el sistema la ve). Cambia sola: nadie la toca a mano.
     @Published public var hasSignal: Bool = true
+    public var connectionLabel: String {
+        if offlineEmergencyMode { return "Modo de emergencia · datos guardados" }
+        if !hasSignal { return "Sin red · datos guardados" }
+        if !isOnline { return "No se pudo sincronizar con Seismik" }
+        if lowBandwidth { return "Conexión limitada · historial sincronizado" }
+        return "Historial sincronizado"
+    }
     /// La persona dejó el modo de emergencia fijo aunque haya señal.
     @AppStorage("seismik.emergency.pinned") public var emergencyPinned: Bool = false
     private let connectivity = ConnectivityMonitor()
@@ -253,7 +260,9 @@ public final class SeismikState: ObservableObject {
     public func flushPendingReports() async {
         let result = await apiClient.flushPendingReports()
         pendingReportCount = result.remaining
-        if result.sent > 0 {
+        if result.lastError == "Hay reportes antiguos guardados pendientes de revisión." {
+            syncMessage = result.lastError
+        } else if result.sent > 0 {
             syncMessage = result.sent == 1
                 ? "Se envió 1 reporte guardado sin conexión."
                 : "Se enviaron \(result.sent) reportes guardados sin conexión."
