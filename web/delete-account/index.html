@@ -20,6 +20,7 @@
   <link rel="stylesheet" href="/logo.css?v=__ASSET_VERSION__">
   <link rel="stylesheet" href="/delete-account.css?v=__ASSET_VERSION__">
   <script src="/delete-account.js?v=__ASSET_VERSION__" defer></script>
+  <script src="/delete-account-self.js?v=__ASSET_VERSION__" defer></script>
 <link rel="stylesheet" href="/footer.css?v=__ASSET_VERSION__">
 </head>
 <body>
@@ -30,10 +31,38 @@
   <main class="narrow">
     <p class="eyebrow">SEISMIK · PRIVACIDAD</p>
     <h1>Eliminar tu cuenta y tus datos.</h1>
-    <p class="lead">Puedes solicitar la eliminación de tu cuenta de Seismik o de los datos personales asociados desde este formulario, sin necesidad de usar la aplicación.</p>
+    <p class="lead">Si inicias sesión, eliminamos tu cuenta y tus datos al instante. Si no puedes, solicita la eliminación con el formulario, sin necesidad de usar la aplicación.</p>
+
+    <section class="section prose" id="self-erase" aria-labelledby="self-title">
+      <h2 id="self-title">Eliminar ahora mismo</h2>
+      <p id="self-loading" role="status">Comprobando tu sesión…</p>
+      <div id="self-signed-out" hidden>
+        <p>Si puedes iniciar sesión en Seismik, esta es la forma más rápida: confirmas que eres tú y eliminamos tu cuenta al instante, sin esperar una revisión.</p>
+        <p><a class="button" href="/v1/account/erasure/login">Iniciar sesión para eliminar</a></p>
+        <p class="fine-print">Si no puedes iniciar sesión, usa el formulario de abajo.</p>
+      </div>
+      <div id="self-ready" hidden>
+        <p>Sesión iniciada como <strong id="self-who"></strong>. <span id="self-counts"></span></p>
+        <p>Al confirmar se elimina de inmediato, sin posibilidad de recuperarla:</p>
+        <ul id="self-erased"></ul>
+        <p>Se conserva:</p>
+        <ul id="self-retained"></ul>
+        <p id="self-reauth" hidden>Por seguridad, tu inicio de sesión debe ser de los últimos 10 minutos. <a class="button secondary" href="/v1/account/erasure/login">Volver a iniciar sesión</a></p>
+        <div class="delete-form">
+          <label for="self-word">Para confirmar escribe ELIMINAR<input id="self-word" type="text" inputmode="text" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="20"></label>
+          <button id="self-confirm" class="button" type="button" disabled>Eliminar mi cuenta y mis datos</button>
+          <p id="self-status" role="status" aria-live="polite"></p>
+        </div>
+      </div>
+      <div id="self-done" hidden>
+        <p><strong>Tu cuenta y tus datos fueron eliminados.</strong> La sesión se cerró en este navegador. Las sesiones abiertas en tus teléfonos dejan de funcionar; si quieres, desinstala la app.</p>
+        <p id="self-retained-note" hidden class="fine-print">Los registros contables de facturación, si existían, se conservan por obligación legal.</p>
+        <p id="self-pending" hidden class="fine-print">Un paso externo quedó pendiente y lo completamos nosotros: no tienes que hacer nada más.</p>
+      </div>
+    </section>
 
     <section class="section prose">
-      <h2>Solicitar eliminación</h2>
+      <h2>Si no puedes iniciar sesión: solicitar eliminación</h2>
       <p>Escribe el correo con el que iniciaste sesión en Seismik. Verificaremos razonablemente que la solicitud proviene de la persona titular antes de aplicar cualquier cambio, y te escribiremos a ese mismo correo para confirmarlo.</p>
       <form id="delete-form" class="delete-form" novalidate>
         <label>Correo asociado a tu cuenta<input name="email" type="email" autocomplete="email" maxlength="254" required></label>
@@ -64,7 +93,7 @@
       <p>Podemos conservar durante el tiempo estrictamente necesario registros mínimos de seguridad, prevención de fraude y cumplimiento de obligaciones legales. Las observaciones y métricas que ya fueron anonimizadas o agregadas para investigación, fiabilidad sísmica o estadística no permiten identificarte y pueden conservarse. Si existen copias de respaldo, no se restaurarán para reactivar una cuenta eliminada y se depurarán conforme a su ciclo operativo de seguridad.</p>
 
       <h2>Plazo</h2>
-      <p>Confirmaremos la recepción y, si hace falta, pediremos información adicional para verificar la solicitud. Procuramos completar solicitudes verificadas en un plazo de hasta 30 días calendario, salvo que una obligación legal requiera otra conservación. También puedes pedir acceso, corrección, revocación de autorización o eliminación parcial usando el mismo formulario o el mismo correo.</p>
+      <p>La eliminación con sesión iniciada es inmediata. Con el formulario, confirmaremos la recepción y, si hace falta, pediremos información adicional para verificar la solicitud. Procuramos completar solicitudes verificadas en un plazo de hasta 30 días calendario, salvo que una obligación legal requiera otra conservación. También puedes pedir acceso, corrección, revocación de autorización o eliminación parcial usando el mismo formulario o el mismo correo.</p>
 
       <h2>Si no puedes acceder al correo</h2>
       <p>Escribe a <a href="mailto:support@seismik.org?subject=No%20puedo%20acceder%20a%20mi%20correo%20de%20Seismik">support@seismik.org</a> con el asunto <strong>No puedo acceder a mi correo de Seismik</strong>. Te indicaremos una forma proporcional de verificar la titularidad sin pedir información sensible innecesaria.</p>

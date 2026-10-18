@@ -68,6 +68,7 @@ def _cookie_name() -> str:
 
 AFTER_LOGIN_COOKIE = "seismik_after_login"
 WAVES_MARKER = "waves"
+ERASURE_MARKER = "delete-account"
 
 
 def _mobile_return_to(value: str | None) -> str | None:
@@ -122,6 +123,11 @@ async def _finish_login(
     back_to_waves = not return_to and request.cookies.get(AFTER_LOGIN_COOKIE) == WAVES_MARKER
     if back_to_waves:
         target = settings.waves_portal_url
+    # Igual que Waves: un valor fijo pide volver a la página de eliminación; el destino es una
+    # constante de la configuración, nunca algo que venga de la cookie.
+    back_to_erasure = not return_to and request.cookies.get(AFTER_LOGIN_COOKIE) == ERASURE_MARKER
+    if back_to_erasure:
+        target = settings.account_erasure_return_url
     if return_to:
         code = secrets.token_urlsafe(32)
         await request.app.state.redis.set(
@@ -136,7 +142,7 @@ async def _finish_login(
         secure=True, httponly=True, samesite="lax", path="/",
         domain=settings.oauth_cookie_domain,
     )
-    if back_to_waves:
+    if back_to_waves or back_to_erasure:
         response.delete_cookie(
             AFTER_LOGIN_COOKIE, path="/", domain=settings.oauth_cookie_domain,
             secure=True, httponly=True, samesite="none",

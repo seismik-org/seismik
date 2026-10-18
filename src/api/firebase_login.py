@@ -38,6 +38,11 @@ async def resolve_identity(request: Request, identity: dict[str, Any]) -> dict[s
 
 async def validate_session(request: Request, user: dict[str, Any]) -> None:
     """Password resets, disabling and verification changes invalidate sessions."""
+    from api.account_erasure import session_was_erased
+
+    redis = getattr(request.app.state, "redis", None)
+    if redis is not None and await session_was_erased(redis, user):
+        raise HTTPException(401, "Esta cuenta fue eliminada; inicia sesión de nuevo")
     if not user.get("firebase_uid"):
         return
     try:
