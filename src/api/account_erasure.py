@@ -62,7 +62,7 @@ ERASURE_MARKER = "delete-account"
 RECENT_LOGIN_SECONDS = 600
 # Más que la sesión móvil más larga (90 días): ninguna sesión anterior sobrevive al borrado.
 ERASED_MARKER_SECONDS = 100 * 86_400
-ALLOWED_ORIGINS = frozenset({"https://seismik.org"})
+ALLOWED_ORIGINS = frozenset({"https://seismik.org", "https://auth.seismik.org"})
 SCAN_BATCH = 500
 
 ERASED = (

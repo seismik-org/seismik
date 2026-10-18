@@ -5,6 +5,7 @@ import asyncio
 import hashlib
 import json
 import time
+from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import APIRouter, Cookie, HTTPException, Request
@@ -124,7 +125,7 @@ async def email_exchange(
     if body.link:
         raw = await redis.get(f"seismik:oauth:session:{seismik_session}") if seismik_session else None
         existing = json.loads(raw) if raw else {}
-        if not existing.get("uid") or existing.get("firebase_uid") or not 0 <= time.time() - float(existing.get("authenticated_at", 0)) <= 300:
+        if not existing.get("uid") or existing.get("firebase_uid") or not 0 <= time.time() - float(existing.get("authenticated_at", 0)) <= 600:
             raise HTTPException(401, "Primero vuelve a entrar con Apple, Google o GitHub y regresa aquí")
         # A Firebase identity with prior usage must keep its original account/data.
         data_keys = (
@@ -139,6 +140,10 @@ async def email_exchange(
         await redis.set(key, str(existing["uid"]), nx=True)
         if await redis.get(key) != str(existing["uid"]):
             raise HTTPException(409, "Esta identidad ya está vinculada; no se modificó ninguna cuenta")
+        await redis.hset(
+            f"seismik:account:links:{existing['uid']}", "email",
+            json.dumps({"puid": firebase_uid, "added_at": datetime.now(timezone.utc).isoformat()}),
+        )
     resolved = await resolve_identity(request, identity)
     user = {
         "uid": str(resolved["uid"]), "email": str(identity["email"]),

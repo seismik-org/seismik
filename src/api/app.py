@@ -8,6 +8,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from redis.asyncio import Redis
 
+from api.account_center import router as account_center_router
 from api.account_deletion import router as account_deletion_router
 from api.account_erasure import router as account_erasure_router
 from api.admin import router as admin_router
@@ -111,6 +112,7 @@ def create_app(settings: AppSettings | None = None) -> FastAPI:
     app.include_router(admin_security_router)
     app.include_router(account_deletion_router)
     app.include_router(account_erasure_router)
+    app.include_router(account_center_router)
     app.include_router(email_actions_router)
 
     @app.get("/health/live", tags=["health"])

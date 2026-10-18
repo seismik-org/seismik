@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="description" content="Administra tu cuenta de Seismik: accesos, datos y eliminación.">
+  <title>Mi cuenta · Seismik</title>
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32.png">
+  <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+  <meta name="theme-color" content="#0B1226">
+  <link rel="stylesheet" href="/styles.css?v=__ASSET_VERSION__">
+  <link rel="stylesheet" href="/logo.css?v=__ASSET_VERSION__">
+  <link rel="stylesheet" href="/auth.css?v=__ASSET_VERSION__">
+  <link rel="stylesheet" href="/account.css?v=__ASSET_VERSION__">
+  <link rel="stylesheet" href="/footer.css?v=__ASSET_VERSION__">
+  <script src="/account.js?v=__ASSET_VERSION__" defer></script>
+</head>
+<body class="account-page">
+  <header class="account-top">
+    <a class="auth-brand" href="https://seismik.org/">
+      <img class="brand-logo" src="/assets/seismik_logo.webp" width="34" height="34" alt="">
+      <span>SEISMIK</span>
+    </a>
+    <a class="return-link" href="https://devs.seismik.org/">← Volver a Developers</a>
+  </header>
+
+  <main class="account-main" aria-labelledby="account-title">
+    <p class="eyebrow">MI CUENTA</p>
+    <h1 id="account-title">Tu cuenta de Seismik</h1>
+    <p id="notice" class="account-notice" role="status" aria-live="polite" hidden></p>
+
+    <p id="loading" class="auth-copy" role="status">Cargando tu cuenta…</p>
+
+    <section id="signed-out" class="account-card" hidden>
+      <h2>Inicia sesión</h2>
+      <p class="auth-copy">Entra para ver tus accesos y tus datos, o para eliminarlos.</p>
+      <p><a class="button" href="/v1/oauth/account/login">Iniciar sesión</a></p>
+    </section>
+
+    <div id="signed-in" hidden>
+      <section class="account-card" aria-labelledby="profile-title">
+        <h2 id="profile-title">Perfil</h2>
+        <p class="account-who"><strong id="who-name"></strong><span id="who-email"></span></p>
+        <p class="account-meta">Identificador de la cuenta: <code id="who-id"></code></p>
+        <div id="reauth" class="account-reauth" hidden>
+          <p>Para cambiar o eliminar algo debes haber iniciado sesión en los últimos 10 minutos.</p>
+          <a class="button secondary" href="/v1/oauth/account/login">Volver a iniciar sesión</a>
+        </div>
+      </section>
+
+      <section class="account-card" aria-labelledby="methods-title">
+        <h2 id="methods-title">Formas de acceso</h2>
+        <p class="auth-copy">Puedes entrar con varias a la vez y llegarás siempre a la misma cuenta. Debe quedar al menos una.</p>
+        <ul id="methods" class="method-list"></ul>
+      </section>
+
+      <section class="account-card" aria-labelledby="data-title">
+        <h2 id="data-title">Tus datos en Seismik</h2>
+        <p id="data-summary" class="auth-copy"></p>
+        <div class="account-actions">
+          <button id="data-view" class="button secondary" type="button">Ver el detalle</button>
+          <button id="data-download" class="button secondary" type="button">Descargar mis datos (JSON)</button>
+        </div>
+        <div id="data-detail" class="data-detail" hidden></div>
+        <p id="data-status" class="account-status" role="status" aria-live="polite"></p>
+      </section>
+
+      <section class="account-card" aria-labelledby="delete-title">
+        <h2 id="delete-title">Eliminar datos</h2>
+        <p class="auth-copy">Puedes borrar una parte o todo. No se puede deshacer.</p>
+        <ul id="delete-list" class="delete-list"></ul>
+        <div class="account-danger">
+          <h3>Eliminar mi cuenta completa</h3>
+          <p>Borra todo lo anterior, tus accesos y tu perfil, y cierra tu sesión.</p>
+          <a class="button danger" href="https://seismik.org/delete-account/#confirmar">Ir a eliminar mi cuenta</a>
+        </div>
+        <p id="delete-status" class="account-status" role="status" aria-live="polite"></p>
+      </section>
+    </div>
+  </main>
+
+  <footer class="site-footer"><div class="container footer-bottom"><span>© 2026 Seismik</span> · <a href="https://seismik.org/terms-of-privacy/">Privacidad</a> · <a href="https://seismik.org/terms-of-service/">Términos</a> · <a href="https://seismik.org/delete-account/">Eliminar cuenta y datos</a></div></footer>
+  <script src="/site.js?v=__ASSET_VERSION__" defer></script>
+</body>
+</html>

@@ -243,3 +243,12 @@ test('when Seismik mail is unavailable the Firebase email is used as a fallback'
   await recovery.submit();
   assert.equal(recovery.calls.some(([name]) => name === 'recovery'), true);
 });
+
+test('coming from My account pre-checks the link box and explains it', async () => {
+  const ui = await screen({ search: '?link=1' });
+  assert.equal(ui.node('link-account').checked, true);
+  assert.match(ui.node('email-message').textContent, /vincular este correo a tu cuenta actual/);
+
+  const plain = await screen();
+  assert.equal(plain.node('link-account').checked, false);
+});

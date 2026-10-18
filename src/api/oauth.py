@@ -69,6 +69,7 @@ def _cookie_name() -> str:
 AFTER_LOGIN_COOKIE = "seismik_after_login"
 WAVES_MARKER = "waves"
 ERASURE_MARKER = "delete-account"
+ACCOUNT_MARKER = "account"
 
 
 def _mobile_return_to(value: str | None) -> str | None:
@@ -97,6 +98,22 @@ def _app_challenge(value: str | None, return_to: str | None) -> str | None:
     return value
 
 
+async def _link_state(request: Request, link: str | None) -> dict[str, str]:
+    from api.account_center import link_state
+
+    return await link_state(request, link)
+
+
+async def _complete(request: Request, provider: str, user: dict[str, str], saved: dict[str, Any]) -> Response:
+    """Fin de un flujo OAuth: enlaza la identidad a la cuenta que lo pidió, o inicia sesión."""
+
+    if saved.get("link_token"):
+        from api.account_center import complete_link
+
+        return await complete_link(request, provider, user, str(saved["link_token"]))
+    return await _finish_login(request, user, saved.get("return_to"), saved.get("app_challenge"))
+
+
 async def _finish_login(
     request: Request,
     user: dict[str, str],
@@ -111,6 +128,13 @@ async def _finish_login(
         return admin_response
     settings = request.app.state.settings
     session = secrets.token_urlsafe(48)
+    if not user.get("firebase_uid") and user.get("uid"):
+        # Una identidad de Google o GitHub enlazada a otra cuenta entra en esa cuenta.
+        from api.account_center import provider_link_key
+
+        bound = await request.app.state.redis.get(provider_link_key(str(user["uid"])))
+        if bound:
+            user = {**user, "uid": str(bound)}
     user = {**user, "authenticated_at": str(int(time.time()))}
     await request.app.state.redis.set(
         f"seismik:oauth:session:{session}",
@@ -128,6 +152,10 @@ async def _finish_login(
     back_to_erasure = not return_to and request.cookies.get(AFTER_LOGIN_COOKIE) == ERASURE_MARKER
     if back_to_erasure:
         target = settings.account_erasure_return_url
+    # Igual: la marca fija «account» devuelve al centro de la cuenta (destino constante).
+    back_to_account = not return_to and request.cookies.get(AFTER_LOGIN_COOKIE) == ACCOUNT_MARKER
+    if back_to_account:
+        target = "https://auth.seismik.org/account/"
     if return_to:
         code = secrets.token_urlsafe(32)
         await request.app.state.redis.set(
@@ -142,7 +170,7 @@ async def _finish_login(
         secure=True, httponly=True, samesite="lax", path="/",
         domain=settings.oauth_cookie_domain,
     )
-    if back_to_waves or back_to_erasure:
+    if back_to_waves or back_to_erasure or back_to_account:
         response.delete_cookie(
             AFTER_LOGIN_COOKIE, path="/", domain=settings.oauth_cookie_domain,
             secure=True, httponly=True, samesite="none",
@@ -255,7 +283,7 @@ async def identity_entry(request: Request, flow_id: str) -> Response:
 
 @router.get("/google/start")
 async def google_start(
-    request: Request, return_to: str | None = None, app_challenge: str | None = None
+    request: Request, return_to: str | None = None, app_challenge: str | None = None, link: str | None = None
 ) -> Response:
     settings = request.app.state.settings
     if not settings.oauth_google_client_id or not settings.oauth_google_client_secret.get_secret_value():
@@ -268,6 +296,7 @@ async def google_start(
             "verifier": verifier,
             "return_to": _mobile_return_to(return_to),
             "app_challenge": _app_challenge(app_challenge, return_to),
+            **await _link_state(request, link),
         }),
         ex=600,
     )
@@ -320,17 +349,17 @@ async def google_callback(request: Request, code: str | None = None, state: str 
     user = profile.json()
     if not user.get("email_verified", False):
         raise HTTPException(status_code=403, detail="Se requiere un correo Google verificado")
-    return await _finish_login(
+    return await _complete(
         request,
+        "google",
         {"uid": user.get("sub", ""), "email": user["email"], "name": user.get("name", "")},
-        saved.get("return_to"),
-        saved.get("app_challenge"),
+        saved,
     )
 
 
 @router.get("/github/start")
 async def github_start(
-    request: Request, return_to: str | None = None, app_challenge: str | None = None
+    request: Request, return_to: str | None = None, app_challenge: str | None = None, link: str | None = None
 ) -> Response:
     settings = request.app.state.settings
     if not _github_is_configured(settings):
@@ -345,6 +374,7 @@ async def github_start(
                 "verifier": verifier,
                 "return_to": _mobile_return_to(return_to),
                 "app_challenge": _app_challenge(app_challenge, return_to),
+                **await _link_state(request, link),
             }
         ),
         ex=600,
@@ -409,15 +439,15 @@ async def github_callback(
     if not email_record:
         raise HTTPException(status_code=403, detail="GitHub requiere un correo primario verificado")
     github_user = profile.json()
-    return await _finish_login(
+    return await _complete(
         request,
+        "github",
         {
             "uid": f"github:{github_user.get('id', '')}",
             "email": email_record["email"],
             "name": github_user.get("name") or github_user.get("login", ""),
         },
-        saved.get("return_to"),
-        saved.get("app_challenge"),
+        saved,
     )
 
 
