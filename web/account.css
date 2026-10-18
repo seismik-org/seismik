@@ -1,0 +1,67 @@
+/* auth.seismik.org/account: centro de la cuenta. Los tokens de color vienen de styles.css. */
+.account-page {
+  min-height: 100vh; margin: 0; padding: 0 20px 24px;
+  background:
+    radial-gradient(700px 420px at 15% 0%, var(--glow), transparent 65%),
+    radial-gradient(600px 380px at 100% 100%, rgb(255 122 89 / 0.08), transparent 65%),
+    var(--bg);
+}
+.account-top { display: flex; align-items: center; justify-content: space-between; gap: 16px; max-width: 760px; margin: 0 auto; padding: 22px 0 6px; }
+.account-main { max-width: 760px; margin: 0 auto; padding: 18px 0 40px; }
+.account-main .eyebrow { margin: 26px 0 10px; }
+.account-main h1 { margin: 0 0 18px; font-size: clamp(1.9rem, 6vw, 2.6rem); line-height: 1.05; letter-spacing: -0.04em; }
+.account-main [hidden] { display: none !important; }
+
+.account-card {
+  margin: 0 0 18px; padding: clamp(20px, 4vw, 30px);
+  border: 1px solid var(--line-strong); border-radius: 24px;
+  background: color-mix(in srgb, var(--surface) 94%, transparent); box-shadow: var(--shadow);
+}
+.account-card h2 { margin: 0 0 8px; font-size: 1.25rem; letter-spacing: -0.02em; }
+.account-card h3 { margin: 0 0 6px; font-size: 1rem; }
+.account-card p { margin: 0 0 12px; }
+
+.account-notice { margin: 0 0 18px; padding: 14px 16px; border-radius: 14px; background: var(--surface-2); border: 1px solid var(--line-strong); line-height: 1.5; }
+.account-notice[data-state="ok"] { border-color: color-mix(in srgb, var(--ok) 55%, var(--line-strong)); }
+.account-notice[data-state="error"] { border-color: color-mix(in srgb, var(--danger) 60%, var(--line-strong)); }
+
+.account-who { display: flex; flex-wrap: wrap; gap: 4px; align-items: baseline; font-size: 1.05rem; }
+.account-who span { color: var(--muted); }
+.account-meta { color: var(--muted); font-size: 0.88rem; }
+.account-meta code { padding: 2px 6px; border-radius: 6px; background: var(--surface-2); }
+.account-reauth { margin-top: 14px; padding: 14px 16px; border-radius: 14px; background: color-mix(in srgb, var(--warn) 9%, var(--surface-2)); }
+.account-reauth p { color: var(--muted); }
+
+.method-list, .delete-list { display: grid; gap: 10px; margin: 16px 0 0; padding: 0; list-style: none; }
+.method {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 16px;
+  padding: 14px 16px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface-2);
+}
+.method-info { display: grid; gap: 3px; min-width: 0; flex: 1 1 220px; }
+.method-info span { color: var(--muted); font-size: 0.88rem; line-height: 1.4; }
+.method-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.method-note, .method-note-row { color: var(--muted); font-size: 0.86rem; }
+.method-note-row { padding: 0 4px; }
+
+.chip { display: inline-block; padding: 4px 11px; border-radius: 999px; border: 1px solid var(--line-strong); color: var(--muted); font-size: 0.8rem; font-weight: 700; }
+.chip-primary { border-color: var(--primary); color: var(--primary); }
+.chip-ok { border-color: color-mix(in srgb, var(--ok) 60%, var(--line-strong)); color: var(--ok); }
+
+.account-actions { display: flex; flex-wrap: wrap; gap: 10px; margin: 14px 0 6px; }
+.account-status { min-height: 1.4em; margin: 8px 0 0; color: var(--muted); font-size: 0.92rem; }
+.account-status[data-state="ok"] { color: var(--ok); }
+.account-status[data-state="error"] { color: var(--danger); }
+
+.button.danger, button.danger { border-color: var(--danger); background: var(--danger); color: #1b0606; }
+.button.danger:hover, button.danger:hover { background: color-mix(in srgb, var(--danger) 85%, #fff); color: #1b0606; }
+.account-danger { margin-top: 22px; padding: 16px 18px; border: 1px solid color-mix(in srgb, var(--danger) 45%, var(--line)); border-radius: 16px; }
+
+.data-detail { display: grid; gap: 10px; margin-top: 16px; }
+.data-block { border: 1px solid var(--line); border-radius: 14px; background: var(--surface-2); }
+.data-block > summary { padding: 12px 16px; cursor: pointer; font-weight: 700; }
+.data-block > :not(summary) { margin: 0 16px 14px; }
+.data-rows { display: grid; grid-template-columns: minmax(120px, 34%) 1fr; gap: 6px 14px; margin: 0 16px 14px; padding-bottom: 12px; border-bottom: 1px dashed var(--line); font-size: 0.88rem; }
+.data-rows:last-child { border-bottom: 0; }
+.data-rows dt { color: var(--muted); }
+.data-rows dd { margin: 0; word-break: break-word; }
+@media (max-width: 520px) { .data-rows { grid-template-columns: 1fr; gap: 2px; } .data-rows dd { margin-bottom: 8px; } }

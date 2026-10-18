@@ -503,6 +503,7 @@ function updateSession(user) {
   elements["signed-in-panel"].hidden = !signedIn;
   elements["login-button"].hidden = signedIn;
   elements["logout-button"].hidden = !signedIn;
+  elements["account-link"].hidden = !signedIn;
   elements["user-label"].hidden = !signedIn;
   elements["user-label"].textContent = user?.email || "";
   if (signedIn) {

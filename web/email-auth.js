@@ -127,6 +127,11 @@ async function initialize() {
   await setPersistence(auth, inMemoryPersistence);
   $("email-access").hidden = false;
   showMode("login");
+  if (params.get("link") === "1") {
+    // Viene de «Mi cuenta»: el correo se enlaza a la cuenta con la que ya entraste.
+    $("link-account").checked = true;
+    message("Vas a vincular este correo a tu cuenta actual. Entra con tu correo y contraseña; si aún no tienes cuenta con correo, créala primero, verifícala y vuelve a «Mi cuenta» para vincularla.");
+  }
   $("email-login").addEventListener("click", () => showMode("login"));
   $("email-register").addEventListener("click", () => showMode("register"));
   $("email-recover").addEventListener("click", () => showMode("recover"));
