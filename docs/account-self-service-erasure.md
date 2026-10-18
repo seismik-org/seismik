@@ -33,3 +33,14 @@ Cambia `src/api/**`: al fusionar en `main` el CD vuelve a desplegar API, dispatc
 Antes hay que reconciliar con el árbol de producción manual (ver
 `docs/associated-earthquake-reports.md`). Al desplegar, actualizar §9 de la política de privacidad
 («una persona de nuestro equipo revisa cada solicitud») para mencionar la eliminación inmediata.
+
+## Correo saliente (Resend)
+`src/api/mailer.py` envía por Resend desde dos remitentes del dominio verificado `seismik.org`:
+`Seismik <cuentas@seismik.org>` (cuentas y datos personales; las respuestas van a `support@seismik.org`) y
+`Seismik <noreply@seismik.org>` (avisos automáticos sin respuesta; hoy sin uso). Resend no registra
+direcciones: sirve cualquier nombre del dominio verificado. Sin `SEISMIK_RESEND_API_KEY` no se envía nada.
+Correos actuales, todos en español (`mail_templates.py`): confirmación al terminar una eliminación con
+sesión, y acuse de recibo del formulario (uno por correo y día). Ningún correo se guarda.
+Activar: crear en Resend una clave `seismik-api` con permiso de envío limitado a seismik.org, guardarla en
+Secret Manager (`seismik-resend-api-key`) y montarla en Cloud Run como `SEISMIK_RESEND_API_KEY`.
+Al activarlo, la política de privacidad debe nombrar a Resend (envíos desde São Paulo).

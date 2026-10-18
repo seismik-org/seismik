@@ -20,12 +20,14 @@ from datetime import datetime, timezone
 from typing import Literal
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field, field_validator
 from redis.asyncio import Redis
 
 from api.config import AppSettings
 from api.dependencies import get_app_settings, get_redis
+from api.mail_templates import deletion_request_received
+from api.mailer import Mailer
 
 LOGGER = logging.getLogger(__name__)
 
@@ -166,6 +168,7 @@ async def deletion_config(
 async def create_deletion_request(
     payload: DeletionRequestPayload,
     request: Request,
+    background: BackgroundTasks,
     settings: AppSettings = Depends(get_app_settings),
     redis: Redis = Depends(get_redis),
 ) -> DeletionRequestResponse:
@@ -192,6 +195,12 @@ async def create_deletion_request(
         request_id,
         payload.scope,
     )
+    mailer = Mailer(settings)
+    if mailer.enabled:
+        # Un acuse por correo y día: el formulario es público y no debe servir para llenar la bandeja de otra persona.
+        digest = hashlib.sha256(payload.email.encode()).hexdigest()
+        if await redis.set(f"seismik:mail:deletion-ack:{digest}", "1", nx=True, ex=86_400):
+            background.add_task(mailer.send, deletion_request_received(payload.email, request_id=request_id))
     return DeletionRequestResponse(
         request_id=request_id,
         message="Recibimos tu solicitud. Te escribiremos a ese correo para verificarla.",

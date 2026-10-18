@@ -20,7 +20,16 @@ import time
 from datetime import datetime, timezone
 from typing import Any, Literal
 
-from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response, status
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Cookie,
+    Depends,
+    HTTPException,
+    Request,
+    Response,
+    status,
+)
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, ConfigDict
 from redis.asyncio import Redis
@@ -40,6 +49,8 @@ from api.family import (
     automatic_location_key,
     family_members_key,
 )
+from api.mail_templates import account_erased
+from api.mailer import Mailer
 
 LOGGER = logging.getLogger(__name__)
 
@@ -301,7 +312,7 @@ async def erasure_summary(
 
 @router.post("/erasure")
 async def erase_my_account(
-    confirmation: ErasureConfirmation, request: Request, response: Response,
+    confirmation: ErasureConfirmation, request: Request, response: Response, background: BackgroundTasks,
     seismik_session: str | None = Cookie(default=None), redis: Redis = Depends(get_redis),
     settings: AppSettings = Depends(get_app_settings),
 ) -> dict[str, Any]:
@@ -336,4 +347,8 @@ async def erase_my_account(
     response.delete_cookie(
         "seismik_session", path="/", domain=settings.oauth_cookie_domain,
     )
+    email = str(user.get("email") or "")
+    if "@" in email:
+        # Después de responder y sin guardar el correo: el aviso no debe retrasar ni romper el borrado.
+        background.add_task(Mailer(settings).send, account_erased(email, request_id=str(result["request_id"])))
     return {"erased": True, **result}
