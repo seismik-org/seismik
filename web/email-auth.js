@@ -32,6 +32,24 @@ async function sendRecovery(email) {
   try { await sendPasswordResetEmail(auth, email, actionSettings); }
   catch (error) { if (error.code !== "auth/user-not-found") throw error; }
 }
+const LINK_RETRY = ["link_no_session", "link_reauth"];
+const LINK_BACK = ["link_same", "link_has_email", "link_taken", "link_conflict"];
+// Debajo del mensaje: el paso siguiente, para que nadie se quede en un callejón.
+function nextStep(code) {
+  const link = $("link-next");
+  if (!link) return;
+  if (LINK_RETRY.includes(code)) {
+    link.href = "/v1/oauth/account/login?next=link-email";
+    link.textContent = "Volver a iniciar sesión y continuar la vinculación";
+    link.hidden = false;
+  } else if (LINK_BACK.includes(code)) {
+    link.href = "/account/";
+    link.textContent = "Volver a Mi cuenta";
+    link.hidden = false;
+  } else {
+    link.hidden = true;
+  }
+}
 function message(text, error = false) {
   $("email-message").textContent = text;
   $("email-message").hidden = false;
@@ -41,10 +59,14 @@ function showMode(next) {
   mode = next;
   const register = mode === "register";
   const recover = mode === "recover";
-  $("email-title").textContent = register ? "Crear cuenta con correo" : recover ? "Recuperar contraseña" : "Iniciar sesión con correo";
+  const linking = params.get("link") === "1";
+  $("email-title").textContent = register ? "Crear cuenta con correo" : recover ? "Recuperar contraseña"
+    : linking ? "Vincular un correo a tu cuenta" : "Iniciar sesión con correo";
   $("email-description").textContent = register
-    ? "Elige una contraseña y confirma tu correo antes de acceder a Seismik."
+    ? (linking ? "Crea la cuenta de correo que quieres vincular. Te enviaremos un correo para confirmarla; cuando lo hagas, vuelve a «Mi cuenta» y pulsa «Vincular»."
+      : "Elige una contraseña y confirma tu correo antes de acceder a Seismik.")
     : recover ? "Te enviaremos un enlace para elegir una nueva contraseña."
+    : linking ? "Entra con el correo y la contraseña que quieres añadir. Se vinculará a la cuenta con la que ya iniciaste sesión."
     : "Introduce el correo y la contraseña de tu cuenta.";
   $("email-login").setAttribute("aria-pressed", String(mode === "login"));
   $("email-register").setAttribute("aria-pressed", String(register));
@@ -59,13 +81,15 @@ function showMode(next) {
   $("password-confirm").required = register;
   $("password-confirm").disabled = !register;
   $("password-confirm").value = "";
-  $("link-label").hidden = mode !== "login";
-  $("link-help").hidden = recover;
+  // Desde «Mi cuenta» el enlace es implícito: no se muestra la casilla ni su texto, que confundían.
+  $("link-label").hidden = mode !== "login" || linking;
+  $("link-help").hidden = recover || linking;
   $("email-recover").hidden = mode !== "login";
   $("email-back").hidden = !recover;
-  $("email-submit").textContent = register ? "Crear cuenta y enviar verificación" : recover ? "Enviar enlace de recuperación" : "Iniciar sesión";
+  $("email-submit").textContent = register ? "Crear cuenta y enviar verificación" : recover ? "Enviar enlace de recuperación" : linking ? "Vincular este correo" : "Iniciar sesión";
   $("email-message").hidden = true;
   $("verification-actions").hidden = true;
+  nextStep();
 }
 async function run(action, pending = "Procesando…") {
   if (busy) return;
@@ -84,6 +108,7 @@ async function run(action, pending = "Procesando…") {
       : code === "auth/operation-not-allowed" ? "El acceso con correo no está disponible temporalmente. Inténtalo más tarde."
       : code === "auth/expired-action-code" || code === "auth/invalid-action-code" ? "Este enlace expiró o no es válido. Solicita uno nuevo."
       : error?.safeMessage || "No se pudo completar el acceso. Revisa los datos o recupera tu contraseña.", true);
+    nextStep(error?.linkCode);
   } finally {
     if ($("email-message").textContent === pending) message("Revisa los campos para continuar.", true);
     $("password").value = "";
@@ -108,15 +133,51 @@ async function finish() {
     body: JSON.stringify({ id_token: token, flow_id: flowId, link: $("link-account").checked }),
   });
   const result = await response.json();
-  if (!response.ok) throw { safeMessage: result.detail || "No se pudo completar el acceso." };
+  if (!response.ok) {
+    const detail = result.detail;
+    throw { safeMessage: (typeof detail === "string" ? detail : detail?.message) || "No se pudo completar el acceso.", linkCode: detail?.code };
+  }
   await signOut(auth);
   const target = new URL(result.redirect);
-  if (!["https://devs.seismik.org", "https://admin.seismik.org", "https://waves.seismik.org"].includes(target.origin) && !(flowId && target.protocol === "seismik:" && target.host === "auth" && target.pathname === "/callback")) {
+  if (!["https://devs.seismik.org", "https://admin.seismik.org", "https://waves.seismik.org", "https://auth.seismik.org", "https://seismik.org"].includes(target.origin) && !(flowId && target.protocol === "seismik:" && target.host === "auth" && target.pathname === "/callback")) {
     throw { safeMessage: "Destino de acceso no permitido." };
   }
   location.assign(target.href);
 }
 
+// Viene de «Mi cuenta»: se comprueba antes de pedir nada para no hacer perder tiempo a nadie.
+async function prepareLinking() {
+  $("link-account").checked = true;
+  // Esta página, desde «Mi cuenta», sólo sirve para vincular el correo: los botones de otros accesos
+  // iniciarían una sesión distinta y harían perder el hilo.
+  $("providers").hidden = true;
+  $("auth-title").textContent = "Mi cuenta";
+  document.querySelector(".auth-copy").hidden = true;
+  showMode("login");
+  let info = null;
+  try {
+    const response = await fetch("/v1/oauth/account/center", { credentials: "include", headers: { Accept: "application/json" } });
+    if (response.ok) info = await response.json();
+  } catch (_) { /* sin red: el servidor responderá con el motivo al intentarlo */ }
+  const context = $("link-context");
+  if (!info) {
+    message("No encontramos tu sesión de Seismik. Inicia sesión y se continuará con la vinculación.", true);
+    nextStep("link_no_session");
+    return;
+  }
+  const email = info.methods.find((method) => method.id === "email");
+  context.textContent = `Se vinculará a la cuenta de ${info.name || info.email}${info.email ? ` (${info.email})` : ""}.`;
+  context.hidden = false;
+  if (email?.linked) {
+    message(email.primary ? "Tu cuenta ya se creó con un correo y contraseña: no hay nada que vincular." : "Tu cuenta ya tiene un correo vinculado. Solo se puede vincular uno.", true);
+    nextStep("link_same");
+    $("email-form").hidden = true;
+    $("email-navigation").hidden = true;
+  } else if (!info.recent_login) {
+    message("Han pasado más de 10 minutos desde que iniciaste sesión. Por seguridad, vuelve a iniciarla y la vinculación continuará sola.", true);
+    nextStep("link_reauth");
+  }
+}
 async function initialize() {
   const response = await fetch("/v1/oauth/email/config", { credentials: "include" });
   if (!response.ok) throw new Error("config");
@@ -127,11 +188,7 @@ async function initialize() {
   await setPersistence(auth, inMemoryPersistence);
   $("email-access").hidden = false;
   showMode("login");
-  if (params.get("link") === "1") {
-    // Viene de «Mi cuenta»: el correo se enlaza a la cuenta con la que ya entraste.
-    $("link-account").checked = true;
-    message("Vas a vincular este correo a tu cuenta actual. Entra con tu correo y contraseña; si aún no tienes cuenta con correo, créala primero, verifícala y vuelve a «Mi cuenta» para vincularla.");
-  }
+  if (params.get("link") === "1") await prepareLinking();
   $("email-login").addEventListener("click", () => showMode("login"));
   $("email-register").addEventListener("click", () => showMode("register"));
   $("email-recover").addEventListener("click", () => showMode("recover"));

@@ -56,11 +56,19 @@ async function screen(options = {}) {
     confirmPasswordReset: async () => calls.push(['confirm-reset']),
     fetch: async (url, init) => {
       if (url.endsWith('/config')) return { ok: true, json: async () => ({ enabled: true, firebase: {} }) };
+      if (url.endsWith('/account/center')) {
+        if (options.center === null) return { ok: false, status: 401, json: async () => ({ detail: 'Inicia sesión' }) };
+        return { ok: true, json: async () => options.center || {
+          name: 'Ana', email: 'ana@example.test', current_method: 'google', recent_login: true,
+          methods: [{ id: 'google', primary: true, linked: true }, { id: 'email', primary: false, linked: false }],
+        } };
+      }
       if (url.endsWith('/verify-request') || url.endsWith('/reset-request')) {
         mail.push([url.split('/').pop(), JSON.parse(init.body)]);
         return { ok: options.seismikMail === true, json: async () => ({ accepted: true }) };
       }
       calls.push(['exchange', JSON.parse(init.body)]);
+      if (options.exchangeError) return { ok: false, json: async () => ({ detail: options.exchangeError }) };
       return { ok: true, json: async () => ({ redirect: options.redirect || 'https://devs.seismik.org/' }) };
     },
   });
@@ -244,11 +252,78 @@ test('when Seismik mail is unavailable the Firebase email is used as a fallback'
   assert.equal(recovery.calls.some(([name]) => name === 'recovery'), true);
 });
 
-test('coming from My account pre-checks the link box and explains it', async () => {
+test('coming from My account the link is implicit and the page says which account will be linked', async () => {
   const ui = await screen({ search: '?link=1' });
   assert.equal(ui.node('link-account').checked, true);
-  assert.match(ui.node('email-message').textContent, /vincular este correo a tu cuenta actual/);
+  assert.equal(ui.node('link-label').hidden, true, 'la casilla confusa no se muestra');
+  assert.equal(ui.node('link-help').hidden, true);
+  assert.match(ui.node('link-context').textContent, /Se vinculará a la cuenta de Ana \(ana@example.test\)/);
+  assert.equal(ui.node('email-title').textContent, 'Vincular un correo a tu cuenta');
+  assert.equal(ui.node('email-submit').textContent, 'Vincular este correo');
 
   const plain = await screen();
   assert.equal(plain.node('link-account').checked, false);
+  assert.equal(plain.node('email-title').textContent, 'Iniciar sesión con correo');
+});
+
+test('linking without a session or with an old one offers to sign in again and continue, before asking for anything', async () => {
+  const none = await screen({ search: '?link=1', center: null });
+  assert.match(none.node('email-message').textContent, /No encontramos tu sesión/);
+  assert.equal(none.node('link-next').hidden, false);
+  assert.equal(none.node('link-next').href, '/v1/oauth/account/login?next=link-email');
+
+  const old = await screen({ search: '?link=1', center: {
+    name: 'Ana', email: 'ana@example.test', current_method: 'google', recent_login: false,
+    methods: [{ id: 'email', linked: false, primary: false }],
+  } });
+  assert.match(old.node('email-message').textContent, /más de 10 minutos/);
+  assert.equal(old.node('link-next').href, '/v1/oauth/account/login?next=link-email');
+});
+
+test('an account that already has an email is told so and sent back, instead of asking for Google', async () => {
+  const ui = await screen({ search: '?link=1', center: {
+    name: 'Ana', email: 'ana@example.test', current_method: 'email', recent_login: true,
+    methods: [{ id: 'email', linked: true, primary: false }],
+  } });
+  assert.match(ui.node('email-message').textContent, /ya tiene un correo vinculado/);
+  assert.doesNotMatch(ui.node('email-message').textContent, /Google/);
+  assert.equal(ui.node('link-next').href, '/account/');
+  assert.equal(ui.node('email-form').hidden, true);
+});
+
+test('structured link errors show their message and the next step', async () => {
+  const ui = await screen({ search: '?link=1', exchangeError: { code: 'link_conflict', message: 'Ese correo ya tiene su propia cuenta de Seismik con datos. No fusionamos cuentas.' } });
+  ui.fill();
+  await ui.submit();
+  assert.match(ui.node('email-message').textContent, /No fusionamos cuentas/);
+  assert.equal(ui.node('link-next').href, '/account/');
+
+  const reauth = await screen({ search: '?link=1', exchangeError: { code: 'link_reauth', message: 'Por seguridad, vuelve a iniciar sesión.' } });
+  reauth.fill();
+  await reauth.submit();
+  assert.equal(reauth.node('link-next').href, '/v1/oauth/account/login?next=link-email');
+
+  const plain = await screen({ exchangeError: 'Algo salió mal en el servidor' });
+  plain.fill();
+  await plain.submit();
+  assert.match(plain.node('email-message').textContent, /Algo salió mal/);
+  assert.equal(plain.node('link-next').hidden, true);
+});
+
+test('after signing in from My account the page follows the account destinations and nothing else', async () => {
+  const ok = await screen({ redirect: 'https://auth.seismik.org/account/' });
+  ok.fill();
+  await ok.submit();
+  assert.deepEqual(ok.calls.filter(([name]) => name === 'redirect'), [['redirect', 'https://auth.seismik.org/account/']]);
+
+  const erase = await screen({ redirect: 'https://seismik.org/delete-account/#confirmar' });
+  erase.fill();
+  await erase.submit();
+  assert.equal(erase.calls.some(([name]) => name === 'redirect'), true);
+
+  const evil = await screen({ redirect: 'https://evil.example/account/' });
+  evil.fill();
+  await evil.submit();
+  assert.equal(evil.calls.some(([name]) => name === 'redirect'), false);
+  assert.match(evil.node('email-message').textContent, /Destino de acceso no permitido/);
 });
