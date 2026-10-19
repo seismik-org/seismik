@@ -14,7 +14,7 @@
 <p class="eyebrow" id="kicker">GRABACIÓN</p><h1 id="title"></h1>
 <div class="context" id="context"></div>
 <section class="panel" aria-labelledby="plot-title"><div class="panel-head"><h2 id="plot-title">Formas de onda</h2>
-<div class="controls"><label>Estación<select id="station"></select></label><label>Escala<select id="scale"><option value="trace">Cada canal con la suya</option><option value="station">Común a la estación</option><option value="all">Común a toda la grabación</option></select></label></div></div>
+<div class="controls"><label id="window-label" hidden>Ventana<select id="window"></select></label><label>Estación<select id="station"></select></label><label>Escala<select id="scale"><option value="trace">Cada canal con la suya</option><option value="station">Común a la estación</option><option value="all">Común a toda la grabación</option></select></label></div></div>
 <p class="fine">Eje horizontal: tiempo en UTC. Eje vertical: cuentas del sensor, con el promedio de cada canal restado sólo para dibujar. Es una reducción de 600 intervalos por canal, sin filtros ni corrección instrumental: sirve para mirar, no para medir.</p>
 <div id="plots" class="plots"></div>
 <p id="readout" class="readout" aria-live="off">Pasa el cursor sobre una onda para leer el tiempo y la amplitud.</p></section>

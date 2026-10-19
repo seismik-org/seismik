@@ -1,13 +1,38 @@
 import {downloadRecord} from "/assets/download.js";
 const $ = id => document.getElementById(id);
 const PAGE = 25;
-const GROUP_LABELS = {evaluation: "Evaluación de magnitud", historical: "Históricos de referencia", cases: "Casos de estudio", fixtures: "Pruebas de reproducción"};
+const GROUP_LABELS = {audit: "Auditoría de candidatos", evaluation: "Evaluación de magnitud", historical: "Históricos de referencia", cases: "Casos de estudio", fixtures: "Pruebas de reproducción"};
 let offset = 0, total = 0, sessionVersion = 0, canDownload = false;
+const resourcesHeading = document.createElement("h3"); resourcesHeading.textContent = "Metadatos y estudios de estaciones";
+const resourcesStatus = document.createElement("p"); resourcesStatus.id = "resources-status"; resourcesStatus.setAttribute("role", "status");
+const resourcesArea = document.createElement("div"); resourcesArea.id = "resources"; resourcesArea.className = "groups";
+$("catalog-panel").append(resourcesHeading, resourcesStatus, resourcesArea);
 const MB = value => `${(value / 1e6).toLocaleString("es-CO", {maximumFractionDigits: value < 1e7 ? 1 : 0})} MB`;
 const when = iso => iso ? iso.replace("T", " ").slice(0, 16) : "—";
 const span = seconds => seconds >= 120 ? `${Math.round(seconds / 60)} min` : `${Math.round(seconds)} s`;
 function status(text, error = false) { $("session-status").textContent = text; $("session-status").dataset.state = error ? "error" : "ok"; }
-function clearCatalog() { $("catalog-panel").hidden = true; $("records").replaceChildren(); offset = 0; }
+function clearCatalog() { $("catalog-panel").hidden = true; $("records").replaceChildren(); $("resources").replaceChildren(); offset = 0; }
+
+async function loadResources(version) {
+  try {
+    const data = await api("/v1/waves/resources");
+    if (version !== sessionVersion) return;
+    $("resources").replaceChildren(...data.items.map(item => {
+      const card = document.createElement("article"); card.className = "group";
+      const title = document.createElement("h3"); title.textContent = item.title;
+      const detail = document.createElement("p"); detail.textContent = item.description;
+      const source = document.createElement("p"); source.textContent = `${item.provider} · ${item.format} · ${MB(item.bytes)}`;
+      const hash = document.createElement("details"); const label = document.createElement("summary"); label.textContent = "Procedencia e integridad";
+      const fingerprint = document.createElement("code"); fingerprint.textContent = `SHA-256: ${item.sha256}`; hash.append(label, fingerprint);
+      if (item.source_url) { const link = document.createElement("a"); link.href = item.source_url; link.textContent = "Fuente ↗"; link.rel = "noopener noreferrer"; link.target = "_blank"; hash.append(link); }
+      card.append(title, detail, source, hash);
+      if (data.downloads_enabled) { const button = document.createElement("button"); button.type = "button"; button.className = "button compact secondary"; button.textContent = "Descargar recurso";
+        button.onclick = () => downloadRecord(item.id, button, text => { $("resources-status").textContent = text; }, true); card.append(button); }
+      return card;
+    }));
+    $("resources-status").textContent = `${data.items.length} recursos auxiliares. Investigación; cada fuente conserva sus condiciones de uso.`;
+  } catch (error) { if (version === sessionVersion) $("resources-status").textContent = error.message; }
+}
 
 // La sesión es la cookie de Seismik (HttpOnly): esta página nunca la ve ni la guarda. Cada consulta la envía el
 // navegador y el servidor decide, comprobándola con la API de Seismik, quién eres y si estás aprobado.
@@ -91,7 +116,7 @@ async function checkSession() {
     if (!session.approved) { chrome("pending", session.email); status(`Sesión iniciada con ${session.email}. Tu cuenta aún no tiene acceso al piloto; solicítalo por correo.`); return; }
     canDownload = session.downloads_enabled === true;
     chrome("approved", session.email);
-    status(`Acceso aprobado para ${session.email}.`); $("catalog-panel").hidden = false; await catalog();
+    status(`Acceso aprobado para ${session.email}.`); $("catalog-panel").hidden = false; await Promise.all([catalog(), loadResources(version)]);
   } catch (error) {
     if (version !== sessionVersion) return;
     chrome("anonymous");
@@ -120,7 +145,11 @@ async function initialize() {
   $("logout").addEventListener("click", () => logout($("logout")));
   $("header-logout").addEventListener("click", () => logout($("header-logout")));
   $("search-form").addEventListener("submit", event => { event.preventDefault(); offset = 0; catalog(); });
-  for (const id of ["kind", "group", "minimum", "sort"]) $(id).addEventListener("change", () => { offset = 0; catalog(); });
+  for (const id of ["kind", "minimum", "sort"]) $(id).addEventListener("change", () => { offset = 0; catalog(); });
+  $("group").addEventListener("change", () => {
+    if ($("group").value === "audit") { $("kind").value = "caso"; $("minimum").value = "0"; }
+    offset = 0; catalog();
+  });
   $("previous").addEventListener("click", () => { offset = Math.max(0, offset - PAGE); catalog(); });
   $("next").addEventListener("click", () => { if (offset + PAGE < total) { offset += PAGE; catalog(); } });
   await checkSession();

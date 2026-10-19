@@ -45,3 +45,10 @@ td .button.compact { white-space: nowrap; }
 @media (max-width: 1000px) { .filters-wide { grid-template-columns: 1fr 1fr; } }
 @media (max-width: 560px) { .filters-wide { grid-template-columns: 1fr; } .panel { padding: 18px; } .header-user { display: none; } }
 .row-actions { display: flex; gap: 8px; }
+.historical-card { display: flex; flex-direction: column; gap: 12px; }
+.historical-card h3 { margin: 0; }
+.historical-card strong { font-size: 1.6rem; }
+.historical-card .history-lesson { color: var(--text); border-left: 3px solid var(--blue); padding-left: 12px; }
+#resources { margin-top: 24px; }
+#resources code { display: block; overflow-wrap: anywhere; font-size: .72rem; margin: 12px 0; }
+#resources .button { margin-top: 16px; }

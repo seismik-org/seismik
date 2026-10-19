@@ -6,7 +6,9 @@ Waves no es una red de alerta temprana ni un servicio de emergencia, no publica 
 
 ## Qué contiene
 
-- 560 grabaciones MiniSEED (unos 548 MB) importadas el 10 de octubre de 2026, en cuatro conjuntos: evaluación de magnitud, sismos históricos de referencia, casos de estudio y pruebas de reproducción.
+- 561 archivos MiniSEED y cinco recursos auxiliares del suplemento del 18 de octubre de 2026, sobre la importación base del 10 de octubre. Incluye una grabación de auditoría con 30 segmentos discontinuos de candidatos no confirmados; no son 30 sismos.
+- Respuestas StationXML y estudios de acceso, latencia y calidad de estaciones, disponibles sólo para cuentas aprobadas.
+- Diez fichas documentales públicas de terremotos de Colombia y el mundo, con fuentes SGC/USGS, fechas y magnitudes de referencia. No implican ondas disponibles ni validación de Seismik.
 - Cada grabación trae su identificador, tamaño y huella SHA-256; el contexto del sismo viene del catálogo ISC/RSNC o del USGS.
 - Visor de formas de onda por estación y canal y descarga del MiniSEED original completo, para personas aprobadas.
 

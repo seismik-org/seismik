@@ -1,0 +1,97 @@
+{
+  "updated_on": "2026-10-18",
+  "mode": "educational_reference",
+  "notice": "Selección educativa, no ranking exhaustivo. Magnitud no equivale a daños ni a intensidad. Fechas según la base indicada; las magnitudes pueden variar entre catálogos. No son cálculos de Seismik ni eventos en vivo. Una ficha no implica que Waves tenga su grabación.",
+  "items": [
+    {
+      "id": "colombia-ecuador-1906", "region": "colombia", "title": "Costa de Colombia y Ecuador · 1906",
+      "date": "1906-01-31", "date_basis": "Fecha de la referencia SGC", "magnitude": 8.8,
+      "summary": "Gran terremoto del margen del Pacífico, acompañado de un tsunami que afectó la costa. Es una referencia esencial para estudiar el peligro de subducción en Colombia.",
+      "lesson": "Estudiar juntos la sacudida y el tsunami: son amenazas diferentes.",
+      "source": "Servicio Geológico Colombiano",
+      "source_url": "https://www2.sgc.gov.co/Noticias/Paginas/Magnitud-8.8-la-historia-del-terremoto-mas-grande-registrado-en-Colombia.aspx",
+      "waveform_status": "not_linked", "waveform_record_ids": []
+    },
+    {
+      "id": "pacifico-1979", "region": "colombia", "title": "Pacífico colombiano · 1979",
+      "date": "1979-12-12", "date_basis": "Fecha local colombiana", "magnitude": 8.1, "magnitude_type": "Mw",
+      "summary": "El terremoto y tsunami afectaron poblaciones costeras de Nariño y Cauca, entre ellas San Juan de la Costa, El Charco y Guapi.",
+      "lesson": "La información histórica permite contextualizar la exposición de las poblaciones costeras.",
+      "source": "SGC · infografía histórica",
+      "source_url": "https://srvags.sgc.gov.co/PortalWeb/Infografias-sismos-historicos/7-Infografia-sismo-1979-12-12-Costa-Pacifica.pdf",
+      "waveform_status": "not_linked", "waveform_record_ids": []
+    },
+    {
+      "id": "popayan-1983", "region": "colombia", "title": "Popayán · 1983",
+      "date": "1983-03-31", "date_basis": "Fecha local colombiana", "magnitude": 5.6, "magnitude_type": "Mw",
+      "summary": "Un terremoto próximo y superficial causó daños graves en Popayán. El SGC documenta una intensidad máxima de 9 EMS-98, distinta de la magnitud.",
+      "lesson": "Una magnitud moderada puede causar un desastre: importan profundidad, cercanía y vulnerabilidad.",
+      "source": "SGC · infografía histórica",
+      "source_url": "https://srvags.sgc.gov.co/PortalWeb/Infografias-sismos-historicos/20-Infografia-sismo-1983-03-31-Popayan.pdf",
+      "waveform_status": "not_linked", "waveform_record_ids": []
+    },
+    {
+      "id": "eje-cafetero-1999", "region": "colombia", "title": "Eje Cafetero · 1999",
+      "date": "1999-01-25", "date_basis": "Fecha local colombiana", "magnitude": 6.1, "magnitude_type": "Mw",
+      "summary": "El evento de Córdoba, Quindío, afectó gravemente Armenia, Calarcá y otros municipios. La infografía del SGC de 2025 usa Mw 6,1 con referencia ISC; otras publicaciones pueden citar valores diferentes.",
+      "lesson": "Conservar la fuente y la escala de cada magnitud, sin mezclar valores de distintos catálogos.",
+      "source": "SGC · infografía 2025; parámetros ISC",
+      "source_url": "https://srvags.sgc.gov.co/PortalWeb/Infografias-sismos-historicos/15-Infografia-sismo-1999-01-25-Eje-Cafetero.pdf",
+      "waveform_status": "not_linked", "waveform_record_ids": []
+    },
+    {
+      "id": "valdivia-1960", "region": "world", "title": "Valdivia, Chile · 1960",
+      "date": "1960-05-22", "date_basis": "UTC", "magnitude": 9.5,
+      "summary": "El USGS lo sitúa como el mayor terremoto instrumental de su lista desde 1900.",
+      "lesson": "Referencia para comparar grandes magnitudes, no para inferir el daño de otro evento.",
+      "source": "USGS · grandes terremotos desde 1900",
+      "source_url": "https://www.usgs.gov/programs/earthquake-hazards/science/20-largest-earthquakes-world-1900",
+      "waveform_status": "not_linked", "waveform_record_ids": []
+    },
+    {
+      "id": "alaska-1964", "region": "world", "title": "Alaska · 1964",
+      "date": "1964-03-28", "date_basis": "UTC; 27 de marzo en Alaska", "magnitude": 9.2,
+      "summary": "Gran terremoto de Prince William Sound, segundo en la lista instrumental del USGS desde 1900.",
+      "lesson": "La fecha UTC y la local pueden ser distintas sin que se trate de eventos diferentes.",
+      "source": "USGS · grandes terremotos desde 1900",
+      "source_url": "https://www.usgs.gov/programs/earthquake-hazards/science/20-largest-earthquakes-world-1900",
+      "waveform_status": "not_linked", "waveform_record_ids": []
+    },
+    {
+      "id": "sumatra-2004", "region": "world", "title": "Sumatra–Andamán · 2004",
+      "date": "2004-12-26", "date_basis": "UTC", "magnitude": 9.1,
+      "summary": "Terremoto del océano Índico incluido entre los mayores eventos instrumentales del USGS.",
+      "lesson": "Los grandes eventos permiten estudiar señales y propagación a escala regional y global.",
+      "source": "USGS · grandes terremotos desde 1900",
+      "source_url": "https://www.usgs.gov/programs/earthquake-hazards/science/20-largest-earthquakes-world-1900",
+      "waveform_status": "not_linked", "waveform_record_ids": []
+    },
+    {
+      "id": "tohoku-2011", "region": "world", "title": "Tōhoku, Japón · 2011",
+      "date": "2011-03-11", "date_basis": "UTC", "magnitude": 9.1,
+      "summary": "El USGS registra el terremoto de la costa oriental de Honshu entre los mayores desde 1900.",
+      "lesson": "Una ficha histórica aporta contexto; no demuestra que un detector actual hubiera alertado a tiempo.",
+      "source": "USGS · grandes terremotos desde 1900",
+      "source_url": "https://www.usgs.gov/programs/earthquake-hazards/science/20-largest-earthquakes-world-1900",
+      "waveform_status": "not_linked", "waveform_record_ids": []
+    },
+    {
+      "id": "haiti-2010", "region": "world", "title": "Haití · 2010",
+      "date": "2010-01-12", "date_basis": "UTC", "magnitude": 7.0, "magnitude_type": "Mw",
+      "summary": "Terremoto destructivo documentado en el informe técnico del USGS sobre el evento del 12 de enero.",
+      "lesson": "La devastación no depende sólo de la magnitud: también importa la exposición y la vulnerabilidad.",
+      "source": "USGS · Open-File Report 2010-1048",
+      "source_url": "https://pubs.usgs.gov/of/2010/1048/of2010-1048.pdf",
+      "waveform_status": "not_linked", "waveform_record_ids": []
+    },
+    {
+      "id": "turkiye-syria-2023", "region": "world", "title": "Türkiye y Siria · 2023",
+      "date": "2023-02-06", "date_basis": "UTC", "magnitude": 7.8,
+      "summary": "La secuencia de Kahramanmaraş incluyó un evento de M 7,8 y otro de M 7,5 unas nueve horas después, con graves consecuencias en Türkiye y Siria.",
+      "lesson": "Distinguir eventos próximos de una misma secuencia; no fusionar automáticamente dos grandes terremotos.",
+      "source": "USGS · secuencia Kahramanmaraş",
+      "source_url": "https://www.usgs.gov/news/featured-story/m78-and-m75-kahramanmaras-earthquake-sequence-near-nurdagi-turkey-turkiye",
+      "waveform_status": "not_linked", "waveform_record_ids": []
+    }
+  ]
+}
