@@ -11,6 +11,7 @@
     conflict: ["No se pudo vincular: esa identidad ya tiene su propia cuenta en Seismik o está vinculada a otra persona. No fusionamos cuentas.", true],
     expired: ["El enlace caducó o se abrió en otro navegador. Vuelve a intentarlo desde aquí.", true],
     reauth: ["Por seguridad, vuelve a iniciar sesión y repite la vinculación.", true],
+    login: ["Tu sesión terminó. Inicia sesión y vuelve a intentarlo.", true],
   };
 
   const DELETE_ITEMS = [
@@ -107,11 +108,12 @@
           : el("span", { className: "method-note", textContent: "Sólo como acceso principal" });
       }
       const hint = method.id === "email" && !method.linked
-        ? "Se vincula entrando con tu correo en la página de acceso."
+        ? "Añade un correo y contraseña de Seismik. Si aún no tienes, los creas en el siguiente paso."
         : method.primary ? "Con este acceso se creó la cuenta." : "";
+      const nowChip = center.current_method === method.id ? el("span", { className: "chip chip-now", textContent: "Estás usando este" }) : "";
       return el("li", { className: "method" },
         el("div", { className: "method-info" }, el("strong", { textContent: method.label }), hint ? el("span", { textContent: hint }) : ""),
-        el("div", { className: "method-actions" }, chip, action || ""));
+        el("div", { className: "method-actions" }, chip, nowChip, action || ""));
     }));
   }
 
@@ -214,6 +216,8 @@
     $("who-name").textContent = center.name || "Sin nombre";
     $("who-email").textContent = center.email ? ` · ${center.email}` : "";
     $("who-id").textContent = center.account_id;
+    const labels = { google: "Google", github: "GitHub", apple: "Apple", email: "Correo y contraseña" };
+    $("who-method").textContent = center.current_method ? `Entraste con ${labels[center.current_method] || center.current_method}.` : "";
     $("reauth").hidden = center.recent_login;
     $("data-summary").textContent = countText(center.data);
     renderMethods();

@@ -161,7 +161,8 @@ async def test_starting_a_link_sets_a_browser_bound_cookie_and_goes_to_the_provi
 
         old = await session(redis, "1001", age=3_000)
         client.cookies.set("seismik_session", old)
-        assert (await client.get("/v1/oauth/account/methods/link/github")).headers["location"] == f"{ACCOUNT_URL}?link=reauth"
+        stale = await client.get("/v1/oauth/account/methods/link/github")
+        assert stale.headers["location"] == "/v1/oauth/account/login?next=link-github", "reentrar y continuar, sin callejón"
 
         client.cookies.set("seismik_session", await session(redis, "1001"))
         email = await client.get("/v1/oauth/account/methods/link/email")
@@ -175,9 +176,10 @@ async def test_the_oauth_start_only_accepts_a_link_token_bound_to_the_same_brows
     app = build(redis, oauth_github_client_id="client", oauth_github_client_secret="secret", oauth_github_redirect_uri="https://auth.seismik.org/v1/oauth/github/callback")
     token = await start_link_token(redis, "1001", "github")
     async with client_for(app) as client:
-        assert (await client.get("/v1/oauth/github/start", params={"link": token})).status_code == 400, "sin la cookie del navegador"
+        bad = await client.get("/v1/oauth/github/start", params={"link": token})
+        assert bad.status_code == 303 and bad.headers["location"] == f"{ACCOUNT_URL}?link=expired", "sin la cookie: vuelve a Mi cuenta con un aviso"
         client.cookies.set("seismik_link", "otro-token")
-        assert (await client.get("/v1/oauth/github/start", params={"link": token})).status_code == 400
+        assert (await client.get("/v1/oauth/github/start", params={"link": token})).status_code == 303
         client.cookies.set("seismik_link", token, domain="auth.seismik.org")
         good = await client.get("/v1/oauth/github/start", params={"link": token})
         assert good.status_code == 307 and good.headers["location"].startswith("https://github.com/login/oauth/authorize")

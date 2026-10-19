@@ -47,6 +47,7 @@ LOGIN_URL = "https://auth.seismik.org/id"
 LINK_COOKIE = "seismik_link"
 AFTER_LOGIN_COOKIE = "seismik_after_login"
 ACCOUNT_MARKER = "account"
+ACCOUNT_LINK_PREFIX = "account-link-"
 LINK_TTL_SECONDS = 600
 LINK_COMPLETION_SECONDS = 900
 PROVIDERS = {"google": "Google", "github": "GitHub", "apple": "Apple", "email": "Correo y contraseña"}
@@ -105,6 +106,18 @@ async def methods_for(redis: Redis, uid: str) -> list[dict[str, Any]]:
             entry.update(linked=True, linkable=False, removable=total > 1, added_at=links[method].get("added_at"))
         methods.append(entry)
     return methods
+
+
+async def learn_session_method(redis: Redis, user: dict[str, Any]) -> None:
+    """Si la sesión entró con un correo vinculado antes de existir esta lista, se anota ahora."""
+
+    firebase_uid = str(user.get("firebase_uid") or "")
+    uid = str(user.get("uid") or "")
+    if not firebase_uid or not uid or firebase_uid == uid:
+        return
+    if await redis.get(firebase_binding_key(firebase_uid)) != uid or await redis.hexists(links_key(uid), "email"):
+        return
+    await redis.hset(links_key(uid), "email", json.dumps({"puid": firebase_uid, "added_at": None}))
 
 
 async def _device_ids(redis: Redis, uid: str) -> set[str]:
@@ -238,13 +251,19 @@ async def _recent_user(request: Request, token: str | None) -> dict[str, Any]:
 
 
 @router.get("/login")
-async def start_login(settings: AppSettings = Depends(get_app_settings)) -> Response:
-    """Entrar y volver al centro de la cuenta (destino fijo, sin parámetros)."""
+async def start_login(
+    next: Literal["link-google", "link-github", "link-email"] | None = None,
+    settings: AppSettings = Depends(get_app_settings),
+) -> Response:
+    """Entrar y volver al centro de la cuenta; con `next=link-…`, a continuar la vinculación pedida.
+
+    Los destinos son constantes en `_finish_login`: aquí sólo se elige entre valores de una lista fija.
+    """
 
     response = RedirectResponse(LOGIN_URL, status_code=status.HTTP_303_SEE_OTHER)
     response.set_cookie(
-        AFTER_LOGIN_COOKIE, ACCOUNT_MARKER, max_age=600, secure=True, httponly=True,
-        samesite="none", path="/", domain=settings.oauth_cookie_domain,
+        AFTER_LOGIN_COOKIE, f"{ACCOUNT_LINK_PREFIX}{next.removeprefix('link-')}" if next else ACCOUNT_MARKER, max_age=600,
+        secure=True, httponly=True, samesite="none", path="/", domain=settings.oauth_cookie_domain,
     )
     response.headers["Cache-Control"] = "no-store"
     return response
@@ -258,9 +277,11 @@ async def center(
     response.headers["Cache-Control"] = "no-store"
     user = await account_erasure._session(request, seismik_session)
     uid = str(user["uid"])
+    await learn_session_method(redis, user)
     return {
         "name": str(user.get("name", "")), "email": str(user.get("email", "")),
         "account_id": hashlib.sha256(uid.encode()).hexdigest()[:12],
+        "current_method": user.get("login_method"),
         "recent_login": account_erasure._is_recent(user), "methods": await methods_for(redis, uid),
         "data": await _counts(redis, settings, uid),
     }
@@ -341,10 +362,15 @@ async def start_link(
     seismik_session: str | None = Cookie(default=None), redis: Redis = Depends(get_redis),
     settings: AppSettings = Depends(get_app_settings),
 ) -> Response:
-    user = await account_erasure._session(request, seismik_session)
+    try:
+        user = await account_erasure._session(request, seismik_session)
+    except HTTPException:
+        return RedirectResponse(f"{ACCOUNT_URL}?link=login", status_code=status.HTTP_303_SEE_OTHER)
     if not account_erasure._is_recent(user):
-        return RedirectResponse(f"{ACCOUNT_URL}?link=reauth", status_code=status.HTTP_303_SEE_OTHER)
+        # Han pasado más de 10 minutos: se vuelve a entrar y la vinculación continúa sola.
+        return RedirectResponse(f"/v1/oauth/account/login?next=link-{provider}", status_code=status.HTTP_303_SEE_OTHER)
     uid = str(user["uid"])
+    await learn_session_method(redis, user)
     methods = {m["id"]: m for m in await methods_for(redis, uid)}
     if methods[provider]["linked"]:
         return RedirectResponse(f"{ACCOUNT_URL}?link=already", status_code=status.HTTP_303_SEE_OTHER)

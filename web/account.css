@@ -45,6 +45,7 @@
 
 .chip { display: inline-block; padding: 4px 11px; border-radius: 999px; border: 1px solid var(--line-strong); color: var(--muted); font-size: 0.8rem; font-weight: 700; }
 .chip-primary { border-color: var(--primary); color: var(--primary); }
+.chip-now { border-color: var(--primary); background: color-mix(in srgb, var(--primary) 12%, transparent); color: var(--text); }
 .chip-ok { border-color: color-mix(in srgb, var(--ok) 60%, var(--line-strong)); color: var(--ok); }
 
 .account-actions { display: flex; flex-wrap: wrap; gap: 10px; margin: 14px 0 6px; }
