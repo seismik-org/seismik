@@ -7,7 +7,9 @@ const resourcesHeading = document.createElement("h3"); resourcesHeading.textCont
 const resourcesStatus = document.createElement("p"); resourcesStatus.id = "resources-status"; resourcesStatus.setAttribute("role", "status");
 const resourcesArea = document.createElement("div"); resourcesArea.id = "resources"; resourcesArea.className = "groups";
 $("catalog-panel").append(resourcesHeading, resourcesStatus, resourcesArea);
-const MB = value => `${(value / 1e6).toLocaleString("es-CO", {maximumFractionDigits: value < 1e7 ? 1 : 0})} MB`;
+const MB = value => value < 1e6
+  ? `${(value / 1e3).toLocaleString("es-CO", {maximumFractionDigits: 1})} kB`
+  : `${(value / 1e6).toLocaleString("es-CO", {maximumFractionDigits: value < 1e7 ? 1 : 0})} MB`;
 const when = iso => iso ? iso.replace("T", " ").slice(0, 16) : "—";
 const span = seconds => seconds >= 120 ? `${Math.round(seconds / 60)} min` : `${Math.round(seconds)} s`;
 function status(text, error = false) { $("session-status").textContent = text; $("session-status").dataset.state = error ? "error" : "ok"; }
@@ -57,7 +59,7 @@ function renderGroups(summary) {
   }
   const extra = summary.files - summary.waveforms;
   const note = $("groups-note");
-  if (extra > 0) { note.textContent = `El archivo importado tiene ${summary.files.toLocaleString("es-CO")} archivos: ${summary.waveforms.toLocaleString("es-CO")} grabaciones y ${extra.toLocaleString("es-CO")} más de calibración y metadatos de estación que no se listan en el catálogo.`; note.hidden = false; }
+  if (extra > 0) { note.textContent = `El archivo tiene ${summary.files.toLocaleString("es-CO")} archivos: ${summary.waveforms.toLocaleString("es-CO")} MiniSEED y ${extra.toLocaleString("es-CO")} de calibración y metadatos. ${summary.resource_files ?? 0} recursos auxiliares del suplemento se consultan por separado al iniciar sesión.`; note.hidden = false; }
 }
 
 function cell(text, className) { const td = document.createElement("td"); td.textContent = text; if (className) td.className = className; return td; }
