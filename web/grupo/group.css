@@ -1,50 +1,40 @@
-.group-page { --group-jade: #72dab5; --group-parcel: #f0ba7b; --group-blue: #7cc4ff; }
-.group-header { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding-block: 28px; }
-.group-header .brand { color: var(--text); text-decoration: none; font-size: 1rem; letter-spacing: .08em; }
-.group-label { color: var(--muted); font-weight: 400; }
-.group-header nav { display: flex; gap: 28px; font-size: .9rem; }
-.group-header nav a { color: var(--text); text-decoration: none; }
-.group-header nav a:hover { color: var(--primary); }
-.group-eyebrow { font: 600 .72rem/1.6 var(--mono); letter-spacing: .12em; color: var(--muted); }
-.group-hero { display: grid; grid-template-columns: 1.4fr 1fr; align-items: center; gap: 24px; padding-block: 80px 100px; }
-.group-hero h1 { font-size: clamp(3.2rem, 5.7vw, 5.1rem); font-weight: 600; letter-spacing: -.065em; line-height: 1.04; margin: 24px 0; }
-.group-hero h1 em { font-weight: 400; font-family: Georgia, serif; color: var(--primary); }
-.group-lead { max-width: 560px; color: var(--muted); font-size: 1.1rem; line-height: 1.8; margin-bottom: 32px; }
-.group-art { position: relative; width: 100%; aspect-ratio: 1; max-width: 430px; justify-self: end; }
-.orbit { position: absolute; border: 1px solid var(--line-strong); border-radius: 50%; }
-.orbit-one { inset: 9%; transform: rotate(-24deg); border-style: dashed; }
-.orbit-two { inset: 23%; }
-.orbit-core { position: absolute; inset: 33%; display: flex; flex-direction: column; justify-content: center; align-items: center; border: 1px solid var(--line-strong); border-radius: 50%; background: var(--surface); font: italic 5rem/.9 Georgia, serif; color: var(--primary); box-shadow: 0 0 70px var(--glow); }
-.orbit-core span { font: .47rem/2 var(--mono); letter-spacing: .12em; margin-top: 12px; color: var(--muted); }
-.orbit-name { position: absolute; padding: 10px 16px; background: var(--bg); font-size: 1.35rem; font-weight: 600; letter-spacing: -.04em; }
-.orbit-name span { display: block; font: .56rem/1.6 var(--mono); letter-spacing: .12em; color: var(--muted); }
-.orbit-jade { top: 4%; left: 24%; color: var(--group-jade); }
-.orbit-portipaq { top: 53%; right: 0; color: var(--group-parcel); }
-.orbit-seismik { bottom: 7%; left: 5%; color: var(--group-blue); }
-.group-ventures { padding-block: 64px; border-top: 1px solid var(--line-strong); scroll-margin-top: 24px; }
-.ventures-heading { margin-bottom: 40px; }
-.ventures-heading h2, .group-about h2, .group-contact h2 { font-size: clamp(2rem, 3.3vw, 3rem); font-weight: 500; letter-spacing: -.045em; }
-.ventures-heading > p:last-child { color: var(--muted); }
-.venture-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
-.venture { display: flex; flex-direction: column; padding: 28px; border: 1px solid var(--line-strong); border-top: 3px solid var(--venture-color); border-radius: 4px 4px 20px 20px; background: var(--surface); }
-.venture-jade { --venture-color: var(--group-jade); }
-.venture-portipaq { --venture-color: var(--group-parcel); }
-.venture-seismik { --venture-color: var(--group-blue); }
-.venture-top { display: flex; align-items: center; margin-bottom: 24px; color: var(--venture-color); font: .65rem var(--mono); letter-spacing: .07em; }
-.venture h3 { display: flex; align-items: center; gap: 14px; min-height: 120px; font-size: 2rem; font-weight: 600; letter-spacing: -.04em; }
-.jade-logo { display: block; width: 200px; max-width: 100%; }
-.jade-logo img { display: block; width: 100%; height: auto; }
-.venture-logo-seismik { width: 68px; height: 68px; object-fit: contain; border-radius: 16px; flex-shrink: 0; }
-.venture p { color: var(--muted); font-size: .94rem; }
-.venture .venture-tagline { color: var(--text); font-weight: 600; }
-.venture a { margin-top: auto; padding-top: 28px; font-size: .9rem; font-weight: 600; color: var(--venture-color); text-decoration: none; }
-.venture a:hover { text-decoration: underline; }
-.group-note { max-width: 850px; margin: 24px 0 0; font-size: .8rem; color: var(--muted); }
-.group-about { display: grid; grid-template-columns: 1fr 2fr; gap: 40px; border-top: 1px solid var(--line); padding-block: 70px; }
-.group-about div { max-width: 660px; }
-.group-about div p { color: var(--muted); font-size: 1.05rem; line-height: 1.8; }
-.group-contact { display: flex; align-items: center; justify-content: space-between; gap: 32px; padding-block: 48px; border-top: 1px solid var(--line); }
-.group-contact .button { flex-shrink: 0; }
-@media (prefers-color-scheme: light) { .group-page { --group-jade: #126b4d; --group-parcel: #925511; --group-blue: #0b6bcb; } }
-@media (max-width: 960px) { .venture-grid { grid-template-columns: 1fr; } .venture h3 { min-height: 0; } .venture-top { margin-bottom: 24px; } .group-hero { grid-template-columns: 1fr; padding-block: 50px 64px; } .group-art { max-width: 340px; justify-self: center; } .hero-copy { max-width: 680px; } }
-@media (max-width: 600px) { .group-header { align-items: flex-start; gap: 20px; } .group-header nav { flex-direction: column; gap: 8px; font-size: .8rem; } .group-header .brand { font-size: .8rem; } .group-header .brand-logo { width: 28px; height: 28px; } .group-about { grid-template-columns: 1fr; gap: 12px; padding-block: 48px; } .group-contact { flex-direction: column; align-items: flex-start; } .group-hero h1 { font-size: 3.1rem; } .venture { padding: 24px; } }
+/* Extensiones del diseño compartido de Seismik: styles.css y home.css. */
+.group-hero { grid-template-columns: 1.12fr 1fr; }
+.group-hero .hero-facts { gap: 18px 24px; }
+.group-hero .hero-facts strong { font-size: 1rem; }
+.group-directory { background: linear-gradient(180deg, var(--surface-2), var(--surface)); }
+.brand-directory { display: grid; gap: 14px; padding: 22px; }
+.brand-row { display: flex; align-items: center; gap: 18px; padding: 14px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface); text-decoration: none; color: var(--text); transition: border-color .15s ease, background .15s ease; }
+.brand-row:hover { color: var(--text); border-color: var(--primary); background: var(--surface-2); }
+.brand-thumb { display: grid; place-items: center; flex: none; width: 88px; height: 76px; padding: 6px; border-radius: 10px; background: #fff; overflow: hidden; }
+.brand-thumb img { width: 100%; height: 100%; object-fit: contain; }
+.brand-thumb .brand-thumb-seismik { width: 58px; height: 58px; }
+.brand-row-copy { display: grid; gap: 4px; min-width: 0; }
+.brand-row-copy strong { font-size: 1.15rem; font-weight: 800; letter-spacing: -.02em; }
+.brand-row-copy > span { font-size: .82rem; color: var(--muted); }
+.brand-arrow { margin-left: auto; flex: none; color: var(--primary); }
+.directory-caption { margin: 0; padding: 0 24px 22px; color: var(--muted); font-size: .85rem; }
+.venture { display: flex; flex-direction: column; }
+.venture-logo { display: grid; place-items: center; height: 160px; margin-bottom: 24px; padding: 12px; border-radius: var(--radius-sm); background: #fff; overflow: hidden; }
+.venture-logo img { display: block; object-fit: contain; max-width: 100%; max-height: 100%; }
+.venture-logo-jade { width: 220px; height: auto; }
+.venture-logo-portipaq { width: 136px; height: 136px; }
+.venture-logo-seismik { width: 88px; height: 88px; }
+.venture .venture-category { color: var(--primary); font-size: .73rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+.venture h3 { min-height: 58px; margin: 12px 0 18px; font-size: 1.5rem; }
+.venture h3 span { display: block; margin-top: 8px; color: var(--muted); font-size: .85rem; font-weight: 500; letter-spacing: 0; }
+.venture .venture-tagline { margin-bottom: 12px; color: var(--text); font-weight: 700; }
+.venture > a { margin-top: auto; padding-top: 24px; color: var(--primary); font-size: .9rem; font-weight: 750; text-decoration: none; }
+.venture > a:hover { text-decoration: underline; }
+.group-note { max-width: 850px; margin: 24px 0 0; }
+.group-about { align-items: start; }
+.group-about > .eyebrow { margin-top: 12px; }
+.group-about div p { max-width: 660px; color: var(--muted); font-size: 1.08rem; line-height: 1.7; }
+.group-contact { display: flex; align-items: center; justify-content: space-between; gap: 28px; padding: clamp(26px, 4vw, 40px); }
+.group-contact .button { flex: none; }
+.group-contact .eyebrow { margin-bottom: 12px; color: var(--primary); }
+.group-contact h2 { margin-bottom: 0; }
+@media (max-width: 960px) { .group-hero { grid-template-columns: 1fr; } .group-directory { width: 100%; max-width: 620px; } }
+@media (max-width: 900px) { .venture h3 { min-height: 0; } }
+@media (max-width: 720px) { .group-contact { flex-direction: column; align-items: flex-start; } }
+@media (max-width: 480px) { .brand-directory { padding: 14px; } .brand-row { gap: 12px; padding: 12px; } .brand-thumb { width: 70px; height: 68px; } .brand-row-copy strong { font-size: 1rem; } .brand-row-copy > span { font-size: .76rem; } .directory-caption { padding: 0 18px 18px; } .group-directory .visual-tag { display: none; } }
