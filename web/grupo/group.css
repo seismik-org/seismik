@@ -12,6 +12,7 @@
 .brand-row-copy { display: grid; gap: 4px; min-width: 0; }
 .brand-row-copy strong { font-size: 1.15rem; font-weight: 800; letter-spacing: -.02em; }
 .brand-row-copy > span { font-size: .82rem; color: var(--muted); }
+.link-arrow { display: inline-block; width: 16px; height: 16px; vertical-align: -3px; flex: none; }
 .brand-arrow { margin-left: auto; flex: none; color: var(--primary); }
 .directory-caption { margin: 0; padding: 0 24px 22px; color: var(--muted); font-size: .85rem; }
 .venture { display: flex; flex-direction: column; }
