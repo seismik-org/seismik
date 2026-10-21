@@ -7,6 +7,30 @@ import worker from '../deploy/cloudflare-edge-router.js';
 import { FALLBACK_ASSETS } from '../deploy/fallback-assets.js';
 
 const request = (path = '/', host = 'seismik.org', method = 'GET') => new Request(`https://${host}${path}`, { method, headers: { Accept: 'text/html' } });
+test('group home serves the group page while preserving shared assets and the seismic home', async () => {
+  const original = globalThis.fetch;
+  const targets = [];
+  globalThis.fetch = async (target) => {
+    targets.push(new URL(target.url));
+    return new Response('ok');
+  };
+  try {
+    for (const [host, path, expected] of [
+      ['group.seismik.org', '/?origen=grupo', '/grupo/'],
+      ['group.seismik.org', '/grupo/group.css', '/grupo/group.css'],
+      ['group.seismik.org', '/assets/seismik_logo.webp', '/assets/seismik_logo.webp'],
+      ['seismik.org', '/', '/'],
+      ['seismik.org', '/grupo/', '/grupo/'],
+    ]) {
+      const response = await worker.fetch(request(path, host), {});
+      assert.equal(response.status, 200);
+      const target = targets.at(-1);
+      assert.match(target.hostname, /^seismik-web-/);
+      assert.equal(target.pathname, expected);
+      assert.equal(target.search, path.includes('?') ? '?origen=grupo' : '');
+    }
+  } finally { globalThis.fetch = original; }
+});
 test('admin has strict headers and sends its API requests to the protected origin', async () => {
   const original = globalThis.fetch;
   const targets = [];

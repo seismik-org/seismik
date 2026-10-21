@@ -47,6 +47,9 @@ function targetFor(request) {
   let origin = WEB;
   let path = source.pathname;
   if (host === "api.seismik.org") origin = API;
+  else if (host === "group.seismik.org") {
+    if (path === "/") path = "/grupo/";
+  }
   else if (host === "ifeltit.seismik.org") {
     if (path.startsWith("/v1/reports/")) origin = API;
     else if (path === "/") path = "/ifeltit.html";

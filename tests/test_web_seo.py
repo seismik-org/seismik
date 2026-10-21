@@ -21,6 +21,7 @@ PUBLIC_PAGES = {
     "/terms-of-service/": "terms-of-service/index.html",
     "/acceptable-use/": "acceptable-use/index.html",
     "/delete-account/": "delete-account/index.html",
+    "/grupo/": "grupo/index.html",
 }
 
 

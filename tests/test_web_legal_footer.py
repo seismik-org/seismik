@@ -14,6 +14,7 @@ LEGAL = {
 }
 PAGES = [
     "index.html",
+    "grupo/index.html",
     "contact/index.html",
     "modo-emergencia/index.html",
     "preguntas-frecuentes/index.html",
