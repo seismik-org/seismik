@@ -1,0 +1,8 @@
+/* Identidad del Grupo Seismik al pie del portal. */
+.site-footer .group-badge { display: inline-flex; align-items: center; justify-content: center; gap: 14px; max-width: 100%; margin: 0 auto 24px; padding: 16px 22px; border: 1px solid var(--line-strong); border-radius: var(--radius-sm); background: var(--surface); color: var(--text); text-decoration: none; text-align: left; transition: border-color .15s ease, background .15s ease; }
+.site-footer .group-badge:hover { border-color: var(--primary); background: var(--surface-2); color: var(--text); }
+.site-footer .group-badge img { display: block; width: 56px; height: 56px; object-fit: contain; flex: none; }
+.site-footer .group-badge small { display: block; color: var(--muted); font-size: .8rem; line-height: 1.5; }
+.site-footer .group-badge strong { display: block; font-size: 1.05rem; font-weight: 800; line-height: 1.5; }
+.site-footer .group-badge svg { display: block; width: 18px; height: 18px; margin-left: 12px; color: var(--primary); flex: none; }
+@media (max-width: 420px) { .site-footer .group-badge { gap: 10px; padding: 14px 16px; } .site-footer .group-badge img { width: 44px; height: 44px; } .site-footer .group-badge strong { font-size: .98rem; } .site-footer .group-badge svg { margin-left: 6px; } }
