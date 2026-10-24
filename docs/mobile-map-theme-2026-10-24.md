@@ -24,6 +24,19 @@ el workflow habitual de GitHub con subida a TestFlight y Critical Alerts.
 Análisis de Dart sin incidencias. Suite completa de Flutter: 181 pruebas
 aprobadas, incluidas cinco nuevas de JSON, cambios de brillo y navegación a
 320 px con escalas de texto 1, 1.5 y 2; el botón Ajustes sigue abriendo índice 4.
-No se ha comprobado el mapa real en un teléfono en esta tarea ni compilado el
-código nativo Swift con Xcode (equipo Windows). Pendiente para la próxima
-compilación/publicación en Android y TestFlight.
+No se ha comprobado el mapa real en un teléfono en esta tarea.
+
+## Entrega posterior solicitada
+
+- GitHub Actions iOS `40120171919`: SUCCESS, incluido IPA firmado con Xcode,
+  verificación de Critical Alerts y subida a TestFlight. Disponibilidad final
+  del grupo de TestFlight no comprobada en esta entrega de Android.
+- Android 1.0.0 (69): publicado mediante Play Console en la pista interna
+  existente, el 24 de octubre a las 14:39 America/Bogota. La interfaz confirma
+  «Disponible para verificadores internos». No cambian los verificadores ni
+  la compatibilidad de dispositivos. No es un lanzamiento público a producción.
+- Se conservan certificado de subida y configuración de Firebase y Maps.
+- AAB SHA-256:
+  `3B7C611ACE268F25743216B44DC4286B1526BB8617A5B2145BA90F13E83482CE`.
+- Evidencia local: `work/releases/build69/RELEASE.md`, AAB y
+  `play-internal-69.png`. No se publican binarios ni credenciales en Git.
