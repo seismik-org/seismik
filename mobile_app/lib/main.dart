@@ -22,6 +22,7 @@ import 'presentation/screens/ios_settings_screen.dart';
 import 'presentation/screens/monitor_screen.dart';
 import 'presentation/screens/offline_emergency_screen.dart';
 import 'presentation/widgets/emergency_banner.dart';
+import 'presentation/widgets/bottom_navigation.dart';
 import 'presentation/screens/settings_screen.dart';
 import 'state/family_state.dart';
 import 'state/mobile_settings.dart';
@@ -279,7 +280,7 @@ class _SeismikShellState extends State<_SeismikShell> {
                 child: SafeArea(
                   top: false,
                   minimum: const EdgeInsets.only(bottom: 2),
-                  child: _FloatingMenu(
+                  child: SeismikBottomNavigation(
                     selectedIndex: _selectedIndex,
                     onSelected: (index) =>
                         setState(() => _selectedIndex = index),
@@ -413,69 +414,6 @@ class _IosSeismikShell extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-class _FloatingMenu extends StatelessWidget {
-  const _FloatingMenu({required this.selectedIndex, required this.onSelected});
-
-  final int selectedIndex;
-  final ValueChanged<int> onSelected;
-
-  @override
-  Widget build(BuildContext context) {
-    final ColorScheme colors = Theme.of(context).colorScheme;
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(34),
-        boxShadow: const <BoxShadow>[
-          BoxShadow(
-            color: Color(0x66000000),
-            blurRadius: 24,
-            offset: Offset(0, 8),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(34),
-        child: NavigationBar(
-          height: 72,
-          selectedIndex: selectedIndex,
-          onDestinationSelected: onSelected,
-          backgroundColor: colors.surfaceContainerHigh,
-          destinations: const <NavigationDestination>[
-            NavigationDestination(
-              icon: Icon(Icons.history_rounded),
-              selectedIcon: Icon(Icons.history_rounded),
-              label: 'Historial',
-              tooltip: 'Historial de Sismos',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.vibration_rounded),
-              selectedIcon: Icon(Icons.vibration_rounded),
-              label: 'Sismo sentido',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.home_work_outlined),
-              selectedIcon: Icon(Icons.home_work_rounded),
-              label: 'Daños',
-              tooltip: 'Reporte de daños',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.family_restroom_outlined),
-              selectedIcon: Icon(Icons.family_restroom_rounded),
-              label: 'Familia',
-              tooltip: 'Búsqueda de familiares',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.tune_rounded),
-              selectedIcon: Icon(Icons.tune_rounded),
-              label: 'Configuración',
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

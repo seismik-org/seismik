@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 
 import '../../core/felt_area.dart';
 import '../../core/platform.dart';
+import '../../core/map_theme.dart';
 import '../../core/theme.dart';
 import '../../data/models/seismic_event.dart';
 import '../../services/in_app_browser.dart';
@@ -288,6 +289,8 @@ class EventDetailScreen extends StatelessWidget {
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(22),
                 child: GoogleMap(
+                  colorScheme: SeismikMapTheme.colorScheme(context),
+                  style: SeismikMapTheme.style(context),
                   // El mapa encuadra hasta donde se sintió el sismo.
                   initialCameraPosition: CameraPosition(
                     target: epicenter,

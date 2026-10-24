@@ -215,11 +215,11 @@ class SettingsScreen extends StatelessWidget {
                 onChanged: dynamicColorAvailable
                     ? (value) => unawaited(settings.setUseDynamicColor(value))
                     : null,
-                title: const Text('Colores dinámicos Material You'),
+                title: const Text('Usa el color del sistema'),
                 subtitle: Text(
                   dynamicColorAvailable
-                      ? 'Usa la paleta completa publicada por Android/One UI.'
-                      : 'Android no publicó una paleta dinámica en este dispositivo.',
+                      ? 'Usa los colores que elegiste para tu celular.'
+                      : 'Tu celular no admite los colores del sistema.',
                 ),
               ),
               Padding(

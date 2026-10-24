@@ -7,6 +7,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/platform.dart';
+import '../../core/map_theme.dart';
 import '../../core/theme.dart';
 import '../../data/models/seismic_event.dart';
 import '../../data/models/station.dart';
@@ -209,6 +210,8 @@ class _MonitorScreenState extends State<MonitorScreen> {
           )
         else
           GoogleMap(
+            colorScheme: SeismikMapTheme.colorScheme(context),
+            style: SeismikMapTheme.style(context),
             initialCameraPosition: CameraPosition(target: center, zoom: 5.8),
             markers: markers,
             circles: perimeters,
