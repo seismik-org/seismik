@@ -1,7 +1,8 @@
 # Mapas y textos del sistema — 2026-10-24
 
-Base: versión móvil 1.0.0+68, rama local `fix/mobile-map-theme-20261024`.
-No cambia el número de build ni se publica en las tiendas desde esta tarea.
+Base: versión móvil 1.0.0+68, rama `fix/mobile-map-theme-20261024`.
+Tras la solicitud de publicar iOS se incrementó el build a 1.0.0+69 y se prepara
+el workflow habitual de GitHub con subida a TestFlight y Critical Alerts.
 
 - Android/Flutter: historial, detalle y familia aplican un estilo JSON local
   oscuro según `Theme.of(context).brightness`. Al volver a claro se retira el
