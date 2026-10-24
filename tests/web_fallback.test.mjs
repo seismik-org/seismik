@@ -24,6 +24,8 @@ test('every portal has a static, absolute group link in its footer, including of
 });
 test('group page keeps brand destinations, portal directory and resolvable local assets', () => {
   const html = readFileSync('web/grupo/index.html', 'utf8');
+  assert.match(html, /<title>Grupo Seismik<\/title>/);
+  assert.match(html, /property="og:title" content="Grupo Seismik"/);
   assert.equal((html.match(/<h1\b/g) || []).length, 1);
   assert.match(html, /rel="canonical" href="https:\/\/seismik\.org\/grupo\/"/);
   for (const url of ['https://jadeeventos.com/', 'https://portipaq.com/', 'https://devs.seismik.org/', 'https://waves.seismik.org/', 'https://ifeltit.seismik.org/', 'https://status.seismik.org/']) {
