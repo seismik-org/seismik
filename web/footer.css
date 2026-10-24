@@ -1,2 +1,6 @@
 footer.site-footer { display: block; width: auto; max-width: none; margin: 40px 0 0; padding: 24px; border-top: 1px solid var(--line, #283650); background: transparent; color: var(--muted, #9dadc8); text-align: center; font-size: .85rem; }
 footer.site-footer .footer-bottom { display: block; margin: 0 auto; padding: 0; border: 0; }
+footer.site-footer .group-affiliation { display: inline-flex; align-items: center; justify-content: center; gap: 8px; max-width: 100%; min-height: 44px; margin: 0 auto 16px; padding: 8px 16px; border: 1px solid var(--line, #283650); border-radius: 999px; color: var(--text, #eef3ff); background: var(--surface, #0e1524); text-decoration: none; font-size: .85rem; line-height: 1.5; flex-wrap: wrap; }
+footer.site-footer .group-affiliation:hover { border-color: var(--primary, #7cc4ff); color: var(--primary, #7cc4ff); }
+footer.site-footer .group-affiliation:focus-visible { outline: 2px solid var(--primary, #7cc4ff); outline-offset: 4px; }
+footer.site-footer .group-affiliation svg { width: 16px; height: 16px; flex: none; }

@@ -1,12 +1,44 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import vm from 'node:vm';
 import { randomUUID } from 'node:crypto';
 import worker from '../deploy/cloudflare-edge-router.js';
 import { FALLBACK_ASSETS } from '../deploy/fallback-assets.js';
 
 const request = (path = '/', host = 'seismik.org', method = 'GET') => new Request(`https://${host}${path}`, { method, headers: { Accept: 'text/html' } });
+test('every portal has a static, absolute group link in its footer, including offline and Waves', () => {
+  function pages(dir) {
+    return readdirSync(dir, {withFileTypes: true}).flatMap(entry =>
+      entry.isDirectory() ? pages(`${dir}/${entry.name}`) : entry.name.endsWith('.html') ? [`${dir}/${entry.name}`] : []);
+  }
+  for (const path of [...pages('web'), ...pages('waves/static')]) {
+    const html = readFileSync(path, 'utf8');
+    const footer = html.match(/<footer\b[^>]*>([\s\S]*?)<\/footer>/)?.[1];
+    assert.ok(footer, `${path}: missing footer`);
+    assert.match(footer, /<a\b[^>]*href="https:\/\/seismik\.org\/grupo\/"[^>]*>[\s\S]*?Grupo Seismik[\s\S]*?<\/a>/, path);
+    if (footer.includes('class="group-affiliation"')) {
+      assert.match(footer, /<svg width="16" height="16"/, `${path}: icon must remain small with stale CSS`);
+    }
+  }
+});
+test('group page keeps brand destinations, portal directory and resolvable local assets', () => {
+  const html = readFileSync('web/grupo/index.html', 'utf8');
+  assert.equal((html.match(/<h1\b/g) || []).length, 1);
+  assert.match(html, /rel="canonical" href="https:\/\/seismik\.org\/grupo\/"/);
+  for (const url of ['https://jadeeventos.com/', 'https://portipaq.com/', 'https://devs.seismik.org/', 'https://waves.seismik.org/', 'https://ifeltit.seismik.org/', 'https://status.seismik.org/']) {
+    assert.ok(html.includes(`href="${url}"`), url);
+  }
+  for (const match of html.matchAll(/(?:src|href)="(\/(?!\/)[^"?#]+)(?:\?[^"#]*)?"/g)) {
+    assert.ok(existsSync(`web${match[1]}`), `Missing group asset ${match[1]}`);
+  }
+});
+test('edge status and outage fallback also expose the group without JavaScript', () => {
+  for (const source of ['deploy/status-assets.js', 'deploy/fallback-assets.js']) {
+    const text = readFileSync(source, 'utf8');
+    assert.ok(text.includes('https://seismik.org/grupo/'), source);
+  }
+});
 test('group home serves the group page while preserving shared assets and the seismic home', async () => {
   const original = globalThis.fetch;
   const targets = [];

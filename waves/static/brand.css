@@ -67,7 +67,10 @@ header.site-header {
 .dot { background: var(--blue); }
 .pill { background: color-mix(in srgb, var(--blue) 10%, transparent); border-color: color-mix(in srgb, var(--blue) 30%, transparent); }
 .cards article { box-shadow: 0 14px 40px -30px rgb(0 0 0 / .4); }
-footer.site-footer { display: block; width: 100%; margin-top: 40px; padding: 32px 0; background: var(--surface); }
+footer.site-footer { display: block; width: 100%; margin-top: 40px; padding: 32px 0; background: var(--surface); text-align: left; }
+footer.site-footer .group-affiliation { display: flex; align-items: center; justify-content: center; gap: 8px; width: fit-content; max-width: calc(100% - 32px); min-height: 44px; margin: 0 auto 24px; padding: 8px 16px; border: 1px solid var(--line); border-radius: 999px; color: var(--text); text-decoration: none; font-size: .85rem; line-height: 1.5; flex-wrap: wrap; }
+footer.site-footer .group-affiliation:hover { border-color: var(--blue); color: var(--blue); }
+footer.site-footer .group-affiliation svg { width: 16px; height: 16px; flex: none; }
 footer .footer-inner { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 20px 36px; }
 .footer-inner .brand { grid-column: 1; }
 .footer-inner .footer-description { grid-column: 1; font-size: .85rem; margin: 0; }

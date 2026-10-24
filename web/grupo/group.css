@@ -1,5 +1,9 @@
 /* Extensiones del diseño compartido de Seismik: styles.css y home.css. */
-.group-hero { grid-template-columns: 1.12fr 1fr; }
+.group-hero { grid-template-columns: minmax(0, 1.12fr) minmax(0, 1fr); }
+.group-page main { overflow-wrap: anywhere; }
+.group-hero > *, .group-page .grid-3 > * { min-width: 0; }
+.group-page [id] { scroll-margin-top: 100px; }
+.group-page a:focus-visible { outline: 3px solid var(--primary); outline-offset: 5px; }
 .group-hero .hero-facts { gap: 18px 24px; }
 .group-hero .hero-facts strong { font-size: 1rem; }
 .group-directory { background: linear-gradient(180deg, var(--surface-2), var(--surface)); }
@@ -35,6 +39,9 @@
 .group-contact .button { flex: none; }
 .group-contact .eyebrow { margin-bottom: 12px; color: var(--primary); }
 .group-contact h2 { margin-bottom: 0; }
+.group-services { display: flex; flex-wrap: wrap; gap: 12px; padding: 0; list-style: none; }
+.group-services a { display: inline-flex; align-items: center; min-height: 44px; padding: 10px 18px; border: 1px solid var(--line-strong); border-radius: 999px; background: var(--surface); color: var(--text); text-decoration: none; }
+.group-services a:hover { border-color: var(--primary); color: var(--primary); }
 @media (max-width: 960px) { .group-hero { grid-template-columns: 1fr; } .group-directory { width: 100%; max-width: 620px; } }
 @media (max-width: 900px) { .venture h3 { min-height: 0; } }
 @media (max-width: 720px) { .group-contact { flex-direction: column; align-items: flex-start; } }

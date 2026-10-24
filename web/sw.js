@@ -1,6 +1,6 @@
 // Sólo guarda el respaldo público; nunca respuestas API, OAuth o datos personales.
 const CACHE_PREFIX = "seismik-fallback-";
-const CACHE = CACHE_PREFIX + "b73c54590c1b279b";
+const CACHE = CACHE_PREFIX + "0cd3ada9ffb48cb1";
 const ASSETS = ["/offline.html", "/offline.css", "/footer.css", "/offline.js", "/site.js"];
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE).then(async (cache) => {
