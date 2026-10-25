@@ -95,7 +95,8 @@ def report() -> OfficialReport:
     )
 
 
-def test_matches_by_time_and_station_centroid_distance() -> None:
+def test_matches_temporal_spatial_envelope_when_phases_are_consistent(monkeypatch) -> None:
+    monkeypatch.setattr("eew.official.catalogue_phase_consistent", lambda *_: True)
     settings = OfficialReportsSettings(
         enabled=False,
         max_origin_time_delta_seconds=120,
@@ -120,7 +121,8 @@ def test_rejects_distant_or_temporally_unrelated_report() -> None:
     ) is None
 
 
-def test_association_boundaries_are_inclusive_and_query_is_bounded() -> None:
+def test_association_boundaries_are_inclusive_and_query_is_bounded(monkeypatch) -> None:
+    monkeypatch.setattr("eew.official.catalogue_phase_consistent", lambda *_: True)
     settings = OfficialReportsSettings(
         enabled=False,
         max_origin_time_delta_seconds=120,

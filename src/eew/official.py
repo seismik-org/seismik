@@ -16,6 +16,7 @@ from typing import Any, Callable
 
 import requests
 
+from eew.candidate_evidence import catalogue_phase_consistent
 from eew.config import OfficialReportsSettings
 from eew.magnitude_shadow import observation_for_match
 from eew.models import (
@@ -594,6 +595,8 @@ def match_report(
         )
         if distance > settings.max_distance_km:
             return None
+    if not catalogue_phase_consistent(candidate, report):
+        return None
     return replace(
         report,
         origin_time_delta_seconds=round(delta, 3),

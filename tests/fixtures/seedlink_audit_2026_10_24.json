@@ -1,0 +1,1479 @@
+[
+  {
+    "candidate": {
+      "event_id": "96913a37-b9b1-4a92-ab61-a3a80e27a127",
+      "type": "earthquake_candidate",
+      "status": "unlocated_unreviewed",
+      "zone_id": "CO",
+      "country_code": "CO",
+      "country_codes": [
+        "CO"
+      ],
+      "detected_at": "2026-10-17T23:27:36.509551Z",
+      "coincidence_window_seconds": 10,
+      "required_stations": 3,
+      "station_count": 3,
+      "estimated_latitude": 10.368587666666667,
+      "estimated_longitude": -73.17896,
+      "wave_strength_index": 0.995,
+      "magnitude_estimate": null,
+      "magnitude_estimate_status": "pending_station_calibration",
+      "association_quality": {
+        "horizontal_uncertainty_km": null,
+        "rejected_station_ids": [],
+        "latitude": null,
+        "depth_km": null,
+        "longitude": null,
+        "validation_status": "experimental_unvalidated",
+        "status": "insufficient_data",
+        "origin_time": null,
+        "used_station_ids": [],
+        "azimuthal_gap_deg": null,
+        "reason": "need_four_independent_onsets",
+        "rms_seconds": null
+      },
+      "stations": [
+        {
+          "provider_id": "earthscope_colombia",
+          "station_id": "CM.URI",
+          "stream_id": "CM.URI.00.HHZ",
+          "zone_id": "CO",
+          "country_code": "CO",
+          "trigger_time": "2026-10-17T23:27:21.958393Z",
+          "received_at": "2026-10-17T23:27:30.500019Z",
+          "sta_lta_ratio": 8.634,
+          "latitude": 11.702,
+          "longitude": -71.993,
+          "packet_lag_seconds": 7.042,
+          "peak_amplitude_counts": 95.344872,
+          "noise_rms_counts": 8.441155,
+          "p_onset_time": null,
+          "pick_method": null
+        },
+        {
+          "provider_id": "earthscope_colombia",
+          "station_id": "CM.SMAR",
+          "stream_id": "CM.SMAR.00.HHZ",
+          "zone_id": "CO",
+          "country_code": "CO",
+          "trigger_time": "2026-10-17T23:27:24.998393Z",
+          "received_at": "2026-10-17T23:27:36.504334Z",
+          "sta_lta_ratio": 8.1717,
+          "latitude": 11.163833,
+          "longitude": -74.2245,
+          "packet_lag_seconds": 10.546,
+          "peak_amplitude_counts": 404.914676,
+          "noise_rms_counts": 41.001693,
+          "p_onset_time": null,
+          "pick_method": null
+        },
+        {
+          "provider_id": "earthscope_colombia",
+          "station_id": "CM.OCA",
+          "stream_id": "CM.OCA.00.HHZ",
+          "zone_id": "CO",
+          "country_code": "CO",
+          "trigger_time": "2026-10-17T23:27:30.378393Z",
+          "received_at": "2026-10-17T23:27:34.501690Z",
+          "sta_lta_ratio": 6.421,
+          "latitude": 8.23993,
+          "longitude": -73.31938,
+          "packet_lag_seconds": 2.573,
+          "peak_amplitude_counts": 1163.156525,
+          "noise_rms_counts": 183.208079,
+          "p_onset_time": null,
+          "pick_method": null
+        }
+      ]
+    },
+    "reports": [
+      {
+        "report": {
+          "source": "sgc",
+          "event_id": "SGC2026umhmmg",
+          "origin_time": "2026-10-17 23:26:38",
+          "latitude": 9.6725,
+          "longitude": -73.9495,
+          "depth_km": 82,
+          "magnitude": 2.1,
+          "magnitude_type": "MLr_4",
+          "place": "Pijiño  del Carmen - Magdalena, Colombia",
+          "url": "https://www.sgc.gov.co/detallesismo/SGC2026umhmmg/resumen",
+          "first_trigger_after_origin_s": 43.96,
+          "centroid_distance_km": 114.5,
+          "station_checks": [
+            {
+              "station_id": "CM.URI",
+              "distance_km": 310.8,
+              "trigger_after_origin_s": 44,
+              "broad_travel_time_consistent": true
+            },
+            {
+              "station_id": "CM.SMAR",
+              "distance_km": 168.5,
+              "trigger_after_origin_s": 47,
+              "broad_travel_time_consistent": true
+            },
+            {
+              "station_id": "CM.OCA",
+              "distance_km": 173.7,
+              "trigger_after_origin_s": 52.4,
+              "broad_travel_time_consistent": true
+            }
+          ],
+          "all_broad_travel_times_consistent": true
+        },
+        "expected": true
+      },
+      {
+        "report": {
+          "source": "sgc",
+          "event_id": "SGC2026umhlwr",
+          "origin_time": "2026-10-17 23:25:55",
+          "latitude": 7.808710516839153,
+          "longitude": -72.54857973304826,
+          "depth_km": 17,
+          "magnitude": 1.3,
+          "magnitude_type": "MLr_3",
+          "place": "Cúcuta - Norte de Santander, Colombia",
+          "url": "https://www.sgc.gov.co/detallesismo/SGC2026umhlwr/resumen",
+          "first_trigger_after_origin_s": 86.96,
+          "centroid_distance_km": 292.94,
+          "station_checks": [
+            {
+              "station_id": "CM.URI",
+              "distance_km": 437.2,
+              "trigger_after_origin_s": 87,
+              "broad_travel_time_consistent": true
+            },
+            {
+              "station_id": "CM.SMAR",
+              "distance_km": 415.9,
+              "trigger_after_origin_s": 90,
+              "broad_travel_time_consistent": true
+            },
+            {
+              "station_id": "CM.OCA",
+              "distance_km": 97.5,
+              "trigger_after_origin_s": 95.4,
+              "broad_travel_time_consistent": false
+            }
+          ],
+          "all_broad_travel_times_consistent": false
+        },
+        "expected": false
+      }
+    ]
+  },
+  {
+    "candidate": {
+      "event_id": "f0aa99f3-466b-4afe-a038-a4a1fea83ac8",
+      "type": "earthquake_candidate",
+      "status": "unlocated_unreviewed",
+      "zone_id": "CO",
+      "country_code": "CO",
+      "country_codes": [
+        "CO"
+      ],
+      "detected_at": "2026-10-18T15:24:15.947381Z",
+      "coincidence_window_seconds": 10,
+      "required_stations": 3,
+      "station_count": 3,
+      "estimated_latitude": 8.096166333333333,
+      "estimated_longitude": -74.36473766666667,
+      "wave_strength_index": 0.917,
+      "magnitude_estimate": null,
+      "magnitude_estimate_status": "pending_station_calibration",
+      "association_quality": {
+        "horizontal_uncertainty_km": null,
+        "rejected_station_ids": [],
+        "reason": "need_four_independent_onsets",
+        "latitude": null,
+        "depth_km": null,
+        "azimuthal_gap_deg": null,
+        "rms_seconds": null,
+        "validation_status": "experimental_unvalidated",
+        "used_station_ids": [],
+        "origin_time": null,
+        "status": "insufficient_data",
+        "longitude": null
+      },
+      "stations": [
+        {
+          "provider_id": "earthscope_colombia",
+          "station_id": "CM.ARGC",
+          "stream_id": "CM.ARGC.00.HHZ",
+          "zone_id": "CO",
+          "country_code": "CO",
+          "trigger_time": "2026-10-18T15:24:02.458393Z",
+          "received_at": "2026-10-18T15:24:11.925889Z",
+          "sta_lta_ratio": 11.1692,
+          "latitude": 9.857669,
+          "longitude": -74.245833,
+          "packet_lag_seconds": 9.417,
+          "peak_amplitude_counts": 1122.207239,
+          "noise_rms_counts": 102.475926,
+          "p_onset_time": null,
+          "pick_method": null
+        },
+        {
+          "provider_id": "earthscope_colombia",
+          "station_id": "CM.OCA",
+          "stream_id": "CM.OCA.00.HHZ",
+          "zone_id": "CO",
+          "country_code": "CO",
+          "trigger_time": "2026-10-18T15:24:03.798393Z",
+          "received_at": "2026-10-18T15:24:10.941022Z",
+          "sta_lta_ratio": 7.0055,
+          "latitude": 8.23993,
+          "longitude": -73.31938,
+          "packet_lag_seconds": 6.123,
+          "peak_amplitude_counts": 21720.494166,
+          "noise_rms_counts": 2626.640816,
+          "p_onset_time": null,
+          "pick_method": null
+        },
+        {
+          "provider_id": "earthscope_colombia",
+          "station_id": "CM.HEL",
+          "stream_id": "CM.HEL.00.HHZ",
+          "zone_id": "CO",
+          "country_code": "CO",
+          "trigger_time": "2026-10-18T15:24:11.098393Z",
+          "received_at": "2026-10-18T15:24:15.942362Z",
+          "sta_lta_ratio": 7.4062,
+          "latitude": 6.1909,
+          "longitude": -75.529,
+          "packet_lag_seconds": 3.614,
+          "peak_amplitude_counts": 2833.794166,
+          "noise_rms_counts": 383.404713,
+          "p_onset_time": null,
+          "pick_method": null
+        }
+      ]
+    },
+    "reports": [
+      {
+        "report": {
+          "source": "sgc",
+          "event_id": "SGC2026unnete",
+          "origin_time": "2026-10-18 15:23:09",
+          "latitude": 6.540666666666667,
+          "longitude": -73.5145,
+          "depth_km": 114,
+          "magnitude": 3.4,
+          "magnitude_type": "MLr_vmm",
+          "place": "El Carmen - Santander, Colombia",
+          "url": "https://www.sgc.gov.co/detallesismo/SGC2026unnete/resumen",
+          "first_trigger_after_origin_s": 53.46,
+          "centroid_distance_km": 196.75,
+          "station_checks": [
+            {
+              "station_id": "CM.ARGC",
+              "distance_km": 377.5,
+              "trigger_after_origin_s": 53.5,
+              "broad_travel_time_consistent": true
+            },
+            {
+              "station_id": "CM.OCA",
+              "distance_km": 190.2,
+              "trigger_after_origin_s": 54.8,
+              "broad_travel_time_consistent": true
+            },
+            {
+              "station_id": "CM.HEL",
+              "distance_km": 226,
+              "trigger_after_origin_s": 62.1,
+              "broad_travel_time_consistent": true
+            }
+          ],
+          "all_broad_travel_times_consistent": true
+        },
+        "expected": true
+      }
+    ]
+  },
+  {
+    "candidate": {
+      "event_id": "f57a2c51-10b7-439f-a401-860b4fc57bd6",
+      "type": "earthquake_candidate",
+      "status": "unlocated_unreviewed",
+      "zone_id": "CO",
+      "country_code": "CO",
+      "country_codes": [
+        "CO"
+      ],
+      "detected_at": "2026-10-19T08:08:18.528840Z",
+      "coincidence_window_seconds": 10,
+      "required_stations": 3,
+      "station_count": 3,
+      "estimated_latitude": 6.774443333333333,
+      "estimated_longitude": -73.97718233333333,
+      "wave_strength_index": 0.809,
+      "magnitude_estimate": null,
+      "magnitude_estimate_status": "pending_station_calibration",
+      "association_quality": {
+        "horizontal_uncertainty_km": null,
+        "depth_km": null,
+        "latitude": null,
+        "rejected_station_ids": [],
+        "validation_status": "experimental_unvalidated",
+        "status": "insufficient_data",
+        "origin_time": null,
+        "used_station_ids": [],
+        "reason": "need_four_independent_onsets",
+        "azimuthal_gap_deg": null,
+        "rms_seconds": null,
+        "longitude": null
+      },
+      "stations": [
+        {
+          "provider_id": "earthscope_colombia",
+          "station_id": "CM.RUS",
+          "stream_id": "CM.RUS.00.HHZ",
+          "zone_id": "CO",
+          "country_code": "CO",
+          "trigger_time": "2026-10-19T08:08:01.278393Z",
+          "received_at": "2026-10-19T08:08:12.520333Z",
+          "sta_lta_ratio": 6.7258,
+          "latitude": 5.8925,
+          "longitude": -73.083167,
+          "packet_lag_seconds": 7.442,
+          "peak_amplitude_counts": 29.983784,
+          "noise_rms_counts": 4.571591,
+          "p_onset_time": null,
+          "pick_method": null
+        },
+        {
+          "provider_id": "earthscope_colombia",
+          "station_id": "CM.OCA",
+          "stream_id": "CM.OCA.00.HHZ",
+          "zone_id": "CO",
+          "country_code": "CO",
+          "trigger_time": "2026-10-19T08:08:02.648393Z",
+          "received_at": "2026-10-19T08:08:14.523517Z",
+          "sta_lta_ratio": 6.79,
+          "latitude": 8.23993,
+          "longitude": -73.31938,
+          "packet_lag_seconds": 10.815,
+          "peak_amplitude_counts": 193.033977,
+          "noise_rms_counts": 36.329479,
+          "p_onset_time": null,
+          "pick_method": null
+        },
+        {
+          "provider_id": "earthscope_colombia",
+          "station_id": "CM.HEL",
+          "stream_id": "CM.HEL.00.HHZ",
+          "zone_id": "CO",
+          "country_code": "CO",
+          "trigger_time": "2026-10-19T08:08:05.098393Z",
+          "received_at": "2026-10-19T08:08:18.523186Z",
+          "sta_lta_ratio": 8.9644,
+          "latitude": 6.1909,
+          "longitude": -75.529,
+          "packet_lag_seconds": 10.835,
+          "peak_amplitude_counts": 74.172039,
+          "noise_rms_counts": 11.501713,
+          "p_onset_time": null,
+          "pick_method": null
+        }
+      ]
+    },
+    "reports": [
+      {
+        "report": {
+          "source": "usgs_global_large",
+          "event_id": "us6000u3bc",
+          "origin_time": "2026-10-19T07:49:04.900000+00:00",
+          "latitude": -14.0533,
+          "longitude": 165.6761,
+          "depth_km": 10,
+          "magnitude": 6,
+          "place": "186 km NW of Port-Olry, Vanuatu",
+          "url": "https://earthquake.usgs.gov/earthquakes/eventpage/us6000u3bc",
+          "station_checks": [
+            {
+              "station": "CM.RUS",
+              "residual_s": 2.57,
+              "phase": "PKIKP"
+            },
+            {
+              "station": "CM.OCA",
+              "residual_s": 3.43,
+              "phase": "PKIKP"
+            },
+            {
+              "station": "CM.HEL",
+              "residual_s": 10.79,
+              "phase": "PKIKP"
+            }
+          ],
+          "all_within_30s": true
+        },
+        "expected": true
+      }
+    ]
+  },
+  {
+    "candidate": {
+      "event_id": "57d938eb-cdbc-40c6-82ba-a2c0606539ce",
+      "type": "earthquake_candidate",
+      "status": "unlocated_unreviewed",
+      "zone_id": "CO",
+      "country_code": "CO",
+      "country_codes": [
+        "CO"
+      ],
+      "detected_at": "2026-10-19T20:37:22.616637Z",
+      "coincidence_window_seconds": 10,
+      "required_stations": 3,
+      "station_count": 3,
+      "estimated_latitude": 7.996699666666667,
+      "estimated_longitude": -73.54946,
+      "wave_strength_index": 1.003,
+      "magnitude_estimate": null,
+      "magnitude_estimate_status": "pending_station_calibration",
+      "association_quality": {
+        "used_station_ids": [],
+        "depth_km": null,
+        "latitude": null,
+        "reason": "need_four_independent_onsets",
+        "validation_status": "experimental_unvalidated",
+        "horizontal_uncertainty_km": null,
+        "azimuthal_gap_deg": null,
+        "longitude": null,
+        "origin_time": null,
+        "status": "insufficient_data",
+        "rejected_station_ids": [],
+        "rms_seconds": null
+      },
+      "stations": [
+        {
+          "provider_id": "earthscope_colombia",
+          "station_id": "CM.RUS",
+          "stream_id": "CM.RUS.00.HHZ",
+          "zone_id": "CO",
+          "country_code": "CO",
+          "trigger_time": "2026-10-19T20:37:08.838393Z",
+          "received_at": "2026-10-19T20:37:21.661223Z",
+          "sta_lta_ratio": 7.4135,
+          "latitude": 5.8925,
+          "longitude": -73.083167,
+          "packet_lag_seconds": 6.723,
+          "peak_amplitude_counts": 39.541025,
+          "noise_rms_counts": 3.420478,
+          "p_onset_time": null,
+          "pick_method": null
+        },
+        {
+          "provider_id": "earthscope_colombia",
+          "station_id": "CM.ARGC",
+          "stream_id": "CM.ARGC.00.HHZ",
+          "zone_id": "CO",
+          "country_code": "CO",
+          "trigger_time": "2026-10-19T20:37:12.918393Z",
+          "received_at": "2026-10-19T20:37:21.614501Z",
+          "sta_lta_ratio": 9.23,
+          "latitude": 9.857669,
+          "longitude": -74.245833,
+          "packet_lag_seconds": 7.716,
+          "peak_amplitude_counts": 623.575859,
+          "noise_rms_counts": 61.98394,
+          "p_onset_time": null,
+          "pick_method": null
+        },
+        {
+          "provider_id": "earthscope_colombia",
+          "station_id": "CM.OCA",
+          "stream_id": "CM.OCA.00.HHZ",
+          "zone_id": "CO",
+          "country_code": "CO",
+          "trigger_time": "2026-10-19T20:37:13.008393Z",
+          "received_at": "2026-10-19T20:37:22.611428Z",
+          "sta_lta_ratio": 6.3786,
+          "latitude": 8.23993,
+          "longitude": -73.31938,
+          "packet_lag_seconds": 5.943,
+          "peak_amplitude_counts": 992.969504,
+          "noise_rms_counts": 180.624376,
+          "p_onset_time": null,
+          "pick_method": null
+        }
+      ]
+    },
+    "reports": []
+  },
+  {
+    "candidate": {
+      "event_id": "cd2ad79c-9de4-47da-86be-a81757a1951b",
+      "type": "earthquake_candidate",
+      "status": "unlocated_unreviewed",
+      "zone_id": "CO",
+      "country_code": "CO",
+      "country_codes": [
+        "CO"
+      ],
+      "detected_at": "2026-10-20T22:00:46.170455Z",
+      "coincidence_window_seconds": 10,
+      "required_stations": 3,
+      "station_count": 3,
+      "estimated_latitude": 9.685577666666667,
+      "estimated_longitude": -73.9155,
+      "wave_strength_index": 0.89,
+      "magnitude_estimate": null,
+      "magnitude_estimate_status": "pending_station_calibration",
+      "association_quality": {
+        "origin_time": null,
+        "rejected_station_ids": [],
+        "validation_status": "experimental_unvalidated",
+        "longitude": null,
+        "used_station_ids": [],
+        "rms_seconds": null,
+        "horizontal_uncertainty_km": null,
+        "latitude": null,
+        "azimuthal_gap_deg": null,
+        "status": "insufficient_data",
+        "reason": "need_four_independent_onsets",
+        "depth_km": null
+      },
+      "stations": [
+        {
+          "provider_id": "earthscope_colombia",
+          "station_id": "CM.SMAR",
+          "stream_id": "CM.SMAR.00.HHZ",
+          "zone_id": "CO",
+          "country_code": "CO",
+          "trigger_time": "2026-10-20T22:00:27.358393Z",
+          "received_at": "2026-10-20T22:00:36.147686Z",
+          "sta_lta_ratio": 7.3274,
+          "latitude": 11.163833,
+          "longitude": -74.2245,
+          "packet_lag_seconds": 6.929,
+          "peak_amplitude_counts": 312.272649,
+          "noise_rms_counts": 40.182352,
+          "p_onset_time": null,
+          "pick_method": null
+        },
+        {
+          "provider_id": "earthscope_colombia",
+          "station_id": "CM.URI",
+          "stream_id": "CM.URI.00.HHZ",
+          "zone_id": "CO",
+          "country_code": "CO",
+          "trigger_time": "2026-10-20T22:00:31.618393Z",
+          "received_at": "2026-10-20T22:00:46.150710Z",
+          "sta_lta_ratio": 16.1137,
+          "latitude": 11.702,
+          "longitude": -71.993,
+          "packet_lag_seconds": 12.952,
+          "peak_amplitude_counts": 104.421668,
+          "noise_rms_counts": 5.933061,
+          "p_onset_time": "2026-10-20T22:00:30.478393Z",
+          "pick_method": "aic_onset_hypothesis_v1"
+        },
+        {
+          "provider_id": "earthscope_colombia",
+          "station_id": "CM.HEL",
+          "stream_id": "CM.HEL.00.HHZ",
+          "zone_id": "CO",
+          "country_code": "CO",
+          "trigger_time": "2026-10-20T22:00:36.458393Z",
+          "received_at": "2026-10-20T22:00:39.133388Z",
+          "sta_lta_ratio": 6.2224,
+          "latitude": 6.1909,
+          "longitude": -75.529,
+          "packet_lag_seconds": 2.175,
+          "peak_amplitude_counts": 1505.455447,
+          "noise_rms_counts": 212.171795,
+          "p_onset_time": null,
+          "pick_method": null
+        }
+      ]
+    },
+    "reports": [
+      {
+        "report": {
+          "source": "sgc",
+          "event_id": "SGC2026urrudm",
+          "origin_time": "2026-10-20 21:59:19",
+          "latitude": 6.773393382203164,
+          "longitude": -73.17551582678134,
+          "depth_km": 136,
+          "magnitude": 3.2,
+          "magnitude_type": "MLr_3",
+          "place": "Los Santos - Santander, Colombia",
+          "url": "https://www.sgc.gov.co/detallesismo/SGC2026urrudm/resumen",
+          "first_trigger_after_origin_s": 68.36,
+          "centroid_distance_km": 333.9,
+          "station_checks": [
+            {
+              "station_id": "CM.SMAR",
+              "distance_km": 501.6,
+              "trigger_after_origin_s": 68.4,
+              "broad_travel_time_consistent": true
+            },
+            {
+              "station_id": "CM.URI",
+              "distance_km": 563.2,
+              "trigger_after_origin_s": 72.6,
+              "broad_travel_time_consistent": true
+            },
+            {
+              "station_id": "CM.HEL",
+              "distance_km": 268,
+              "trigger_after_origin_s": 77.5,
+              "broad_travel_time_consistent": true
+            }
+          ],
+          "all_broad_travel_times_consistent": true
+        },
+        "expected": true
+      }
+    ]
+  },
+  {
+    "candidate": {
+      "event_id": "e4a18b36-04e6-4dec-afae-2704835513dd",
+      "type": "earthquake_candidate",
+      "status": "unlocated_unreviewed",
+      "zone_id": "CO",
+      "country_code": "CO",
+      "country_codes": [
+        "CO"
+      ],
+      "detected_at": "2026-10-21T01:22:49.221845Z",
+      "coincidence_window_seconds": 10,
+      "required_stations": 3,
+      "station_count": 3,
+      "estimated_latitude": 9.753810666666666,
+      "estimated_longitude": -73.92990433333334,
+      "wave_strength_index": 0.872,
+      "magnitude_estimate": null,
+      "magnitude_estimate_status": "pending_station_calibration",
+      "association_quality": {
+        "latitude": null,
+        "horizontal_uncertainty_km": null,
+        "rejected_station_ids": [],
+        "used_station_ids": [],
+        "azimuthal_gap_deg": null,
+        "depth_km": null,
+        "reason": "need_four_independent_onsets",
+        "status": "insufficient_data",
+        "validation_status": "experimental_unvalidated",
+        "rms_seconds": null,
+        "origin_time": null,
+        "longitude": null
+      },
+      "stations": [
+        {
+          "provider_id": "earthscope_colombia",
+          "station_id": "CM.ARGC",
+          "stream_id": "CM.ARGC.00.HHZ",
+          "zone_id": "CO",
+          "country_code": "CO",
+          "trigger_time": "2026-10-21T01:22:31.278393Z",
+          "received_at": "2026-10-21T01:22:45.207165Z",
+          "sta_lta_ratio": 7.5758,
+          "latitude": 9.857669,
+          "longitude": -74.245833,
+          "packet_lag_seconds": 13.389,
+          "peak_amplitude_counts": 332.057863,
+          "noise_rms_counts": 44.553592,
+          "p_onset_time": null,
+          "pick_method": null
+        },
+        {
+          "provider_id": "earthscope_colombia",
+          "station_id": "CM.OCA",
+          "stream_id": "CM.OCA.00.HHZ",
+          "zone_id": "CO",
+          "country_code": "CO",
+          "trigger_time": "2026-10-21T01:22:35.538393Z",
+          "received_at": "2026-10-21T01:22:46.214138Z",
+          "sta_lta_ratio": 6.0441,
+          "latitude": 8.23993,
+          "longitude": -73.31938,
+          "packet_lag_seconds": 6.686,
+          "peak_amplitude_counts": 484.516859,
+          "noise_rms_counts": 90.202136,
+          "p_onset_time": null,
+          "pick_method": null
+        },
+        {
+          "provider_id": "earthscope_colombia",
+          "station_id": "CM.SMAR",
+          "stream_id": "CM.SMAR.00.HHZ",
+          "zone_id": "CO",
+          "country_code": "CO",
+          "trigger_time": "2026-10-21T01:22:39.078393Z",
+          "received_at": "2026-10-21T01:22:49.215846Z",
+          "sta_lta_ratio": 9.47,
+          "latitude": 11.163833,
+          "longitude": -74.2245,
+          "packet_lag_seconds": 10.137,
+          "peak_amplitude_counts": 385.488046,
+          "noise_rms_counts": 26.962694,
+          "p_onset_time": null,
+          "pick_method": null
+        }
+      ]
+    },
+    "reports": [
+      {
+        "report": {
+          "source": "sgc",
+          "event_id": "SGC2026uryktt",
+          "origin_time": "2026-10-21 01:19:55",
+          "latitude": 10.858166666666667,
+          "longitude": -74.19933333333333,
+          "depth_km": 1,
+          "magnitude": 1.7,
+          "magnitude_type": "MLr_4",
+          "place": "Zona Bananera - Magdalena, Colombia",
+          "url": "https://www.sgc.gov.co/detallesismo/SGC2026uryktt/resumen",
+          "first_trigger_after_origin_s": 156.28,
+          "centroid_distance_km": 126.29,
+          "station_checks": [
+            {
+              "station_id": "CM.ARGC",
+              "distance_km": 111.4,
+              "trigger_after_origin_s": 156.3,
+              "broad_travel_time_consistent": false
+            },
+            {
+              "station_id": "CM.OCA",
+              "distance_km": 306.7,
+              "trigger_after_origin_s": 160.5,
+              "broad_travel_time_consistent": false
+            },
+            {
+              "station_id": "CM.SMAR",
+              "distance_km": 34.1,
+              "trigger_after_origin_s": 164.1,
+              "broad_travel_time_consistent": false
+            }
+          ],
+          "all_broad_travel_times_consistent": false
+        },
+        "expected": false
+      }
+    ]
+  },
+  {
+    "candidate": {
+      "event_id": "33bc535b-b9df-4bc2-94ba-822a0b998092",
+      "type": "earthquake_candidate",
+      "status": "unlocated_unreviewed",
+      "zone_id": "CO",
+      "country_code": "CO",
+      "country_codes": [
+        "CO"
+      ],
+      "detected_at": "2026-10-22T14:53:13.422232Z",
+      "coincidence_window_seconds": 10,
+      "required_stations": 3,
+      "station_count": 3,
+      "estimated_latitude": 10.423022333333334,
+      "estimated_longitude": -76.29516666666666,
+      "wave_strength_index": 0.753,
+      "magnitude_estimate": null,
+      "magnitude_estimate_status": "pending_station_calibration",
+      "association_quality": {
+        "validation_status": "experimental_unvalidated",
+        "used_station_ids": [],
+        "longitude": null,
+        "origin_time": null,
+        "latitude": null,
+        "reason": "need_four_independent_onsets",
+        "status": "insufficient_data",
+        "horizontal_uncertainty_km": null,
+        "rejected_station_ids": [],
+        "depth_km": null,
+        "azimuthal_gap_deg": null,
+        "rms_seconds": null
+      },
+      "stations": [
+        {
+          "provider_id": "earthscope_colombia",
+          "station_id": "CM.URI",
+          "stream_id": "CM.URI.00.HHZ",
+          "zone_id": "CO",
+          "country_code": "CO",
+          "trigger_time": "2026-10-22T14:53:00.538393Z",
+          "received_at": "2026-10-22T14:53:08.379011Z",
+          "sta_lta_ratio": 6.8903,
+          "latitude": 11.702,
+          "longitude": -71.993,
+          "packet_lag_seconds": 7.121,
+          "peak_amplitude_counts": 40.966142,
+          "noise_rms_counts": 7.229311,
+          "p_onset_time": null,
+          "pick_method": null
+        },
+        {
+          "provider_id": "earthscope_colombia",
+          "station_id": "CM.PRV",
+          "stream_id": "CM.PRV.00.HHZ",
+          "zone_id": "CO",
+          "country_code": "CO",
+          "trigger_time": "2026-10-22T14:53:05.808393Z",
+          "received_at": "2026-10-22T14:53:13.417056Z",
+          "sta_lta_ratio": 6.0163,
+          "latitude": 13.376167,
+          "longitude": -81.3635,
+          "packet_lag_seconds": 7.609,
+          "peak_amplitude_counts": 394.644406,
+          "noise_rms_counts": 80.908174,
+          "p_onset_time": null,
+          "pick_method": null
+        },
+        {
+          "provider_id": "earthscope_colombia",
+          "station_id": "CM.HEL",
+          "stream_id": "CM.HEL.00.HHZ",
+          "zone_id": "CO",
+          "country_code": "CO",
+          "trigger_time": "2026-10-22T14:53:09.668393Z",
+          "received_at": "2026-10-22T14:53:12.402846Z",
+          "sta_lta_ratio": 10.9108,
+          "latitude": 6.1909,
+          "longitude": -75.529,
+          "packet_lag_seconds": 2.644,
+          "peak_amplitude_counts": 201.99563,
+          "noise_rms_counts": 27.827427,
+          "p_onset_time": "2026-10-22T14:53:08.368393Z",
+          "pick_method": "aic_onset_hypothesis_v1"
+        }
+      ]
+    },
+    "reports": [
+      {
+        "report": {
+          "source": "usgs_global_large",
+          "event_id": "us6000u43g",
+          "origin_time": "2026-10-22T14:33:40.353000+00:00",
+          "latitude": 32.3805,
+          "longitude": 93.7797,
+          "depth_km": 18,
+          "magnitude": 7,
+          "place": "191 km ENE of Nagqu, China",
+          "url": "https://earthquake.usgs.gov/earthquakes/eventpage/us6000u43g",
+          "station_checks": [
+            {
+              "station": "CM.URI",
+              "residual_s": 4.74,
+              "phase": "PKIKP"
+            },
+            {
+              "station": "CM.PRV",
+              "residual_s": 9.74,
+              "phase": "PKIKP"
+            },
+            {
+              "station": "CM.HEL",
+              "residual_s": 2.44,
+              "phase": "PKIKP"
+            }
+          ],
+          "all_within_30s": true
+        },
+        "expected": true
+      }
+    ]
+  },
+  {
+    "candidate": {
+      "event_id": "077a74b4-d89d-4ac0-8d90-b5e7e99a834e",
+      "type": "earthquake_candidate",
+      "status": "unlocated_unreviewed",
+      "zone_id": "CO",
+      "country_code": "CO",
+      "country_codes": [
+        "CO"
+      ],
+      "detected_at": "2026-10-23T02:13:10.168999Z",
+      "coincidence_window_seconds": 10,
+      "required_stations": 3,
+      "station_count": 3,
+      "estimated_latitude": 8.096166333333333,
+      "estimated_longitude": -74.36473766666667,
+      "wave_strength_index": 1.184,
+      "magnitude_estimate": null,
+      "magnitude_estimate_status": "pending_station_calibration",
+      "association_quality": {
+        "latitude": 6.800000000000011,
+        "azimuthal_gap_deg": 197.59004959615913,
+        "rejected_station_ids": [],
+        "depth_km": 150,
+        "horizontal_uncertainty_km": 49.43997376039437,
+        "validation_status": "experimental_unvalidated",
+        "origin_time": "2026-10-23T02:12:07.588004Z",
+        "longitude": -72.99999999999986,
+        "used_station_ids": [
+          "CM.ARGC",
+          "CM.HEL",
+          "CM.OCA",
+          "CM.RUS"
+        ],
+        "rms_seconds": 0.5707668635283004,
+        "reason": "poor_geometry_or_ambiguous_location",
+        "status": "ambiguous"
+      },
+      "stations": [
+        {
+          "provider_id": "earthscope_colombia",
+          "station_id": "CM.HEL",
+          "stream_id": "CM.HEL.00.HHZ",
+          "zone_id": "CO",
+          "country_code": "CO",
+          "trigger_time": "2026-10-23T02:12:51.248393Z",
+          "received_at": "2026-10-23T02:13:03.161695Z",
+          "sta_lta_ratio": 19.5919,
+          "latitude": 6.1909,
+          "longitude": -75.529,
+          "packet_lag_seconds": 11.083,
+          "peak_amplitude_counts": 1231.990452,
+          "noise_rms_counts": 17.512476,
+          "p_onset_time": "2026-10-23T02:12:48.728393Z",
+          "pick_method": "aic_onset_hypothesis_v1"
+        },
+        {
+          "provider_id": "earthscope_colombia",
+          "station_id": "CM.OCA",
+          "stream_id": "CM.OCA.00.HHZ",
+          "zone_id": "CO",
+          "country_code": "CO",
+          "trigger_time": "2026-10-23T02:12:59.678393Z",
+          "received_at": "2026-10-23T02:13:10.162755Z",
+          "sta_lta_ratio": 10.1817,
+          "latitude": 8.23993,
+          "longitude": -73.31938,
+          "packet_lag_seconds": 9.374,
+          "peak_amplitude_counts": 25498.557589,
+          "noise_rms_counts": 2338.486778,
+          "p_onset_time": null,
+          "pick_method": null
+        },
+        {
+          "provider_id": "earthscope_colombia",
+          "station_id": "CM.ARGC",
+          "stream_id": "CM.ARGC.00.HHZ",
+          "zone_id": "CO",
+          "country_code": "CO",
+          "trigger_time": "2026-10-23T02:13:00.488394Z",
+          "received_at": "2026-10-23T02:13:07.171374Z",
+          "sta_lta_ratio": 13.0492,
+          "latitude": 9.857669,
+          "longitude": -74.245833,
+          "packet_lag_seconds": 6.663,
+          "peak_amplitude_counts": 529.844048,
+          "noise_rms_counts": 34.696497,
+          "p_onset_time": "2026-10-23T02:12:59.008394Z",
+          "pick_method": "aic_onset_hypothesis_v1"
+        }
+      ]
+    },
+    "reports": [
+      {
+        "report": {
+          "source": "sgc",
+          "event_id": "SGC2026uvrpmm",
+          "origin_time": "2026-10-23 02:12:07",
+          "latitude": 6.765461943480212,
+          "longitude": -73.16320925313612,
+          "depth_km": 140,
+          "magnitude": 3.5,
+          "magnitude_type": "MLr_3",
+          "place": "Los Santos - Santander, Colombia",
+          "url": "https://www.sgc.gov.co/detallesismo/SGC2026uvrpmm/resumen",
+          "first_trigger_after_origin_s": 44.25,
+          "centroid_distance_km": 198.61,
+          "station_checks": [
+            {
+              "station_id": "CM.HEL",
+              "distance_km": 269.1,
+              "trigger_after_origin_s": 44.2,
+              "broad_travel_time_consistent": true
+            },
+            {
+              "station_id": "CM.OCA",
+              "distance_km": 164.9,
+              "trigger_after_origin_s": 52.7,
+              "broad_travel_time_consistent": true
+            },
+            {
+              "station_id": "CM.ARGC",
+              "distance_km": 363.9,
+              "trigger_after_origin_s": 53.5,
+              "broad_travel_time_consistent": true
+            }
+          ],
+          "all_broad_travel_times_consistent": true
+        },
+        "expected": true
+      }
+    ]
+  },
+  {
+    "candidate": {
+      "event_id": "b1bb1a13-09b6-4c99-85c7-fdb3a2ceee3a",
+      "type": "earthquake_candidate",
+      "status": "unlocated_unreviewed",
+      "zone_id": "CO",
+      "country_code": "CO",
+      "country_codes": [
+        "CO"
+      ],
+      "detected_at": "2026-10-24T04:31:15.160269Z",
+      "coincidence_window_seconds": 10,
+      "required_stations": 3,
+      "station_count": 3,
+      "estimated_latitude": 9.685577666666667,
+      "estimated_longitude": -73.9155,
+      "wave_strength_index": 0.814,
+      "magnitude_estimate": null,
+      "magnitude_estimate_status": "pending_station_calibration",
+      "association_quality": {
+        "azimuthal_gap_deg": null,
+        "longitude": null,
+        "reason": "need_four_independent_onsets",
+        "used_station_ids": [],
+        "horizontal_uncertainty_km": null,
+        "rms_seconds": null,
+        "origin_time": null,
+        "validation_status": "experimental_unvalidated",
+        "status": "insufficient_data",
+        "rejected_station_ids": [],
+        "depth_km": null,
+        "latitude": null
+      },
+      "stations": [
+        {
+          "provider_id": "earthscope_colombia",
+          "station_id": "CM.HEL",
+          "stream_id": "CM.HEL.00.HHZ",
+          "zone_id": "CO",
+          "country_code": "CO",
+          "trigger_time": "2026-10-24T04:30:57.648393Z",
+          "received_at": "2026-10-24T04:31:05.130500Z",
+          "sta_lta_ratio": 10.7946,
+          "latitude": 6.1909,
+          "longitude": -75.529,
+          "packet_lag_seconds": 2.662,
+          "peak_amplitude_counts": 86.193466,
+          "noise_rms_counts": 10.122752,
+          "p_onset_time": null,
+          "pick_method": null
+        },
+        {
+          "provider_id": "earthscope_colombia",
+          "station_id": "CM.SMAR",
+          "stream_id": "CM.SMAR.00.HHZ",
+          "zone_id": "CO",
+          "country_code": "CO",
+          "trigger_time": "2026-10-24T04:31:01.208393Z",
+          "received_at": "2026-10-24T04:31:12.145066Z",
+          "sta_lta_ratio": 6.3283,
+          "latitude": 11.163833,
+          "longitude": -74.2245,
+          "packet_lag_seconds": 9.767,
+          "peak_amplitude_counts": 120.998592,
+          "noise_rms_counts": 19.619983,
+          "p_onset_time": null,
+          "pick_method": null
+        },
+        {
+          "provider_id": "earthscope_colombia",
+          "station_id": "CM.URI",
+          "stream_id": "CM.URI.00.HHZ",
+          "zone_id": "CO",
+          "country_code": "CO",
+          "trigger_time": "2026-10-24T04:31:05.358393Z",
+          "received_at": "2026-10-24T04:31:15.155212Z",
+          "sta_lta_ratio": 8.4244,
+          "latitude": 11.702,
+          "longitude": -71.993,
+          "packet_lag_seconds": 6.057,
+          "peak_amplitude_counts": 38.034656,
+          "noise_rms_counts": 5.835425,
+          "p_onset_time": null,
+          "pick_method": null
+        }
+      ]
+    },
+    "reports": [
+      {
+        "report": {
+          "source": "usgs_global_large",
+          "event_id": "us6000u4jw",
+          "origin_time": "2026-10-24T04:12:05.337000+00:00",
+          "latitude": -13.9017,
+          "longitude": 165.5967,
+          "depth_km": 10,
+          "magnitude": 5.8,
+          "place": "203 km NW of Port-Olry, Vanuatu",
+          "url": "https://earthquake.usgs.gov/earthquakes/eventpage/us6000u4jw",
+          "station_checks": [
+            {
+              "station": "CM.HEL",
+              "residual_s": 2.76,
+              "phase": "PKIKP"
+            },
+            {
+              "station": "CM.SMAR",
+              "residual_s": 2.08,
+              "phase": "PKIKP"
+            },
+            {
+              "station": "CM.URI",
+              "residual_s": 1.94,
+              "phase": "PKIKP"
+            }
+          ],
+          "all_within_30s": true
+        },
+        "expected": true
+      }
+    ]
+  },
+  {
+    "candidate": {
+      "event_id": "6f428257-1ffa-4745-8015-62ce985777c6",
+      "type": "earthquake_candidate",
+      "status": "unlocated_unreviewed",
+      "zone_id": "CO",
+      "country_code": "CO",
+      "country_codes": [
+        "CO"
+      ],
+      "detected_at": "2026-10-24T20:50:49.507491Z",
+      "coincidence_window_seconds": 10,
+      "required_stations": 3,
+      "station_count": 3,
+      "estimated_latitude": 9.586111,
+      "estimated_longitude": -73.10022233333333,
+      "wave_strength_index": 1.032,
+      "magnitude_estimate": null,
+      "magnitude_estimate_status": "pending_station_calibration",
+      "association_quality": {
+        "status": "insufficient_data",
+        "azimuthal_gap_deg": null,
+        "horizontal_uncertainty_km": null,
+        "rms_seconds": null,
+        "origin_time": null,
+        "latitude": null,
+        "rejected_station_ids": [],
+        "depth_km": null,
+        "longitude": null,
+        "used_station_ids": [],
+        "reason": "need_four_independent_onsets",
+        "validation_status": "experimental_unvalidated"
+      },
+      "stations": [
+        {
+          "provider_id": "earthscope_colombia",
+          "station_id": "CM.SMAR",
+          "stream_id": "CM.SMAR.00.HHZ",
+          "zone_id": "CO",
+          "country_code": "CO",
+          "trigger_time": "2026-10-24T20:50:26.028393Z",
+          "received_at": "2026-10-24T20:50:39.487050Z",
+          "sta_lta_ratio": 10.6889,
+          "latitude": 11.163833,
+          "longitude": -74.2245,
+          "packet_lag_seconds": 12.939,
+          "peak_amplitude_counts": 260.144217,
+          "noise_rms_counts": 25.207552,
+          "p_onset_time": null,
+          "pick_method": null
+        },
+        {
+          "provider_id": "earthscope_colombia",
+          "station_id": "CM.RUS",
+          "stream_id": "CM.RUS.00.HHZ",
+          "zone_id": "CO",
+          "country_code": "CO",
+          "trigger_time": "2026-10-24T20:50:31.188393Z",
+          "received_at": "2026-10-24T20:50:37.489633Z",
+          "sta_lta_ratio": 11.3632,
+          "latitude": 5.8925,
+          "longitude": -73.083167,
+          "packet_lag_seconds": 2.561,
+          "peak_amplitude_counts": 44.716381,
+          "noise_rms_counts": 4.044747,
+          "p_onset_time": null,
+          "pick_method": null
+        },
+        {
+          "provider_id": "earthscope_colombia",
+          "station_id": "CM.URI",
+          "stream_id": "CM.URI.00.HHZ",
+          "zone_id": "CO",
+          "country_code": "CO",
+          "trigger_time": "2026-10-24T20:50:36.028393Z",
+          "received_at": "2026-10-24T20:50:49.501952Z",
+          "sta_lta_ratio": 7.9134,
+          "latitude": 11.702,
+          "longitude": -71.993,
+          "packet_lag_seconds": 12.424,
+          "peak_amplitude_counts": 133.017279,
+          "noise_rms_counts": 12.345025,
+          "p_onset_time": null,
+          "pick_method": null
+        }
+      ]
+    },
+    "reports": [
+      {
+        "report": {
+          "source": "sgc",
+          "event_id": "SGC2026uyyjtk",
+          "origin_time": "2026-10-24 20:50:05",
+          "latitude": 6.773393382203164,
+          "longitude": -73.16267698316844,
+          "depth_km": 141,
+          "magnitude": 1.8,
+          "magnitude_type": "MLr_3",
+          "place": "Los Santos - Santander, Colombia",
+          "url": "https://www.sgc.gov.co/detallesismo/SGC2026uyyjtk/resumen",
+          "first_trigger_after_origin_s": 21.03,
+          "centroid_distance_km": 312.84,
+          "station_checks": [
+            {
+              "station_id": "CM.SMAR",
+              "distance_km": 501.9,
+              "trigger_after_origin_s": 21,
+              "broad_travel_time_consistent": false
+            },
+            {
+              "station_id": "CM.RUS",
+              "distance_km": 98.3,
+              "trigger_after_origin_s": 26.2,
+              "broad_travel_time_consistent": true
+            },
+            {
+              "station_id": "CM.URI",
+              "distance_km": 562.9,
+              "trigger_after_origin_s": 31,
+              "broad_travel_time_consistent": false
+            }
+          ],
+          "all_broad_travel_times_consistent": false
+        },
+        "expected": false
+      }
+    ]
+  },
+  {
+    "candidate": {
+      "event_id": "c41806b4-f052-4c7a-94fe-9eb7d208b55a",
+      "type": "earthquake_candidate",
+      "status": "unlocated_unreviewed",
+      "zone_id": "CO",
+      "country_code": "CO",
+      "country_codes": [
+        "CO"
+      ],
+      "detected_at": "2026-10-25T02:27:52.212847Z",
+      "coincidence_window_seconds": 10,
+      "required_stations": 3,
+      "station_count": 3,
+      "estimated_latitude": 10.323555666666666,
+      "estimated_longitude": -75.479889,
+      "wave_strength_index": 0.798,
+      "magnitude_estimate": null,
+      "magnitude_estimate_status": "pending_station_calibration",
+      "association_quality": {
+        "rejected_station_ids": [],
+        "status": "insufficient_data",
+        "latitude": null,
+        "rms_seconds": null,
+        "depth_km": null,
+        "longitude": null,
+        "origin_time": null,
+        "azimuthal_gap_deg": null,
+        "horizontal_uncertainty_km": null,
+        "validation_status": "experimental_unvalidated",
+        "used_station_ids": [],
+        "reason": "need_four_independent_onsets"
+      },
+      "stations": [
+        {
+          "provider_id": "earthscope_colombia",
+          "station_id": "CM.PRV",
+          "stream_id": "CM.PRV.00.HHZ",
+          "zone_id": "CO",
+          "country_code": "CO",
+          "trigger_time": "2026-10-25T02:27:32.838393Z",
+          "received_at": "2026-10-25T02:27:38.208680Z",
+          "sta_lta_ratio": 7.3179,
+          "latitude": 13.376167,
+          "longitude": -81.3635,
+          "packet_lag_seconds": 3.68,
+          "peak_amplitude_counts": 412.312615,
+          "noise_rms_counts": 77.486007,
+          "p_onset_time": null,
+          "pick_method": null
+        },
+        {
+          "provider_id": "earthscope_colombia",
+          "station_id": "CM.RUS",
+          "stream_id": "CM.RUS.00.HHZ",
+          "zone_id": "CO",
+          "country_code": "CO",
+          "trigger_time": "2026-10-25T02:27:34.078393Z",
+          "received_at": "2026-10-25T02:27:50.199424Z",
+          "sta_lta_ratio": 7.3211,
+          "latitude": 5.8925,
+          "longitude": -73.083167,
+          "packet_lag_seconds": 14.531,
+          "peak_amplitude_counts": 20.884764,
+          "noise_rms_counts": 3.327752,
+          "p_onset_time": null,
+          "pick_method": null
+        },
+        {
+          "provider_id": "earthscope_colombia",
+          "station_id": "CM.URI",
+          "stream_id": "CM.URI.00.HHZ",
+          "zone_id": "CO",
+          "country_code": "CO",
+          "trigger_time": "2026-10-25T02:27:41.518393Z",
+          "received_at": "2026-10-25T02:27:52.207547Z",
+          "sta_lta_ratio": 7.2889,
+          "latitude": 11.702,
+          "longitude": -71.993,
+          "packet_lag_seconds": 10.689,
+          "peak_amplitude_counts": 49.48059,
+          "noise_rms_counts": 7.419025,
+          "p_onset_time": null,
+          "pick_method": null
+        }
+      ]
+    },
+    "reports": [
+      {
+        "report": {
+          "source": "usgs_global_large",
+          "event_id": "us6000u4r9",
+          "origin_time": "2026-10-25T02:09:23.818000+00:00",
+          "latitude": 27.7953,
+          "longitude": 139.6184,
+          "depth_km": 492.376,
+          "magnitude": 6.5,
+          "place": "Bonin Islands, Japan region",
+          "url": "https://earthquake.usgs.gov/earthquakes/eventpage/us6000u4r9",
+          "station_checks": [
+            {
+              "station": "CM.PRV",
+              "residual_s": 9.8,
+              "phase": "PKIKP"
+            },
+            {
+              "station": "CM.RUS",
+              "residual_s": -9.76,
+              "phase": "PKIKP"
+            },
+            {
+              "station": "CM.URI",
+              "residual_s": 4.81,
+              "phase": "PKIKP"
+            }
+          ],
+          "all_within_30s": true
+        },
+        "expected": true
+      }
+    ]
+  },
+  {
+    "candidate": {
+      "event_id": "b3fdbfb7-16c1-4418-a0f2-ea9da4ed900f",
+      "type": "earthquake_candidate",
+      "status": "unlocated_unreviewed",
+      "zone_id": "CO",
+      "country_code": "CO",
+      "country_codes": [
+        "CO"
+      ],
+      "detected_at": "2026-10-25T02:30:27.420896Z",
+      "coincidence_window_seconds": 10,
+      "required_stations": 3,
+      "station_count": 3,
+      "estimated_latitude": 9.753810666666666,
+      "estimated_longitude": -73.92990433333334,
+      "wave_strength_index": 0.738,
+      "magnitude_estimate": null,
+      "magnitude_estimate_status": "pending_station_calibration",
+      "association_quality": {
+        "status": "insufficient_data",
+        "origin_time": null,
+        "rms_seconds": null,
+        "validation_status": "experimental_unvalidated",
+        "longitude": null,
+        "reason": "need_four_independent_onsets",
+        "horizontal_uncertainty_km": null,
+        "azimuthal_gap_deg": null,
+        "rejected_station_ids": [],
+        "used_station_ids": [],
+        "latitude": null,
+        "depth_km": null
+      },
+      "stations": [
+        {
+          "provider_id": "earthscope_colombia",
+          "station_id": "CM.SMAR",
+          "stream_id": "CM.SMAR.00.HHZ",
+          "zone_id": "CO",
+          "country_code": "CO",
+          "trigger_time": "2026-10-25T02:30:14.578393Z",
+          "received_at": "2026-10-25T02:30:17.418658Z",
+          "sta_lta_ratio": 7.3929,
+          "latitude": 11.163833,
+          "longitude": -74.2245,
+          "packet_lag_seconds": 2.84,
+          "peak_amplitude_counts": 320.810589,
+          "noise_rms_counts": 46.48094,
+          "p_onset_time": "2026-10-25T02:30:11.358393Z",
+          "pick_method": "aic_onset_hypothesis_v1"
+        },
+        {
+          "provider_id": "earthscope_colombia",
+          "station_id": "CM.ARGC",
+          "stream_id": "CM.ARGC.00.HHZ",
+          "zone_id": "CO",
+          "country_code": "CO",
+          "trigger_time": "2026-10-25T02:30:19.308391Z",
+          "received_at": "2026-10-25T02:30:25.449032Z",
+          "sta_lta_ratio": 8.7221,
+          "latitude": 9.857669,
+          "longitude": -74.245833,
+          "packet_lag_seconds": 5.641,
+          "peak_amplitude_counts": 277.127576,
+          "noise_rms_counts": 50.633627,
+          "p_onset_time": "2026-10-25T02:30:15.328391Z",
+          "pick_method": "aic_onset_hypothesis_v1"
+        },
+        {
+          "provider_id": "earthscope_colombia",
+          "station_id": "CM.OCA",
+          "stream_id": "CM.OCA.00.HHZ",
+          "zone_id": "CO",
+          "country_code": "CO",
+          "trigger_time": "2026-10-25T02:30:23.758394Z",
+          "received_at": "2026-10-25T02:30:27.415206Z",
+          "sta_lta_ratio": 6.9964,
+          "latitude": 8.23993,
+          "longitude": -73.31938,
+          "packet_lag_seconds": 1.667,
+          "peak_amplitude_counts": 665.365144,
+          "noise_rms_counts": 144.389948,
+          "p_onset_time": null,
+          "pick_method": null
+        }
+      ]
+    },
+    "reports": []
+  }
+]

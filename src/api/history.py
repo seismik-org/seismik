@@ -12,6 +12,7 @@ from redis.asyncio import Redis
 from api.config import AppSettings
 from api.dependencies import ApiPrincipal, get_app_settings, get_redis, require_mobile_events_read
 from api.geojson import FORMAT_QUERY, GEOJSON_RESPONSE, OutputFormat, feature_collection
+from eew.candidate_evidence import public_candidate_location
 from eew.official import OfficialApiClient, OfficialSource, load_sources
 
 router = APIRouter(prefix="/v1/events", tags=["official-history"])
@@ -87,8 +88,7 @@ def _preliminary_event(payload: dict[str, Any]) -> dict[str, Any] | None:
         "agency": "Seismik / SeedLink",
         "origin_time": detected_at,
         "detected_at": detected_at,
-        "latitude": payload.get("estimated_latitude"),
-        "longitude": payload.get("estimated_longitude"),
+        **public_candidate_location(payload),
         "magnitude": payload.get("magnitude_estimate"),
         "magnitude_type": (
             "M~ experimental" if payload.get("magnitude_estimate") is not None else None
@@ -96,9 +96,6 @@ def _preliminary_event(payload: dict[str, Any]) -> dict[str, Any] | None:
         "magnitude_estimate_status": payload.get(
             "magnitude_estimate_status", "pending_station_calibration"
         ),
-        "depth_km": None,
-        "place": f"Zona técnica {payload.get('zone_id', 'sin ubicar')}",
-        "review_status": "preliminar · sin revisión humana",
         "preliminary": True,
         "algorithm": "STA/LTA con coincidencia multiestación",
         "zone_id": payload.get("zone_id"),
