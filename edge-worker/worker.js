@@ -57,6 +57,7 @@ function targetFor(request) {
     if (path.startsWith("/v1/")) origin = API;
     else if (path.startsWith("/__/auth/")) origin = FIREBASE;
     else if (path === "/") path = "/developers.html";
+    else if (path === "/explore" || path === "/explore/") path = "/explore.html";
   } else if (host === "admin.seismik.org") {
     if (path.startsWith("/v1/")) origin = API;
     else if (path === "/") path = "/admin/";
@@ -200,6 +201,12 @@ export default {
     const feltHTML = source.hostname === "ifeltit.seismik.org" && upstream.headers.get("Content-Type")?.includes("text/html");
     const nonce = feltHTML ? crypto.randomUUID().replaceAll("-", "") : "";
     for (const [name, value] of securityHeaders(source.hostname, nonce)) headers.set(name, value);
+    if (source.hostname === "devs.seismik.org" && ["/explore", "/explore/", "/explore.html"].includes(source.pathname)) {
+      headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+      headers.set("Content-Security-Policy", "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: https://tile.openstreetmap.org; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'");
+      headers.set("X-Robots-Tag", "noindex, follow");
+    }
+    if (source.hostname === "devs.seismik.org" && source.pathname.startsWith("/v1/")) headers.set("Cache-Control", "no-store");
     headers.delete("Server");
     if (feltHTML) {
       headers.set("Cache-Control", "no-store");

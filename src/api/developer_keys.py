@@ -9,7 +9,7 @@ from typing import Any, Literal, cast
 
 import firebase_admin
 import httpx
-from fastapi import APIRouter, Cookie, Header, HTTPException, Request, status
+from fastapi import APIRouter, Cookie, Header, HTTPException, Query, Request, Response, status
 from firebase_admin import App, auth, credentials
 from pydantic import BaseModel, Field, field_validator
 
@@ -433,6 +433,40 @@ async def developer_account(
             f"seismik:developer-profile:{uid}", "selected_plan_id"
         ),
     }
+
+
+@router.get("/explore/history")
+async def explore_history(
+    request: Request,
+    response: Response,
+    sources: str = Query(default="sgc_colombia,usgs_global,emsc_global", max_length=300),
+    days: int = Query(default=7, ge=1, le=30),
+    minimum_magnitude: float = Query(default=2.5, ge=0, le=10),
+    limit: int = Query(default=200, ge=1, le=500),
+    seismik_session: str | None = Cookie(default=None),
+) -> dict[str, Any]:
+    """Owner-session history; consumes the same account quota as all its keys."""
+    from api.dependencies import consume_developer_account
+    from api.history import official_history
+
+    # A cross-site navigation must not spend a logged-in user's quota.
+    if request.headers.get("sec-fetch-site", "same-origin") not in {"same-origin", "none"}:
+        raise HTTPException(status_code=403, detail="Open the explorer from the developer portal")
+    if request.headers.get("origin") and request.headers["origin"] not in request.app.state.settings.developer_portal_origins:
+        raise HTTPException(status_code=403, detail="Invalid explorer origin")
+    if not seismik_session:
+        raise HTTPException(status_code=401, detail="Portal login required")
+    identity = await _request_identity(request, None, seismik_session)
+    principal = await consume_developer_account(
+        request.app.state.redis, request.app.state.settings, str(identity["uid"]), "events:read",
+    )
+    result = await official_history(
+        sources=sources, days=days, minimum_magnitude=minimum_magnitude, limit=limit,
+        settings=request.app.state.settings, redis=request.app.state.redis, _authorized=principal,
+    )
+    response.headers["Cache-Control"] = "no-store"
+    response.headers["Vary"] = "Cookie"
+    return result
 
 
 @router.post("/plan-selection")

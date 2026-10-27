@@ -492,6 +492,11 @@ async function keyAction(event) {
 }
 
 function updateSession(user) {
+  if (user && sessionStorage.getItem("seismik-explore-return") === "1") {
+    sessionStorage.removeItem("seismik-explore-return");
+    window.location.replace("/explore");
+    return;
+  }
   sessionVersion += 1;
   currentAccount = null;
   renderQuotaUsage(null);

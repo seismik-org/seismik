@@ -114,7 +114,6 @@ async def _authorize_developer_key(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="API key scope is insufficient")
 
     resolved_settings = settings or request.app.state.settings
-    plan = await account_plan(resolved_redis, record["uid"], resolved_settings)
     now = datetime.now(timezone.utc)
     minute_key = f"seismik:developer-usage:minute:{digest}:{now:%Y%m%d%H%M}"
     day_key = f"seismik:developer-usage:day:{digest}:{now:%Y%m%d}"
@@ -124,14 +123,33 @@ async def _authorize_developer_key(
     pipe.incr(day_key)
     pipe.expire(day_key, 172_800)
     pipe.hset(f"seismik:developer-key:{digest}", mapping={"last_used_at": now.isoformat()})
-    # Quotas belong to the account; multiple keys cannot multiply its allowance.
-    pipe.incr(f"seismik:developer-account-usage:minute:{record['uid']}:{now:%Y%m%d%H%M}")
-    pipe.expire(f"seismik:developer-account-usage:minute:{record['uid']}:{now:%Y%m%d%H%M}", 120)
-    pipe.incr(f"seismik:developer-account-usage:day:{record['uid']}:{now:%Y%m%d}")
-    pipe.expire(f"seismik:developer-account-usage:day:{record['uid']}:{now:%Y%m%d}", 172_800)
+    await pipe.execute()
+    return await consume_developer_account(
+        resolved_redis, resolved_settings, record["uid"], required_scope or "unscoped",
+        key_id=record.get("key_id"), scopes=scopes,
+    )
+
+
+async def consume_developer_account(
+    redis: Redis, settings: AppSettings, uid: str, scope: str, *,
+    key_id: str | None = None, scopes: frozenset[str] | None = None,
+) -> ApiPrincipal:
+    """One shared allowance for API keys and authenticated portal exploration.
+
+    No key is created or retrieved. Minute/day counters count attempts as
+    before; the atomic monthly meter only reserves admitted data requests.
+    """
+    plan = await account_plan(redis, uid, settings)
+    now = datetime.now(timezone.utc)
+    minute_key = f"seismik:developer-account-usage:minute:{uid}:{now:%Y%m%d%H%M}"
+    day_key = f"seismik:developer-account-usage:day:{uid}:{now:%Y%m%d}"
+    pipe = redis.pipeline(transaction=True)
+    pipe.incr(minute_key)
+    pipe.expire(minute_key, 120)
+    pipe.incr(day_key)
+    pipe.expire(day_key, 172_800)
     results = await pipe.execute()
-    minute_count = int(results[5])
-    day_count = int(results[7])
+    minute_count, day_count = int(results[0]), int(results[2])
     if minute_count > plan["requests_per_minute"]:
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
@@ -144,12 +162,12 @@ async def _authorize_developer_key(
             detail="Daily API quota exceeded",
             headers={"Retry-After": "86400"},
         )
-    await record_usage(resolved_redis, record["uid"], required_scope or "unscoped", record.get("key_id"), monthly_limit=plan["requests_per_month"])
+    await record_usage(redis, uid, scope, key_id, monthly_limit=plan["requests_per_month"])
     return ApiPrincipal(
-        subject=record["uid"],
-        key_id=record.get("key_id"),
+        subject=uid,
+        key_id=key_id,
         plan=plan["id"],
-        scopes=scopes,
+        scopes=scopes if scopes is not None else frozenset({scope}),
     )
 
 

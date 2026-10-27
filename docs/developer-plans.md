@@ -40,6 +40,13 @@ administrativa usan `free`. El registro autoritativo es el perfil Redis de la
 cuenta; todas sus claves reflejan ese plan, incluso las emitidas antes del cambio.
 
 Las cuotas por minuto y día se comparten entre las claves de una cuenta. El
+explorador de `/explore` también comparte estas cuotas y el medidor mensual:
+consulta por sesión en `/v1/developer/explore/history`, sin crear o exponer
+una API key. Cada búsqueda admitida cuenta como `events:read`; filtrar los
+resultados cargados o mover el mapa no consume otra consulta. Véase
+`developer-explore-2026-10-26.md`.
+
+El
 inventario conserva también el consumo de cada clave. Los planes activados
 administrativamente usan sus cuotas publicadas salvo límites expresamente
 acordados. La selección del catálogo no concede privilegios ni abre un checkout.
