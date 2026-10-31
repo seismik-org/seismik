@@ -1,0 +1,1736 @@
+{
+  "schema_version": 1,
+  "observed_at": "2026-10-17T22:50:10.249839+00:00",
+  "scope": {
+    "country": "CO",
+    "region": "central_interior",
+    "minlatitude": 2,
+    "maxlatitude": 8,
+    "minlongitude": -77.5,
+    "maxlongitude": -71,
+    "bbox_is_not_country_polygon": true
+  },
+  "status": "no_new_authorized_live_station_found_in_documented_sources_checked",
+  "production_changed": false,
+  "alerts_changed": false,
+  "newly_activated_stations": 0,
+  "metadata_services_checked": 22,
+  "metadata_providers": [
+    {
+      "provider": "EARTHSCOPE",
+      "base": "https://service.earthscope.org",
+      "status": 200,
+      "error": null,
+      "vertical_channels": 23
+    },
+    {
+      "provider": "GEOFON",
+      "base": "https://geofon.gfz.de",
+      "status": 204,
+      "error": null,
+      "vertical_channels": 0
+    },
+    {
+      "provider": "BGR",
+      "base": "https://eida.bgr.de",
+      "status": 204,
+      "error": null,
+      "vertical_channels": 0
+    },
+    {
+      "provider": "BGS",
+      "base": "https://eida.bgs.ac.uk",
+      "status": 204,
+      "error": null,
+      "vertical_channels": 0
+    },
+    {
+      "provider": "EPOSFR",
+      "base": "https://seisdata.epos-france.fr",
+      "status": 204,
+      "error": null,
+      "vertical_channels": 0
+    },
+    {
+      "provider": "ETH",
+      "base": "https://eida.ethz.ch",
+      "status": 204,
+      "error": null,
+      "vertical_channels": 0
+    },
+    {
+      "provider": "ICGC",
+      "base": "https://ws.icgc.cat",
+      "status": 204,
+      "error": null,
+      "vertical_channels": 0
+    },
+    {
+      "provider": "INGV",
+      "base": "https://webservices.ingv.it",
+      "status": 204,
+      "error": null,
+      "vertical_channels": 0
+    },
+    {
+      "provider": "IPGP",
+      "base": "https://ws.ipgp.fr",
+      "status": 204,
+      "error": null,
+      "vertical_channels": 0
+    },
+    {
+      "provider": "KNMI",
+      "base": "https://rdsa.knmi.nl",
+      "status": 204,
+      "error": null,
+      "vertical_channels": 0
+    },
+    {
+      "provider": "KOERI",
+      "base": "https://eida.koeri.boun.edu.tr",
+      "status": 204,
+      "error": null,
+      "vertical_channels": 0
+    },
+    {
+      "provider": "LMU",
+      "base": "https://erde.geophysik.uni-muenchen.de",
+      "status": 204,
+      "error": null,
+      "vertical_channels": 0
+    },
+    {
+      "provider": "NCEDC",
+      "base": "https://service.ncedc.org",
+      "status": 204,
+      "error": null,
+      "vertical_channels": 0
+    },
+    {
+      "provider": "NIEP",
+      "base": "https://eida-sc3.infp.ro",
+      "status": 204,
+      "error": null,
+      "vertical_channels": 0
+    },
+    {
+      "provider": "NOA",
+      "base": "https://eida.gein.noa.gr",
+      "status": 204,
+      "error": null,
+      "vertical_channels": 0
+    },
+    {
+      "provider": "NRCAN",
+      "base": "https://earthquakescanada.nrcan.gc.ca",
+      "status": 204,
+      "error": null,
+      "vertical_channels": 0
+    },
+    {
+      "provider": "RESIF",
+      "base": "https://ws.resif.fr",
+      "status": 204,
+      "error": null,
+      "vertical_channels": 0
+    },
+    {
+      "provider": "RASPISHAKE",
+      "base": "https://data.raspberryshake.org",
+      "status": 200,
+      "error": null,
+      "vertical_channels": 60
+    },
+    {
+      "provider": "SCEDC",
+      "base": "https://service.scedc.caltech.edu",
+      "status": 204,
+      "error": null,
+      "vertical_channels": 0
+    },
+    {
+      "provider": "UIB-NORSAR",
+      "base": "https://eida.geo.uib.no",
+      "status": 204,
+      "error": null,
+      "vertical_channels": 0
+    },
+    {
+      "provider": "USP",
+      "base": "https://sismo.iag.usp.br",
+      "status": 204,
+      "error": null,
+      "vertical_channels": 0
+    },
+    {
+      "provider": "AUSPASS",
+      "base": "https://auspass.edu.au",
+      "status": null,
+      "error": "ReadTimeout: HTTPSConnectionPool(host='auspass.edu.au', port=443): Read timed out. (read timeout=8)",
+      "vertical_channels": 0
+    }
+  ],
+  "followup_status": [
+    {
+      "name": "REDSW",
+      "status": null,
+      "error": "SSLError: HTTPSConnectionPool(host='osso.univalle.edu.co', port=443): Max retries exceeded with url: / (Caused by SSLError(SSLCertVerificationError(1, '[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:1010)')))"
+    },
+    {
+      "name": "EarthScope_federation",
+      "status": 200,
+      "error": null
+    },
+    {
+      "name": "EIDA_routing",
+      "status": 204,
+      "error": null
+    },
+    {
+      "name": "AUSPASS_retry",
+      "status": 204,
+      "error": null
+    }
+  ],
+  "live_inventory_attempts": [
+    {
+      "server": "seisrequest.iag.usp.br:18000",
+      "stations": 52,
+      "error": null,
+      "central_matches": []
+    },
+    {
+      "server": "sislink.geofisica.ufrn.br:18000",
+      "stations": 0,
+      "error": "'cannot connect to SeedLink server: [WinError 10060] Se produjo un error durante el intento de conexi�n ya que la parte conectada no respondi� adecuadamente tras un periodo de tiempo, o bien se produjo un error en la conexi�n establecida ya que el host conectado no ha podido responder'",
+      "central_matches": []
+    },
+    {
+      "server": "datasis.unb.br:18000",
+      "stations": 0,
+      "error": "'cannot connect to SeedLink server: [WinError 10060] Se produjo un error durante el intento de conexi�n ya que la parte conectada no respondi� adecuadamente tras un periodo de tiempo, o bien se produjo un error en la conexi�n establecida ya que el host conectado no ha podido responder'",
+      "central_matches": []
+    },
+    {
+      "server": "eida.bgr.de:18000",
+      "stations": 200,
+      "error": null,
+      "central_matches": []
+    },
+    {
+      "server": "rts.resif.fr:18000",
+      "stations": 0,
+      "error": "'cannot connect to SeedLink server: [Errno 11001] getaddrinfo failed'",
+      "central_matches": []
+    },
+    {
+      "server": "rtserver.ipgp.fr:18000",
+      "stations": 142,
+      "error": null,
+      "central_matches": []
+    }
+  ],
+  "final_eposfr_inventory": {
+    "server": "rtserve.resif.fr:18000",
+    "stations": 476,
+    "regional_network_or_colombia_description_matches": [],
+    "note": "Followed current official endpoint after rts.resif.fr DNS failure; final command output retained in chat."
+  },
+  "raspberry_shake": {
+    "source": "https://data.raspberryshake.org/fdsnws/station/1/query",
+    "license_url": "https://raspberryshake.org/license/",
+    "station_codes": 52,
+    "vertical_channels": 60,
+    "physical_sensor_count": null,
+    "active_live_station_count": null,
+    "warning": "52 codes do not establish 52 active or independent sensors. Nearby codes may be replacements, aliases or colocated.",
+    "blockers": [
+      "No authorized live endpoint or credentials for Seismik.",
+      "Published terms restrict commercial web/mobile platform integration and digital redistribution.",
+      "Public FDSN archive is T-30 minutes and older, not an early-warning feed.",
+      "Operator warns its community network is not intended as a life-safety early-warning system.",
+      "Obtain explicit agreement covering derived alerts separately from waveform redistribution."
+    ],
+    "stations": [
+      {
+        "network": "AM",
+        "station": "R0BD9",
+        "geographic_area": null,
+        "latitude": 3.369369369369369,
+        "longitude": -76.52888366351586,
+        "coordinates_are_public_metadata_not_verified_site": true,
+        "channels": [
+          {
+            "stream_id": "AM.R0BD9.00.EHZ",
+            "latitude": 3.369369369369369,
+            "longitude": -76.52888366351586,
+            "sample_rate": "100.0",
+            "epoch_start": "2024-09-10T21:05:08.891",
+            "epoch_end": ""
+          }
+        ],
+        "status": "metadata_only_access_and_usage_agreement_required",
+        "live_endpoint": null,
+        "access_permission_confirmed": false,
+        "live_packets_measured": 0,
+        "mean_latency_seconds": null,
+        "enabled": false,
+        "allowed_for_detection": false,
+        "allowed_for_waves": false,
+        "independent_physical_sensor_verified": false
+      },
+      {
+        "network": "AM",
+        "station": "R15DD",
+        "geographic_area": "Entorno de Armenia, Quindio (aproximado por coordenadas publicadas)",
+        "latitude": 4.54954954954955,
+        "longitude": -75.6534452458531,
+        "coordinates_are_public_metadata_not_verified_site": true,
+        "channels": [
+          {
+            "stream_id": "AM.R15DD.00.EHZ",
+            "latitude": 4.54954954954955,
+            "longitude": -75.6534452458531,
+            "sample_rate": "100.0",
+            "epoch_start": "2026-03-03T20:23:03.074",
+            "epoch_end": ""
+          }
+        ],
+        "status": "metadata_only_access_and_usage_agreement_required",
+        "live_endpoint": null,
+        "access_permission_confirmed": false,
+        "live_packets_measured": 0,
+        "mean_latency_seconds": null,
+        "enabled": false,
+        "allowed_for_detection": false,
+        "allowed_for_waves": false,
+        "independent_physical_sensor_verified": false
+      },
+      {
+        "network": "AM",
+        "station": "R1646",
+        "geographic_area": null,
+        "latitude": 6.243243243243243,
+        "longitude": -75.61063284093962,
+        "coordinates_are_public_metadata_not_verified_site": true,
+        "channels": [
+          {
+            "stream_id": "AM.R1646.00.SHZ",
+            "latitude": 6.243243243243243,
+            "longitude": -75.61063284093962,
+            "sample_rate": "50.0",
+            "epoch_start": "2023-06-06T15:55:06.547",
+            "epoch_end": ""
+          }
+        ],
+        "status": "metadata_only_access_and_usage_agreement_required",
+        "live_endpoint": null,
+        "access_permission_confirmed": false,
+        "live_packets_measured": 0,
+        "mean_latency_seconds": null,
+        "enabled": false,
+        "allowed_for_detection": false,
+        "allowed_for_waves": false,
+        "independent_physical_sensor_verified": false
+      },
+      {
+        "network": "AM",
+        "station": "R1ADD",
+        "geographic_area": "Entorno de Neiva, Huila (aproximado)",
+        "latitude": 2.936936936936937,
+        "longitude": -75.252079227585,
+        "coordinates_are_public_metadata_not_verified_site": true,
+        "channels": [
+          {
+            "stream_id": "AM.R1ADD.00.EHZ",
+            "latitude": 2.936936936936937,
+            "longitude": -75.252079227585,
+            "sample_rate": "100.0",
+            "epoch_start": "2022-11-18T19:45:40.547",
+            "epoch_end": ""
+          }
+        ],
+        "status": "metadata_only_access_and_usage_agreement_required",
+        "live_endpoint": null,
+        "access_permission_confirmed": false,
+        "live_packets_measured": 0,
+        "mean_latency_seconds": null,
+        "enabled": false,
+        "allowed_for_detection": false,
+        "allowed_for_waves": false,
+        "independent_physical_sensor_verified": false
+      },
+      {
+        "network": "AM",
+        "station": "R20CF",
+        "geographic_area": null,
+        "latitude": 7.162162162162162,
+        "longitude": -72.65783329526403,
+        "coordinates_are_public_metadata_not_verified_site": true,
+        "channels": [
+          {
+            "stream_id": "AM.R20CF.00.EHZ",
+            "latitude": 7.162162162162162,
+            "longitude": -72.65783329526403,
+            "sample_rate": "100.0",
+            "epoch_start": "2023-10-18T16:00:47.702",
+            "epoch_end": ""
+          }
+        ],
+        "status": "metadata_only_access_and_usage_agreement_required",
+        "live_endpoint": null,
+        "access_permission_confirmed": false,
+        "live_packets_measured": 0,
+        "mean_latency_seconds": null,
+        "enabled": false,
+        "allowed_for_detection": false,
+        "allowed_for_waves": false,
+        "independent_physical_sensor_verified": false
+      },
+      {
+        "network": "AM",
+        "station": "R2A05",
+        "geographic_area": null,
+        "latitude": 6.234234234234235,
+        "longitude": -75.50144728975295,
+        "coordinates_are_public_metadata_not_verified_site": true,
+        "channels": [
+          {
+            "stream_id": "AM.R2A05.00.SHZ",
+            "latitude": 6.234234234234235,
+            "longitude": -75.50144728975295,
+            "sample_rate": "50.0",
+            "epoch_start": "2023-12-06T19:02:18.593",
+            "epoch_end": ""
+          }
+        ],
+        "status": "metadata_only_access_and_usage_agreement_required",
+        "live_endpoint": null,
+        "access_permission_confirmed": false,
+        "live_packets_measured": 0,
+        "mean_latency_seconds": null,
+        "enabled": false,
+        "allowed_for_detection": false,
+        "allowed_for_waves": false,
+        "independent_physical_sensor_verified": false
+      },
+      {
+        "network": "AM",
+        "station": "R2BD1",
+        "geographic_area": null,
+        "latitude": 7.756756756756757,
+        "longitude": -73.42047038321708,
+        "coordinates_are_public_metadata_not_verified_site": true,
+        "channels": [
+          {
+            "stream_id": "AM.R2BD1.00.EHZ",
+            "latitude": 7.756756756756757,
+            "longitude": -73.42047038321708,
+            "sample_rate": "100.0",
+            "epoch_start": "2023-12-02T22:57:20.991",
+            "epoch_end": ""
+          }
+        ],
+        "status": "metadata_only_access_and_usage_agreement_required",
+        "live_endpoint": null,
+        "access_permission_confirmed": false,
+        "live_packets_measured": 0,
+        "mean_latency_seconds": null,
+        "enabled": false,
+        "allowed_for_detection": false,
+        "allowed_for_waves": false,
+        "independent_physical_sensor_verified": false
+      },
+      {
+        "network": "AM",
+        "station": "R30B1",
+        "geographic_area": null,
+        "latitude": 6.081081081081081,
+        "longitude": -75.50609780924349,
+        "coordinates_are_public_metadata_not_verified_site": true,
+        "channels": [
+          {
+            "stream_id": "AM.R30B1.00.EHZ",
+            "latitude": 6.081081081081081,
+            "longitude": -75.50609780924349,
+            "sample_rate": "100.0",
+            "epoch_start": "2026-08-26T18:20:40.659",
+            "epoch_end": ""
+          }
+        ],
+        "status": "metadata_only_access_and_usage_agreement_required",
+        "live_endpoint": null,
+        "access_permission_confirmed": false,
+        "live_packets_measured": 0,
+        "mean_latency_seconds": null,
+        "enabled": false,
+        "allowed_for_detection": false,
+        "allowed_for_waves": false,
+        "independent_physical_sensor_verified": false
+      },
+      {
+        "network": "AM",
+        "station": "R39DB",
+        "geographic_area": null,
+        "latitude": 3.6486486486486487,
+        "longitude": -76.56071323450837,
+        "coordinates_are_public_metadata_not_verified_site": true,
+        "channels": [
+          {
+            "stream_id": "AM.R39DB.00.SHZ",
+            "latitude": 3.6486486486486487,
+            "longitude": -76.56071323450837,
+            "sample_rate": "50.0",
+            "epoch_start": "2023-12-05T19:38:09.278",
+            "epoch_end": ""
+          }
+        ],
+        "status": "metadata_only_access_and_usage_agreement_required",
+        "live_endpoint": null,
+        "access_permission_confirmed": false,
+        "live_packets_measured": 0,
+        "mean_latency_seconds": null,
+        "enabled": false,
+        "allowed_for_detection": false,
+        "allowed_for_waves": false,
+        "independent_physical_sensor_verified": false
+      },
+      {
+        "network": "AM",
+        "station": "R3B9B",
+        "geographic_area": "Entorno de Cali, Valle del Cauca (aproximado)",
+        "latitude": 3.3873873873873874,
+        "longitude": -76.53953462090783,
+        "coordinates_are_public_metadata_not_verified_site": true,
+        "channels": [
+          {
+            "stream_id": "AM.R3B9B.00.EHZ",
+            "latitude": 3.3873873873873874,
+            "longitude": -76.53953462090783,
+            "sample_rate": "100.0",
+            "epoch_start": "2023-01-10T15:45:29.306",
+            "epoch_end": ""
+          },
+          {
+            "stream_id": "AM.R3B9B.00.ENZ",
+            "latitude": 3.3873873873873874,
+            "longitude": -76.53953462090783,
+            "sample_rate": "100.0",
+            "epoch_start": "2023-01-10T15:45:29.306",
+            "epoch_end": ""
+          }
+        ],
+        "status": "metadata_only_access_and_usage_agreement_required",
+        "live_endpoint": null,
+        "access_permission_confirmed": false,
+        "live_packets_measured": 0,
+        "mean_latency_seconds": null,
+        "enabled": false,
+        "allowed_for_detection": false,
+        "allowed_for_waves": false,
+        "independent_physical_sensor_verified": false
+      },
+      {
+        "network": "AM",
+        "station": "R3EDE",
+        "geographic_area": null,
+        "latitude": 6.198198198198198,
+        "longitude": -75.57700256939091,
+        "coordinates_are_public_metadata_not_verified_site": true,
+        "channels": [
+          {
+            "stream_id": "AM.R3EDE.00.EHZ",
+            "latitude": 6.198198198198198,
+            "longitude": -75.57700256939091,
+            "sample_rate": "100.0",
+            "epoch_start": "2026-10-07T16:38:09.403",
+            "epoch_end": ""
+          }
+        ],
+        "status": "metadata_only_access_and_usage_agreement_required",
+        "live_endpoint": null,
+        "access_permission_confirmed": false,
+        "live_packets_measured": 0,
+        "mean_latency_seconds": null,
+        "enabled": false,
+        "allowed_for_detection": false,
+        "allowed_for_waves": false,
+        "independent_physical_sensor_verified": false
+      },
+      {
+        "network": "AM",
+        "station": "R421B",
+        "geographic_area": null,
+        "latitude": 6.495495495495495,
+        "longitude": -72.58359455794859,
+        "coordinates_are_public_metadata_not_verified_site": true,
+        "channels": [
+          {
+            "stream_id": "AM.R421B.00.EHZ",
+            "latitude": 6.495495495495495,
+            "longitude": -72.58359455794859,
+            "sample_rate": "100.0",
+            "epoch_start": "2023-10-19T14:27:11.622",
+            "epoch_end": ""
+          }
+        ],
+        "status": "metadata_only_access_and_usage_agreement_required",
+        "live_endpoint": null,
+        "access_permission_confirmed": false,
+        "live_packets_measured": 0,
+        "mean_latency_seconds": null,
+        "enabled": false,
+        "allowed_for_detection": false,
+        "allowed_for_waves": false,
+        "independent_physical_sensor_verified": false
+      },
+      {
+        "network": "AM",
+        "station": "R47CB",
+        "geographic_area": null,
+        "latitude": 6.18018018018018,
+        "longitude": -75.51130986540934,
+        "coordinates_are_public_metadata_not_verified_site": true,
+        "channels": [
+          {
+            "stream_id": "AM.R47CB.00.EHZ",
+            "latitude": 6.18018018018018,
+            "longitude": -75.51130986540934,
+            "sample_rate": "100.0",
+            "epoch_start": "2025-12-23T16:06:33.798",
+            "epoch_end": ""
+          },
+          {
+            "stream_id": "AM.R47CB.00.ENZ",
+            "latitude": 6.18018018018018,
+            "longitude": -75.51130986540934,
+            "sample_rate": "100.0",
+            "epoch_start": "2025-12-23T16:06:33.798",
+            "epoch_end": ""
+          }
+        ],
+        "status": "metadata_only_access_and_usage_agreement_required",
+        "live_endpoint": null,
+        "access_permission_confirmed": false,
+        "live_packets_measured": 0,
+        "mean_latency_seconds": null,
+        "enabled": false,
+        "allowed_for_detection": false,
+        "allowed_for_waves": false,
+        "independent_physical_sensor_verified": false
+      },
+      {
+        "network": "AM",
+        "station": "R49D1",
+        "geographic_area": null,
+        "latitude": 6.243243243243243,
+        "longitude": -75.58409424037731,
+        "coordinates_are_public_metadata_not_verified_site": true,
+        "channels": [
+          {
+            "stream_id": "AM.R49D1.00.EHZ",
+            "latitude": 6.243243243243243,
+            "longitude": -75.58409424037731,
+            "sample_rate": "100.0",
+            "epoch_start": "2023-06-20T16:28:13.368",
+            "epoch_end": ""
+          }
+        ],
+        "status": "metadata_only_access_and_usage_agreement_required",
+        "live_endpoint": null,
+        "access_permission_confirmed": false,
+        "live_packets_measured": 0,
+        "mean_latency_seconds": null,
+        "enabled": false,
+        "allowed_for_detection": false,
+        "allowed_for_waves": false,
+        "independent_physical_sensor_verified": false
+      },
+      {
+        "network": "AM",
+        "station": "R5661",
+        "geographic_area": "Bogota (aproximado por coordenadas publicadas)",
+        "latitude": 4.648648648648648,
+        "longitude": -74.0457109791454,
+        "coordinates_are_public_metadata_not_verified_site": true,
+        "channels": [
+          {
+            "stream_id": "AM.R5661.00.SHZ",
+            "latitude": 4.648648648648648,
+            "longitude": -74.0457109791454,
+            "sample_rate": "50.0",
+            "epoch_start": "2022-09-06T10:19:22.62",
+            "epoch_end": ""
+          }
+        ],
+        "status": "metadata_only_access_and_usage_agreement_required",
+        "live_endpoint": null,
+        "access_permission_confirmed": false,
+        "live_packets_measured": 0,
+        "mean_latency_seconds": null,
+        "enabled": false,
+        "allowed_for_detection": false,
+        "allowed_for_waves": false,
+        "independent_physical_sensor_verified": false
+      },
+      {
+        "network": "AM",
+        "station": "R5D04",
+        "geographic_area": null,
+        "latitude": 6.495495495495495,
+        "longitude": -72.58358012600821,
+        "coordinates_are_public_metadata_not_verified_site": true,
+        "channels": [
+          {
+            "stream_id": "AM.R5D04.00.EHZ",
+            "latitude": 6.495495495495495,
+            "longitude": -72.58358012600821,
+            "sample_rate": "100.0",
+            "epoch_start": "2023-11-30T17:08:38.951",
+            "epoch_end": ""
+          }
+        ],
+        "status": "metadata_only_access_and_usage_agreement_required",
+        "live_endpoint": null,
+        "access_permission_confirmed": false,
+        "live_packets_measured": 0,
+        "mean_latency_seconds": null,
+        "enabled": false,
+        "allowed_for_detection": false,
+        "allowed_for_waves": false,
+        "independent_physical_sensor_verified": false
+      },
+      {
+        "network": "AM",
+        "station": "R60C6",
+        "geographic_area": null,
+        "latitude": 7.135135135135135,
+        "longitude": -73.1166345411636,
+        "coordinates_are_public_metadata_not_verified_site": true,
+        "channels": [
+          {
+            "stream_id": "AM.R60C6.00.EHZ",
+            "latitude": 7.135135135135135,
+            "longitude": -73.1166345411636,
+            "sample_rate": "100.0",
+            "epoch_start": "2025-03-11T23:06:28.203",
+            "epoch_end": ""
+          }
+        ],
+        "status": "metadata_only_access_and_usage_agreement_required",
+        "live_endpoint": null,
+        "access_permission_confirmed": false,
+        "live_packets_measured": 0,
+        "mean_latency_seconds": null,
+        "enabled": false,
+        "allowed_for_detection": false,
+        "allowed_for_waves": false,
+        "independent_physical_sensor_verified": false
+      },
+      {
+        "network": "AM",
+        "station": "R640E",
+        "geographic_area": null,
+        "latitude": 6.18918918918919,
+        "longitude": -75.58593561451332,
+        "coordinates_are_public_metadata_not_verified_site": true,
+        "channels": [
+          {
+            "stream_id": "AM.R640E.00.EHZ",
+            "latitude": 6.18918918918919,
+            "longitude": -75.58593561451332,
+            "sample_rate": "100.0",
+            "epoch_start": "2020-03-17T15:07:28.238",
+            "epoch_end": ""
+          },
+          {
+            "stream_id": "AM.R640E.00.ENZ",
+            "latitude": 6.18918918918919,
+            "longitude": -75.58593561451332,
+            "sample_rate": "100.0",
+            "epoch_start": "2020-03-17T15:07:28.238",
+            "epoch_end": ""
+          }
+        ],
+        "status": "metadata_only_access_and_usage_agreement_required",
+        "live_endpoint": null,
+        "access_permission_confirmed": false,
+        "live_packets_measured": 0,
+        "mean_latency_seconds": null,
+        "enabled": false,
+        "allowed_for_detection": false,
+        "allowed_for_waves": false,
+        "independent_physical_sensor_verified": false
+      },
+      {
+        "network": "AM",
+        "station": "R6789",
+        "geographic_area": "Entorno de Restrepo, Meta (aproximado por coordenadas publicadas)",
+        "latitude": 4.27027027027027,
+        "longitude": -73.5106589100871,
+        "coordinates_are_public_metadata_not_verified_site": true,
+        "channels": [
+          {
+            "stream_id": "AM.R6789.00.EHZ",
+            "latitude": 4.27027027027027,
+            "longitude": -73.5106589100871,
+            "sample_rate": "100.0",
+            "epoch_start": "2024-04-26T21:07:37.047",
+            "epoch_end": ""
+          }
+        ],
+        "status": "metadata_only_access_and_usage_agreement_required",
+        "live_endpoint": null,
+        "access_permission_confirmed": false,
+        "live_packets_measured": 0,
+        "mean_latency_seconds": null,
+        "enabled": false,
+        "allowed_for_detection": false,
+        "allowed_for_waves": false,
+        "independent_physical_sensor_verified": false
+      },
+      {
+        "network": "AM",
+        "station": "R678E",
+        "geographic_area": null,
+        "latitude": 4.63963963963964,
+        "longitude": -74.07171355781773,
+        "coordinates_are_public_metadata_not_verified_site": true,
+        "channels": [
+          {
+            "stream_id": "AM.R678E.00.EHZ",
+            "latitude": 4.63963963963964,
+            "longitude": -74.07171355781773,
+            "sample_rate": "100.0",
+            "epoch_start": "2026-08-03T16:18:52.705",
+            "epoch_end": ""
+          },
+          {
+            "stream_id": "AM.R678E.00.ENZ",
+            "latitude": 4.63963963963964,
+            "longitude": -74.07171355781773,
+            "sample_rate": "100.0",
+            "epoch_start": "2026-08-03T16:18:52.705",
+            "epoch_end": ""
+          }
+        ],
+        "status": "metadata_only_access_and_usage_agreement_required",
+        "live_endpoint": null,
+        "access_permission_confirmed": false,
+        "live_packets_measured": 0,
+        "mean_latency_seconds": null,
+        "enabled": false,
+        "allowed_for_detection": false,
+        "allowed_for_waves": false,
+        "independent_physical_sensor_verified": false
+      },
+      {
+        "network": "AM",
+        "station": "R6CE7",
+        "geographic_area": null,
+        "latitude": 4.585585585585585,
+        "longitude": -74.20223113619858,
+        "coordinates_are_public_metadata_not_verified_site": true,
+        "channels": [
+          {
+            "stream_id": "AM.R6CE7.00.EHZ",
+            "latitude": 4.585585585585585,
+            "longitude": -74.20223113619858,
+            "sample_rate": "100.0",
+            "epoch_start": "2022-11-19T15:07:45.936",
+            "epoch_end": ""
+          }
+        ],
+        "status": "metadata_only_access_and_usage_agreement_required",
+        "live_endpoint": null,
+        "access_permission_confirmed": false,
+        "live_packets_measured": 0,
+        "mean_latency_seconds": null,
+        "enabled": false,
+        "allowed_for_detection": false,
+        "allowed_for_waves": false,
+        "independent_physical_sensor_verified": false
+      },
+      {
+        "network": "AM",
+        "station": "R7676",
+        "geographic_area": null,
+        "latitude": 7.135135135135135,
+        "longitude": -73.11665052810598,
+        "coordinates_are_public_metadata_not_verified_site": true,
+        "channels": [
+          {
+            "stream_id": "AM.R7676.00.EHZ",
+            "latitude": 7.135135135135135,
+            "longitude": -73.11665052810598,
+            "sample_rate": "100.0",
+            "epoch_start": "2023-05-16T20:14:57.001",
+            "epoch_end": ""
+          },
+          {
+            "stream_id": "AM.R7676.00.ENZ",
+            "latitude": 7.135135135135135,
+            "longitude": -73.11665052810598,
+            "sample_rate": "100.0",
+            "epoch_start": "2023-05-16T20:14:57.001",
+            "epoch_end": ""
+          }
+        ],
+        "status": "metadata_only_access_and_usage_agreement_required",
+        "live_endpoint": null,
+        "access_permission_confirmed": false,
+        "live_packets_measured": 0,
+        "mean_latency_seconds": null,
+        "enabled": false,
+        "allowed_for_detection": false,
+        "allowed_for_waves": false,
+        "independent_physical_sensor_verified": false
+      },
+      {
+        "network": "AM",
+        "station": "R78B7",
+        "geographic_area": "Sabana occidental de Bogota, Cundinamarca (aproximado)",
+        "latitude": 4.81981981981982,
+        "longitude": -74.34491184757901,
+        "coordinates_are_public_metadata_not_verified_site": true,
+        "channels": [
+          {
+            "stream_id": "AM.R78B7.00.SHZ",
+            "latitude": 4.81981981981982,
+            "longitude": -74.34491184757901,
+            "sample_rate": "50.0",
+            "epoch_start": "2026-02-25T06:42:16.543",
+            "epoch_end": ""
+          }
+        ],
+        "status": "metadata_only_access_and_usage_agreement_required",
+        "live_endpoint": null,
+        "access_permission_confirmed": false,
+        "live_packets_measured": 0,
+        "mean_latency_seconds": null,
+        "enabled": false,
+        "allowed_for_detection": false,
+        "allowed_for_waves": false,
+        "independent_physical_sensor_verified": false
+      },
+      {
+        "network": "AM",
+        "station": "R7A2D",
+        "geographic_area": null,
+        "latitude": 6.288288288288288,
+        "longitude": -75.59058829273694,
+        "coordinates_are_public_metadata_not_verified_site": true,
+        "channels": [
+          {
+            "stream_id": "AM.R7A2D.00.SHZ",
+            "latitude": 6.288288288288288,
+            "longitude": -75.59058829273694,
+            "sample_rate": "50.0",
+            "epoch_start": "2022-11-15T18:13:42.948",
+            "epoch_end": ""
+          }
+        ],
+        "status": "metadata_only_access_and_usage_agreement_required",
+        "live_endpoint": null,
+        "access_permission_confirmed": false,
+        "live_packets_measured": 0,
+        "mean_latency_seconds": null,
+        "enabled": false,
+        "allowed_for_detection": false,
+        "allowed_for_waves": false,
+        "independent_physical_sensor_verified": false
+      },
+      {
+        "network": "AM",
+        "station": "R8256",
+        "geographic_area": null,
+        "latitude": 3.369369369369369,
+        "longitude": -76.52888366351586,
+        "coordinates_are_public_metadata_not_verified_site": true,
+        "channels": [
+          {
+            "stream_id": "AM.R8256.00.EHZ",
+            "latitude": 3.369369369369369,
+            "longitude": -76.52888366351586,
+            "sample_rate": "100.0",
+            "epoch_start": "2024-09-04T20:35:05.322",
+            "epoch_end": ""
+          }
+        ],
+        "status": "metadata_only_access_and_usage_agreement_required",
+        "live_endpoint": null,
+        "access_permission_confirmed": false,
+        "live_packets_measured": 0,
+        "mean_latency_seconds": null,
+        "enabled": false,
+        "allowed_for_detection": false,
+        "allowed_for_waves": false,
+        "independent_physical_sensor_verified": false
+      },
+      {
+        "network": "AM",
+        "station": "R860B",
+        "geographic_area": null,
+        "latitude": 6.72072072072072,
+        "longitude": -72.7165315652611,
+        "coordinates_are_public_metadata_not_verified_site": true,
+        "channels": [
+          {
+            "stream_id": "AM.R860B.00.EHZ",
+            "latitude": 6.72072072072072,
+            "longitude": -72.7165315652611,
+            "sample_rate": "100.0",
+            "epoch_start": "2023-11-29T21:33:08.948",
+            "epoch_end": ""
+          }
+        ],
+        "status": "metadata_only_access_and_usage_agreement_required",
+        "live_endpoint": null,
+        "access_permission_confirmed": false,
+        "live_packets_measured": 0,
+        "mean_latency_seconds": null,
+        "enabled": false,
+        "allowed_for_detection": false,
+        "allowed_for_waves": false,
+        "independent_physical_sensor_verified": false
+      },
+      {
+        "network": "AM",
+        "station": "R8691",
+        "geographic_area": null,
+        "latitude": 7.144144144144144,
+        "longitude": -73.11805827863465,
+        "coordinates_are_public_metadata_not_verified_site": true,
+        "channels": [
+          {
+            "stream_id": "AM.R8691.00.EHZ",
+            "latitude": 7.144144144144144,
+            "longitude": -73.11805827863465,
+            "sample_rate": "100.0",
+            "epoch_start": "2024-02-12T14:07:14.848",
+            "epoch_end": ""
+          },
+          {
+            "stream_id": "AM.R8691.00.ENZ",
+            "latitude": 7.144144144144144,
+            "longitude": -73.11805827863465,
+            "sample_rate": "100.0",
+            "epoch_start": "2024-02-12T14:07:14.848",
+            "epoch_end": ""
+          }
+        ],
+        "status": "metadata_only_access_and_usage_agreement_required",
+        "live_endpoint": null,
+        "access_permission_confirmed": false,
+        "live_packets_measured": 0,
+        "mean_latency_seconds": null,
+        "enabled": false,
+        "allowed_for_detection": false,
+        "allowed_for_waves": false,
+        "independent_physical_sensor_verified": false
+      },
+      {
+        "network": "AM",
+        "station": "R8735",
+        "geographic_area": null,
+        "latitude": 4.684684684684685,
+        "longitude": -74.07720194908869,
+        "coordinates_are_public_metadata_not_verified_site": true,
+        "channels": [
+          {
+            "stream_id": "AM.R8735.00.EHZ",
+            "latitude": 4.684684684684685,
+            "longitude": -74.07720194908869,
+            "sample_rate": "100.0",
+            "epoch_start": "2026-07-30T16:54:46.683",
+            "epoch_end": ""
+          },
+          {
+            "stream_id": "AM.R8735.00.ENZ",
+            "latitude": 4.684684684684685,
+            "longitude": -74.07720194908869,
+            "sample_rate": "100.0",
+            "epoch_start": "2026-07-30T16:54:46.683",
+            "epoch_end": ""
+          }
+        ],
+        "status": "metadata_only_access_and_usage_agreement_required",
+        "live_endpoint": null,
+        "access_permission_confirmed": false,
+        "live_packets_measured": 0,
+        "mean_latency_seconds": null,
+        "enabled": false,
+        "allowed_for_detection": false,
+        "allowed_for_waves": false,
+        "independent_physical_sensor_verified": false
+      },
+      {
+        "network": "AM",
+        "station": "R8BAC",
+        "geographic_area": null,
+        "latitude": 6.198198198198198,
+        "longitude": -75.57700256939091,
+        "coordinates_are_public_metadata_not_verified_site": true,
+        "channels": [
+          {
+            "stream_id": "AM.R8BAC.00.EHZ",
+            "latitude": 6.198198198198198,
+            "longitude": -75.57700256939091,
+            "sample_rate": "100.0",
+            "epoch_start": "2026-08-06T16:17:57.205",
+            "epoch_end": ""
+          }
+        ],
+        "status": "metadata_only_access_and_usage_agreement_required",
+        "live_endpoint": null,
+        "access_permission_confirmed": false,
+        "live_packets_measured": 0,
+        "mean_latency_seconds": null,
+        "enabled": false,
+        "allowed_for_detection": false,
+        "allowed_for_waves": false,
+        "independent_physical_sensor_verified": false
+      },
+      {
+        "network": "AM",
+        "station": "R8C1B",
+        "geographic_area": null,
+        "latitude": 6.198198198198198,
+        "longitude": -75.57698824287785,
+        "coordinates_are_public_metadata_not_verified_site": true,
+        "channels": [
+          {
+            "stream_id": "AM.R8C1B.00.EHZ",
+            "latitude": 6.198198198198198,
+            "longitude": -75.57698824287785,
+            "sample_rate": "100.0",
+            "epoch_start": "2026-09-28T15:55:46.313",
+            "epoch_end": ""
+          }
+        ],
+        "status": "metadata_only_access_and_usage_agreement_required",
+        "live_endpoint": null,
+        "access_permission_confirmed": false,
+        "live_packets_measured": 0,
+        "mean_latency_seconds": null,
+        "enabled": false,
+        "allowed_for_detection": false,
+        "allowed_for_waves": false,
+        "independent_physical_sensor_verified": false
+      },
+      {
+        "network": "AM",
+        "station": "R8D3E",
+        "geographic_area": null,
+        "latitude": 7.135135135135135,
+        "longitude": -73.11669849031135,
+        "coordinates_are_public_metadata_not_verified_site": true,
+        "channels": [
+          {
+            "stream_id": "AM.R8D3E.00.EHZ",
+            "latitude": 7.135135135135135,
+            "longitude": -73.11669849031135,
+            "sample_rate": "100.0",
+            "epoch_start": "2024-02-12T14:25:52.951",
+            "epoch_end": ""
+          }
+        ],
+        "status": "metadata_only_access_and_usage_agreement_required",
+        "live_endpoint": null,
+        "access_permission_confirmed": false,
+        "live_packets_measured": 0,
+        "mean_latency_seconds": null,
+        "enabled": false,
+        "allowed_for_detection": false,
+        "allowed_for_waves": false,
+        "independent_physical_sensor_verified": false
+      },
+      {
+        "network": "AM",
+        "station": "R8D7F",
+        "geographic_area": null,
+        "latitude": 3.6486486486486487,
+        "longitude": -76.56072175882439,
+        "coordinates_are_public_metadata_not_verified_site": true,
+        "channels": [
+          {
+            "stream_id": "AM.R8D7F.00.SHZ",
+            "latitude": 3.6486486486486487,
+            "longitude": -76.56072175882439,
+            "sample_rate": "50.0",
+            "epoch_start": "2025-05-30T00:32:25.864",
+            "epoch_end": ""
+          }
+        ],
+        "status": "metadata_only_access_and_usage_agreement_required",
+        "live_endpoint": null,
+        "access_permission_confirmed": false,
+        "live_packets_measured": 0,
+        "mean_latency_seconds": null,
+        "enabled": false,
+        "allowed_for_detection": false,
+        "allowed_for_waves": false,
+        "independent_physical_sensor_verified": false
+      },
+      {
+        "network": "AM",
+        "station": "R9076",
+        "geographic_area": null,
+        "latitude": 7.135135135135135,
+        "longitude": -73.11665052810598,
+        "coordinates_are_public_metadata_not_verified_site": true,
+        "channels": [
+          {
+            "stream_id": "AM.R9076.00.EHZ",
+            "latitude": 7.135135135135135,
+            "longitude": -73.11665052810598,
+            "sample_rate": "100.0",
+            "epoch_start": "2023-05-16T13:47:28.089",
+            "epoch_end": ""
+          }
+        ],
+        "status": "metadata_only_access_and_usage_agreement_required",
+        "live_endpoint": null,
+        "access_permission_confirmed": false,
+        "live_packets_measured": 0,
+        "mean_latency_seconds": null,
+        "enabled": false,
+        "allowed_for_detection": false,
+        "allowed_for_waves": false,
+        "independent_physical_sensor_verified": false
+      },
+      {
+        "network": "AM",
+        "station": "R9360",
+        "geographic_area": null,
+        "latitude": 6.801801801801802,
+        "longitude": -73.26441340253848,
+        "coordinates_are_public_metadata_not_verified_site": true,
+        "channels": [
+          {
+            "stream_id": "AM.R9360.00.EHZ",
+            "latitude": 6.801801801801802,
+            "longitude": -73.26441340253848,
+            "sample_rate": "100.0",
+            "epoch_start": "2023-10-18T21:19:43.767",
+            "epoch_end": ""
+          }
+        ],
+        "status": "metadata_only_access_and_usage_agreement_required",
+        "live_endpoint": null,
+        "access_permission_confirmed": false,
+        "live_packets_measured": 0,
+        "mean_latency_seconds": null,
+        "enabled": false,
+        "allowed_for_detection": false,
+        "allowed_for_waves": false,
+        "independent_physical_sensor_verified": false
+      },
+      {
+        "network": "AM",
+        "station": "R943D",
+        "geographic_area": null,
+        "latitude": 6.198198198198198,
+        "longitude": -75.58615053444116,
+        "coordinates_are_public_metadata_not_verified_site": true,
+        "channels": [
+          {
+            "stream_id": "AM.R943D.00.EHZ",
+            "latitude": 6.198198198198198,
+            "longitude": -75.58615053444116,
+            "sample_rate": "100.0",
+            "epoch_start": "2023-06-14T21:23:52.177",
+            "epoch_end": ""
+          },
+          {
+            "stream_id": "AM.R943D.00.ENZ",
+            "latitude": 6.198198198198198,
+            "longitude": -75.58615053444116,
+            "sample_rate": "100.0",
+            "epoch_start": "2023-06-14T21:23:52.177",
+            "epoch_end": ""
+          }
+        ],
+        "status": "metadata_only_access_and_usage_agreement_required",
+        "live_endpoint": null,
+        "access_permission_confirmed": false,
+        "live_packets_measured": 0,
+        "mean_latency_seconds": null,
+        "enabled": false,
+        "allowed_for_detection": false,
+        "allowed_for_waves": false,
+        "independent_physical_sensor_verified": false
+      },
+      {
+        "network": "AM",
+        "station": "R9AFC",
+        "geographic_area": null,
+        "latitude": 4.666666666666667,
+        "longitude": -74.16489267616642,
+        "coordinates_are_public_metadata_not_verified_site": true,
+        "channels": [
+          {
+            "stream_id": "AM.R9AFC.00.EHZ",
+            "latitude": 4.666666666666667,
+            "longitude": -74.16489267616642,
+            "sample_rate": "100.0",
+            "epoch_start": "2025-01-28T16:52:01.542",
+            "epoch_end": ""
+          }
+        ],
+        "status": "metadata_only_access_and_usage_agreement_required",
+        "live_endpoint": null,
+        "access_permission_confirmed": false,
+        "live_packets_measured": 0,
+        "mean_latency_seconds": null,
+        "enabled": false,
+        "allowed_for_detection": false,
+        "allowed_for_waves": false,
+        "independent_physical_sensor_verified": false
+      },
+      {
+        "network": "AM",
+        "station": "R9B35",
+        "geographic_area": null,
+        "latitude": 4.792792792792793,
+        "longitude": -74.05202803745702,
+        "coordinates_are_public_metadata_not_verified_site": true,
+        "channels": [
+          {
+            "stream_id": "AM.R9B35.00.EHZ",
+            "latitude": 4.792792792792793,
+            "longitude": -74.05202803745702,
+            "sample_rate": "100.0",
+            "epoch_start": "2025-09-05T15:28:32.734",
+            "epoch_end": ""
+          }
+        ],
+        "status": "metadata_only_access_and_usage_agreement_required",
+        "live_endpoint": null,
+        "access_permission_confirmed": false,
+        "live_packets_measured": 0,
+        "mean_latency_seconds": null,
+        "enabled": false,
+        "allowed_for_detection": false,
+        "allowed_for_waves": false,
+        "independent_physical_sensor_verified": false
+      },
+      {
+        "network": "AM",
+        "station": "R9B6B",
+        "geographic_area": "Entorno de Ubate, Cundinamarca (aproximado)",
+        "latitude": 5.306306306306307,
+        "longitude": -73.82999275014753,
+        "coordinates_are_public_metadata_not_verified_site": true,
+        "channels": [
+          {
+            "stream_id": "AM.R9B6B.00.EHZ",
+            "latitude": 5.306306306306307,
+            "longitude": -73.82999275014753,
+            "sample_rate": "100.0",
+            "epoch_start": "2026-08-24T16:59:40.839",
+            "epoch_end": ""
+          }
+        ],
+        "status": "metadata_only_access_and_usage_agreement_required",
+        "live_endpoint": null,
+        "access_permission_confirmed": false,
+        "live_packets_measured": 0,
+        "mean_latency_seconds": null,
+        "enabled": false,
+        "allowed_for_detection": false,
+        "allowed_for_waves": false,
+        "independent_physical_sensor_verified": false
+      },
+      {
+        "network": "AM",
+        "station": "R9BA4",
+        "geographic_area": null,
+        "latitude": 4.594594594594595,
+        "longitude": -74.05845403860145,
+        "coordinates_are_public_metadata_not_verified_site": true,
+        "channels": [
+          {
+            "stream_id": "AM.R9BA4.00.EHZ",
+            "latitude": 4.594594594594595,
+            "longitude": -74.05845403860145,
+            "sample_rate": "100.0",
+            "epoch_start": "2024-03-28T10:03:48.405",
+            "epoch_end": ""
+          }
+        ],
+        "status": "metadata_only_access_and_usage_agreement_required",
+        "live_endpoint": null,
+        "access_permission_confirmed": false,
+        "live_packets_measured": 0,
+        "mean_latency_seconds": null,
+        "enabled": false,
+        "allowed_for_detection": false,
+        "allowed_for_waves": false,
+        "independent_physical_sensor_verified": false
+      },
+      {
+        "network": "AM",
+        "station": "RA71B",
+        "geographic_area": null,
+        "latitude": 6.63963963963964,
+        "longitude": -73.21240002245816,
+        "coordinates_are_public_metadata_not_verified_site": true,
+        "channels": [
+          {
+            "stream_id": "AM.RA71B.00.EHZ",
+            "latitude": 6.63963963963964,
+            "longitude": -73.21240002245816,
+            "sample_rate": "100.0",
+            "epoch_start": "2022-06-15T19:18:49.545",
+            "epoch_end": ""
+          }
+        ],
+        "status": "metadata_only_access_and_usage_agreement_required",
+        "live_endpoint": null,
+        "access_permission_confirmed": false,
+        "live_packets_measured": 0,
+        "mean_latency_seconds": null,
+        "enabled": false,
+        "allowed_for_detection": false,
+        "allowed_for_waves": false,
+        "independent_physical_sensor_verified": false
+      },
+      {
+        "network": "AM",
+        "station": "RAFDA",
+        "geographic_area": null,
+        "latitude": 3.369369369369369,
+        "longitude": -76.52889153330439,
+        "coordinates_are_public_metadata_not_verified_site": true,
+        "channels": [
+          {
+            "stream_id": "AM.RAFDA.00.EHZ",
+            "latitude": 3.369369369369369,
+            "longitude": -76.52889153330439,
+            "sample_rate": "100.0",
+            "epoch_start": "2024-11-14T20:59:52.008",
+            "epoch_end": ""
+          }
+        ],
+        "status": "metadata_only_access_and_usage_agreement_required",
+        "live_endpoint": null,
+        "access_permission_confirmed": false,
+        "live_packets_measured": 0,
+        "mean_latency_seconds": null,
+        "enabled": false,
+        "allowed_for_detection": false,
+        "allowed_for_waves": false,
+        "independent_physical_sensor_verified": false
+      },
+      {
+        "network": "AM",
+        "station": "RB143",
+        "geographic_area": "Entorno de Armenia, Quindio (aproximado por coordenadas publicadas)",
+        "latitude": 4.54954954954955,
+        "longitude": -75.65358204099671,
+        "coordinates_are_public_metadata_not_verified_site": true,
+        "channels": [
+          {
+            "stream_id": "AM.RB143.00.EHZ",
+            "latitude": 4.54954954954955,
+            "longitude": -75.65358204099671,
+            "sample_rate": "100.0",
+            "epoch_start": "2026-08-28T18:12:59.082",
+            "epoch_end": ""
+          }
+        ],
+        "status": "metadata_only_access_and_usage_agreement_required",
+        "live_endpoint": null,
+        "access_permission_confirmed": false,
+        "live_packets_measured": 0,
+        "mean_latency_seconds": null,
+        "enabled": false,
+        "allowed_for_detection": false,
+        "allowed_for_waves": false,
+        "independent_physical_sensor_verified": false
+      },
+      {
+        "network": "AM",
+        "station": "RC030",
+        "geographic_area": null,
+        "latitude": 4.585585585585585,
+        "longitude": -74.20222073278069,
+        "coordinates_are_public_metadata_not_verified_site": true,
+        "channels": [
+          {
+            "stream_id": "AM.RC030.00.EHZ",
+            "latitude": 4.585585585585585,
+            "longitude": -74.20222073278069,
+            "sample_rate": "100.0",
+            "epoch_start": "2023-05-17T17:08:33.605",
+            "epoch_end": ""
+          }
+        ],
+        "status": "metadata_only_access_and_usage_agreement_required",
+        "live_endpoint": null,
+        "access_permission_confirmed": false,
+        "live_packets_measured": 0,
+        "mean_latency_seconds": null,
+        "enabled": false,
+        "allowed_for_detection": false,
+        "allowed_for_waves": false,
+        "independent_physical_sensor_verified": false
+      },
+      {
+        "network": "AM",
+        "station": "RCC21",
+        "geographic_area": null,
+        "latitude": 7.135135135135135,
+        "longitude": -73.11673046626355,
+        "coordinates_are_public_metadata_not_verified_site": true,
+        "channels": [
+          {
+            "stream_id": "AM.RCC21.00.EHZ",
+            "latitude": 7.135135135135135,
+            "longitude": -73.11673046626355,
+            "sample_rate": "100.0",
+            "epoch_start": "2025-03-10T20:39:02.167",
+            "epoch_end": ""
+          }
+        ],
+        "status": "metadata_only_access_and_usage_agreement_required",
+        "live_endpoint": null,
+        "access_permission_confirmed": false,
+        "live_packets_measured": 0,
+        "mean_latency_seconds": null,
+        "enabled": false,
+        "allowed_for_detection": false,
+        "allowed_for_waves": false,
+        "independent_physical_sensor_verified": false
+      },
+      {
+        "network": "AM",
+        "station": "RCF8C",
+        "geographic_area": null,
+        "latitude": 6.198198198198198,
+        "longitude": -75.57700256939091,
+        "coordinates_are_public_metadata_not_verified_site": true,
+        "channels": [
+          {
+            "stream_id": "AM.RCF8C.00.EHZ",
+            "latitude": 6.198198198198198,
+            "longitude": -75.57700256939091,
+            "sample_rate": "100.0",
+            "epoch_start": "2026-09-30T18:32:41.353",
+            "epoch_end": ""
+          }
+        ],
+        "status": "metadata_only_access_and_usage_agreement_required",
+        "live_endpoint": null,
+        "access_permission_confirmed": false,
+        "live_packets_measured": 0,
+        "mean_latency_seconds": null,
+        "enabled": false,
+        "allowed_for_detection": false,
+        "allowed_for_waves": false,
+        "independent_physical_sensor_verified": false
+      },
+      {
+        "network": "AM",
+        "station": "REE5D",
+        "geographic_area": null,
+        "latitude": 3.369369369369369,
+        "longitude": -76.52888366351586,
+        "coordinates_are_public_metadata_not_verified_site": true,
+        "channels": [
+          {
+            "stream_id": "AM.REE5D.00.EHZ",
+            "latitude": 3.369369369369369,
+            "longitude": -76.52888366351586,
+            "sample_rate": "100.0",
+            "epoch_start": "2023-05-29T16:35:01.292",
+            "epoch_end": ""
+          }
+        ],
+        "status": "metadata_only_access_and_usage_agreement_required",
+        "live_endpoint": null,
+        "access_permission_confirmed": false,
+        "live_packets_measured": 0,
+        "mean_latency_seconds": null,
+        "enabled": false,
+        "allowed_for_detection": false,
+        "allowed_for_waves": false,
+        "independent_physical_sensor_verified": false
+      },
+      {
+        "network": "AM",
+        "station": "S08E8",
+        "geographic_area": null,
+        "latitude": 6.198198198198198,
+        "longitude": -75.57700256939091,
+        "coordinates_are_public_metadata_not_verified_site": true,
+        "channels": [
+          {
+            "stream_id": "AM.S08E8.00.EHZ",
+            "latitude": 6.198198198198198,
+            "longitude": -75.57700256939091,
+            "sample_rate": "100.0",
+            "epoch_start": "2026-09-30T13:25:45.344",
+            "epoch_end": ""
+          }
+        ],
+        "status": "metadata_only_access_and_usage_agreement_required",
+        "live_endpoint": null,
+        "access_permission_confirmed": false,
+        "live_packets_measured": 0,
+        "mean_latency_seconds": null,
+        "enabled": false,
+        "allowed_for_detection": false,
+        "allowed_for_waves": false,
+        "independent_physical_sensor_verified": false
+      },
+      {
+        "network": "AM",
+        "station": "S2C6E",
+        "geographic_area": null,
+        "latitude": 3.369369369369369,
+        "longitude": -76.52888366351586,
+        "coordinates_are_public_metadata_not_verified_site": true,
+        "channels": [
+          {
+            "stream_id": "AM.S2C6E.00.EHZ",
+            "latitude": 3.369369369369369,
+            "longitude": -76.52888366351586,
+            "sample_rate": "100.0",
+            "epoch_start": "2024-09-09T16:07:34.556",
+            "epoch_end": ""
+          }
+        ],
+        "status": "metadata_only_access_and_usage_agreement_required",
+        "live_endpoint": null,
+        "access_permission_confirmed": false,
+        "live_packets_measured": 0,
+        "mean_latency_seconds": null,
+        "enabled": false,
+        "allowed_for_detection": false,
+        "allowed_for_waves": false,
+        "independent_physical_sensor_verified": false
+      },
+      {
+        "network": "AM",
+        "station": "S49FD",
+        "geographic_area": null,
+        "latitude": 6.243243243243243,
+        "longitude": -75.58409424037731,
+        "coordinates_are_public_metadata_not_verified_site": true,
+        "channels": [
+          {
+            "stream_id": "AM.S49FD.00.EHZ",
+            "latitude": 6.243243243243243,
+            "longitude": -75.58409424037731,
+            "sample_rate": "100.0",
+            "epoch_start": "2022-10-31T22:43:44.919",
+            "epoch_end": ""
+          }
+        ],
+        "status": "metadata_only_access_and_usage_agreement_required",
+        "live_endpoint": null,
+        "access_permission_confirmed": false,
+        "live_packets_measured": 0,
+        "mean_latency_seconds": null,
+        "enabled": false,
+        "allowed_for_detection": false,
+        "allowed_for_waves": false,
+        "independent_physical_sensor_verified": false
+      },
+      {
+        "network": "AM",
+        "station": "S99D0",
+        "geographic_area": null,
+        "latitude": 4.594594594594595,
+        "longitude": -74.05840203376616,
+        "coordinates_are_public_metadata_not_verified_site": true,
+        "channels": [
+          {
+            "stream_id": "AM.S99D0.00.EHZ",
+            "latitude": 4.594594594594595,
+            "longitude": -74.05840203376616,
+            "sample_rate": "100.0",
+            "epoch_start": "2024-05-09T14:47:41.794",
+            "epoch_end": ""
+          }
+        ],
+        "status": "metadata_only_access_and_usage_agreement_required",
+        "live_endpoint": null,
+        "access_permission_confirmed": false,
+        "live_packets_measured": 0,
+        "mean_latency_seconds": null,
+        "enabled": false,
+        "allowed_for_detection": false,
+        "allowed_for_waves": false,
+        "independent_physical_sensor_verified": false
+      },
+      {
+        "network": "AM",
+        "station": "SA9FA",
+        "geographic_area": null,
+        "latitude": 7.756756756756757,
+        "longitude": -73.42047038321708,
+        "coordinates_are_public_metadata_not_verified_site": true,
+        "channels": [
+          {
+            "stream_id": "AM.SA9FA.00.EHZ",
+            "latitude": 7.756756756756757,
+            "longitude": -73.42047038321708,
+            "sample_rate": "100.0",
+            "epoch_start": "2023-08-17T16:00:22.856",
+            "epoch_end": ""
+          }
+        ],
+        "status": "metadata_only_access_and_usage_agreement_required",
+        "live_endpoint": null,
+        "access_permission_confirmed": false,
+        "live_packets_measured": 0,
+        "mean_latency_seconds": null,
+        "enabled": false,
+        "allowed_for_detection": false,
+        "allowed_for_waves": false,
+        "independent_physical_sensor_verified": false
+      },
+      {
+        "network": "AM",
+        "station": "SD17E",
+        "geographic_area": null,
+        "latitude": 4.585585585585585,
+        "longitude": -74.20224153984542,
+        "coordinates_are_public_metadata_not_verified_site": true,
+        "channels": [
+          {
+            "stream_id": "AM.SD17E.00.EHZ",
+            "latitude": 4.585585585585585,
+            "longitude": -74.20224153984542,
+            "sample_rate": "100.0",
+            "epoch_start": "2021-08-06T02:10:19.815",
+            "epoch_end": ""
+          }
+        ],
+        "status": "metadata_only_access_and_usage_agreement_required",
+        "live_endpoint": null,
+        "access_permission_confirmed": false,
+        "live_packets_measured": 0,
+        "mean_latency_seconds": null,
+        "enabled": false,
+        "allowed_for_detection": false,
+        "allowed_for_waves": false,
+        "independent_physical_sensor_verified": false
+      }
+    ]
+  },
+  "rejected_false_positives": [
+    "SY is synthetic seismograms, never new physical stations.",
+    "VE.CAPV is in Venezuela; outside owner central-Colombia scope.",
+    "Public plots/video and station maps are not live waveform APIs."
+  ],
+  "limitations": [
+    "Bounded search of documented public sources, not proof no private network exists.",
+    "No port scanning, authentication bypass, paid subscriptions, contact messages or production deployments.",
+    "No new latency numbers: none of the new central candidates had an authorized live data route."
+  ]
+}

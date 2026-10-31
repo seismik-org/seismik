@@ -66,6 +66,7 @@ jobs:
               - 'requirements-backend.txt'
               - 'Dockerfile.dispatcher'
               - 'Dockerfile.combined-worker'
+              - 'deploy/cost-workers/**'
               - 'official_sources.json'
               - 'deploy/cloudbuild.worker.yaml'
               - '.github/workflows/ci.yml'
@@ -389,8 +390,13 @@ jobs:
           # servicio; para encender X se fija a mano (deploy/CLOUD_RUN.md).
           if [ "$DISPATCHER_CHANGED" = true ] || [ "$INTEGRATIONS_CHANGED" = true ]; then
             deploy_worker seismik-dispatcher Dockerfile.combined-worker \
+                --cpu=1 --memory=768Mi --min-instances=1 --max-instances=1 --no-cpu-throttling \
               --update-env-vars=SEISMIK_CATALOG_ALERTS_ENABLED=true \
               --update-secrets=SEISMIK_X_CONSUMER_KEY=seismik-x-consumer-key:latest,SEISMIK_X_CONSUMER_SECRET=seismik-x-consumer-secret:latest,SEISMIK_X_ACCESS_TOKEN=seismik-x-access-token:latest,SEISMIK_X_ACCESS_TOKEN_SECRET=seismik-x-access-token-secret:latest
+              # El supervisor conserva el reenviador de magnitudes beta por digest.
+              # Sus variables/secreto de origen se conservan en Cloud Run.
+              gcloud run services update seismik-event-forwarder --project "$GCP_PROJECT_ID" \
+                --region "$GCP_REGION" --min-instances=0
             # `services update` sólo retorna después de crear y enrutar una
             # revisión lista. Evitamos un filtro JSONPath adicional que podía
             # devolver salida vacía pese a una revisión ya saludable.

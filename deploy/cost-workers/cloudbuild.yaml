@@ -1,0 +1,6 @@
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args: [build, --tag, '${_IMAGE}', .]
+images: ['${_IMAGE}']
+substitutions:
+  _IMAGE: us-east1-docker.pkg.dev/seismik-15bbb/seismik/combined-workers:cost-consolidation-20261011

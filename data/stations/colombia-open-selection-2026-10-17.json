@@ -1,0 +1,756 @@
+{
+  "schema_version": 1,
+  "survey_date": "2026-10-17",
+  "status": "central_only_no_new_qualified_stations_coverage_not_guaranteed",
+  "auto_activation": false,
+  "production_config_modified": false,
+  "alert_policy_modified": false,
+  "measurement_vantage": "developer_PC_for_packet_probes_Cloud_Run_for_existing_CO_health_snapshots",
+  "focus_probe": {
+    "started_at": "2026-10-17T19:06:11.532808+00:00",
+    "completed_at": "2026-10-17T19:10:12.114460+00:00",
+    "duration_seconds": 240
+  },
+  "max_packet_lag_seconds_unchanged": 15,
+  "existing_primary_stations": [
+    {
+      "server": "rtserve.earthscope.org:18000",
+      "network": "CM",
+      "station": "ARGC",
+      "location": "00",
+      "channel": "HHZ",
+      "latitude": 9.857669,
+      "longitude": -74.245833,
+      "stream_id": "CM.ARGC.00.HHZ",
+      "independent_station_id": "CM.ARGC",
+      "station_country": "CO",
+      "target_region": "CO",
+      "role": "existing_primary_unchanged",
+      "auto_activate": false,
+      "packets_measured": 57,
+      "packet_lag_p50_seconds": 9.716,
+      "packet_lag_p95_seconds": 16.222,
+      "gaps": 0,
+      "overlaps": 0,
+      "finite_samples_only": true,
+      "steady_after_60s": {
+        "packets": 43,
+        "p50": 9.406,
+        "p95": 16.222,
+        "max": 16.9261,
+        "fraction_le_15s": 0.907
+      },
+      "instrument_metadata": {
+        "stream_id": "CM.ARGC.00.HHZ",
+        "restricted_status": "open",
+        "response_stages": 3,
+        "sensitivity": 621146000,
+        "input_units": "M/S",
+        "sample_rate": 100
+      },
+      "production_cloud_run_health": {
+        "first_at": "2026-10-17T18:48:50.628226Z",
+        "last_at": "2026-10-17T19:03:20.679536Z",
+        "snapshots": 30,
+        "healthy_snapshots": 30,
+        "median_last_packet_lag_seconds": 3.562,
+        "max_last_packet_lag_seconds": 7.411
+      }
+    },
+    {
+      "server": "rtserve.earthscope.org:18000",
+      "network": "CM",
+      "station": "HEL",
+      "location": "00",
+      "channel": "HHZ",
+      "latitude": 6.1909,
+      "longitude": -75.529,
+      "stream_id": "CM.HEL.00.HHZ",
+      "independent_station_id": "CM.HEL",
+      "station_country": "CO",
+      "target_region": "CO",
+      "role": "existing_primary_unchanged",
+      "auto_activate": false,
+      "packets_measured": 38,
+      "packet_lag_p50_seconds": 11.457,
+      "packet_lag_p95_seconds": 19.423,
+      "gaps": 0,
+      "overlaps": 0,
+      "finite_samples_only": true,
+      "steady_after_60s": {
+        "packets": 28,
+        "p50": 10.879,
+        "p95": 18.858,
+        "max": 19.9819,
+        "fraction_le_15s": 0.6786
+      },
+      "instrument_metadata": {
+        "stream_id": "CM.HEL.00.HHZ",
+        "restricted_status": "open",
+        "response_stages": 4,
+        "sensitivity": 994013000,
+        "input_units": "m/s",
+        "sample_rate": 100
+      },
+      "production_cloud_run_health": {
+        "first_at": "2026-10-17T18:48:50.628226Z",
+        "last_at": "2026-10-17T19:03:20.679536Z",
+        "snapshots": 30,
+        "healthy_snapshots": 30,
+        "median_last_packet_lag_seconds": 4.86,
+        "max_last_packet_lag_seconds": 7.729
+      }
+    },
+    {
+      "server": "rtserve.earthscope.org:18000",
+      "network": "CM",
+      "station": "OCA",
+      "location": "00",
+      "channel": "HHZ",
+      "latitude": 8.23993,
+      "longitude": -73.31938,
+      "stream_id": "CM.OCA.00.HHZ",
+      "independent_station_id": "CM.OCA",
+      "station_country": "CO",
+      "target_region": "CO",
+      "role": "existing_primary_unchanged",
+      "auto_activate": false,
+      "packets_measured": 55,
+      "packet_lag_p50_seconds": 8.377,
+      "packet_lag_p95_seconds": 15.787,
+      "gaps": 0,
+      "overlaps": 0,
+      "finite_samples_only": true,
+      "steady_after_60s": {
+        "packets": 43,
+        "p50": 8.377,
+        "p95": 15.787,
+        "max": 16.4114,
+        "fraction_le_15s": 0.907
+      },
+      "instrument_metadata": {
+        "stream_id": "CM.OCA.00.HHZ",
+        "restricted_status": "open",
+        "response_stages": 4,
+        "sensitivity": 837757000,
+        "input_units": "m/s",
+        "sample_rate": 100
+      },
+      "production_cloud_run_health": {
+        "first_at": "2026-10-17T18:48:50.628226Z",
+        "last_at": "2026-10-17T19:03:20.679536Z",
+        "snapshots": 30,
+        "healthy_snapshots": 29,
+        "median_last_packet_lag_seconds": 2.746,
+        "max_last_packet_lag_seconds": 15.573
+      }
+    },
+    {
+      "server": "rtserve.earthscope.org:18000",
+      "network": "CM",
+      "station": "PRV",
+      "location": "00",
+      "channel": "HHZ",
+      "latitude": 13.376167,
+      "longitude": -81.3635,
+      "stream_id": "CM.PRV.00.HHZ",
+      "independent_station_id": "CM.PRV",
+      "station_country": "CO",
+      "target_region": "CO",
+      "role": "existing_primary_unchanged",
+      "auto_activate": false,
+      "packets_measured": 57,
+      "packet_lag_p50_seconds": 9.323,
+      "packet_lag_p95_seconds": 16.132,
+      "gaps": 0,
+      "overlaps": 0,
+      "finite_samples_only": true,
+      "steady_after_60s": {
+        "packets": 46,
+        "p50": 9.095,
+        "p95": 15.668,
+        "max": 16.5871,
+        "fraction_le_15s": 0.8696
+      },
+      "instrument_metadata": {
+        "stream_id": "CM.PRV.00.HHZ",
+        "restricted_status": "open",
+        "response_stages": 4,
+        "sensitivity": 835815000,
+        "input_units": "m/s",
+        "sample_rate": 100
+      },
+      "production_cloud_run_health": {
+        "first_at": "2026-10-17T18:48:50.628226Z",
+        "last_at": "2026-10-17T19:03:20.679536Z",
+        "snapshots": 30,
+        "healthy_snapshots": 30,
+        "median_last_packet_lag_seconds": 3.469,
+        "max_last_packet_lag_seconds": 5.91
+      }
+    },
+    {
+      "server": "rtserve.earthscope.org:18000",
+      "network": "CM",
+      "station": "RUS",
+      "location": "00",
+      "channel": "HHZ",
+      "latitude": 5.8925,
+      "longitude": -73.083167,
+      "stream_id": "CM.RUS.00.HHZ",
+      "independent_station_id": "CM.RUS",
+      "station_country": "CO",
+      "target_region": "CO",
+      "role": "existing_primary_unchanged",
+      "auto_activate": false,
+      "packets_measured": 63,
+      "packet_lag_p50_seconds": 10.591,
+      "packet_lag_p95_seconds": 19.388,
+      "gaps": 0,
+      "overlaps": 0,
+      "finite_samples_only": true,
+      "steady_after_60s": {
+        "packets": 48,
+        "p50": 11.405,
+        "p95": 19.736,
+        "max": 20.043,
+        "fraction_le_15s": 0.6875
+      },
+      "instrument_metadata": {
+        "stream_id": "CM.RUS.00.HHZ",
+        "restricted_status": "open",
+        "response_stages": 4,
+        "sensitivity": 488968000,
+        "input_units": "m/s",
+        "sample_rate": 100
+      },
+      "production_cloud_run_health": {
+        "first_at": "2026-10-17T18:48:50.628226Z",
+        "last_at": "2026-10-17T19:03:20.679536Z",
+        "snapshots": 30,
+        "healthy_snapshots": 30,
+        "median_last_packet_lag_seconds": 3.941,
+        "max_last_packet_lag_seconds": 12.217
+      }
+    },
+    {
+      "server": "rtserve.earthscope.org:18000",
+      "network": "CM",
+      "station": "SMAR",
+      "location": "00",
+      "channel": "HHZ",
+      "latitude": 11.163833,
+      "longitude": -74.2245,
+      "stream_id": "CM.SMAR.00.HHZ",
+      "independent_station_id": "CM.SMAR",
+      "station_country": "CO",
+      "target_region": "CO",
+      "role": "existing_primary_unchanged",
+      "auto_activate": false,
+      "packets_measured": 60,
+      "packet_lag_p50_seconds": 8.859,
+      "packet_lag_p95_seconds": 16.504,
+      "gaps": 0,
+      "overlaps": 0,
+      "finite_samples_only": true,
+      "steady_after_60s": {
+        "packets": 44,
+        "p50": 8.845,
+        "p95": 16.504,
+        "max": 16.7138,
+        "fraction_le_15s": 0.8409
+      },
+      "instrument_metadata": {
+        "stream_id": "CM.SMAR.00.HHZ",
+        "restricted_status": "open",
+        "response_stages": 3,
+        "sensitivity": 624494000,
+        "input_units": "M/S",
+        "sample_rate": 100
+      },
+      "production_cloud_run_health": {
+        "first_at": "2026-10-17T18:48:50.628226Z",
+        "last_at": "2026-10-17T19:03:20.679536Z",
+        "snapshots": 30,
+        "healthy_snapshots": 30,
+        "median_last_packet_lag_seconds": 3.138,
+        "max_last_packet_lag_seconds": 4.53
+      }
+    },
+    {
+      "server": "rtserve.earthscope.org:18000",
+      "network": "CM",
+      "station": "URI",
+      "location": "00",
+      "channel": "HHZ",
+      "latitude": 11.702,
+      "longitude": -71.993,
+      "stream_id": "CM.URI.00.HHZ",
+      "independent_station_id": "CM.URI",
+      "station_country": "CO",
+      "target_region": "CO",
+      "role": "existing_primary_unchanged",
+      "auto_activate": false,
+      "packets_measured": 51,
+      "packet_lag_p50_seconds": 9.827,
+      "packet_lag_p95_seconds": 16.534,
+      "gaps": 0,
+      "overlaps": 0,
+      "finite_samples_only": true,
+      "steady_after_60s": {
+        "packets": 40,
+        "p50": 9.905,
+        "p95": 16.534,
+        "max": 17.0606,
+        "fraction_le_15s": 0.825
+      },
+      "instrument_metadata": {
+        "stream_id": "CM.URI.00.HHZ",
+        "restricted_status": "open",
+        "response_stages": 3,
+        "sensitivity": 497561000,
+        "input_units": "M/S",
+        "sample_rate": 100
+      },
+      "production_cloud_run_health": {
+        "first_at": "2026-10-17T18:48:50.628226Z",
+        "last_at": "2026-10-17T19:03:20.679536Z",
+        "snapshots": 30,
+        "healthy_snapshots": 30,
+        "median_last_packet_lag_seconds": 2.995,
+        "max_last_packet_lag_seconds": 10.254
+      }
+    }
+  ],
+  "new_trial_stations": [],
+  "conditional_backups": [
+    {
+      "server": "rsis1.on.br:18000",
+      "network": "CM",
+      "station": "RUS",
+      "location": "00",
+      "channel": "HHZ",
+      "latitude": 5.8925,
+      "longitude": -73.083167,
+      "stream_id": "CM.RUS.00.HHZ",
+      "independent_station_id": "CM.RUS",
+      "station_country": "CO",
+      "target_region": "CO",
+      "role": "conditional_transport_backup_not_active",
+      "auto_activate": false,
+      "packets_measured": 4,
+      "packet_lag_p50_seconds": 11.382,
+      "packet_lag_p95_seconds": 17.408,
+      "gaps": 0,
+      "overlaps": 0,
+      "finite_samples_only": true,
+      "steady_after_60s": null,
+      "instrument_metadata": {
+        "stream_id": "CM.RUS.00.HHZ",
+        "restricted_status": "open",
+        "response_stages": 4,
+        "sensitivity": 488968000,
+        "input_units": "m/s",
+        "sample_rate": 100
+      },
+      "additional_independent_station": false,
+      "qualification": "insufficient_packets_or_p95_above_15_seconds_do_not_auto_failover"
+    },
+    {
+      "server": "rsis1.on.br:18000",
+      "network": "CM",
+      "station": "URI",
+      "location": "00",
+      "channel": "HHZ",
+      "latitude": 11.702,
+      "longitude": -71.993,
+      "stream_id": "CM.URI.00.HHZ",
+      "independent_station_id": "CM.URI",
+      "station_country": "CO",
+      "target_region": "CO",
+      "role": "conditional_transport_backup_not_active",
+      "auto_activate": false,
+      "packets_measured": 6,
+      "packet_lag_p50_seconds": 11.49,
+      "packet_lag_p95_seconds": 16.352,
+      "gaps": 0,
+      "overlaps": 0,
+      "finite_samples_only": true,
+      "steady_after_60s": null,
+      "instrument_metadata": {
+        "stream_id": "CM.URI.00.HHZ",
+        "restricted_status": "open",
+        "response_stages": 3,
+        "sensitivity": 497561000,
+        "input_units": "M/S",
+        "sample_rate": 100
+      },
+      "additional_independent_station": false,
+      "qualification": "insufficient_packets_or_p95_above_15_seconds_do_not_auto_failover"
+    }
+  ],
+  "integration_blockers": [
+    "No additional central-CO continuous open stream has passed acquisition qualification.",
+    "BT/UX/UV registration and institutional operation do not establish a publicly accessible live endpoint.",
+    "Need authorized central station access, full instrument metadata, ground-coupling and timing QC, and longer passive observations.",
+    "Current detection/ML scientific gates and private diagnostic-alert policy remain unchanged; do not claim validated coverage."
+  ],
+  "excluded_or_conditional": [
+    {
+      "station": "PR.ACPR",
+      "reason": "focused probe p95=16.191 seconds, over unchanged 15-second gate"
+    },
+    {
+      "station": "NU.BLUN",
+      "reason": "GFZ inventory ends 2026-06-30 and no live packets in bounded probe"
+    },
+    {
+      "station": "NU.ESPN",
+      "reason": "fast EHZ transport but matching current EHZ/location response metadata absent"
+    },
+    {
+      "station": "NU.SIUN",
+      "reason": "metadata sample rate 0 Hz differs from live 100 Hz; response/metadata must be reconciled"
+    },
+    {
+      "station": "TC.PIRO",
+      "reason": "StationXML restriction resolves to partial, not selected as fully open scientific input"
+    },
+    {
+      "station": "BR.TBTG,BR.TEFE",
+      "reason": "no advertised streams at USP/ON inventories"
+    },
+    {
+      "station": "BR.SGC2",
+      "reason": "USP inventory last sample 2025-09-13, not live"
+    },
+    {
+      "station": "IU.SDV",
+      "reason": "not advertised by EarthScope; freshest ON vertical channel ends 2026-10-14"
+    },
+    {
+      "station": "GeoShake Bogot�",
+      "reason": "only LNZ 1-Hz unsigned envelope advertised; auxiliary uncalibrated MEMS, not a continuous signed seismic waveform"
+    },
+    {
+      "station": "Raspberry Shake public server data",
+      "reason": "commercial integration/redistribution restrictions; requires appropriate agreement, not selected as free commercial feed"
+    }
+  ],
+  "evidence_folder": "work/station-survey-20261017",
+  "sources": [
+    "https://docs.earthscope.org/service/seedlink",
+    "https://geofon.gfz.de/waveform/seedlink.php",
+    "https://geoscope.ipgp.fr/index.php/en/data/continuous-data/description",
+    "https://sismo.iag.usp.br/rq/",
+    "https://www.isc.ac.uk/iscbulletin/agencies/VAO-ops.pdf",
+    "https://map.geoshake.org/developer",
+    "https://raspberryshake.org/license/",
+    "https://www.fdsn.org/networks/detail/BT/"
+  ],
+  "selection_scope": {
+    "scope": "central_colombia_only",
+    "changed_on": "2026-10-17",
+    "authority": "owner_instruction_in_chat",
+    "new_peripheral_stations_allowed": false,
+    "new_foreign_stations_allowed": false,
+    "existing_stations_removed": false,
+    "priority_corridors": [
+      "Bogotá-Cundinamarca-Meta",
+      "Caldas-Risaralda-Quindío-Tolima",
+      "Huila-Valle del Cauca",
+      "Antioquia-Boyacá-Santander"
+    ],
+    "coverage_guaranteed": false
+  },
+  "historical_peripheral_candidates_not_selected": [
+    {
+      "server": "rtserve.earthscope.org:18000",
+      "network": "CU",
+      "station": "BCIP",
+      "location": "00",
+      "channel": "BHZ",
+      "latitude": 9.1665,
+      "longitude": -79.8373,
+      "stream_id": "CU.BCIP.00.BHZ",
+      "independent_station_id": "CU.BCIP",
+      "station_country": "PA",
+      "target_region": "CO",
+      "role": "historical_measurement_excluded_by_owner_central_only_scope",
+      "auto_activate": false,
+      "packets_measured": 29,
+      "packet_lag_p50_seconds": 4.428,
+      "packet_lag_p95_seconds": 10.658,
+      "gaps": 0,
+      "overlaps": 0,
+      "finite_samples_only": true,
+      "steady_after_60s": {
+        "packets": 22,
+        "p50": 4.739,
+        "p95": 10.658,
+        "max": 13.4253,
+        "fraction_le_15s": 1
+      },
+      "instrument_metadata": {
+        "stream_id": "CU.BCIP.00.BHZ",
+        "restricted_status": "open",
+        "response_stages": 4,
+        "sensitivity": 2447800000,
+        "input_units": "m/s",
+        "sample_rate": 40
+      }
+    },
+    {
+      "server": "rtserve.earthscope.org:18000",
+      "network": "EC",
+      "station": "ANTS",
+      "location": "",
+      "channel": "HHZ",
+      "latitude": -0.4973,
+      "longitude": -78.170403,
+      "stream_id": "EC.ANTS..HHZ",
+      "independent_station_id": "EC.ANTS",
+      "station_country": "EC",
+      "target_region": "CO",
+      "role": "historical_measurement_excluded_by_owner_central_only_scope",
+      "auto_activate": false,
+      "packets_measured": 70,
+      "packet_lag_p50_seconds": 1.36,
+      "packet_lag_p95_seconds": 1.853,
+      "gaps": 0,
+      "overlaps": 0,
+      "finite_samples_only": true,
+      "steady_after_60s": {
+        "packets": 54,
+        "p50": 1.368,
+        "p95": 2.019,
+        "max": 2.9694,
+        "fraction_le_15s": 1
+      },
+      "instrument_metadata": {
+        "stream_id": "EC.ANTS..HHZ",
+        "restricted_status": "open",
+        "response_stages": 4,
+        "sensitivity": 503735000,
+        "input_units": "M/S",
+        "sample_rate": 100
+      }
+    },
+    {
+      "server": "rtserve.earthscope.org:18000",
+      "network": "EC",
+      "station": "CHSH",
+      "location": "",
+      "channel": "HHZ",
+      "latitude": -1.49385,
+      "longitude": -78.869331,
+      "stream_id": "EC.CHSH..HHZ",
+      "independent_station_id": "EC.CHSH",
+      "station_country": "EC",
+      "target_region": "CO",
+      "role": "historical_measurement_excluded_by_owner_central_only_scope",
+      "auto_activate": false,
+      "packets_measured": 100,
+      "packet_lag_p50_seconds": 2.056,
+      "packet_lag_p95_seconds": 2.873,
+      "gaps": 0,
+      "overlaps": 0,
+      "finite_samples_only": true,
+      "steady_after_60s": {
+        "packets": 76,
+        "p50": 2.105,
+        "p95": 2.916,
+        "max": 3.4403,
+        "fraction_le_15s": 1
+      },
+      "instrument_metadata": {
+        "stream_id": "EC.CHSH..HHZ",
+        "restricted_status": "open",
+        "response_stages": 4,
+        "sensitivity": 314195000,
+        "input_units": "M/S",
+        "sample_rate": 100
+      }
+    },
+    {
+      "server": "rtserve.earthscope.org:18000",
+      "network": "EC",
+      "station": "PULU",
+      "location": "",
+      "channel": "HHZ",
+      "latitude": 0.0218,
+      "longitude": -78.502197,
+      "stream_id": "EC.PULU..HHZ",
+      "independent_station_id": "EC.PULU",
+      "station_country": "EC",
+      "target_region": "CO",
+      "role": "historical_measurement_excluded_by_owner_central_only_scope",
+      "auto_activate": false,
+      "packets_measured": 68,
+      "packet_lag_p50_seconds": 1.475,
+      "packet_lag_p95_seconds": 2.043,
+      "gaps": 0,
+      "overlaps": 0,
+      "finite_samples_only": true,
+      "steady_after_60s": {
+        "packets": 52,
+        "p50": 1.513,
+        "p95": 2.274,
+        "max": 2.6329,
+        "fraction_le_15s": 1
+      },
+      "instrument_metadata": {
+        "stream_id": "EC.PULU..HHZ",
+        "restricted_status": "open",
+        "response_stages": 4,
+        "sensitivity": 314195000,
+        "input_units": "M/S",
+        "sample_rate": 100
+      }
+    },
+    {
+      "server": "rtserve.earthscope.org:18000",
+      "network": "EC",
+      "station": "PUYO",
+      "location": "",
+      "channel": "HHZ",
+      "latitude": -1.493,
+      "longitude": -78.024902,
+      "stream_id": "EC.PUYO..HHZ",
+      "independent_station_id": "EC.PUYO",
+      "station_country": "EC",
+      "target_region": "CO",
+      "role": "historical_measurement_excluded_by_owner_central_only_scope",
+      "auto_activate": false,
+      "packets_measured": 72,
+      "packet_lag_p50_seconds": 1.541,
+      "packet_lag_p95_seconds": 1.935,
+      "gaps": 0,
+      "overlaps": 0,
+      "finite_samples_only": true,
+      "steady_after_60s": {
+        "packets": 55,
+        "p50": 1.568,
+        "p95": 1.984,
+        "max": 2.0608,
+        "fraction_le_15s": 1
+      },
+      "instrument_metadata": {
+        "stream_id": "EC.PUYO..HHZ",
+        "restricted_status": "open",
+        "response_stages": 4,
+        "sensitivity": 314195000,
+        "input_units": "M/S",
+        "sample_rate": 100
+      }
+    },
+    {
+      "server": "rtserve.earthscope.org:18000",
+      "network": "IU",
+      "station": "OTAV",
+      "location": "00",
+      "channel": "BHZ",
+      "latitude": 0.2376,
+      "longitude": -78.45076,
+      "stream_id": "IU.OTAV.00.BHZ",
+      "independent_station_id": "IU.OTAV",
+      "station_country": "EC",
+      "target_region": "CO",
+      "role": "historical_measurement_excluded_by_owner_central_only_scope",
+      "auto_activate": false,
+      "packets_measured": 12,
+      "packet_lag_p50_seconds": 5.643,
+      "packet_lag_p95_seconds": 8.182,
+      "gaps": 0,
+      "overlaps": 0,
+      "finite_samples_only": true,
+      "steady_after_60s": {
+        "packets": 9,
+        "p50": 5.734,
+        "p95": 8.182,
+        "max": 8.1822,
+        "fraction_le_15s": 1
+      },
+      "instrument_metadata": {
+        "stream_id": "IU.OTAV.00.BHZ",
+        "restricted_status": "open",
+        "response_stages": 4,
+        "sensitivity": 4085300000,
+        "input_units": "m/s",
+        "sample_rate": 20
+      }
+    },
+    {
+      "server": "rtserve.earthscope.org:18000",
+      "network": "OV",
+      "station": "VPCC",
+      "location": "",
+      "channel": "HHZ",
+      "latitude": 10.268144,
+      "longitude": -84.204591,
+      "stream_id": "OV.VPCC..HHZ",
+      "independent_station_id": "OV.VPCC",
+      "station_country": "CR",
+      "target_region": "CO",
+      "role": "historical_measurement_excluded_by_owner_central_only_scope",
+      "auto_activate": false,
+      "packets_measured": 55,
+      "packet_lag_p50_seconds": 1.683,
+      "packet_lag_p95_seconds": 2.292,
+      "gaps": 0,
+      "overlaps": 0,
+      "finite_samples_only": true,
+      "steady_after_60s": {
+        "packets": 28,
+        "p50": 1.691,
+        "p95": 2.412,
+        "max": 2.5632,
+        "fraction_le_15s": 1
+      },
+      "instrument_metadata": {
+        "stream_id": "OV.VPCC..HHZ",
+        "sample_rate": 100,
+        "response_stages": 7,
+        "sensitivity": 299470000,
+        "input_units": "m/s",
+        "restricted_status": "open"
+      }
+    },
+    {
+      "server": "rtserve.earthscope.org:18000",
+      "network": "TC",
+      "station": "DRK0",
+      "location": "",
+      "channel": "HHZ",
+      "latitude": 9.2624,
+      "longitude": -83.2454,
+      "stream_id": "TC.DRK0..HHZ",
+      "independent_station_id": "TC.DRK0",
+      "station_country": "CR",
+      "target_region": "CO",
+      "role": "historical_measurement_excluded_by_owner_central_only_scope",
+      "auto_activate": false,
+      "packets_measured": 33,
+      "packet_lag_p50_seconds": 5.056,
+      "packet_lag_p95_seconds": 7.742,
+      "gaps": 0,
+      "overlaps": 0,
+      "finite_samples_only": true,
+      "steady_after_60s": {
+        "packets": 18,
+        "p50": 5.063,
+        "p95": 8.723,
+        "max": 8.7232,
+        "fraction_le_15s": 1
+      },
+      "instrument_metadata": {
+        "stream_id": "TC.DRK0..HHZ",
+        "sample_rate": 100,
+        "response_stages": 10,
+        "sensitivity": 684631000,
+        "input_units": "m/s",
+        "restricted_status": "open"
+      }
+    }
+  ]
+}

@@ -1,6 +1,18 @@
 from pathlib import Path
 
 import pytest
+import yaml
+
+
+def test_worker_supervisor_changes_are_in_the_ci_deployment_filter() -> None:
+    workflow = yaml.safe_load(Path(".github/workflows/ci.yml").read_text(encoding="utf-8"))
+    filter_steps = [
+        step for step in workflow["jobs"]["changes"]["steps"]
+        if "filters" in step.get("with", {})
+    ]
+    filters = yaml.safe_load(filter_steps[0]["with"]["filters"])
+
+    assert "deploy/cost-workers/**" in filters["dispatcher"]
 
 
 def test_api_image_contains_official_source_catalog() -> None:
