@@ -98,6 +98,36 @@ public final class SeismikOAuthSignIn: NSObject, ASWebAuthenticationPresentation
     }
 }
 
+public struct FamilyChatMessage: Codable, Identifiable, Equatable {
+    public let messageId: String
+    public let senderId: String
+    public let displayName: String
+    public let text: String
+    public let createdAt: String
+    public let acceptedAt: String
+    public let expiresAt: String
+    public let isYou: Bool
+    public var id: String { messageId + senderId }
+    enum CodingKeys: String, CodingKey {
+        case text
+        case messageId = "message_id", senderId = "sender_id", displayName = "display_name"
+        case createdAt = "created_at", acceptedAt = "accepted_at", expiresAt = "expires_at", isYou = "is_you"
+    }
+}
+
+public struct PendingFamilyMessage: Codable, Identifiable, Equatable {
+    public let messageId: String
+    public let circleId: String
+    public let senderId: String
+    public let text: String
+    public let createdAt: String
+    public var id: String { messageId }
+    enum CodingKeys: String, CodingKey {
+        case text
+        case messageId = "message_id", circleId = "circle_id", senderId = "sender_id", createdAt = "created_at"
+    }
+}
+
 public struct FamilyLocation: Decodable, Equatable {
     public let latitude: Double
     public let longitude: Double
@@ -838,6 +868,29 @@ public final class SeismikAPIClient {
     public func setAutomaticFamilyLocation(_ enabled: Bool) async throws {
         _ = try await familySend(path: "v1/family/automatic-location", method: "PUT",
                                  body: ["enabled": enabled])
+    }
+
+    public func fetchFamilyMessages(senderId: String, circleId: String) async throws -> [FamilyChatMessage] {
+        var request = try accountRequest(path: "v1/family/messages")
+        var components = URLComponents(url: request.url!, resolvingAgainstBaseURL: false)!
+        components.queryItems = [URLQueryItem(name: "sender_id", value: senderId)]
+        request.url = components.url
+        request.timeoutInterval = 10
+        let (data, response) = try await sendAccountRequest(request)
+        try assertSuccess(response, data: data)
+        struct Result: Decodable { let circle_id: String; let messages: [FamilyChatMessage] }
+        let result = try JSONDecoder().decode(Result.self, from: data)
+        guard result.circle_id == circleId else { throw SeismikAPIError.accountRequired }
+        return result.messages
+    }
+
+    public func sendFamilyMessage(_ message: PendingFamilyMessage) async throws {
+        var request = try accountRequest(path: "v1/family/messages")
+        request.httpMethod = "POST"
+        request.timeoutInterval = 10
+        request.httpBody = try JSONEncoder().encode(message)
+        let (data, response) = try await sendAccountRequest(request)
+        try assertSuccess(response, data: data)
     }
 
     /// «Estoy bien» o «Necesito ayuda». Con coordenadas las comparte con la

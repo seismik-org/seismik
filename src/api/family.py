@@ -16,9 +16,10 @@ import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Any, Literal, cast
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from pydantic import BaseModel, ConfigDict, Field, StrictBool, field_validator, model_validator
 from redis.asyncio import Redis
+from redis.exceptions import WatchError
 
 from api.accounts import (
     AccountPrincipal,
@@ -36,6 +37,7 @@ _CIRCLE_TTL_SECONDS = 31_536_000  # 365 días sin actividad.
 # Pulsar «Estoy bien» dos veces seguidas no debe despertar dos veces a la
 # familia. Cambiar a «Necesito ayuda» sí avisa de inmediato.
 _NOTIFY_THROTTLE_SECONDS = 120
+_MESSAGE_TTL_SECONDS = 86_400
 
 
 class _StrictModel(BaseModel):
@@ -113,6 +115,107 @@ class StatusReport(_StrictModel):
     @classmethod
     def blank_message_is_none(cls, value: str | None) -> str | None:
         return value or None
+
+
+class FamilyMessageCreate(_StrictModel):
+    message_id: str = Field(pattern=r"^[a-f0-9-]{36}$")
+    circle_id: str = Field(min_length=12, max_length=64, pattern=r"^[A-Za-z0-9_-]+$")
+    sender_id: str = Field(pattern=r"^[a-f0-9]{16}$")
+    text: str = Field(min_length=1, max_length=280)
+    created_at: datetime
+
+    @field_validator("created_at")
+    @classmethod
+    def timezone_required(cls, value: datetime) -> datetime:
+        if value.tzinfo is None:
+            raise ValueError("Include a timezone")
+        return value.astimezone(timezone.utc)
+
+
+@router.post("/messages")
+async def send_family_message(
+    payload: FamilyMessageCreate,
+    response: Response,
+    redis: Redis = Depends(get_redis),
+    account: AccountPrincipal = Depends(require_account_session),
+) -> dict[str, object]:
+    """Small text only, scoped to the current family. Accepted is not read."""
+    response.headers["Cache-Control"] = "no-store"
+    circle = await _circle_for_account(redis, account.uid)
+    if circle != payload.circle_id or not await redis.sismember(family_members_key(circle), account.uid):
+        raise HTTPException(403, "Family membership changed; message was not sent")
+    now = datetime.now(timezone.utc)
+    age = (now - payload.created_at).total_seconds()
+    if age > _MESSAGE_TTL_SECONDS or age < -300:
+        raise HTTPException(422, "Message expired or device clock is incorrect")
+    sender = _public_member_id(circle, account.uid)
+    if sender != payload.sender_id:
+        raise HTTPException(403, "Account changed; message was not sent")
+    key = f"seismik:family:message:{circle}:{sender}:{payload.message_id}"
+    index_key = f"seismik:family:messages:{circle}"
+    for _attempt in range(3):
+        try:
+            async with redis.pipeline(transaction=True) as pipe:
+                await pipe.watch(key)
+                previous = await pipe.get(key)
+                if previous:
+                    saved = json.loads(previous)
+                    if saved["text"] != payload.text:
+                        raise HTTPException(409, "Message identifier already used")
+                    return {"message_id": payload.message_id, "accepted_at": saved["accepted_at"], "duplicate": True}
+                minute = int(now.timestamp()) // 60
+                rate_key = f"seismik:family:message-rate:{circle}:{sender}:{minute}"
+                count = await redis.incr(rate_key)
+                if count == 1:
+                    await redis.expire(rate_key, 120)
+                if count > 12:
+                    raise HTTPException(429, "Wait before sending another message", headers={"Retry-After": "60"})
+                profile = await redis.hgetall(_member_key(circle, account.uid))
+                report = {
+                    "message_id": payload.message_id, "sender_id": sender,
+                    "display_name": profile.get("display_name", "Familiar"),
+                    "text": payload.text, "created_at": payload.created_at.isoformat(),
+                    "accepted_at": now.isoformat(),
+                    "expires_at": (now + timedelta(seconds=_MESSAGE_TTL_SECONDS)).isoformat(),
+                }
+                pipe.multi()
+                pipe.set(key, json.dumps(report, ensure_ascii=False, separators=(",", ":")), ex=_MESSAGE_TTL_SECONDS)
+                pipe.zadd(index_key, {key: now.timestamp()})
+                pipe.zremrangebyscore(index_key, "-inf", now.timestamp() - _MESSAGE_TTL_SECONDS)
+                pipe.zremrangebyrank(index_key, 0, -501)
+                pipe.expire(index_key, _MESSAGE_TTL_SECONDS)
+                await pipe.execute()
+                return {"message_id": payload.message_id, "accepted_at": now.isoformat(), "duplicate": False}
+        except WatchError:
+            continue
+    raise HTTPException(503, "Retry with the same message identifier")
+
+
+@router.get("/messages")
+async def get_family_messages(
+    response: Response,
+    sender_id: str = Query(pattern=r"^[a-f0-9]{16}$"),
+    limit: int = Query(default=50, ge=1, le=50),
+    redis: Redis = Depends(get_redis),
+    account: AccountPrincipal = Depends(require_account_session),
+) -> dict[str, object]:
+    response.headers["Cache-Control"] = "no-store"
+    circle = await _circle_for_account(redis, account.uid)
+    if not await redis.sismember(family_members_key(circle), account.uid):
+        raise HTTPException(403, "Family membership is no longer active")
+    if sender_id != _public_member_id(circle, account.uid):
+        raise HTTPException(403, "Account changed")
+    now = datetime.now(timezone.utc).timestamp()
+    keys = cast(list[str], await redis.zrevrangebyscore(f"seismik:family:messages:{circle}", now, now - _MESSAGE_TTL_SECONDS, start=0, num=limit))
+    values = await redis.mget(keys) if keys else []
+    sender = _public_member_id(circle, account.uid)
+    messages = []
+    for raw in reversed(values):
+        if raw:
+            message = json.loads(raw)
+            message["is_you"] = message["sender_id"] == sender
+            messages.append(message)
+    return {"circle_id": circle, "messages": messages, "retention_hours": 24}
 
 
 def _circle_key(circle_id: str) -> str:

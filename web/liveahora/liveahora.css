@@ -1,0 +1,81 @@
+/* LiveAhora comparte los tokens, tipografía y componentes de Seismik. */
+.liveahora-page { overflow-wrap: anywhere; }
+.live-brand { gap: 4px; letter-spacing: -.04em; font-size: 1.4rem; }
+.live-brand .brand-logo { margin-right: 8px; width: 40px; height: 40px; }
+.live-brand > span { color: var(--primary); }
+.live-hero { grid-template-columns: .95fr 1.15fr; gap: 42px; }
+.live-hero > *, .live-content > * { min-width: 0; }
+.live-art { margin: 0; border: 1px solid var(--line-strong); border-radius: var(--radius); overflow: hidden; background: #001226; box-shadow: var(--shadow); }
+.live-art img { width: 100%; height: auto; }
+.live-art figcaption { padding: 16px 22px; color: #b8d6ed; font-size: .85rem; border-top: 1px solid #143858; }
+.rights-strip { border-block: 1px solid var(--line); background: var(--surface); }
+.rights-strip > div { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding-block: 24px; }
+.rights-strip > div > span { color: var(--muted); font-size: .85rem; }
+.rights-strip strong { font-size: 1.8rem; letter-spacing: -.03em; }
+.rights-strip strong span { display: block; color: var(--muted); font-size: .8rem; font-weight: 500; letter-spacing: 0; }
+.rights-strip a { font-size: .9rem; }
+.live-content { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(28px, 7vw, 100px); align-items: start; }
+.transmission-info { border-left: 2px solid var(--primary); padding: 8px 0 8px 28px; }
+.transmission-info h3 { font-size: 1.5rem; }
+.transmission-info p:not(.eyebrow), .live-contact p { color: var(--muted); }
+.about-live { border-top: 1px solid var(--line); }
+.live-contact { display: flex; align-items: center; justify-content: space-between; gap: 28px; padding: clamp(24px, 4vw, 44px); border: 1px solid var(--line-strong); border-radius: var(--radius); background: var(--surface); }
+.live-contact p:last-child { margin-bottom: 0; }
+.live-contact .button { flex: none; }
+.live-policy { max-width: 850px; padding-block: 48px 80px; }
+.live-policy > .eyebrow { margin-top: 36px; }
+.live-policy h1 { font-size: clamp(2.4rem, 6vw, 4rem); margin-block: 16px 24px; }
+.live-policy section { margin-top: 48px; scroll-margin-top: 100px; }
+.live-policy section p { color: var(--muted); }
+.policy-index { display: flex; gap: 12px 24px; flex-wrap: wrap; padding-block: 24px; border-block: 1px solid var(--line); }
+.site-footer .footer-bottom { line-height: 2; }
+@media (max-width: 960px) { .live-hero { grid-template-columns: 1fr; } .live-art { max-width: 760px; } }
+@media (max-width: 720px) { .live-content { grid-template-columns: 1fr; } .live-contact { flex-direction: column; align-items: flex-start; } .rights-strip > div { flex-wrap: wrap; } }
+@media (max-width: 400px) { .live-contact .button { font-size: .8rem; padding-inline: 12px; } .live-brand { font-size: 1.15rem; } .header-inner { gap: 10px; } }
+
+.calendar-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; }
+.calendar-event { min-width: 0; border: 1px solid var(--line-strong); border-radius: var(--radius-sm); background: var(--surface); overflow: hidden; }
+.calendar-event > img { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; }
+.calendar-event-copy { display: grid; gap: 16px; padding: 24px; }
+.calendar-event-copy p, .calendar-event-copy h3 { margin: 0; }
+.calendar-event-copy time { color: var(--muted); font-size: .9rem; }
+.calendar-event-copy > p:not(.event-state) { white-space: pre-line; }
+.event-state { color: var(--primary); font-size: .8rem; font-weight: 750; text-transform: uppercase; letter-spacing: .08em; }
+.channel-links, .admin-toolbar > div { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; }
+.live-channels { border-top: 1px solid var(--line); }
+.live-admin { padding-block: 48px 80px; }
+.live-admin h1 { font-size: clamp(2.6rem, 6vw, 4rem); }
+.admin-toolbar { margin-block: 32px; padding-block: 24px; border-block: 1px solid var(--line); }
+.admin-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 32px; align-items: start; }
+.admin-calendar { grid-template-columns: 1fr; }
+.event-editor form { display: grid; gap: 10px; }
+.event-editor label { font-weight: 650; margin-top: 12px; }
+.event-editor input, .event-editor textarea, .event-editor select { width: 100%; min-width: 0; min-height: 46px; border: 1px solid var(--line-strong); border-radius: 10px; background: var(--bg); color: var(--text); padding: 10px 12px; font: inherit; }
+.event-editor .rights-check { display: flex; gap: 12px; align-items: flex-start; font-size: .9rem; font-weight: 500; }
+.rights-check input { width: 22px; min-height: 22px; flex: none; }
+#admin-status { padding: 12px 0; min-height: 48px; }
+#admin-status.error { color: var(--danger); }
+.live-admin dialog { max-width: min(560px, calc(100% - 32px)); border: 1px solid var(--line-strong); border-radius: var(--radius); padding: 32px; background: var(--surface); color: var(--text); }
+.live-admin dialog::backdrop { background: rgb(0 0 0 / .65); }
+@media (max-width: 960px) { .calendar-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .admin-calendar { grid-template-columns: 1fr; } }
+@media (max-width: 720px) { .calendar-grid, .admin-layout { grid-template-columns: 1fr; } }
+
+/* Refinamiento de la portada: contraste, ritmo y controles táctiles. */
+.liveahora-page{overflow-x:clip}.liveahora-page .container{max-width:1200px}
+.liveahora-page .site-header{background:var(--bg);backdrop-filter:blur(18px)}
+.live-hero{gap:clamp(28px,5vw,76px);padding-top:clamp(40px,7vw,90px);padding-bottom:64px;align-items:center}
+.live-hero h1{font-size:clamp(2.8rem,6vw,5.8rem);line-height:1.02;letter-spacing:-.055em;max-width:12ch;margin:12px 0 24px}
+.live-hero .lead{font-size:clamp(1rem,1.7vw,1.18rem);line-height:1.75;max-width:46ch}
+.live-art{margin:0;border:1px solid var(--line);border-radius:24px;overflow:hidden;background:var(--surface);box-shadow:0 24px 60px #0002}
+.live-art img{display:block;width:100%;height:auto;aspect-ratio:16/10;object-fit:cover}
+.live-art figcaption{padding:14px 20px;font-size:.82rem;color:var(--muted)}
+.liveahora-page .section{padding-top:64px;padding-bottom:64px}
+.liveahora-page .section-heading{max-width:700px;margin-bottom:28px}
+.liveahora-page .section-heading h2,.live-contact h2{font-size:clamp(1.8rem,3.3vw,3rem);letter-spacing:-.04em;line-height:1.15}
+.liveahora-page .button{min-height:46px;display:inline-flex;justify-content:center;align-items:center;gap:8px;border-radius:12px}
+.live-channels{border-top:1px solid var(--line)}.channel-links{display:flex;flex-wrap:wrap;gap:12px}
+.channel-links .button{min-width:150px}.live-contact{padding:clamp(24px,4vw,48px);border:1px solid var(--line);border-radius:24px;gap:24px}
+.liveahora-page :focus-visible{outline:3px solid var(--primary);outline-offset:4px}
+.liveahora-page .footer-bottom{line-height:2;flex-wrap:wrap;overflow-wrap:anywhere}
+@media(max-width:760px){.live-hero{grid-template-columns:1fr;padding-bottom:32px}.live-hero h1{max-width:15ch}.live-art img{aspect-ratio:16/9}.liveahora-page .section{padding-top:40px;padding-bottom:40px}.live-contact{display:flex;flex-direction:column;align-items:flex-start}.live-contact .button{max-width:100%;overflow-wrap:anywhere}.channel-links .button{flex:1;min-width:120px}.rights-strip .container{flex-wrap:wrap;gap:12px}.liveahora-page .primary-nav{gap:16px}}
+@media(prefers-reduced-motion:reduce){.liveahora-page *{scroll-behavior:auto;animation:none;transition:none}}

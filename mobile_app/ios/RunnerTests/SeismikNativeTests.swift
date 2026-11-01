@@ -585,6 +585,28 @@ final class NativeFamilyContractTests: XCTestCase {
     private var api: SeismikAPIClient!
     private var session: URLSession!
 
+    func testFamilyMessagesKeepTheirIdentifierAndAccountScope() async throws {
+        let pending = PendingFamilyMessage(messageId: "12345678-1234-1234-1234-123456789abc", circleId: "circle-family", senderId: "1234567890abcdef", text: "Nos vemos en el parque", createdAt: "2026-11-01T12:00:00Z")
+        FamilyStubProtocol.handler = { request in
+            XCTAssertEqual(request.url?.path, "/v1/family/messages")
+            XCTAssertEqual(request.value(forHTTPHeaderField: "X-Seismik-Account-Session"), "test-account")
+            if request.httpMethod == "POST" {
+                let body = try FamilyStubProtocol.body(request)
+                XCTAssertEqual(body["message_id"] as? String, pending.messageId)
+                XCTAssertEqual(body["circle_id"] as? String, pending.circleId)
+                XCTAssertEqual(body["sender_id"] as? String, pending.senderId)
+                XCTAssertNil(body["status"])
+                return (200, #"{"message_id":"12345678-1234-1234-1234-123456789abc","duplicate":false}"#)
+            }
+            XCTAssertEqual(URLComponents(url: request.url!, resolvingAgainstBaseURL: false)?.queryItems?.first?.value, pending.senderId)
+            return (200, #"{"circle_id":"circle-family","messages":[{"message_id":"12345678-1234-1234-1234-123456789abc","sender_id":"1234567890abcdef","display_name":"Ana","text":"Nos vemos en el parque","created_at":"2026-11-01T12:00:00Z","accepted_at":"2026-11-01T12:00:01Z","expires_at":"2026-11-02T12:00:01Z","is_you":true}]}"#)
+        }
+        try await api.sendFamilyMessage(pending)
+        let messages = try await api.fetchFamilyMessages(senderId: pending.senderId, circleId: pending.circleId)
+        XCTAssertEqual(messages.first?.text, pending.text)
+        XCTAssertEqual(messages.first?.messageId, pending.messageId)
+    }
+
     override func setUpWithError() throws {
         // CI runs unsigned on the simulator: the real Keychain answers -34018
         // (missing entitlement). The fixtures live in memory instead.

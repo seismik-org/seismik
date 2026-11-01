@@ -13,6 +13,7 @@ import '../../core/map_theme.dart';
 import '../../services/app_links.dart';
 import '../../state/family_state.dart';
 import '../widgets/adaptive.dart';
+import '../widgets/family_messages_card.dart';
 
 /// Búsqueda de familiares.
 ///
@@ -346,6 +347,14 @@ class _CircleView extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 120),
         children: <Widget>[
           _CheckInCard(family: family),
+          if (circle.you != null)
+            FamilyMessagesCard(
+              key: ValueKey('${family.account!.uid}:${circle.circleId}'),
+              api: family.seismik.api,
+              uid: family.account!.uid,
+              circleId: circle.circleId,
+              senderId: circle.you!.memberId,
+            ),
           SwitchListTile.adaptive(
             title: const Text('Ubicación automática tras una alerta'),
             subtitle: const Text(
@@ -786,9 +795,9 @@ class _FieldsDialogState extends State<_FieldsDialog> {
   );
 }
 
-void _snack(BuildContext context, String message) => ScaffoldMessenger.of(
-  context,
-).showSnackBar(SnackBar(content: Text(message)));
+void _snack(BuildContext context, String message) =>
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
 
 String _ago(DateTime? at) {
   if (at == null) return 'hace un momento';

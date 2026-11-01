@@ -873,6 +873,28 @@ class ApiClient {
     return FamilyCircle.fromMap(_decode(response));
   }
 
+  Future<Map<String, dynamic>> fetchFamilyMessages(String senderId) async {
+    final response = await _http
+        .get(
+          _uri('/v1/family/messages')
+              .replace(queryParameters: {'sender_id': senderId}),
+          headers: await _accountHeaders(),
+        )
+        .timeout(const Duration(seconds: 10));
+    return _decode(response);
+  }
+
+  Future<void> sendFamilyMessage(Map<String, dynamic> message) async {
+    final response = await _http
+        .post(
+          _uri('/v1/family/messages'),
+          headers: await _accountHeaders(),
+          body: jsonEncode(message),
+        )
+        .timeout(const Duration(seconds: 10));
+    _decode(response);
+  }
+
   Future<void> createFamilyCircle({
     required String displayName,
     required String circleName,

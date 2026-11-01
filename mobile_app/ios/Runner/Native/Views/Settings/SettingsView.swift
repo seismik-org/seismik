@@ -2,10 +2,167 @@ import AuthenticationServices
 import CoreLocation
 import MapKit
 import SwiftUI
+import MessageUI
+import CryptoKit
 import UIKit
 import UserNotifications
 
-/// Preferencias completas de Seismik en iOS con 100% de paridad con Android.
+private struct FamilyMessageLocalCopy: Codable {
+    var pending: [PendingFamilyMessage] = []
+    var received: [FamilyChatMessage] = []
+}
+
+/// Texto y pendientes en el llavero del dispositivo, separados por cuenta y círculo.
+private struct FamilyMessagesNativeView: View {
+    let uid: String
+    let circleId: String
+    let senderId: String
+    @Environment(\.scenePhase) private var scenePhase
+    @State private var copy = FamilyMessageLocalCopy()
+    @State private var draft = ""
+    @State private var busy = false
+    @State private var notice: String?
+    @State private var showSMS = false
+
+    private var storageKey: String {
+        "family.messages." + SHA256.hash(data: Data((uid + ":" + circleId).utf8)).map { String(format: "%02x", $0) }.joined()
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Texto ligero por Internet. Si falla la conexión, queda pendiente en este iPhone. No cambia tu estado de seguridad.")
+                .font(.caption).foregroundColor(.secondary)
+            ForEach(copy.received) { item in
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(item.isYou ? "Tú · recibido por Seismik" : item.displayName).font(.caption.bold())
+                    Text(item.text).textSelection(.enabled)
+                }
+            }
+            ForEach(copy.pending) { item in
+                HStack(alignment: .top) {
+                    VStack(alignment: .leading) {
+                        Text(item.text)
+                        Text("Pendiente · aún no recibido por Seismik").font(.caption).foregroundColor(.secondary)
+                    }
+                    Spacer()
+                    Button { copy.pending.removeAll { $0.messageId == item.messageId }; saveCopy() } label: { Image(systemName: "xmark.circle") }
+                        .disabled(busy).accessibilityLabel("Cancelar envío pendiente")
+                }
+            }
+            if copy.received.isEmpty && copy.pending.isEmpty { Text("Todavía no hay mensajes.").foregroundColor(.secondary) }
+            if let notice { Text(notice).font(.caption).foregroundColor(.secondary) }
+            ForEach(["Voy al punto de encuentro", "No puedo llamar", "Escríbeme cuando puedas"], id: \.self) { text in
+                Button(text) { Task { await enqueue(text) } }.disabled(busy)
+            }
+            TextField("Mensaje para tu familia", text: $draft, axis: .vertical)
+                .lineLimit(1...4).disabled(busy)
+                .onChange(of: draft) { value in draft = String(value.prefix(280)) }
+            Text("\(draft.count)/280").font(.caption).foregroundColor(.secondary)
+            HStack {
+                Button { Task { await enqueue(draft) } } label: { Label("Enviar", systemImage: "paperplane.fill") }
+                    .buttonStyle(.borderedProminent).disabled(busy || draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                Button(busy ? "Sincronizando…" : "Reintentar") { Task { await sync() } }.disabled(busy)
+            }
+            Button {
+                if MFMessageComposeViewController.canSendText() { showSMS = true }
+                else { notice = "Este dispositivo no tiene SMS disponible. Comprueba la SIM y la cobertura móvil." }
+            } label: { Label("Usar SMS del teléfono", systemImage: "message") }
+            Text("Se muestran los últimos 50 mensajes; en el servidor vencen en 24 horas. Recibido por Seismik no significa leído. Los mensajes se actualizan al abrir Familia. Sin Internet no llegan mensajes nuevos. SMS requiere cobertura móvil, puede tener coste y tú confirmas el envío.")
+                .font(.caption).foregroundColor(.secondary)
+        }
+        .buttonStyle(.borderless)
+        .sheet(isPresented: $showSMS) {
+            FamilySMSComposer(messageBody: draft.isEmpty ? "Soy tu familiar. Escríbeme cuando puedas. — Seismik" : draft)
+        }
+        .task {
+            loadCopy()
+            await sync()
+            while !Task.isCancelled {
+                do { try await Task.sleep(nanoseconds: 30_000_000_000) } catch { return }
+                if scenePhase == .active { await sync() }
+            }
+        }
+        .onChange(of: scenePhase) { phase in if phase == .active { Task { await sync() } } }
+    }
+
+    private func loadCopy() {
+        do {
+            if let raw = try KeychainStore.shared.string(for: storageKey), let data = Data(base64Encoded: raw) {
+                copy = try JSONDecoder().decode(FamilyMessageLocalCopy.self, from: data)
+            }
+        } catch { notice = "No se pudo leer la copia guardada." }
+    }
+
+    @discardableResult private func saveCopy() -> Bool {
+        do {
+            let data = try JSONEncoder().encode(copy)
+            try KeychainStore.shared.set(data.base64EncodedString(), for: storageKey)
+            return true
+        } catch { notice = "No se pudo guardar en este iPhone. No cierres la app hasta resolverlo."; return false }
+    }
+
+    private func enqueue(_ text: String) async {
+        guard !busy, SeismikState.shared.account?.uid == uid else { return }
+        let value = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !value.isEmpty, value.count <= 280, copy.pending.count < 50 else {
+            notice = "Usa hasta 280 caracteres. Puedes guardar hasta 50 mensajes pendientes."
+            return
+        }
+        copy.pending.append(PendingFamilyMessage(messageId: UUID().uuidString.lowercased(), circleId: circleId,
+                                                senderId: senderId, text: value, createdAt: ISO8601DateFormatter().string(from: Date())))
+        guard saveCopy() else { return }
+        draft = ""
+        await sync()
+    }
+
+    private func sync() async {
+        guard !busy, SeismikState.shared.account?.uid == uid else { return }
+        busy = true
+        defer { busy = false }
+        notice = nil
+        for item in copy.pending {
+            guard SeismikState.shared.account?.uid == uid else { return }
+            guard let created = ISO8601DateFormatter().date(from: item.createdAt), Date().timeIntervalSince(created) <= 86400 else {
+                notice = "Hay mensajes de más de 24 horas. Revísalos antes de volver a enviarlos."
+                continue
+            }
+            do {
+                try await SeismikAPIClient.shared.sendFamilyMessage(item)
+                copy.pending.removeAll { $0.messageId == item.messageId }
+                saveCopy()
+            } catch {
+                notice = "No se pudo enviar. El mensaje sigue guardado; reintenta con conexión."
+                break
+            }
+        }
+        do {
+            let result = try await SeismikAPIClient.shared.fetchFamilyMessages(senderId: senderId, circleId: circleId)
+            guard SeismikState.shared.account?.uid == uid else { return }
+            copy.received = result
+            saveCopy()
+        } catch { notice = notice ?? "Mostrando la última copia guardada. No se pudo actualizar." }
+    }
+}
+
+private struct FamilySMSComposer: UIViewControllerRepresentable {
+    let messageBody: String
+    @Environment(\.dismiss) private var dismiss
+    func makeCoordinator() -> Coordinator { Coordinator { dismiss() } }
+    func makeUIViewController(context: Context) -> MFMessageComposeViewController {
+        let controller = MFMessageComposeViewController()
+        controller.body = messageBody
+        controller.messageComposeDelegate = context.coordinator
+        return controller
+    }
+    func updateUIViewController(_ controller: MFMessageComposeViewController, context: Context) {}
+    final class Coordinator: NSObject, MFMessageComposeViewControllerDelegate {
+        let done: () -> Void
+        init(done: @escaping () -> Void) { self.done = done }
+        func messageComposeViewController(_ controller: MFMessageComposeViewController, didFinishWith result: MessageComposeResult) { done() }
+    }
+}
+
+/// Preferencias de Seismik en iOS.
 public struct SettingsView: View {
     @ObservedObject var state: SeismikState
     public let showsCloseButton: Bool
@@ -1004,6 +1161,13 @@ public struct FamilySafetyView: View {
                         .foregroundColor(.secondary)
                 }
                 .padding(.vertical, 4)
+            }
+
+            if let uid = appState.account?.uid, let member = circle.members.first(where: { $0.isYou }), let senderId = member.memberId {
+                Section("Mensajes de tu familia") {
+                    FamilyMessagesNativeView(uid: uid, circleId: circle.circleId, senderId: senderId)
+                        .id(uid + circle.circleId)
+                }
             }
 
             let located = circle.members.filter { $0.location != nil }

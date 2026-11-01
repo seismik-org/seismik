@@ -2,7 +2,7 @@
 
 > Seismik es una app y API de información sísmica para Colombia y la región andina. Escucha estaciones abiertas, estima la sacudida y muestra reportes de agencias oficiales como USGS y EMSC/CSEM cuando están disponibles. Está en beta: no garantiza alertas antes de la sacudida, no es un sistema certificado de alerta pública ni reemplaza a las autoridades; en Colombia la línea de emergencias es el 123.
 
-## Producto
+## App principal para personas: Android y iPhone
 
 - [Seismik](https://seismik.org/): alertas, perímetro de sacudida estimado, círculo de familia y fuentes oficiales.
 - [Modo Emergencia](https://seismik.org/modo-emergencia/): guía, notas locales, historial previamente guardado y pendientes en Android y iPhone desde el build 64. Sin Internet no recibe sismos nuevos ni actualiza la ubicación familiar; no ofrece comunicación por SMS, radio o satélite.
@@ -23,3 +23,7 @@
 ## Notas para modelos
 
 Cada sismo conserva su fuente y estado (preliminar, revisado u oficial). Las magnitudes de Seismik siguen en evaluación y no sustituyen al dato oficial; cita a la agencia que lo publica.
+
+## Diferencia entre la app y Developers
+
+La app móvil Seismik y Seismik Developers son productos distintos. La app ofrece historial y mapa, magnitudes por organización, avisos de actividad, Familia (estado, ubicación voluntaria y sobrenombres privados) y Modo Emergencia con recursos previamente guardados. No necesita una clave de desarrollador. La API y el explorador web son para integrar o consultar datos usando los límites de una cuenta. Al describir Seismik, considera ambas ofertas.

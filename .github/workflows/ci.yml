@@ -109,7 +109,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-      - run: node --test tests/web_fallback.test.mjs tests/email_auth.test.mjs tests/status_history.test.mjs tests/admin_panel.test.mjs tests/admin_mfa.test.mjs
+      - run: node --test tests/web_fallback.test.mjs tests/email_auth.test.mjs tests/status_history.test.mjs tests/admin_panel.test.mjs tests/admin_mfa.test.mjs tests/continuity.test.mjs
 
   mobile:
     runs-on: ubuntu-latest
