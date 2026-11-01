@@ -42,16 +42,22 @@ export default {
     const alternate = url.hostname === ALTERNATE;
     const publicHost = PRIMARY_HOSTS.includes(url.hostname);
     if ((alternate || publicHost) && (url.pathname.startsWith(PREFIX) || url.pathname==='/sw.js')) return asset(request);
-    if (alternate && (!['GET','HEAD'].includes(request.method) || !mirrorPath(url.pathname))) {
+    if (alternate && (!['GET','HEAD'].includes(request.method) || /%[0-9a-f]{2}/i.test(url.pathname) || !mirrorPath(url.pathname))) {
       return new Response('Acceso alternativo informativo. Las operaciones privadas requieren el sitio principal.',{status:403,headers:{'Cache-Control':'no-store','X-Robots-Tag':'noindex'}});
     }
     let incoming = request;
     if (alternate) {
-      const target = new URL(request.url); target.hostname=PRIMARY;
-      const headers = new Headers(request.headers);
+      const target = new URL(request.url); target.hostname=PRIMARY; target.search='';
+      const headers = new Headers();
+      for(const name of ['Accept','Accept-Language','User-Agent','Accept-Encoding'])if(request.headers.has(name))headers.set(name,request.headers.get(name));
       headers.set('Host',PRIMARY);
       for (const name of ['Cookie','Authorization','X-Seismik-API-Key','X-Seismik-Account-Session','X-Seismik-Device-Session']) headers.delete(name);
       incoming = new Request(target,{method:request.method,headers,redirect:'manual'});
+    }
+    if ((alternate || publicHost) && publicPath(url.pathname)) {
+      const headers = new Headers(incoming.headers);
+      headers.delete('If-None-Match'); headers.delete('If-Modified-Since');
+      incoming = new Request(incoming,{headers});
     }
     const response = await original.fetch(incoming,env,ctx);
     if (!response.headers.get('Content-Type')?.includes('text/html') || !['GET','HEAD'].includes(request.method) || (!alternate && (!publicHost || !publicPath(url.pathname)))) return response;

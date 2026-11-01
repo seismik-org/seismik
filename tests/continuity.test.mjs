@@ -13,7 +13,7 @@ const worker=(await import('data:text/javascript;base64,'+Buffer.from(code).toSt
 const get=(url,init)=>worker.fetch(new Request(url,init),{},{});
 
 test('alternate is public read-only and never a private API/login proxy',async()=>{
-  for(const path of ['/v1/family/messages','/api/account','/admin/','/login','/setup','/dashboard','//evil.test/']){
+  for(const path of ['/v1/family/messages','/api/account','/admin/','/login','/setup','/dashboard','//evil.test/','/api%2Fprivate.css','/%252fadmin.css']){
     const r=await get('https://seismik.todozhop.workers.dev'+path);assert.equal(r.status,403,path);
   }
   assert.equal((await get('https://seismik.todozhop.workers.dev/',{method:'POST',body:'private'})).status,403);
