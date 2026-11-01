@@ -46,3 +46,8 @@
 @media (max-width: 900px) { .venture h3 { min-height: 0; } }
 @media (max-width: 720px) { .group-contact { flex-direction: column; align-items: flex-start; } }
 @media (max-width: 480px) { .brand-directory { padding: 14px; } .brand-row { gap: 12px; padding: 12px; } .brand-thumb { width: 70px; height: 68px; } .brand-row-copy strong { font-size: 1rem; } .brand-row-copy > span { font-size: .76rem; } .directory-caption { padding: 0 18px 18px; } .group-directory .visual-tag { display: none; } }
+
+.ventures-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; }
+.brand-thumb-liveahora, .venture-logo-liveahora { background: #001226; }
+.venture-logo-liveahora img { width: 140px; height: 140px; }
+@media (max-width: 640px) { .ventures-grid { grid-template-columns: 1fr; } }

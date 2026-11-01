@@ -65,6 +65,11 @@ def test_each_icon_is_small_enough_to_be_an_icon(name: str) -> None:
 def test_every_page_declares_the_favicon(page: Path) -> None:
     html = page.read_text(encoding="utf-8")
 
+    if "liveahora" in page.parts:
+        assert 'href="/assets/liveahora/favicon.png"' in html
+        assert 'href="/assets/liveahora/apple-touch-icon.png"' in html
+        assert (WEB / "assets/liveahora/favicon.png").stat().st_size < 8 * 1024
+        return
     assert 'href="/favicon.ico"' in html
     assert 'href="/assets/favicon-32.png"' in html
     assert 'rel="apple-touch-icon"' in html

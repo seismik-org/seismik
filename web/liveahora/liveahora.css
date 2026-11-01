@@ -1,0 +1,34 @@
+/* LiveAhora comparte los tokens, tipografía y componentes de Seismik. */
+.liveahora-page { overflow-wrap: anywhere; }
+.live-brand { gap: 4px; letter-spacing: -.04em; font-size: 1.4rem; }
+.live-brand .brand-logo { margin-right: 8px; width: 40px; height: 40px; }
+.live-brand > span { color: var(--primary); }
+.live-hero { grid-template-columns: .95fr 1.15fr; gap: 42px; }
+.live-hero > *, .live-content > * { min-width: 0; }
+.live-art { margin: 0; border: 1px solid var(--line-strong); border-radius: var(--radius); overflow: hidden; background: #001226; box-shadow: var(--shadow); }
+.live-art img { width: 100%; height: auto; }
+.live-art figcaption { padding: 16px 22px; color: #b8d6ed; font-size: .85rem; border-top: 1px solid #143858; }
+.rights-strip { border-block: 1px solid var(--line); background: var(--surface); }
+.rights-strip > div { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding-block: 24px; }
+.rights-strip > div > span { color: var(--muted); font-size: .85rem; }
+.rights-strip strong { font-size: 1.8rem; letter-spacing: -.03em; }
+.rights-strip strong span { display: block; color: var(--muted); font-size: .8rem; font-weight: 500; letter-spacing: 0; }
+.rights-strip a { font-size: .9rem; }
+.live-content { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(28px, 7vw, 100px); align-items: start; }
+.transmission-info { border-left: 2px solid var(--primary); padding: 8px 0 8px 28px; }
+.transmission-info h3 { font-size: 1.5rem; }
+.transmission-info p:not(.eyebrow), .live-contact p { color: var(--muted); }
+.about-live { border-top: 1px solid var(--line); }
+.live-contact { display: flex; align-items: center; justify-content: space-between; gap: 28px; padding: clamp(24px, 4vw, 44px); border: 1px solid var(--line-strong); border-radius: var(--radius); background: var(--surface); }
+.live-contact p:last-child { margin-bottom: 0; }
+.live-contact .button { flex: none; }
+.live-policy { max-width: 850px; padding-block: 48px 80px; }
+.live-policy > .eyebrow { margin-top: 36px; }
+.live-policy h1 { font-size: clamp(2.4rem, 6vw, 4rem); margin-block: 16px 24px; }
+.live-policy section { margin-top: 48px; scroll-margin-top: 100px; }
+.live-policy section p { color: var(--muted); }
+.policy-index { display: flex; gap: 12px 24px; flex-wrap: wrap; padding-block: 24px; border-block: 1px solid var(--line); }
+.site-footer .footer-bottom { line-height: 2; }
+@media (max-width: 960px) { .live-hero { grid-template-columns: 1fr; } .live-art { max-width: 760px; } }
+@media (max-width: 720px) { .live-content { grid-template-columns: 1fr; } .live-contact { flex-direction: column; align-items: flex-start; } .rights-strip > div { flex-wrap: wrap; } }
+@media (max-width: 400px) { .live-contact .button { font-size: .8rem; padding-inline: 12px; } .live-brand { font-size: 1.15rem; } .header-inner { gap: 10px; } }

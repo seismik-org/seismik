@@ -47,6 +47,11 @@ function targetFor(request) {
   let origin = WEB;
   let path = source.pathname;
   if (host === "api.seismik.org") origin = API;
+  else if (host === "liveahora.seismik.org") {
+    if (path === "/") path = "/liveahora/";
+    else if (path === "/politicas" || path === "/politicas/") path = "/liveahora/politicas/";
+    else if (path === "/robots.txt" || path === "/sitemap.xml") path = `/liveahora${path}`;
+  }
   else if (host === "group.seismik.org") {
     if (path === "/") path = "/grupo/";
   }
