@@ -55,8 +55,10 @@ private struct FamilyMessagesNativeView: View {
             ForEach(["Voy al punto de encuentro", "No puedo llamar", "Escríbeme cuando puedas"], id: \.self) { text in
                 Button(text) { Task { await enqueue(text) } }.disabled(busy)
             }
-            TextField("Mensaje para tu familia", text: $draft, axis: .vertical)
-                .lineLimit(1...4).disabled(busy)
+            Text("Mensaje para tu familia").font(.caption).foregroundColor(.secondary)
+            TextEditor(text: $draft)
+                .frame(minHeight: 64, maxHeight: 100).disabled(busy)
+                .accessibilityLabel("Mensaje para tu familia")
                 .onChange(of: draft) { value in draft = String(value.prefix(280)) }
             Text("\(draft.count)/280").font(.caption).foregroundColor(.secondary)
             HStack {
