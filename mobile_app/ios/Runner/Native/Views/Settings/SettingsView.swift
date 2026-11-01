@@ -23,6 +23,7 @@ private struct FamilyMessagesNativeView: View {
     @State private var busy = false
     @State private var notice: String?
     @State private var showSMS = false
+    @State private var isVisible = false
 
     private var storageKey: String {
         "family.messages." + SHA256.hash(data: Data((uid + ":" + circleId).utf8)).map { String(format: "%02x", $0) }.joined()
@@ -75,20 +76,26 @@ private struct FamilyMessagesNativeView: View {
             FamilySMSComposer(messageBody: draft.isEmpty ? "Soy tu familiar. Escríbeme cuando puedas. — Seismik" : draft)
         }
         .task {
+            isVisible = true
             loadCopy()
             await sync()
             while !Task.isCancelled {
                 do { try await Task.sleep(nanoseconds: 30_000_000_000) } catch { return }
-                if scenePhase == .active { await sync() }
+                if scenePhase == .active && isVisible { await sync() }
             }
         }
-        .onChange(of: scenePhase) { phase in if phase == .active { Task { await sync() } } }
+        .onDisappear { isVisible = false }
+        .onChange(of: scenePhase) { phase in if phase == .active && isVisible { Task { await sync() } } }
     }
 
     private func loadCopy() {
         do {
             if let raw = try KeychainStore.shared.string(for: storageKey), let data = Data(base64Encoded: raw) {
                 copy = try JSONDecoder().decode(FamilyMessageLocalCopy.self, from: data)
+                copy.received.removeAll { item in
+                    let normalized = item.expiresAt.replacingOccurrences(of: "\\.[0-9]+", with: "", options: .regularExpression)
+                    return (ISO8601DateFormatter().date(from: normalized) ?? .distantPast) <= Date()
+                }
             }
         } catch { notice = "No se pudo leer la copia guardada." }
     }
@@ -116,7 +123,7 @@ private struct FamilyMessagesNativeView: View {
     }
 
     private func sync() async {
-        guard !busy, SeismikState.shared.account?.uid == uid else { return }
+        guard !busy, isVisible, SeismikState.shared.account?.uid == uid else { return }
         busy = true
         defer { busy = false }
         notice = nil
@@ -939,6 +946,7 @@ public struct FamilySafetyView: View {
     @ObservedObject private var appState = SeismikState.shared
 
     @State private var circle: FamilyCircle?
+    @State private var usingSavedCircle = false
     @State private var nicknames: [String: String] = [:]
     @State private var editingMember: FamilyMember?
     @State private var nicknameText = ""
@@ -1107,6 +1115,9 @@ public struct FamilySafetyView: View {
 
     private func circleContent(_ circle: FamilyCircle) -> some View {
         Form {
+            if usingSavedCircle {
+                Section { Text("Sin actualizar: lista guardada de tu familia. Las ubicaciones y estados se consultan de nuevo cuando vuelve la conexión.").font(.caption).foregroundColor(.secondary) }
+            }
             Section(footer: Text("Comparte durante una hora la última ubicación registrada hace menos de una hora, redondeada. No es GPS en vivo y no confirma que estés bien. Puedes revocarlo aquí o al dejar de compartir.")) {
                 Toggle("Ubicación automática tras una alerta", isOn: Binding(
                     get: { circle.automaticLocationSharing ?? false },
@@ -1317,6 +1328,8 @@ public struct FamilySafetyView: View {
             let loaded = try await SeismikAPIClient.shared.fetchFamilyCircle()
             guard appState.account?.uid == uid else { return }
             circle = loaded
+            usingSavedCircle = false
+            saveCircleMembership(loaded, uid: uid)
             nicknameScope = loaded.map { (uid: uid, circle: $0.circleId) }
             nicknames = loaded.map { FamilyNicknameStoreNative.load(uid: uid, circle: $0.circleId) } ?? [:]
             if let first = circle?.members.first(where: { $0.location != nil })?.location {
@@ -1332,8 +1345,39 @@ public struct FamilySafetyView: View {
             appState.accountSessionExpired()
             message = "Tu sesión venció. Inicia sesión de nuevo para ver a tu familia."
         } catch {
-            message = "No se pudo cargar tu familia ahora. Revisa tu conexión e inténtalo de nuevo."
+            guard appState.account?.uid == uid else { return }
+            if circle == nil {
+                circle = savedCircleMembership(uid: uid)
+                usingSavedCircle = circle != nil
+            }
+            message = usingSavedCircle ? "Mostrando la lista guardada de tu familia. Puedes preparar mensajes pendientes o usar SMS." : "No se pudo cargar tu familia ahora. Revisa tu conexión e inténtalo de nuevo."
         }
+    }
+
+    private func circleCacheKey(_ uid: String) -> String {
+        "family.circle." + SHA256.hash(data: Data(uid.utf8)).map { String(format: "%02x", $0) }.joined()
+    }
+
+    private func saveCircleMembership(_ circle: FamilyCircle?, uid: String) {
+        do {
+            guard let circle else { try KeychainStore.shared.remove(circleCacheKey(uid)); return }
+            let data = try JSONEncoder().encode(circle)
+            var object = try JSONSerialization.jsonObject(with: data) as! [String: Any]
+            object["members"] = (object["members"] as? [[String: Any]] ?? []).map { member in
+                var stripped = member
+                stripped.removeValue(forKey: "location")
+                stripped.removeValue(forKey: "status")
+                return stripped
+            }
+            let membership = try JSONSerialization.data(withJSONObject: object)
+            try KeychainStore.shared.set(membership.base64EncodedString(), for: circleCacheKey(uid))
+        } catch { /* A local cache failure never blocks the online family. */ }
+    }
+
+    private func savedCircleMembership(uid: String) -> FamilyCircle? {
+        guard let raw = try? KeychainStore.shared.string(for: circleCacheKey(uid)),
+              let data = Data(base64Encoded: raw) else { return nil }
+        return try? JSONDecoder().decode(FamilyCircle.self, from: data)
     }
 
     private func report(needsHelp: Bool) async {

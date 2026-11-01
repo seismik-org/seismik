@@ -8,6 +8,7 @@ import '../data/models/seismik_account.dart';
 import '../services/account_service.dart';
 import '../services/api_client.dart';
 import '../services/family_nickname_store.dart';
+import '../services/family_messages.dart';
 import '../services/notification_service.dart';
 import 'seismik_state.dart';
 
@@ -148,18 +149,44 @@ class FamilyState extends ChangeNotifier {
       if (account?.uid != uid) return;
       circle = nextCircle;
       _nicknames = names;
+      if (nextCircle != null) {
+        try {
+          await FamilyCircleCache.save(uid, nextCircle);
+        } catch (_) {
+          /* Online family still works. */
+        }
+      } else {
+        try {
+          await FamilyCircleCache.clear(uid);
+        } catch (_) {
+          /* No stale online circle is displayed. */
+        }
+      }
       error = null;
     } on SeismikApiException catch (failure) {
       if (failure.isAccountSessionRejected) {
         await _expireSession();
       } else {
+        await _loadSavedCircle();
         error = 'No fue posible actualizar tu familia. Revisa tu conexión.';
       }
     } catch (_) {
+      await _loadSavedCircle();
       error = 'No fue posible actualizar tu familia. Revisa tu conexión.';
     } finally {
       loading = false;
       _notify();
+    }
+  }
+
+  Future<void> _loadSavedCircle() async {
+    final uid = account?.uid;
+    if (circle != null || uid == null) return;
+    try {
+      final saved = await FamilyCircleCache.load(uid);
+      if (account?.uid == uid) circle = saved;
+    } catch (_) {
+      /* Keep the existing connection error. */
     }
   }
 

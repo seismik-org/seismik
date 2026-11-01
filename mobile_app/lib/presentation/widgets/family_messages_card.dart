@@ -13,11 +13,13 @@ class FamilyMessagesCard extends StatefulWidget {
     required this.uid,
     required this.circleId,
     required this.senderId,
+    this.active = true,
   });
   final ApiClient api;
   final String uid;
   final String circleId;
   final String senderId;
+  final bool active;
 
   @override
   State<FamilyMessagesCard> createState() => _FamilyMessagesCardState();
@@ -70,10 +72,11 @@ class _FamilyMessagesCardState extends State<FamilyMessagesCard> {
       _draft.clear();
       _init();
     }
+    if (!oldWidget.active && widget.active) unawaited(_sync());
   }
 
   Future<void> _sync() async {
-    if (_busy || !mounted) return;
+    if (_busy || !mounted || !widget.active) return;
     final service = _messages;
     setState(() => _busy = true);
     try {

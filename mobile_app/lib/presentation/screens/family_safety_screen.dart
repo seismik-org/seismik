@@ -21,7 +21,8 @@ import '../widgets/family_messages_card.dart';
 /// comparte su ubicación con el círculo durante unas horas y avisa a los demás.
 /// El envío automático exige consentimiento previo y no confirma el estado.
 class FamilySafetyScreen extends StatelessWidget {
-  const FamilySafetyScreen({super.key});
+  const FamilySafetyScreen({super.key, this.isActive = true});
+  final bool isActive;
 
   @override
   Widget build(BuildContext context) {
@@ -35,7 +36,7 @@ class FamilySafetyScreen extends StatelessWidget {
     } else if (circle == null) {
       body = _NoCircle(family: family);
     } else {
-      body = _CircleView(family: family, circle: circle);
+      body = _CircleView(family: family, circle: circle, isActive: isActive);
     }
     return Scaffold(
       appBar: AppBar(
@@ -275,7 +276,12 @@ class _NoCircle extends StatelessWidget {
 }
 
 class _CircleView extends StatelessWidget {
-  const _CircleView({required this.family, required this.circle});
+  const _CircleView({
+    required this.family,
+    required this.circle,
+    required this.isActive,
+  });
+  final bool isActive;
 
   final FamilyState family;
   final FamilyCircle circle;
@@ -347,6 +353,13 @@ class _CircleView extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 120),
         children: <Widget>[
           _CheckInCard(family: family),
+          if (family.error != null)
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Text(
+                'No se pudo actualizar. La lista puede estar guardada de antes; los datos pendientes no confirman el estado actual de tu familia.',
+              ),
+            ),
           if (circle.you != null)
             FamilyMessagesCard(
               key: ValueKey('${family.account!.uid}:${circle.circleId}'),
@@ -354,6 +367,7 @@ class _CircleView extends StatelessWidget {
               uid: family.account!.uid,
               circleId: circle.circleId,
               senderId: circle.you!.memberId,
+              active: isActive,
             ),
           SwitchListTile.adaptive(
             title: const Text('Ubicación automática tras una alerta'),
@@ -795,9 +809,9 @@ class _FieldsDialogState extends State<_FieldsDialog> {
   );
 }
 
-void _snack(BuildContext context, String message) =>
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(message)));
+void _snack(BuildContext context, String message) => ScaffoldMessenger.of(
+  context,
+).showSnackBar(SnackBar(content: Text(message)));
 
 String _ago(DateTime? at) {
   if (at == null) return 'hace un momento';

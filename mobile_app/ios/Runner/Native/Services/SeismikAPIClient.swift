@@ -128,7 +128,7 @@ public struct PendingFamilyMessage: Codable, Identifiable, Equatable {
     }
 }
 
-public struct FamilyLocation: Decodable, Equatable {
+public struct FamilyLocation: Codable, Equatable {
     public let latitude: Double
     public let longitude: Double
     public let precision: String
@@ -142,7 +142,7 @@ public struct FamilyLocation: Decodable, Equatable {
 }
 
 /// Último aviso de un integrante tras un sismo.
-public struct FamilyStatus: Decodable, Equatable {
+public struct FamilyStatus: Codable, Equatable {
     public let status: String
     public let message: String?
     public let eventId: String?
@@ -157,7 +157,7 @@ public struct FamilyStatus: Decodable, Equatable {
     }
 }
 
-public struct FamilyMember: Decodable, Identifiable, Equatable {
+public struct FamilyMember: Codable, Identifiable, Equatable {
     public let memberId: String?
     public let displayName: String
     public let isYou: Bool
@@ -175,7 +175,7 @@ public struct FamilyMember: Decodable, Identifiable, Equatable {
     }
 }
 
-public struct FamilyCircle: Decodable, Equatable {
+public struct FamilyCircle: Codable, Equatable {
     public let circleId: String
     public let circleName: String
     /// Sólo quien creó el círculo puede invitar.

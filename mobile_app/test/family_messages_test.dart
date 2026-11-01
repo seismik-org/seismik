@@ -2,6 +2,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:seismik/services/api_client.dart';
 import 'package:seismik/services/family_messages.dart';
+import 'package:seismik/data/models/family_circle.dart';
 
 class _Api extends ApiClient {
   bool offline = true;
@@ -78,4 +79,35 @@ void main() {
     await expectLater(messages.enqueue('x' * 281), throwsArgumentError);
     expect(messages.pending, isEmpty);
   });
+  test(
+    'offline membership never revives a cached safety status or location',
+    () async {
+      final circle = FamilyCircle.fromMap({
+        'circle_id': 'circle-1',
+        'circle_name': 'Familia',
+        'is_owner': true,
+        'members': [
+          {
+            'member_id': '1234567890abcdef',
+            'display_name': 'Ana',
+            'is_you': true,
+            'is_owner': true,
+            'location': {
+              'latitude': 4.6,
+              'longitude': -74.0,
+              'precision': 'approximate',
+              'expires_at': '2026-01-01T00:00:00Z',
+            },
+            'status': {'status': 'safe', 'reported_at': '2026-01-01T00:00:00Z'},
+          },
+        ],
+      });
+      await FamilyCircleCache.save('owner', circle);
+      final cached = await FamilyCircleCache.load('owner');
+      expect(cached?.you?.displayName, 'Ana');
+      expect(cached?.you?.location, isNull);
+      expect(cached?.you?.status, isNull);
+      expect(await FamilyCircleCache.load('another'), isNull);
+    },
+  );
 }

@@ -5,6 +5,41 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:uuid/uuid.dart';
 
 import 'api_client.dart';
+import '../data/models/family_circle.dart';
+
+/// Only membership/names are cached: never revive an expired location/check-in.
+class FamilyCircleCache {
+  static const _storage = FlutterSecureStorage();
+  static String _key(String uid) =>
+      'family.circle.${sha256.convert(utf8.encode(uid))}';
+  static Future<void> save(String uid, FamilyCircle circle) => _storage.write(
+    key: _key(uid),
+    value: jsonEncode({
+      'circle_id': circle.circleId,
+      'circle_name': circle.circleName,
+      'is_owner': circle.isOwner,
+      'automatic_location_sharing': circle.automaticLocationSharing,
+      'members': circle.members
+          .map(
+            (m) => {
+              'member_id': m.memberId,
+              'display_name': m.displayName,
+              'is_you': m.isYou,
+              'is_owner': m.isOwner,
+            },
+          )
+          .toList(),
+    }),
+  );
+  static Future<FamilyCircle?> load(String uid) async {
+    final raw = await _storage.read(key: _key(uid));
+    return raw == null
+        ? null
+        : FamilyCircle.fromMap(jsonDecode(raw) as Map<String, dynamic>);
+  }
+
+  static Future<void> clear(String uid) => _storage.delete(key: _key(uid));
+}
 
 /// Account/circle-scoped, device-encrypted outbox. Never sends to a new circle.
 class FamilyMessages {
@@ -35,6 +70,13 @@ class FamilyMessages {
       final data = jsonDecode(raw) as Map<String, dynamic>;
       pending = (data['pending'] as List).cast<Map<String, dynamic>>();
       received = (data['received'] as List).cast<Map<String, dynamic>>();
+      received.removeWhere(
+        (m) =>
+            !(DateTime.tryParse(
+                  m['expires_at']?.toString() ?? '',
+                )?.isAfter(DateTime.now()) ??
+                false),
+      );
     } on Object {
       notice = 'No se pudo leer la copia guardada de los mensajes.';
     }
@@ -75,7 +117,8 @@ class FamilyMessages {
       for (final message in List<Map<String, dynamic>>.of(pending)) {
         if (moment.difference(DateTime.parse(message['created_at'] as String)) >
             const Duration(hours: 24)) {
-          notice = 'Hay mensajes de más de 24 horas. Revísalos antes de volver a enviarlos.';
+          notice =
+              'Hay mensajes de más de 24 horas. Revísalos antes de volver a enviarlos.';
           continue;
         }
         try {
@@ -95,7 +138,8 @@ class FamilyMessages {
       try {
         final result = await api.fetchFamilyMessages(senderId);
         if (result['circle_id'] != circleId) {
-          notice = 'Tu círculo cambió. Los pendientes no se enviarán a otra familia.';
+          notice =
+              'Tu círculo cambió. Los pendientes no se enviarán a otra familia.';
           return;
         }
         received = (result['messages'] as List).cast<Map<String, dynamic>>();

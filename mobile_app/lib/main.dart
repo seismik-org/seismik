@@ -243,7 +243,7 @@ class _SeismikShellState extends State<_SeismikShell> {
           const MonitorScreen(),
           FeltReportScreen(event: latestEvent),
           DamageReportScreen(event: latestEvent),
-          const FamilySafetyScreen(),
+          FamilySafetyScreen(isActive: _selectedIndex == _familyTab),
           SettingsScreen(dynamicColorAvailable: widget.dynamicColorAvailable),
         ],
       );
