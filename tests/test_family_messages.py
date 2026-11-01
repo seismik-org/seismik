@@ -94,3 +94,17 @@ async def test_message_rate_limit_retention_and_bounded_reads():
         assert 86_390 <= await redis.ttl(keys[0]) <= 86_400
         await redis.delete(*keys)
         assert (await client.get('/v1/family/messages', headers=owner, params={'sender_id': sender})).json()['messages'] == []
+
+
+@pytest.mark.asyncio
+async def test_family_storage_is_bounded_without_disabling_safety_reports():
+    redis = FakeRedis(decode_responses=True)
+    async with client_for(app_for(redis)) as client:
+        owner, _ = await family_with_member(client, redis)
+        circle, sender = await context(client, owner)
+        await redis.zadd(f'seismik:family:messages:{circle}', {f'item-{i}': datetime.now(timezone.utc).timestamp() for i in range(500)})
+        result = await client.post('/v1/family/messages', headers=owner, json=message(circle, sender))
+        assert result.status_code == 429
+        assert await redis.zcard(f'seismik:family:messages:{circle}') == 500
+        safe = await client.put('/v1/family/status', headers=owner, json={'status': 'need_help'})
+        assert safe.status_code == 200

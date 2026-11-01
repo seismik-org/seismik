@@ -126,7 +126,9 @@ class FamilyMessages {
           pending.removeWhere((m) => m['message_id'] == message['message_id']);
           await _save();
         } on SeismikApiException catch (error) {
-          notice = error.isPermanent
+          notice = error.statusCode == 429
+              ? 'Se alcanzó un límite de mensajes. Sigue guardado: espera o usa SMS.'
+              : error.isPermanent
               ? 'El servidor no aceptó un mensaje. Sigue guardado para que lo revises.'
               : 'Pendiente de conexión. Reintentaremos al abrir Familia.';
           break;

@@ -156,13 +156,16 @@ async def send_family_message(
     for _attempt in range(3):
         try:
             async with redis.pipeline(transaction=True) as pipe:
-                await pipe.watch(key)
+                await pipe.watch(key, index_key)
                 previous = await pipe.get(key)
                 if previous:
                     saved = json.loads(previous)
                     if saved["text"] != payload.text:
                         raise HTTPException(409, "Message identifier already used")
                     return {"message_id": payload.message_id, "accepted_at": saved["accepted_at"], "duplicate": True}
+                recent_count = await pipe.zcount(index_key, now.timestamp() - _MESSAGE_TTL_SECONDS, "+inf")
+                if recent_count >= 500:
+                    raise HTTPException(429, "Family limit: 500 messages in 24 hours; use SMS or a safety check-in", headers={"Retry-After": "3600"})
                 minute = int(now.timestamp()) // 60
                 rate_key = f"seismik:family:message-rate:{circle}:{sender}:{minute}"
                 count = await redis.incr(rate_key)
