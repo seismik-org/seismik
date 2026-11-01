@@ -11,6 +11,7 @@ from redis.asyncio import Redis
 
 from api.config import AppSettings
 from api.dependencies import ApiPrincipal, get_app_settings, get_redis, require_mobile_events_read
+from api.event_association import associate_events
 from api.geojson import FORMAT_QUERY, GEOJSON_RESPONSE, OutputFormat, feature_collection
 from eew.official import OfficialApiClient, OfficialSource, load_sources
 
@@ -205,7 +206,7 @@ async def official_history(
         }
 
     cache_key = (
-        f"cache:seismik:history:{days}:{minimum_magnitude:.1f}:{limit}:"
+        f"cache:seismik:history:associated-v1:{days}:{minimum_magnitude:.1f}:{limit}:"
         f"{','.join(source.id for source in selected)}"
     )
     lock = _history_locks[int.from_bytes(hashlib.sha256(cache_key.encode()).digest()[:2]) % 64]
@@ -274,12 +275,11 @@ async def _official_cached(
         if isinstance(result, BaseException):
             errors.append({"source_id": source.id, "message": type(result).__name__})
             continue
-        events.extend(
-            event
-            for event in result
-            if event["magnitude"] is None or event["magnitude"] >= minimum_magnitude
-        )
-    events.sort(key=lambda event: event["origin_time"], reverse=True)
+        events.extend(result)
+    events = [event for event in associate_events(events) if any(
+        report.get("magnitude") is None or report["magnitude"] >= minimum_magnitude
+        for report in event["source_reports"]
+    )]
     payload: dict[str, Any] = {
         "events": events[:limit],
         "sources": [

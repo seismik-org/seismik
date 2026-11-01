@@ -158,6 +158,11 @@ async def recent_events(
     for _message_id, fields in raw:
         event = json.loads(fields["payload"])
         report = event.get("preferred_report", {})
+        reports = [
+            {**item, "event_id": f"{item.get('source_id', 'official')}:{item.get('official_event_id', event['event_id'])}"}
+            for item in (event.get("reports") or [report])
+            if isinstance(item, dict)
+        ]
         events.append(
             {
                 "event_id": event["event_id"],
@@ -170,6 +175,12 @@ async def recent_events(
                 "agency": report.get("agency"),
                 "place": report.get("place"),
                 "official_url": report.get("official_url"),
+                "source_id": report.get("source_id"),
+                "official_event_id": report.get("official_event_id"),
+                "magnitude_type": report.get("magnitude_type"),
+                "review_status": report.get("review_status"),
+                "source_reports": reports,
+                "related_event_ids": [event["event_id"], *[item["event_id"] for item in reports]],
             }
         )
     if format == "geojson":

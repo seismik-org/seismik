@@ -37,6 +37,10 @@ public struct EventDetailView: View {
                     // 4. Cuadrícula de Métricas
                     metricsGridSection
 
+                    if !event.sourceReports.isEmpty {
+                        sourceReportsSection
+                    }
+
                     // 5. Coincidencia Multiestación STA/LTA (si preliminar con estaciones)
                     if event.isPreliminary && !event.stations.isEmpty {
                         multistationSection
@@ -83,6 +87,33 @@ public struct EventDetailView: View {
     }
 
     // MARK: - Subvistas
+
+    private var sourceReportsSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Magnitudes por organización").font(.headline)
+            Text("Cada fuente conserva su valor y escala. No se promedian; pueden cambiar tras la revisión.")
+                .font(.caption).foregroundColor(.secondary)
+            ForEach(event.sourceReports) { report in
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack {
+                        Text(report.agency ?? report.sourceId ?? "Fuente").font(.subheadline.bold())
+                        Spacer()
+                        Text(report.magnitude.map { String($0) } ?? "Sin magnitud")
+                    }
+                    Text("\(report.magnitudeType ?? "M") · \(report.reviewStatus ?? "Sin estado de revisión")")
+                        .font(.caption).foregroundColor(.secondary)
+                    if let value = report.officialUrl, let url = URL(string: value),
+                       url.scheme == "https", url.host != nil {
+                        Button("Consultar fuente oficial") {
+                            browserDestination = BrowserDestination(url: url)
+                        }.font(.caption)
+                    }
+                }
+                Divider()
+            }
+        }
+        .padding(16).liquidGlass(cornerRadius: 16)
+    }
 
     private var preliminaryWarningBanner: some View {
         HStack(alignment: .top, spacing: 12) {
@@ -550,6 +581,7 @@ private struct SafetyStepCard: View {
 
 // MARK: - Mini Mapa del Epicentro Compatible con Marcador Personalizado
 private struct EpicenterMapView: UIViewRepresentable {
+    @Environment(\.colorScheme) private var colorScheme
     let coordinate: CLLocationCoordinate2D
     let title: String?
     let magnitude: Double?
@@ -558,6 +590,7 @@ private struct EpicenterMapView: UIViewRepresentable {
 
     func makeUIView(context: Context) -> MKMapView {
         let map = MKMapView()
+        map.overrideUserInterfaceStyle = colorScheme == .dark ? .dark : .light
         map.isScrollEnabled = false
         map.isZoomEnabled = false
         map.delegate = context.coordinator
@@ -580,7 +613,9 @@ private struct EpicenterMapView: UIViewRepresentable {
         return map
     }
 
-    func updateUIView(_ uiView: MKMapView, context: Context) {}
+    func updateUIView(_ uiView: MKMapView, context: Context) {
+        uiView.overrideUserInterfaceStyle = colorScheme == .dark ? .dark : .light
+    }
 
     func makeCoordinator() -> Coordinator {
         Coordinator(magnitude: magnitude, isPreliminary: isPreliminary)

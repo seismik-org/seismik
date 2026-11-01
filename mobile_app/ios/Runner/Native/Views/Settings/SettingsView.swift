@@ -94,6 +94,14 @@ public struct SettingsView: View {
 
                 // Alertas críticas (Pantalla completa, simulacro, magnitudes y radio)
                 Section(header: Text("Alertas críticas")) {
+                    Text(state.connectionLabel)
+                    Text(state.isRegistered ? "Dispositivo registrado" : "Registro para alertas pendiente")
+                    Text("El registro no sustituye los permisos del sistema. La prueba local no comprueba la entrega remota.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    Button("Reintentar registro de alertas") {
+                        Task { await state.updateRegistration() }
+                    }
                     Button(action: requestNotificationPermission) {
                         HStack {
                             VStack(alignment: .leading, spacing: 3) {
@@ -1181,9 +1189,7 @@ public struct FamilySafetyView: View {
             if coordinate == nil {
                 message = "Aviso enviado sin ubicación. Permite la ubicación para compartirla con tu familia."
             } else {
-                message = needsHelp
-                    ? "Tu familia sabe que necesitas ayuda y ve dónde estás."
-                    : "Tu familia sabe que estás bien."
+                message = "Seismik recibió tu aviso. Esto no confirma que tu familia lo haya leído."
             }
             await reload()
         } catch let error as SeismikAPIError where error.isDeviceSessionRejected {

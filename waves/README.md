@@ -2,12 +2,28 @@
 
 Portal: https://waves.seismik.org/ · Explorer: https://waves.seismik.org/explore
 
-This isolated pilot serves 560 historical MiniSEED recordings from the verified 2026-10-10
+This isolated pilot serves 561 historical MiniSEED files from the verified 2026-10-10
 Cloud Storage import: a readable catalogue, a waveform explorer and, once enabled, the complete
 original MiniSEED file. It does **not** publish live events, send push notifications, calculate
 magnitude remotely or alter the scientific validation of the source data. All original files
 remain private in `seismik-15bbb-scientific-archive`; the remaining 41 import files are
-calibration and station metadata, not waveforms.
+calibration and station metadata, not waveforms. The additive 2026-10-18 supplement contains
+one discontinuous audit MiniSEED (30 segments, six stations; NOT 30 confirmed earthquakes),
+two StationXML files and three station-access/latency surveys. Totals: 607 scientific files,
+549,985,636 bytes. Five supplemental metadata/survey files are separately browsable by approved
+accounts. Public educational cards describe ten major/destructive earthquakes with SGC/USGS
+references; these cards never claim recordings, Seismik magnitudes or live detection.
+
+## Reproducible supplement
+
+After preparing the base catalogue and previews, run `prepare-supplement.py --workspace <workspace>
+--output <new-build-directory>`. It reads the six explicit source files, preserves originals,
+hashes and stages upload copies, and generates the combined catalogue, five-resource index and
+audit preview. Upload only its six data objects under the existing authorized import data prefix,
+without overwriting any base object; store the separate supplementary manifest alongside the import.
+No IAM expansion is necessary. Original base manifest/verification receipts stay unchanged.
+The preview generator preserves contiguous segments instead of filling gaps with synthetic zeroes;
+the viewer lets the user choose a time window before plotting separated audit segments.
 
 ## Access
 
@@ -28,6 +44,9 @@ marker → `waves_portal_url`). Without it sign-in still works but ends on `devs
 - `/` portal · `/explore?id=…` waveform explorer (`/explorar` redirects here) · `/login` hand-off to auth.
 - `GET /health/ready`, `GET /v1/waves/summary` — public aggregates (counts per group, no names).
 - `GET /v1/waves/session` — access state.
+- `GET /v1/waves/history` — public educational references with primary-source links; no private paths.
+- `GET /v1/waves/resources` — approved only: supplemental StationXML and survey metadata, hashes/provenance.
+- `GET /v1/waves/resources/{id}/download` — approved only, same size/hash/rate gates as MiniSEED downloads.
 - `GET /v1/waves/catalog` — approved only: `q`, `kind`, `group`, `minimum_magnitude`, `sort`, `offset`, `limit`.
 - `GET /v1/waves/records/{id}` — metadata and SHA-256.
 - `GET /v1/waves/records/{id}/preview` — min/max envelope (600 intervals per channel) to draw waveforms.

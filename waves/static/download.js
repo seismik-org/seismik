@@ -1,10 +1,10 @@
 // Descarga el MiniSEED original completo. Va por fetch para poder mostrar un mensaje claro si falla; el archivo
 // nunca pasa por la página más allá de entregárselo al navegador como descarga.
-export async function downloadRecord(id, button, status) {
+export async function downloadRecord(id, button, status, resource = false) {
   const label = button.textContent;
   button.disabled = true; button.textContent = "Preparando…"; status("");
   try {
-    const response = await fetch(`/v1/waves/records/${encodeURIComponent(id)}/download`, {cache: "no-store", credentials: "same-origin"});
+    const response = await fetch(`/v1/waves/${resource ? "resources" : "records"}/${encodeURIComponent(id)}/download`, {cache: "no-store", credentials: "same-origin"});
     if (!response.ok) {
       const detail = (await response.json().catch(() => ({}))).detail;
       throw new Error(typeof detail === "string" ? detail : "No se pudo descargar la grabación.");

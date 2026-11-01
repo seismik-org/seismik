@@ -3,8 +3,9 @@ import 'package:flutter/material.dart';
 import '../../core/theme.dart';
 
 class StatusPill extends StatelessWidget {
-  const StatusPill({required this.online, super.key});
+  const StatusPill({required this.online, this.label, super.key});
   final bool online;
+  final String? label;
 
   @override
   Widget build(BuildContext context) {
@@ -48,15 +49,18 @@ class StatusPill extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 9),
-          Text(
-            online
-                ? 'Monitoreando red sísmica Seismik'
-                : 'Reconectando con Seismik…',
-            style: TextStyle(
-              fontSize: 12.5,
-              fontWeight: FontWeight.w600,
-              color: dark ? Colors.white : const Color(0xFF1C1C1E),
-              letterSpacing: -0.1,
+          Flexible(
+            child: Text(
+              label ??
+                  (online
+                      ? 'Historial sincronizado'
+                      : 'Sincronización pendiente'),
+              style: TextStyle(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w600,
+                color: dark ? Colors.white : const Color(0xFF1C1C1E),
+                letterSpacing: -0.1,
+              ),
             ),
           ),
         ],
@@ -64,4 +68,3 @@ class StatusPill extends StatelessWidget {
     );
   }
 }
-
