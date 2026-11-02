@@ -1,8 +1,9 @@
 import {downloadRecord} from "/assets/download.js";
 const $ = id => document.getElementById(id);
 const COMPONENT = {Z: "Vertical", N: "Norte-Sur", E: "Este-Oeste", 1: "Horizontal 1", 2: "Horizontal 2"};
-const GROUP_LABELS = {evaluation: "Evaluación de magnitud", historical: "Históricos de referencia", cases: "Casos de estudio", fixtures: "Pruebas de reproducción"};
+const GROUP_LABELS = {audit: "Auditoría de candidatos", evaluation: "Evaluación de magnitud", historical: "Históricos de referencia", cases: "Casos de estudio", fixtures: "Pruebas de reproducción"};
 let data, plots = [], hover = null, T0 = 0, T1 = 1;
+let windows = [];
 
 const fmt = new Intl.NumberFormat("es-CO");
 const when = iso => iso ? iso.replace("T", " ").replace("Z", " UTC").replace(/\.\d+/, "") : "—";
@@ -28,7 +29,11 @@ async function api(path) {
 function gate(text) { $("state").hidden = true; $("viewer").hidden = true; $("gate").hidden = false; $("gate-text").textContent = text; }
 
 function trace_time(trace, bucket) { return Date.parse(trace.start) + (bucket + 0.5) * (trace.duration_s * 1000) / data.buckets; }
-function stationTraces(station) { return data.traces.filter(t => `${t.network}.${t.station}` === station); }
+function windowTraces() {
+  const window = windows[Number($("window").value)];
+  return window ? data.traces.filter(t => Date.parse(t.start) <= window.end && Date.parse(t.end) >= window.start) : data.traces;
+}
+function stationTraces(station) { return windowTraces().filter(t => `${t.network}.${t.station}` === station); }
 
 function scaleFor(trace, group) {
   const mode = $("scale").value;
@@ -72,14 +77,15 @@ function drawAxis(canvas) {
 
 function build() {
   const station = $("station").value, area = $("plots"); area.replaceChildren(); plots = [];
-  const group = station === "*" ? data.traces.filter(t => t.channel.endsWith("Z")) : stationTraces(station);
-  const traces = group.length ? group : data.traces;
-  T0 = Math.min(...data.traces.map(t => Date.parse(t.start))); T1 = Math.max(...data.traces.map(t => Date.parse(t.end)));
+  const selected = windowTraces();
+  const group = station === "*" ? selected.filter(t => t.channel.endsWith("Z")) : stationTraces(station);
+  const traces = group.length ? group : selected;
+  T0 = Math.min(...selected.map(t => Date.parse(t.start))); T1 = Math.max(...selected.map(t => Date.parse(t.end)));
   for (const trace of traces) {
     const box = el("div", undefined, "plot"); const canvas = el("canvas");
     canvas.setAttribute("role", "img"); canvas.setAttribute("aria-label", `Forma de onda de ${trace.id}`);
     const comp = trace.channel.slice(-1);
-    box.append(canvas, el("span", `${trace.id} · ${COMPONENT[comp] || comp}`, "tag"), el("span", `pico ${fmt.format(trace.peak_counts)} cuentas`, "peak"));
+    box.append(canvas, el("span", `${trace.id} · ${COMPONENT[comp] || comp} · ${when(trace.start)}`, "tag"), el("span", `pico ${fmt.format(trace.peak_counts)} cuentas`, "peak"));
     area.append(box);
     const plot = {canvas, trace, scale: scaleFor(trace, traces)}; plots.push(plot);
     canvas.addEventListener("pointermove", event => onMove(event, canvas));
@@ -114,8 +120,16 @@ function render() {
   if (typeof c.depth_km === "number") box.append(card("Profundidad", `${c.depth_km.toFixed(0)} km`));
   if (typeof c.latitude === "number") box.append(card("Epicentro", `${c.latitude.toFixed(2)}°, ${c.longitude.toFixed(2)}°`));
   if (c.place && c.place !== c.title) box.append(card("Lugar", c.place));
+  windows = [];
+  for (const trace of [...data.traces].sort((a, b) => Date.parse(a.start) - Date.parse(b.start))) {
+    const start = Date.parse(trace.start), end = Date.parse(trace.end), previous = windows.at(-1);
+    if (previous && start <= previous.end) previous.end = Math.max(previous.end, end);
+    else windows.push({start, end});
+  }
+  $("window").replaceChildren(...windows.map((window, i) => { const option = el("option", `${new Date(window.start).toISOString().slice(0, 19)} UTC`); option.value = i; return option; }));
+  $("window-label").hidden = windows.length <= 1;
   const stations = [...new Set(data.traces.map(t => `${t.network}.${t.station}`))];
-  box.append(card("Registro", `${stations.length} estaciones · ${data.traces.length} canales`, `${data.traces[0].rate} muestras/s · ${span(Math.max(...data.traces.map(t => t.duration_s)))}`));
+  box.append(card("Registro", `${stations.length} estaciones · ${data.traces.length} segmentos`, `${data.traces[0].rate} muestras/s · ${windows.length} ventanas · huecos sin rellenar`));
   if (c.kind !== "evento" || !c.origin_time) box.append(card("Qué es", c.kind === "ruido" ? "Sin sismo" : "Registro histórico", c.detail));
   const select = $("station"); select.replaceChildren(...stations.map(s => { const o = el("option", s); o.value = s; return o; }));
   if (stations.length > 1) { const all = el("option", "Todas · componente vertical"); all.value = "*"; select.prepend(all); select.value = "*"; }
@@ -144,7 +158,7 @@ async function initialize() {
     else { $("state").textContent = error.message; }
     return;
   }
-  $("station").addEventListener("change", build); $("scale").addEventListener("change", build);
+  $("station").addEventListener("change", build); $("scale").addEventListener("change", build); $("window").addEventListener("change", build);
   window.addEventListener("resize", redraw);
   window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => setTimeout(redraw, 50));
   render();

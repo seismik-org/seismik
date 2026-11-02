@@ -51,8 +51,8 @@ def reset(monkeypatch):
 
 def test_public_summary_and_portal():
     data = client.get("/v1/waves/summary").json()
-    assert data["files"] == 601
-    assert data["waveforms"] == 560
+    assert data["files"] == 607
+    assert data["waveforms"] == 561
     assert data["live"] is False and data["downloads_enabled"] is False
     response = client.get("/")
     assert response.status_code == 200 and "Waves" in response.text
@@ -64,11 +64,12 @@ def test_summary_describes_the_archive_in_aggregate_without_naming_recordings():
     data = client.get("/v1/waves/summary").json()
     groups = {item["id"]: item for item in data["groups"]}
 
-    assert [item["id"] for item in data["groups"]] == ["evaluation", "historical", "cases", "fixtures"]
-    assert sum(item["recordings"] for item in data["groups"]) == data["waveforms"] == 560
+    assert [item["id"] for item in data["groups"]] == ["audit", "evaluation", "historical", "cases", "fixtures"]
+    assert sum(item["recordings"] for item in data["groups"]) == data["waveforms"] == 561
     assert sum(item["bytes"] for item in data["groups"]) == data["recording_bytes"]
     assert groups["evaluation"]["recordings"] == 432 and groups["fixtures"]["recordings"] == 4
-    assert data["formats"] == ["MiniSEED"] and data["snapshot_date"] == "2026-10-10"
+    assert data["formats"] == ["MiniSEED"] and data["snapshot_date"] == "2026-10-18"
+    assert data["resource_files"] == 5 and groups["audit"]["recordings"] == 1
     text = client.get("/v1/waves/summary").text
     assert ".mseed" not in text and "calibration/" not in text, "el resumen público no nombra ninguna grabación"
 
@@ -175,7 +176,7 @@ def test_approved_catalog_filters_pagination_and_record(monkeypatch):
     assert client.get("/v1/waves/catalog?offset=-1", cookies=COOKIES).status_code == 422
     assert client.get("/v1/waves/catalog?q=no-such-record", cookies=COOKIES).json()["total"] == 0
     page2 = client.get("/v1/waves/catalog?limit=25&offset=25", cookies=COOKIES).json()
-    assert page2["offset"] == 25 and page2["total"] == 560 and len(page2["items"]) == 25
+    assert page2["offset"] == 25 and page2["total"] == 561 and len(page2["items"]) == 25
 
 
 # --- visor de ondas y catálogo legible -----------------------------------------------------------------------
@@ -471,4 +472,5 @@ def test_csp_is_closed_to_third_parties_and_inline_code():
 def test_the_static_folder_published_by_the_worker_has_no_private_data():
     names = {p.name for p in (WAVES / "static").iterdir()}
     assert not names & {"catalog.json", "firebase-public.json", "app.py"}
-    assert all(not n.endswith((".json", ".mseed", ".py", ".env")) for n in names)
+    assert {n for n in names if n.endswith(".json")} == {"historical-earthquakes.json"}
+    assert all(not n.endswith((".mseed", ".py", ".env")) for n in names)

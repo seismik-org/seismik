@@ -71,13 +71,16 @@ def trace_preview(trace: obspy.Trace) -> dict:
 def traces_of(path: Path) -> list[dict]:
     stream = obspy.read(str(path))
     gaps = len(stream.get_gaps())
-    if gaps:  # no ocurre en el archivo actual; se deja tolerante
-        stream.merge(method=1, fill_value=0)
+    # Preserve every contiguous segment. Zero filling invents data and can allocate
+    # weeks of samples for an audit file containing many separated windows.
     ordered = sorted(stream, key=lambda t: (t.stats.network, t.stats.station, t.stats.location,
                                              COMPONENT_ORDER.get(t.stats.channel[-1], 9), t.stats.channel))
     result = [trace_preview(trace) for trace in ordered]
+    segments: dict[str, int] = {}
     for item in result:
         item["gaps_in_file"] = gaps
+        item["segment_index"] = segments.get(item["id"], 0)
+        segments[item["id"]] = item["segment_index"] + 1
     return result
 
 

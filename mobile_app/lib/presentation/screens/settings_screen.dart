@@ -42,6 +42,23 @@ class SettingsScreen extends StatelessWidget {
         children: <Widget>[
           const _Header(),
           const SizedBox(height: 12),
+          Consumer<SeismikState>(
+            builder: (context, state, _) => ListTile(
+              leading: const Icon(Icons.health_and_safety_outlined),
+              title: const Text('Estado de conexión y alertas'),
+              subtitle: Text(
+                '${state.connectionLabel}\n'
+                '${state.alertRegistrationReady ? "Dispositivo registrado" : "Registro para alertas pendiente"}\n'
+                'El registro no sustituye los permisos del sistema. La prueba local no comprueba la entrega remota.',
+              ),
+              isThreeLine: true,
+              trailing: IconButton(
+                tooltip: 'Reintentar registro de alertas',
+                icon: const Icon(Icons.refresh),
+                onPressed: () => unawaited(state.retryAlertRegistration()),
+              ),
+            ),
+          ),
           ListTile(
             leading: const Icon(Icons.offline_bolt_outlined),
             title: const Text('Modo de emergencia sin conexión'),
@@ -198,11 +215,11 @@ class SettingsScreen extends StatelessWidget {
                 onChanged: dynamicColorAvailable
                     ? (value) => unawaited(settings.setUseDynamicColor(value))
                     : null,
-                title: const Text('Colores dinámicos Material You'),
+                title: const Text('Usa el color del sistema'),
                 subtitle: Text(
                   dynamicColorAvailable
-                      ? 'Usa la paleta completa publicada por Android/One UI.'
-                      : 'Android no publicó una paleta dinámica en este dispositivo.',
+                      ? 'Usa los colores que elegiste para tu celular.'
+                      : 'Tu celular no admite los colores del sistema.',
                 ),
               ),
               Padding(

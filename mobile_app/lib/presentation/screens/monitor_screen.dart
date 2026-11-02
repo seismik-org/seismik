@@ -7,6 +7,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/platform.dart';
+import '../../core/map_theme.dart';
 import '../../core/theme.dart';
 import '../../data/models/seismic_event.dart';
 import '../../data/models/station.dart';
@@ -79,6 +80,12 @@ class _MonitorScreenState extends State<MonitorScreen> {
     final bool online = context.select<SeismikState, bool>(
       (s) => s.networkOnline,
     );
+    final String connectionLabel = context.select<SeismikState, String>(
+      (s) => s.connectionLabel,
+    );
+    final bool registrationReady = context.select<SeismikState, bool>(
+      (s) => s.alertRegistrationReady,
+    );
     final int pendingReports = context.select<SeismikState, int>(
       (s) => s.pendingReportCount,
     );
@@ -114,7 +121,12 @@ class _MonitorScreenState extends State<MonitorScreen> {
     final List<Widget> header = <Widget>[
       const _SheetHandle(),
       const SizedBox(height: 12),
-      StatusPill(online: online),
+      StatusPill(online: online, label: connectionLabel),
+      Text(
+        registrationReady
+            ? 'Dispositivo registrado · revisa los permisos de alertas en Configuración'
+            : 'Registro para alertas pendiente · abre Configuración',
+      ),
       if (state.api.lowBandwidth)
         const Text(
           'Conexión limitada · historial reducido · reportes prioritarios',
@@ -198,6 +210,8 @@ class _MonitorScreenState extends State<MonitorScreen> {
           )
         else
           GoogleMap(
+            colorScheme: SeismikMapTheme.colorScheme(context),
+            style: SeismikMapTheme.style(context),
             initialCameraPosition: CameraPosition(target: center, zoom: 5.8),
             markers: markers,
             circles: perimeters,

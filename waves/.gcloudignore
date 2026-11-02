@@ -4,3 +4,4 @@ tests/
 *.ps1
 *.md
 build-previews.py
+prepare-supplement.py

@@ -30,6 +30,8 @@ class SeismicEvent {
     this.waveStrengthIndex,
     this.magnitudeEstimateStatus,
     this.stations = const <SeismicStationTrigger>[],
+    this.sourceReports = const <SeismicSourceReport>[],
+    this.relatedEventIds = const <String>[],
   });
 
   factory SeismicEvent.fromMap(Map<String, dynamic> map) {
@@ -81,6 +83,14 @@ class SeismicEvent {
           .whereType<Map<String, dynamic>>()
           .map(SeismicStationTrigger.fromMap)
           .toList(growable: false),
+      sourceReports: (map['source_reports'] as List<dynamic>? ?? <dynamic>[])
+          .whereType<Map<String, dynamic>>()
+          .map(SeismicSourceReport.fromMap)
+          .toList(growable: false),
+      relatedEventIds:
+          (map['related_event_ids'] as List<dynamic>? ?? <dynamic>[])
+              .map((id) => id.toString())
+              .toList(growable: false),
     );
   }
 
@@ -124,6 +134,8 @@ class SeismicEvent {
   final double? waveStrengthIndex;
   final String? magnitudeEstimateStatus;
   final List<SeismicStationTrigger> stations;
+  final List<SeismicSourceReport> sourceReports;
+  final List<String> relatedEventIds;
 
   bool get isOfficial => type == 'official_report_update';
   bool get isPreliminary => preliminary;
@@ -159,7 +171,26 @@ class SeismicEvent {
     'stations': stations
         .map((station) => station.toMap())
         .toList(growable: false),
+    'source_reports': sourceReports
+        .map((r) => r.toMap())
+        .toList(growable: false),
+    'related_event_ids': relatedEventIds,
   };
+}
+
+class SeismicSourceReport {
+  const SeismicSourceReport(this.data);
+  factory SeismicSourceReport.fromMap(Map<String, dynamic> map) =>
+      SeismicSourceReport(Map<String, dynamic>.unmodifiable(map));
+  final Map<String, dynamic> data;
+  String get id => (data['event_id'] ?? '').toString();
+  String get agency =>
+      (data['agency'] ?? data['source_id'] ?? 'Fuente').toString();
+  double? get magnitude => double.tryParse('${data['magnitude']}');
+  String? get magnitudeType => data['magnitude_type']?.toString();
+  String? get reviewStatus => data['review_status']?.toString();
+  String? get officialUrl => data['official_url']?.toString();
+  Map<String, dynamic> toMap() => Map<String, dynamic>.from(data);
 }
 
 class SeismicStationTrigger {

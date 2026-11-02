@@ -28,7 +28,7 @@ public struct SeismicSheetView: View {
                     Circle()
                         .fill(state.isOnline ? SeismikColors.emerald : SeismikColors.amber)
                         .frame(width: 8, height: 8)
-                    Text(state.isOnline ? "Sincronizado" : "Actualizando cuando vuelva la red")
+                    Text(state.connectionLabel)
                         .font(.system(size: 12.5, weight: .medium, design: .rounded))
                         .foregroundColor(state.isOnline ? .secondary : SeismikColors.amber)
                     Spacer()
@@ -38,6 +38,13 @@ public struct SeismicSheetView: View {
                 }
                 .padding(.horizontal, 18)
                 .padding(.bottom, 2)
+
+                Text(state.isRegistered
+                    ? "Dispositivo registrado · revisa los permisos de alertas en Configuración"
+                    : "Registro para alertas pendiente · abre Configuración")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .padding(.horizontal, 18)
 
                 // Título y subtítulo con paridad total con Android
                 VStack(alignment: .leading, spacing: 2) {

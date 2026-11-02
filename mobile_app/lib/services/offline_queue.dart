@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../data/models/pending_report.dart';
@@ -42,6 +44,17 @@ class OfflineReportQueue {
   });
 
   static const String _storageKey = 'seismik.pending_reports';
+  static Future<void> _mutations = Future<void>.value();
+  static Future<QueueFlushResult>? _flushInFlight;
+
+  Future<T> _exclusive<T>(Future<T> Function() action) {
+    final result = _mutations.then((_) => action());
+    _mutations = result.then<void>(
+      (_) {},
+      onError: (Object _, StackTrace _) {},
+    );
+    return result;
+  }
 
   final int maxEntries;
   final int maxAttempts;
@@ -57,7 +70,7 @@ class OfflineReportQueue {
   Future<int> pendingCount() async => (await load()).length;
 
   /// Guarda un reporte al final de la cola, sustituyendo el mismo `report_id`.
-  Future<void> enqueue(PendingReport report) async {
+  Future<void> enqueue(PendingReport report) => _exclusive(() async {
     final List<PendingReport> queue = await load()
       ..removeWhere((item) => item.reportId == report.reportId);
     queue.add(report);
@@ -67,22 +80,29 @@ class OfflineReportQueue {
         ? queue.sublist(queue.length - maxEntries)
         : queue;
     await _write(trimmed);
-  }
+  });
 
-  Future<void> remove(String reportId) async {
+  Future<void> remove(String reportId) => _exclusive(() async {
     final List<PendingReport> queue = await load()
       ..removeWhere((item) => item.reportId == reportId);
     await _write(queue);
-  }
+  });
 
-  Future<void> clear() async {
+  Future<void> clear() => _exclusive(() async {
     final SharedPreferences preferences = await SharedPreferences.getInstance();
     await preferences.remove(_storageKey);
-  }
+  });
 
   /// Reenvía la cola en orden. Se detiene ante el primer fallo transitorio para
   /// no gastar batería ni datos repitiendo un error de red por cada reporte.
   Future<QueueFlushResult> flush(
+    Future<void> Function(PendingReport report) send, {
+    DateTime? now,
+  }) => _flushInFlight ??= _runFlush(send, now: now).whenComplete(() {
+    _flushInFlight = null;
+  });
+
+  Future<QueueFlushResult> _runFlush(
     Future<void> Function(PendingReport report) send, {
     DateTime? now,
   }) async {
@@ -104,7 +124,9 @@ class OfflineReportQueue {
         continue;
       }
       if (_isExpired(report, moment)) {
-        discarded++;
+        // An old testimony is not a current emergency, but it must not vanish.
+        remaining.add(report);
+        lastError = 'Hay reportes antiguos guardados pendientes de revisión.';
         continue;
       }
       try {
@@ -127,10 +149,28 @@ class OfflineReportQueue {
       }
     }
 
-    await _write(remaining);
+    final int remainingCount = await _exclusive(() async {
+      final current = await load();
+      final original = {
+        for (final report in queue) report.reportId: report.encode(),
+      };
+      final updates = {for (final report in remaining) report.reportId: report};
+      final merged = <PendingReport>[];
+      for (final report in current) {
+        // Preserve new/replaced entries; never resurrect an entry removed by
+        // the user while the network request was in flight.
+        if (original[report.reportId] != report.encode()) {
+          merged.add(report);
+        } else if (updates.containsKey(report.reportId)) {
+          merged.add(updates[report.reportId]!);
+        }
+      }
+      await _write(merged);
+      return merged.length;
+    });
     return QueueFlushResult(
       sent: sent,
-      remaining: remaining.length,
+      remaining: remainingCount,
       discarded: discarded,
       lastError: lastError,
     );

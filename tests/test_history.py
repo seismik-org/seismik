@@ -17,6 +17,29 @@ from api.dependencies import (
     get_redis,
     require_mobile_events_read,
 )
+from api.public import recent_events
+
+
+@pytest.mark.asyncio
+async def test_legacy_recent_keeps_all_reports_in_json_and_geojson():
+    redis = FakeRedis(decode_responses=True)
+    settings = AppSettings()
+    reports = [
+        {"source_id": "sgc_colombia", "official_event_id": "a", "magnitude": 4.2, "magnitude_type": "ML"},
+        {"source_id": "usgs_global", "official_event_id": "b", "magnitude": 4.8, "magnitude_type": "Mw"},
+    ]
+    await redis.xadd(settings.official_stream, {"payload": json.dumps({
+        "event_id": "candidate:official", "preferred_report": reports[0], "reports": reports,
+    })})
+    result = await recent_events(format="json", settings=settings, redis=redis, _authorized=UNLIMITED_PRINCIPAL)
+    assert isinstance(result, dict)
+    item = result["events"][0]
+    assert item["event_id"] == "candidate:official"
+    assert [r["magnitude"] for r in item["source_reports"]] == [4.2, 4.8]
+    assert item["related_event_ids"] == ["candidate:official", "sgc_colombia:a", "usgs_global:b"]
+    geo = await recent_events(format="geojson", settings=settings, redis=redis, _authorized=UNLIMITED_PRINCIPAL)
+    assert not isinstance(geo, dict)
+    assert json.loads(geo.body)["features"][0]["properties"]["source_reports"] == item["source_reports"]
 
 
 @pytest.mark.asyncio
@@ -133,6 +156,10 @@ async def test_history_aggregates_filters_and_caches(monkeypatch: pytest.MonkeyP
     assert response.status_code == 200
     assert response.json()["cached"] is False
     assert [item["source_id"] for item in response.json()["events"]] == ["sgc_colombia"]
+    # Threshold filters the group, not its source reports: do not hide USGS's
+    # lower magnitude for the same event.
+    assert [r["magnitude"] for r in response.json()["events"][0]["source_reports"]] == [4.2, 1.0]
+    assert response.json()["events"][0]["related_event_ids"] == ["sgc_colombia:event-1", "usgs_global:event-1"]
     assert cached.json()["cached"] is True
     assert sorted(calls) == ["sgc_colombia", "usgs_global"]
 

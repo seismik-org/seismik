@@ -2,7 +2,7 @@ FROM python:3.12-slim
 WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
-COPY app.py catalog.json catalog-view.json ./
+COPY app.py catalog.json catalog-view.json resources.json ./
 COPY previews ./previews
 COPY static ./static
 RUN useradd --uid 10001 --create-home waves

@@ -85,6 +85,34 @@ public final class OfflineReportQueue {
     private let maxAttempts: Int
     private let maxAge: TimeInterval
     private let lock = NSLock()
+    private var flushing = false
+
+    private func beginFlush() -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        guard !flushing else { return false }
+        flushing = true
+        return true
+    }
+
+    private func endFlush() {
+        lock.lock()
+        flushing = false
+        lock.unlock()
+    }
+
+    private func merge(_ snapshot: [PendingReport], remaining: [PendingReport]) -> Int {
+        lock.lock()
+        defer { lock.unlock() }
+        let original = Dictionary(uniqueKeysWithValues: snapshot.map { ($0.reportId, $0) })
+        let updates = Dictionary(uniqueKeysWithValues: remaining.map { ($0.reportId, $0) })
+        let merged = loadUnlocked().compactMap { report -> PendingReport? in
+            guard original[report.reportId] == report else { return report }
+            return updates[report.reportId]
+        }
+        writeUnlocked(merged)
+        return merged.count
+    }
 
     public init(
         defaults: UserDefaults = .standard,
@@ -143,6 +171,10 @@ public final class OfflineReportQueue {
         now: Date = Date(),
         send: (PendingReport) async throws -> Void
     ) async -> QueueFlushResult {
+        guard beginFlush() else {
+            return QueueFlushResult(sent: 0, remaining: pendingCount, discarded: 0, lastError: nil)
+        }
+        defer { endFlush() }
         let queue = load()
         if queue.isEmpty {
             return QueueFlushResult(sent: 0, remaining: 0, discarded: 0, lastError: nil)
@@ -160,7 +192,8 @@ public final class OfflineReportQueue {
                 continue
             }
             if now.timeIntervalSince(report.queuedAt) > maxAge {
-                discarded += 1
+                remaining.append(report)
+                lastError = "Hay reportes antiguos guardados pendientes de revisión."
                 continue
             }
             do {
@@ -172,24 +205,18 @@ public final class OfflineReportQueue {
             } catch {
                 lastError = error.localizedDescription
                 var retried = report
-                retried.attempts += 1
+                retried.attempts = min(maxAttempts, retried.attempts + 1)
                 retried.lastError = lastError
-                if retried.attempts >= maxAttempts {
-                    discarded += 1
-                } else {
-                    remaining.append(retried)
-                    offline = true
-                }
+                remaining.append(retried)
+                offline = true
             }
         }
 
-        lock.lock()
-        writeUnlocked(remaining)
-        lock.unlock()
+        let remainingCount = merge(queue, remaining: remaining)
 
         return QueueFlushResult(
             sent: sent,
-            remaining: remaining.count,
+            remaining: remainingCount,
             discarded: discarded,
             lastError: lastError
         )

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:seismik/data/models/pending_report.dart';
 import 'package:seismik/services/offline_queue.dart';
@@ -103,36 +105,42 @@ void main() {
     expect(await queue.pendingCount(), 0);
   });
 
-  test('un reporte demasiado antiguo se descarta sin enviarse', () async {
-    const OfflineReportQueue queue = OfflineReportQueue(
-      maxAge: Duration(days: 30),
-    );
-    await queue.enqueue(
-      report(
-        'viejo',
-        queuedAt: DateTime.now().toUtc().subtract(const Duration(days: 31)),
-      ),
-    );
+  test(
+    'un reporte antiguo se conserva sin enviarse como emergencia actual',
+    () async {
+      const OfflineReportQueue queue = OfflineReportQueue(
+        maxAge: Duration(days: 30),
+      );
+      await queue.enqueue(
+        report(
+          'viejo',
+          queuedAt: DateTime.now().toUtc().subtract(const Duration(days: 31)),
+        ),
+      );
 
-    int calls = 0;
-    final QueueFlushResult result = await queue.flush((_) async => calls++);
+      int calls = 0;
+      final QueueFlushResult result = await queue.flush((_) async => calls++);
 
-    expect(calls, 0);
-    expect(result.discarded, 1);
-    expect(await queue.pendingCount(), 0);
-  });
+      expect(calls, 0);
+      expect(result.discarded, 0);
+      expect(await queue.pendingCount(), 1);
+    },
+  );
 
-test('un reporte que agota los reintentos permanece disponible para reintento manual', () async {
-    const OfflineReportQueue queue = OfflineReportQueue(maxAttempts: 3);
-    await queue.enqueue(report('a', attempts: 2));
+  test(
+    'un reporte que agota los reintentos permanece disponible para reintento manual',
+    () async {
+      const OfflineReportQueue queue = OfflineReportQueue(maxAttempts: 3);
+      await queue.enqueue(report('a', attempts: 2));
 
-    final QueueFlushResult result = await queue.flush((_) async {
-      throw Exception('sin conexión');
-    });
+      final QueueFlushResult result = await queue.flush((_) async {
+        throw Exception('sin conexión');
+      });
 
-  expect(result.discarded, 0);
-  expect(await queue.pendingCount(), 1);
-  });
+      expect(result.discarded, 0);
+      expect(await queue.pendingCount(), 1);
+    },
+  );
 
   test('una entrada corrupta se ignora sin bloquear las demás', () async {
     SharedPreferences.setMockInitialValues(<String, Object>{
@@ -150,6 +158,56 @@ test('un reporte que agota los reintentos permanece disponible para reintento ma
     final QueueFlushResult result = await queue.flush((_) async {});
     expect(result.sent, 0);
     expect(result.remaining, 0);
+  });
+
+  test(
+    'enqueue during flush is preserved and parallel flush sends once',
+    () async {
+      const queue = OfflineReportQueue();
+      await queue.enqueue(report('a'));
+      final entered = Completer<void>();
+      final release = Completer<void>();
+      var sends = 0;
+      final first = queue.flush((_) async {
+        sends++;
+        entered.complete();
+        await release.future;
+      });
+      await entered.future;
+      final second = queue.flush((_) async {
+        sends++;
+      });
+      await queue.enqueue(report('b'));
+      release.complete();
+      await Future.wait([first, second]);
+      expect(sends, 1);
+      expect((await queue.load()).map((r) => r.reportId), ['b']);
+    },
+  );
+
+  test(
+    'clear or replacement during failed delivery is not overwritten',
+    () async {
+      const queue = OfflineReportQueue();
+      await queue.enqueue(report('a'));
+      await queue.flush((_) async {
+        await queue.clear();
+        await queue.enqueue(report('a', attempts: 5));
+        throw Exception('offline');
+      });
+      expect((await queue.load()).single.attempts, 5);
+      await queue.flush((_) async {
+        await queue.clear();
+        throw Exception('offline');
+      });
+      expect(await queue.load(), isEmpty);
+    },
+  );
+
+  test('parallel enqueues do not overwrite one another', () async {
+    const queue = OfflineReportQueue();
+    await Future.wait(List.generate(20, (i) => queue.enqueue(report('$i'))));
+    expect(await queue.pendingCount(), 20);
   });
 
   test('el reporte codificado conserva el cuerpo original', () {

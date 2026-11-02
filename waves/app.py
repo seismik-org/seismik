@@ -54,6 +54,8 @@ def downloads_enabled() -> bool:
 
 # Agregados públicos del archivo: nada que identifique una grabación.
 GROUPS = (
+    ("audit", "supplements/", "Auditoría de candidatos",
+     "Ventanas históricas recuperadas para auditar detecciones; no son sismos confirmados."),
     ("evaluation", "calibration/ml-evaluation-", "Evaluación de magnitud",
      "Grabaciones de eventos usadas para comparar el cálculo de magnitud de Seismik con la referencia."),
     ("historical", "calibration/historical-magnitude-", "Sismos históricos de referencia",
@@ -74,6 +76,11 @@ def index() -> dict:
 def view() -> dict:
     """Contexto legible de cada grabación (de qué sismo es), generado con build-previews.py."""
     return json.loads((ROOT / "catalog-view.json").read_text(encoding="utf-8"))
+
+
+@lru_cache
+def resources() -> dict:
+    return json.loads((ROOT / "resources.json").read_text(encoding="utf-8"))
 
 
 RECORD_ID = re.compile(r"[0-9a-f]{24}")
@@ -175,7 +182,20 @@ def summary():
     return {"mode": "historical_pilot", "live": False, "downloads_enabled": downloads_enabled(),
             "files": data["files"], "bytes": data["bytes"], "waveforms": len(data["records"]),
             "recording_bytes": sum(g["bytes"] for g in groups), "groups": groups,
-            "formats": ["MiniSEED"], "snapshot_date": "2026-10-10", "scientific_validation": "not_validated"}
+            "formats": ["MiniSEED"], "snapshot_date": data.get("snapshot_date", "2026-10-10"),
+            "base_snapshot_date": "2026-10-10", "resource_files": len(resources()["items"]),
+            "scientific_validation": "not_validated"}
+
+
+@app.get("/v1/waves/resources")
+def resource_catalog(claims: dict = Depends(approved)):
+    return {**resources(), "downloads_enabled": downloads_enabled()}
+
+
+@app.get("/v1/waves/history")
+def historical_references():
+    """Public educational references, never candidates or input to an alert pipeline."""
+    return json.loads((ROOT / "static/historical-earthquakes.json").read_text(encoding="utf-8"))
 
 
 @app.get("/v1/waves/session")
@@ -211,7 +231,7 @@ def describe(record: dict) -> dict:
 @app.get("/v1/waves/catalog")
 def catalog(q: str = Query(default="", max_length=120),
             category: str = Query(default="", max_length=40),
-            group: str = Query(default="", pattern="^(evaluation|historical|cases|fixtures)?$"),
+            group: str = Query(default="", pattern="^(evaluation|historical|cases|fixtures|audit)?$"),
             kind: str = Query(default="", pattern="^(evento|ruido|caso)?$"),
             minimum_magnitude: float = Query(default=0, ge=0, le=10),
             sort: str = Query(default="date", pattern="^(date|magnitude|name)$"),
@@ -270,6 +290,22 @@ def download(record_id: str, claims: dict = Depends(approved)):
     match = next((r for r in index()["records"] if r["id"] == record_id), None)
     if match is None:
         raise HTTPException(404, "Grabación no encontrada.")
+    return checked_download(match, claims, "application/vnd.fdsn.mseed")
+
+
+@app.get("/v1/waves/resources/{resource_id}/download")
+def download_resource(resource_id: str, claims: dict = Depends(approved)):
+    if not downloads_enabled():
+        raise HTTPException(404, "Las descargas no están habilitadas.")
+    match = next((r for r in resources()["items"] if r["id"] == resource_id), None)
+    if match is None:
+        raise HTTPException(404, "Recurso no encontrado.")
+    media_type = "application/xml" if match["format"] == "StationXML" else "application/json"
+    return checked_download(match, claims, media_type)
+
+
+def checked_download(match: dict, claims: dict, media_type: str):
+    record_id = match["id"]
     who = hashlib.sha256(claims["email"].encode()).hexdigest()[:12]
     now = time.monotonic()
     recent = _downloads[who]
@@ -287,7 +323,7 @@ def download(record_id: str, claims: dict = Depends(approved)):
     recent.append(now)
     log.info("waves download id=%s who=%s bytes=%d", record_id, who, len(data))
     filename = re.sub(r"[^A-Za-z0-9._-]", "_", Path(match["name"]).name)
-    return Response(content=data, media_type="application/vnd.fdsn.mseed", headers={
+    return Response(content=data, media_type=media_type, headers={
         "Content-Disposition": f'attachment; filename="{filename}"', "X-Waves-SHA256": match["sha256"], "Content-Length": str(len(data))})
 
 

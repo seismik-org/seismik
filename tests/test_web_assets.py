@@ -1,8 +1,8 @@
-"""La web pública: iconos y los requisitos que revisa Google en OAuth.
+"""La web pÃºblica: iconos y los requisitos que revisa Google en OAuth.
 
-Google verifica la marca mirando la página principal. Perder el enlace a la
-privacidad o a los términos invalida la verificación, y eso sólo se descubre
-cuando la revisión vuelve rechazada días después.
+Google verifica la marca mirando la pÃ¡gina principal. Perder el enlace a la
+privacidad o a los tÃ©rminos invalida la verificaciÃ³n, y eso sÃ³lo se descubre
+cuando la revisiÃ³n vuelve rechazada dÃ­as despuÃ©s.
 """
 from __future__ import annotations
 
@@ -31,8 +31,8 @@ def test_felt_portal_shares_the_site_theme_and_navigation() -> None:
     assert "color: var(--text)" in theme
     assert "font-size: 16px" in theme
 
-# El logotipo completo mide más de 800 KB: enlazarlo como favicon obliga a
-# descargarlo entero para pintar 16 píxeles.
+# El logotipo completo mide mÃ¡s de 800 KB: enlazarlo como favicon obliga a
+# descargarlo entero para pintar 16 pÃ­xeles.
 MAX_ICON_KB = {
     "favicon.ico": 40,
     "assets/favicon-16.png": 8,
@@ -57,7 +57,7 @@ def test_each_icon_is_small_enough_to_be_an_icon(name: str) -> None:
     size_kb = path.stat().st_size / 1024
 
     assert size_kb <= MAX_ICON_KB[name], (
-        f"{name} pesa {size_kb:.0f} KB; el límite razonable es {MAX_ICON_KB[name]} KB"
+        f"{name} pesa {size_kb:.0f} KB; el lÃ­mite razonable es {MAX_ICON_KB[name]} KB"
     )
 
 
@@ -111,7 +111,7 @@ def test_the_homepage_links_privacy_and_terms() -> None:
 
 
 def test_the_homepage_describes_the_product() -> None:
-    """Una página vacía o de dominio aparcado hace fallar la verificación."""
+    """Una pÃ¡gina vacÃ­a o de dominio aparcado hace fallar la verificaciÃ³n."""
 
     html = HOME.read_text(encoding="utf-8")
 
