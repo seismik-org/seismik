@@ -18,10 +18,10 @@ from eew.delivery import (
     DeliverySpool,
     DurableEventDelivery,
 )
-from eew.models import EarthquakeCandidate, OfficialReportUpdate
+from eew.models import EarthquakeCandidate, MagnitudeEstimateUpdate, OfficialReportUpdate
 from eew.pubsub_delivery import PubSubEventPublisher
 
-AlertEvent = EarthquakeCandidate | OfficialReportUpdate
+AlertEvent = EarthquakeCandidate | OfficialReportUpdate | MagnitudeEstimateUpdate
 
 LOGGER = logging.getLogger(__name__)
 
@@ -107,6 +107,7 @@ class AlertDispatcher:
         event_type = (
             "earthquake_candidate"
             if isinstance(event, EarthquakeCandidate)
+            else "magnitude_estimate_update" if isinstance(event, MagnitudeEstimateUpdate)
             else "official_report_update"
         )
         if self.settings.pubsub_topic:
@@ -226,7 +227,8 @@ class AlertDispatcher:
 
     def _url_for(self, event_type: str) -> str | None:
         if self.settings.webhook_base_url:
-            path = CANDIDATE_PATH if event_type == "earthquake_candidate" else OFFICIAL_PATH
+            path = {"earthquake_candidate": CANDIDATE_PATH, "official_report_update": OFFICIAL_PATH,
+                    "magnitude_estimate_update": "/v1/events/magnitude-update"}[event_type]
             return self.settings.webhook_base_url.rstrip("/") + path
         return self.settings.webhook_url
 
@@ -236,6 +238,7 @@ class AlertDispatcher:
         event_type = (
             "earthquake_candidate"
             if isinstance(event, EarthquakeCandidate)
+            else "magnitude_estimate_update" if isinstance(event, MagnitudeEstimateUpdate)
             else "official_report_update"
         )
         return self._url_for(event_type)

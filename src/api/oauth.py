@@ -68,6 +68,9 @@ def _cookie_name() -> str:
 
 AFTER_LOGIN_COOKIE = "seismik_after_login"
 WAVES_MARKER = "waves"
+ERASURE_MARKER = "delete-account"
+ACCOUNT_MARKER = "account"
+ACCOUNT_LINK_PREFIX = "account-link-"
 
 
 def _mobile_return_to(value: str | None) -> str | None:
@@ -96,6 +99,22 @@ def _app_challenge(value: str | None, return_to: str | None) -> str | None:
     return value
 
 
+async def _link_state(request: Request, link: str | None) -> dict[str, str]:
+    from api.account_center import link_state
+
+    return await link_state(request, link)
+
+
+async def _complete(request: Request, provider: str, user: dict[str, str], saved: dict[str, Any]) -> Response:
+    """Fin de un flujo OAuth: enlaza la identidad a la cuenta que lo pidió, o inicia sesión."""
+
+    if saved.get("link_token"):
+        from api.account_center import complete_link
+
+        return await complete_link(request, provider, user, str(saved["link_token"]))
+    return await _finish_login(request, user, saved.get("return_to"), saved.get("app_challenge"))
+
+
 async def _finish_login(
     request: Request,
     user: dict[str, str],
@@ -110,7 +129,18 @@ async def _finish_login(
         return admin_response
     settings = request.app.state.settings
     session = secrets.token_urlsafe(48)
-    user = {**user, "authenticated_at": str(int(time.time()))}
+    original_uid = str(user.get("uid") or "")
+    if not user.get("firebase_uid") and original_uid:
+        # Una identidad de Google o GitHub enlazada a otra cuenta entra en esa cuenta.
+        from api.account_center import provider_link_key
+
+        bound = await request.app.state.redis.get(provider_link_key(original_uid))
+        if bound:
+            user = {**user, "uid": str(bound)}
+    # Con qué entró la persona: «Mi cuenta» lo muestra para que no haya dudas de cuál es su sesión.
+    method = ("email" if user.get("firebase_uid") else "github" if original_uid.startswith("github:")
+              else "apple" if original_uid.startswith("apple:") else "google")
+    user = {**user, "authenticated_at": str(int(time.time())), "login_method": method}
     await request.app.state.redis.set(
         f"seismik:oauth:session:{session}",
         json.dumps(user),
@@ -125,6 +155,22 @@ async def _finish_login(
     back_to_liveahora = not return_to and request.cookies.get(AFTER_LOGIN_COOKIE) == "liveahora"
     if back_to_liveahora:
         target = "https://liveahora.seismik.org/admin/"
+    # Igual que Waves: un valor fijo pide volver a la página de eliminación; el destino es una
+    # constante de la configuración, nunca algo que venga de la cookie.
+    back_to_erasure = not return_to and request.cookies.get(AFTER_LOGIN_COOKIE) == ERASURE_MARKER
+    if back_to_erasure:
+        target = settings.account_erasure_return_url
+    # Igual: la marca fija «account» devuelve al centro de la cuenta (destino constante).
+    # La app nunca lee la cookie del navegador: sólo el inicio de sesión web usa estos marcadores.
+    marker = None if return_to else request.cookies.get(AFTER_LOGIN_COOKIE)
+    back_to_account = marker == ACCOUNT_MARKER
+    if back_to_account:
+        target = "https://auth.seismik.org/account/"
+    # «account-link-google|github|email»: tras volver a entrar se continúa la vinculación que la persona había pedido.
+    link_method = marker.removeprefix(ACCOUNT_LINK_PREFIX) if marker and marker.startswith(ACCOUNT_LINK_PREFIX) else ""
+    back_to_link = link_method in ("google", "github", "email")
+    if back_to_link:
+        target = f"https://auth.seismik.org/v1/oauth/account/methods/link/{link_method}"
     if return_to:
         code = secrets.token_urlsafe(32)
         await request.app.state.redis.set(
@@ -139,7 +185,7 @@ async def _finish_login(
         secure=True, httponly=True, samesite="lax", path="/",
         domain=settings.oauth_cookie_domain,
     )
-    if back_to_waves or back_to_liveahora:
+    if back_to_waves or back_to_erasure or back_to_account or back_to_link or back_to_liveahora:
         response.delete_cookie(
             AFTER_LOGIN_COOKIE, path="/", domain=settings.oauth_cookie_domain,
             secure=True, httponly=True, samesite="none",
@@ -252,11 +298,15 @@ async def identity_entry(request: Request, flow_id: str) -> Response:
 
 @router.get("/google/start")
 async def google_start(
-    request: Request, return_to: str | None = None, app_challenge: str | None = None
+    request: Request, return_to: str | None = None, app_challenge: str | None = None, link: str | None = None
 ) -> Response:
     settings = request.app.state.settings
     if not settings.oauth_google_client_id or not settings.oauth_google_client_secret.get_secret_value():
         raise HTTPException(status_code=503, detail="OAuth directo no está configurado")
+    try:
+        link_extra = await _link_state(request, link)
+    except HTTPException:
+        return RedirectResponse("https://auth.seismik.org/account/?link=expired", status_code=303)
     state = secrets.token_urlsafe(32)
     verifier = _pkce_verifier()
     await request.app.state.redis.set(
@@ -265,6 +315,7 @@ async def google_start(
             "verifier": verifier,
             "return_to": _mobile_return_to(return_to),
             "app_challenge": _app_challenge(app_challenge, return_to),
+            **link_extra,
         }),
         ex=600,
     )
@@ -317,21 +368,25 @@ async def google_callback(request: Request, code: str | None = None, state: str 
     user = profile.json()
     if not user.get("email_verified", False):
         raise HTTPException(status_code=403, detail="Se requiere un correo Google verificado")
-    return await _finish_login(
+    return await _complete(
         request,
+        "google",
         {"uid": user.get("sub", ""), "email": user["email"], "name": user.get("name", "")},
-        saved.get("return_to"),
-        saved.get("app_challenge"),
+        saved,
     )
 
 
 @router.get("/github/start")
 async def github_start(
-    request: Request, return_to: str | None = None, app_challenge: str | None = None
+    request: Request, return_to: str | None = None, app_challenge: str | None = None, link: str | None = None
 ) -> Response:
     settings = request.app.state.settings
     if not _github_is_configured(settings):
         raise HTTPException(status_code=503, detail="GitHub OAuth aún no está configurado")
+    try:
+        link_extra = await _link_state(request, link)
+    except HTTPException:
+        return RedirectResponse("https://auth.seismik.org/account/?link=expired", status_code=303)
     state = secrets.token_urlsafe(32)
     verifier = _pkce_verifier()
     await request.app.state.redis.set(
@@ -342,6 +397,7 @@ async def github_start(
                 "verifier": verifier,
                 "return_to": _mobile_return_to(return_to),
                 "app_challenge": _app_challenge(app_challenge, return_to),
+                **link_extra,
             }
         ),
         ex=600,
@@ -406,15 +462,15 @@ async def github_callback(
     if not email_record:
         raise HTTPException(status_code=403, detail="GitHub requiere un correo primario verificado")
     github_user = profile.json()
-    return await _finish_login(
+    return await _complete(
         request,
+        "github",
         {
             "uid": f"github:{github_user.get('id', '')}",
             "email": email_record["email"],
             "name": github_user.get("name") or github_user.get("login", ""),
         },
-        saved.get("return_to"),
-        saved.get("app_challenge"),
+        saved,
     )
 
 

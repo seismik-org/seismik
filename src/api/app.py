@@ -8,7 +8,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from redis.asyncio import Redis
 
+from api.account_center import router as account_center_router
 from api.account_deletion import router as account_deletion_router
+from api.account_erasure import router as account_erasure_router
 from api.admin import router as admin_router
 from api.admin_beta import router as admin_beta_router
 from api.admin_ops import router as admin_ops_router
@@ -20,6 +22,7 @@ from api.developer_keys import router as developer_keys_router
 from api.devices import router as devices_router
 from api.devices_store import DeviceRepository
 from api.edge_origin import EdgeOriginGuard
+from api.email_actions import router as email_actions_router
 from api.errors import install as install_error_codes
 from api.family import account_router as family_account_router
 from api.family import router as family_router
@@ -110,6 +113,9 @@ def create_app(settings: AppSettings | None = None) -> FastAPI:
     app.include_router(admin_ops_router)
     app.include_router(admin_security_router)
     app.include_router(account_deletion_router)
+    app.include_router(account_erasure_router)
+    app.include_router(account_center_router)
+    app.include_router(email_actions_router)
 
     @app.get("/health/live", tags=["health"])
     async def live() -> dict[str, str]:

@@ -19,6 +19,7 @@ from api.family import family_members_key
 from api.family_automatic import share_alert_locations
 from api.runtime_controls import heartbeat, paused, service_info
 from api.schemas import DeviceTarget
+from dispatcher.candidate_quality import candidate_alarm_reason
 from dispatcher.policy import (
     CATALOG_ORIGIN,
     EARLY_ALARM_MMI,
@@ -125,34 +126,68 @@ class StreamConsumer:
         await self.redis.set(
             f"seismik:event-zone:{event['event_id']}", mapping, ex=self.settings.event_zone_ttl_seconds
         )
+        quality_reason = candidate_alarm_reason(event)
+        diagnostic = quality_reason not in {"eligible", "not_seedlink"}
+        if diagnostic:
+            if zone_id not in self.settings.seedlink_diagnostic_zones:
+                LOGGER.info("Candidate diagnostics outside configured zones event_id=%s zone=%s",
+                            event["event_id"], zone_id)
+                return
+            LOGGER.info("Candidate quality event_id=%s reason=%s diagnostic_only=true",
+                        event["event_id"], quality_reason)
+            if not self.settings.seedlink_diagnostic_device_ids:
+                return
+            event = {**event, "diagnostic_only": True, "quality_reason": quality_reason}
+            # Centroid is not a distance to the earthquake. Diagnostics are selected
+            # by explicit device ID, not this geographical approximation.
+            latitude = longitude = None
+        elif quality_reason == "eligible":
+            latitude = event["association_quality"]["latitude"]
+            longitude = event["association_quality"]["longitude"]
+            event = {**event, "estimated_latitude": latitude, "estimated_longitude": longitude}
         # La reclamación ocurre antes del envío: dos dispatchers en paralelo no
         # pueden alertar la misma zona, y el cooldown ya no depende de que el
         # push termine sin fallar.
-        decision = await self.policy.claim_candidate(event)
+        claim_event = {**event, "zone_id": f"{zone_id}:diagnostic"} if diagnostic else event
+        decision = await self.policy.claim_candidate(claim_event)
         if decision.suppressed:
             LOGGER.info(
                 "Critical alert suppressed reason=%s zone=%s event_id=%s",
                 decision.reason, zone_id, event["event_id"],
             )
             return
-        await self._enqueue_integration_event(event)
+        if not diagnostic:
+            await self._enqueue_integration_event(event)
         magnitude = _as_float(event.get("magnitude_estimate"))
         try:
-            targets = await self.devices.recipients(
-                zone_id=zone_id,
-                latitude=latitude,
-                longitude=longitude,
-                radius_km=self.policy.perimeter_search_radius_km(magnitude, None, EARLY_ALARM_MMI),
-            )
+            if diagnostic:
+                targets = []
+                for diagnostic_id in self.settings.seedlink_diagnostic_device_ids:
+                    target = await self.devices.resolve(diagnostic_id)
+                    if target is not None:
+                        targets.append(target)
+            else:
+                targets = await self.devices.recipients(
+                    zone_id=zone_id,
+                    latitude=latitude,
+                    longitude=longitude,
+                    radius_km=self.policy.perimeter_search_radius_km(magnitude, None, EARLY_ALARM_MMI),
+                )
             targets = self.policy.filter_critical(
                 targets,
                 latitude=latitude,
                 longitude=longitude,
                 magnitude=magnitude,
+                depth_km=(event.get("association_quality") or {}).get("depth_km"),
+                diagnostic=diagnostic,
+                legacy_crowd_fallback=quality_reason == "not_seedlink",
+                origin_time=(event.get("association_quality") or {}).get("origin_time")
+                if not diagnostic else None,
             )
             result = await self._send_earthquake(event, targets, critical=True)
             await self._record_dry_run(event, result, critical=True)
-            await self._record_ledger(event, critical=True, delivered=result.attempted)
+            if not diagnostic:
+                await self._record_ledger(event, critical=True, delivered=result.attempted)
             await self._remove_invalid(result.invalid_device_ids)
         except Exception:
             await self.policy.release(decision)
@@ -235,7 +270,7 @@ class StreamConsumer:
             }, maxlen=self.settings.stream_maxlen, approximate=True)
             return PushResult(0, 0)
         result = await self.push.send(event, targets, critical=critical)
-        if critical and not result.dry_run and result.attempted:
+        if critical and not event.get("diagnostic_only") and not result.dry_run and result.attempted:
             try:
                 await share_alert_locations(self.redis, self.settings, event, targets)
             except Exception:
@@ -379,7 +414,9 @@ class StreamConsumer:
     ) -> None:
         """Guarda la alerta emitida para que una app sin conexión la recupere."""
 
-        report = event.get("preferred_report") or {}
+        report = event.get("preferred_report") or (
+            event.get("association_quality") if candidate_alarm_reason(event) == "eligible" else {}
+        ) or {}
         entry = {
             "event_id": str(event["event_id"]),
             "type": str(event["type"]),
@@ -505,6 +542,13 @@ async def run_dispatcher(*, serve_health: bool = True) -> None:
     settings = get_settings()
     redis = Redis.from_url(settings.redis_url, decode_responses=True)
     devices = DeviceRepository(redis)
+    registered_diagnostics = 0
+    for diagnostic_id in settings.seedlink_diagnostic_device_ids:
+        target = await devices.resolve(diagnostic_id)
+        registered_diagnostics += int(target is not None and target.receive_early_alerts)
+    LOGGER.info("SeedLink diagnostics configured=%d registered_and_subscribed=%d zones=%s",
+                len(settings.seedlink_diagnostic_device_ids), registered_diagnostics,
+                ",".join(settings.seedlink_diagnostic_zones))
     worker = StreamConsumer(
         redis,
         settings,

@@ -16,6 +16,7 @@ from typing import Any, Callable
 
 import requests
 
+from eew.candidate_evidence import catalogue_phase_consistent
 from eew.config import OfficialReportsSettings
 from eew.magnitude_shadow import observation_for_match
 from eew.models import (
@@ -196,7 +197,7 @@ class OfficialApiClient:
         )
 
     def _fetch_fdsn_geojson(self, start: datetime, end: datetime) -> list[OfficialReport]:
-        payload = self._get(
+        response = self._get(
             params={
                 "format": "geojson",
                 # INGV rechaza fracciones de segundo; USGS acepta este subconjunto.
@@ -205,7 +206,10 @@ class OfficialApiClient:
                 "orderby": "time",
                 "limit": 200,
             }
-        ).json()
+        )
+        if response.status_code == 204:
+            return []
+        payload = response.json()
         reports = []
         for feature in payload.get("features", []):
             props = feature.get("properties", {})
@@ -245,14 +249,17 @@ class OfficialApiClient:
         USGS rompa el respaldo europeo.
         """
 
-        payload = self._get(
+        response = self._get(
             params={
                 "format": "json",
                 "starttime": start.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S"),
                 "endtime": end.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S"),
                 "limit": 200,
             }
-        ).json()
+        )
+        if response.status_code == 204:
+            return []
+        payload = response.json()
         reports = []
         for feature in payload.get("features", []):
             props = feature.get("properties", {})
@@ -594,6 +601,8 @@ def match_report(
         )
         if distance > settings.max_distance_km:
             return None
+    if not catalogue_phase_consistent(candidate, report):
+        return None
     return replace(
         report,
         origin_time_delta_seconds=round(delta, 3),

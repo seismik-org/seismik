@@ -27,6 +27,8 @@ class StationTrigger:
     latitude: float | None = None
     longitude: float | None = None
     packet_lag_seconds: float | None = None
+    p_onset_time: str | None = None
+    pick_method: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -50,6 +52,7 @@ class EarthquakeCandidate:
     wave_strength_index: float | None = None
     magnitude_estimate: float | None = None
     magnitude_estimate_status: str = "pending_station_calibration"
+    association_quality: dict[str, Any] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         result = asdict(self)
@@ -78,6 +81,18 @@ class OfficialReport:
     felt: str | None = None
     distance_from_station_centroid_km: float | None = None
     origin_time_delta_seconds: float | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+
+@dataclass(frozen=True)
+class MagnitudeEstimateUpdate:
+    event_id: str
+    candidate_event_id: str
+    computed_at: str
+    own_magnitude: dict[str, Any]
+    type: str = "magnitude_estimate_update"
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)

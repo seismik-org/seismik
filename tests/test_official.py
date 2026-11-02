@@ -59,6 +59,8 @@ def candidate() -> EarthquakeCandidate:
             longitude=-73.1,
         ),
     )
+    stations = tuple(replace(stations[0], station_id=f"CM.{name}",
+                             stream_id=f"CM.{name}.00.HHZ") for name in ("A", "B", "C"))
     return EarthquakeCandidate(
         event_id="candidate-1",
         type="earthquake_candidate",
@@ -68,8 +70,8 @@ def candidate() -> EarthquakeCandidate:
         country_codes=("CO",),
         detected_at="2026-01-01T00:00:32Z",
         coincidence_window_seconds=15,
-        required_stations=1,
-        station_count=1,
+        required_stations=3,
+        station_count=3,
         stations=stations,
         estimated_latitude=6.8,
         estimated_longitude=-73.1,
@@ -120,7 +122,9 @@ def test_rejects_distant_or_temporally_unrelated_report() -> None:
     ) is None
 
 
-def test_association_boundaries_are_inclusive_and_query_is_bounded() -> None:
+def test_association_boundaries_are_inclusive_and_query_is_bounded(monkeypatch) -> None:
+    # Isolate the temporal query boundary; physical consistency has separate tests.
+    monkeypatch.setattr("eew.official.catalogue_phase_consistent", lambda *_: True)
     settings = OfficialReportsSettings(
         enabled=False,
         max_origin_time_delta_seconds=120,

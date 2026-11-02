@@ -22,7 +22,8 @@ from eew.config import (
     Settings,
     StationSubscription,
 )
-from eew.models import EarthquakeCandidate
+from eew.live_magnitude import STATIONS, LiveMagnitudeEstimator
+from eew.models import EarthquakeCandidate, StationTrigger
 from eew.processor import StationProcessor
 
 LOGGER = logging.getLogger(__name__)
@@ -67,12 +68,18 @@ class SeedLinkProviderWorker:
         on_candidate: Callable[[EarthquakeCandidate], None] | None = None,
         client_factory: Callable[..., EasySeedLinkClient] = create_seedlink_client,
         jitter_source: Callable[[float, float], float] = random.uniform,
+        live_magnitude: LiveMagnitudeEstimator | None = None,
+        on_trigger: Callable[[StationTrigger], None] | None = None,
+        publish_candidate: Callable[[EarthquakeCandidate], object] | None = None,
     ):
         self.provider = provider
         self.seedlink_settings = seedlink_settings
         self.coincidence = coincidence
         self.dispatcher = dispatcher
         self.on_candidate = on_candidate
+        self.on_trigger = on_trigger
+        self.publish_candidate = publish_candidate or dispatcher.submit
+        self.live_magnitude = live_magnitude
         self._client_factory = client_factory
         self._jitter_source = jitter_source
         self.processors = {
@@ -85,6 +92,8 @@ class SeedLinkProviderWorker:
                     zone_id=station.zone_id or station.country_code or "ZZ",
                 )
             for station in provider.stations
+            if not (live_magnitude is not None and station.network == "CM"
+                    and station.station in STATIONS and station.channel in {"HHN", "HHE"})
         }
         self._stop = threading.Event()
         self._client: EasySeedLinkClient | None = None
@@ -118,6 +127,10 @@ class SeedLinkProviderWorker:
                 for station in self.provider.stations:
                     selector = station.selector or station.channel
                     client.select_stream(station.network, station.station, selector)
+                    if (self.live_magnitude is not None and station.network == "CM"
+                            and station.station in STATIONS and station.channel == "HHZ"):
+                        for horizontal in ("HHN", "HHE"):
+                            client.select_stream(station.network, station.station, horizontal)
                     LOGGER.info(
                         "Suscripción provider=%s country=%s zone=%s network=%s station=%s selector=%s",
                         self.provider.id,
@@ -177,6 +190,10 @@ class SeedLinkProviderWorker:
     def _on_data(self, trace: Trace) -> None:
         self._received_since_connect = True
         try:
+            if self.live_magnitude is not None:
+                self.live_magnitude.buffer.add(trace)
+                if trace.stats.network == "CM" and trace.stats.channel in {"HHN", "HHE"}:
+                    return
             key = self._processor_key(
                 trace.stats.network,
                 trace.stats.station,
@@ -194,9 +211,13 @@ class SeedLinkProviderWorker:
             station_trigger = processor.process(trace)
             if station_trigger is None:
                 return
+            if self.on_trigger is not None:
+                self.on_trigger(station_trigger)
             event = self.coincidence.add(station_trigger)
             if event is not None:
-                self.dispatcher.submit(event)
+                self.publish_candidate(event)
+                if self.live_magnitude is not None:
+                    self.live_magnitude.schedule(event)
                 if self.on_candidate is not None:
                     self.on_candidate(event)
         except Exception:
@@ -271,6 +292,13 @@ class SeedLinkDetectionService:
         self.settings = settings
         self.dispatcher = dispatcher
         self.coincidence = ZoneCoincidenceRouter(settings.coincidence)
+        self.live_magnitude: LiveMagnitudeEstimator | None = None
+        if settings.magnitude.enabled:
+            coordinates = {s.station: (s.latitude, s.longitude)
+                           for p in settings.seedlink.providers if p.enabled for s in p.stations
+                           if s.network == "CM" and s.station in STATIONS
+                           and s.latitude is not None and s.longitude is not None}
+            self.live_magnitude = LiveMagnitudeEstimator.from_files(settings.magnitude, coordinates, dispatcher)
         self.workers = tuple(
             SeedLinkProviderWorker(
                 provider,
@@ -279,6 +307,7 @@ class SeedLinkDetectionService:
                 self.coincidence,
                 dispatcher,
                 on_candidate,
+                live_magnitude=self.live_magnitude,
             )
             for provider in settings.seedlink.providers
             if provider.enabled
@@ -287,6 +316,8 @@ class SeedLinkDetectionService:
         self._threads: list[threading.Thread] = []
 
     def run_forever(self) -> None:
+        if self.live_magnitude is not None:
+            self.live_magnitude.start()
         self._threads = [
             threading.Thread(
                 target=worker.run_forever,
@@ -311,6 +342,8 @@ class SeedLinkDetectionService:
 
     def stop(self) -> None:
         self._stop.set()
+        if self.live_magnitude is not None:
+            self.live_magnitude.close()
         for worker in self.workers:
             worker.stop()
 

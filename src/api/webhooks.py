@@ -8,11 +8,30 @@ from pydantic import BaseModel, ValidationError
 from api.bus import RedisEventBus
 from api.config import AppSettings
 from api.dependencies import get_app_settings, get_bus
-from api.schemas import AcceptedResponse, EarthquakeCandidate, OfficialReportUpdate
+from api.schemas import (
+    AcceptedResponse,
+    EarthquakeCandidate,
+    MagnitudeEstimateUpdate,
+    OfficialReportUpdate,
+)
 from api.security import verify_signature
 
 router = APIRouter(prefix="/v1/events", tags=["events"])
 EventModel = TypeVar("EventModel", bound=BaseModel)
+
+
+@router.post("/magnitude-update", response_model=AcceptedResponse, status_code=status.HTTP_202_ACCEPTED,
+             openapi_extra={"requestBody": {"required": True, "content": {
+                 "application/json": {"schema": MagnitudeEstimateUpdate.model_json_schema()}}}})
+async def ingest_magnitude_update(
+    request: Request,
+    x_webhook_timestamp: str | None = Header(default=None, alias="X-Seismik-Timestamp"),
+    x_signature_sha256: str | None = Header(default=None, alias="X-Seismik-Signature"),
+    bus: RedisEventBus = Depends(get_bus),
+    settings: AppSettings = Depends(get_app_settings),
+) -> AcceptedResponse:
+    return await _ingest(request, MagnitudeEstimateUpdate, settings.magnitude_stream, bus, settings,
+                         x_webhook_timestamp, x_signature_sha256)
 
 
 async def _ingest(
@@ -42,7 +61,7 @@ async def _ingest(
     except ValidationError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-            detail=exc.errors(),
+            detail=exc.errors(include_context=False, include_input=False),
         ) from exc
     result = await bus.publish_once(stream, event.model_dump(mode="json"))
     return AcceptedResponse(

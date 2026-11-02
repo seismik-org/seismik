@@ -31,6 +31,23 @@ class StationTrigger(StrictModel):
     latitude: Latitude | None = None
     longitude: Longitude | None = None
     packet_lag_seconds: float | None = Field(default=None, ge=0)
+    p_onset_time: AwareDatetime | None = None
+    pick_method: Literal["aic_onset_hypothesis_v1"] | None = None
+
+
+class AssociationQuality(StrictModel):
+    status: Literal["insufficient_data", "unsupported_region", "incoherent", "ambiguous", "experimental_consistent"]
+    reason: str = Field(max_length=128)
+    validation_status: Literal["experimental_unvalidated"] = "experimental_unvalidated"
+    latitude: Latitude | None = None
+    longitude: Longitude | None = None
+    depth_km: float | None = Field(default=None, ge=0, le=800)
+    origin_time: AwareDatetime | None = None
+    rms_seconds: float | None = Field(default=None, ge=0)
+    horizontal_uncertainty_km: float | None = Field(default=None, ge=0)
+    azimuthal_gap_deg: float | None = Field(default=None, ge=0, le=360)
+    used_station_ids: tuple[str, ...] = ()
+    rejected_station_ids: tuple[str, ...] = ()
 
 
 class EarthquakeCandidate(StrictModel):
@@ -54,6 +71,7 @@ class EarthquakeCandidate(StrictModel):
     magnitude_estimate_status: str = Field(
         default="pending_station_calibration", min_length=1, max_length=128
     )
+    association_quality: AssociationQuality | None = None
 
     @model_validator(mode="after")
     def validate_counts(self) -> "EarthquakeCandidate":
@@ -127,6 +145,28 @@ class OfficialReportUpdate(StrictModel):
 class Platform(StrEnum):
     IOS = "ios"
     ANDROID = "android"
+
+
+class MagnitudeEstimateUpdate(StrictModel):
+    event_id: str = Field(min_length=1, max_length=128)
+    candidate_event_id: str = Field(min_length=1, max_length=128)
+    type: Literal["magnitude_estimate_update"]
+    computed_at: AwareDatetime
+    own_magnitude: dict[str, object]
+
+    @model_validator(mode="after")
+    def validate_estimate(self) -> "MagnitudeEstimateUpdate":
+        from api.history import _own_magnitude
+
+        raw = self.own_magnitude
+        if not isinstance(raw.get("validation_status"), str) or not raw["validation_status"]:
+            raise ValueError("validation_status is required")
+        sanitized = _own_magnitude({"own_magnitude": raw})
+        if raw.get("value") is not None and sanitized["value"] is None:
+            raise ValueError("invalid own magnitude")
+        if raw.get("value") is None and not raw.get("reason"):
+            raise ValueError("unavailable estimate requires reason")
+        return self
 
 
 class DeviceRegistration(StrictModel):

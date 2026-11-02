@@ -83,6 +83,8 @@ class CoincidenceSettings:
     max_station_lag_seconds: float = 15.0
     minimum_located_stations: int = 0
     minimum_network_aperture_km: float = 0.0
+    phase_association_enabled: bool = False
+    phase_travel_time_table: str = "data/calibration/traveltime-iasp91-regional.npz"
 
 
 @dataclass(frozen=True)
@@ -117,12 +119,21 @@ class OfficialReportsSettings:
 
 
 @dataclass(frozen=True)
+class MagnitudeSettings:
+    enabled: bool = False
+    responses_path: str = "data/calibration/instrument-responses-2026-10-03/colombia-response.xml"
+    table_path: str = "data/calibration/traveltime-iasp91-regional.npz"
+    calibration_path: str = "data/calibration/ml-calibration.json"
+
+
+@dataclass(frozen=True)
 class Settings:
     seedlink: SeedLinkSettings
     detection: DetectionSettings
     coincidence: CoincidenceSettings
     alert: AlertSettings
     official_reports: OfficialReportsSettings
+    magnitude: MagnitudeSettings = field(default_factory=MagnitudeSettings)
 
     @classmethod
     def load(cls, path: str | Path) -> "Settings":
@@ -249,6 +260,7 @@ class Settings:
             coincidence=CoincidenceSettings(**raw.get("coincidence", {})),
             alert=AlertSettings(**alert_raw),
             official_reports=OfficialReportsSettings(**official_raw),
+            magnitude=MagnitudeSettings(**raw.get("magnitude", {})),
         )
         settings.validate()
         return settings

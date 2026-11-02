@@ -333,6 +333,16 @@ def notification_content(
             data["critical"] = True
         return title, body, data
 
+    if event.get("diagnostic_only"):
+        return "PRUEBA: detección de Seismik", (
+            "Candidato sin confirmar. Aviso de diagnóstico personal; "
+            "no confirma un sismo ni una sacudida peligrosa."
+        ), {
+            "type": event["type"], "event_id": event["event_id"],
+            "zone_id": event["zone_id"], "detected_at": event["detected_at"],
+            "diagnostic_only": True, "quality_reason": event.get("quality_reason"),
+            "critical": critical,
+        }
     title = "\u00a1ALERTA S\u00cdSMICA!"
     body = (
         "\u00a1Ag\u00e1chate, C\u00fabrete y Suj\u00e9tate! "

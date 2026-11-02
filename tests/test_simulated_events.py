@@ -92,6 +92,8 @@ def simulation_settings(**overrides: object) -> AppSettings:
     return AppSettings(
         webhook_hmac_secret=SECRET,
         device_api_key="device-bootstrap-key",
+        seedlink_diagnostic_device_ids=("device-near-01",),
+        seedlink_diagnostic_zones=("andes",),
         **overrides,
     )
 
@@ -164,7 +166,7 @@ def test_an_unknown_profile_is_reported_clearly() -> None:
 
 
 @pytest.mark.asyncio
-async def test_drill_reaches_only_the_devices_that_asked_for_it() -> None:
+async def test_unvalidated_drill_reaches_only_explicit_diagnostic_devices() -> None:
     redis = FakeRedis(decode_responses=True)
     settings = simulation_settings()
     await register_device(redis, "device-near-01", latitude=4.70, longitude=-74.00)
@@ -191,8 +193,9 @@ async def test_drill_reaches_only_the_devices_that_asked_for_it() -> None:
     assert [target.device_id for target in targets] == ["device-near-01"]
 
     ledger = await redis.xrevrange(settings.alert_ledger_stream, count=5)
-    assert ledger[0][1]["event_id"] == candidate["event_id"]
-    assert ledger[0][1]["critical"] == "true"
+    assert ledger == []
+    assert event["diagnostic_only"] is True
+    assert await redis.xlen(settings.integration_stream) == 0
     assert official["candidate_event_id"] == candidate["event_id"]
 
 

@@ -1,4 +1,4 @@
-"""La bitácora de alertas permite que una app sin conexión recupere lo perdido."""
+"""La bitÃƒÂ¡cora de alertas permite que una app sin conexiÃƒÂ³n recupere lo perdido."""
 from __future__ import annotations
 
 from datetime import datetime, timezone
@@ -7,6 +7,7 @@ import httpx
 import pytest
 from fakeredis.aioredis import FakeRedis
 from fastapi import FastAPI
+from safety_fixtures import eligible_candidate
 
 from api.alerts import router
 from api.config import AppSettings
@@ -69,13 +70,7 @@ async def register(
 
 
 def candidate(event_id: str = "candidate-1") -> dict:
-    return {
-        "event_id": event_id,
-        "type": "earthquake_candidate",
-        "zone_id": "andes",
-        "estimated_latitude": 4.65,
-        "estimated_longitude": -74.05,
-    }
+    return eligible_candidate(event_id)
 
 
 def official(event_id: str = "official-1", magnitude: float = 5.4) -> dict:
@@ -165,7 +160,7 @@ async def test_cursor_returns_only_what_happened_after_the_last_sync() -> None:
 async def test_ledger_applies_the_felt_perimeter_of_the_device() -> None:
     redis = FakeRedis(decode_responses=True)
     settings = AppSettings()
-    # En Medellín y con los ajustes más generosos: un M5.4 en Bogotá no se sintió allí.
+    # En MedellÃƒÂ­n y con los ajustes mÃƒÂ¡s generosos: un M5.4 en BogotÃƒÂ¡ no se sintiÃƒÂ³ allÃƒÂ­.
     await register(
         redis, latitude=6.25, longitude=-75.57, minimum_magnitude=0.0, alert_radius_km=2_000
     )
@@ -207,7 +202,7 @@ async def test_ledger_marks_a_recent_strong_report_as_an_alarm() -> None:
 
 
 @pytest.mark.asyncio
-async def test_ledger_applies_the_radius_chosen_by_the_device() -> None:
+async def test_validated_felt_perimeter_can_exceed_the_device_radius() -> None:
     redis = FakeRedis(decode_responses=True)
     settings = AppSettings()
     await register(redis, latitude=6.25, longitude=-75.57, alert_radius_km=50)
@@ -222,7 +217,7 @@ async def test_ledger_applies_the_radius_chosen_by_the_device() -> None:
             params={"device_id": "device-0001"},
             headers=await session_headers(redis, settings, "device-0001"),
         )
-    assert response.json()["alerts"] == []
+    assert [item["event_id"] for item in response.json()["alerts"]] == ["candidate-1"]
 
 
 @pytest.mark.asyncio

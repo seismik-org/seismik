@@ -5,6 +5,7 @@ import asyncio
 import hashlib
 import json
 import time
+from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import APIRouter, Cookie, HTTPException, Request
@@ -38,6 +39,11 @@ async def resolve_identity(request: Request, identity: dict[str, Any]) -> dict[s
 
 async def validate_session(request: Request, user: dict[str, Any]) -> None:
     """Password resets, disabling and verification changes invalidate sessions."""
+    from api.account_erasure import session_was_erased
+
+    redis = getattr(request.app.state, "redis", None)
+    if redis is not None and await session_was_erased(redis, user):
+        raise HTTPException(401, "Esta cuenta fue eliminada; inicia sesión de nuevo")
     if not user.get("firebase_uid"):
         return
     try:
@@ -67,6 +73,12 @@ async def email_config(request: Request) -> dict[str, Any]:
         "projectId": settings.firebase_web_project_id,
         "appId": settings.firebase_web_app_id,
     } if enabled else None}
+
+
+def _link_error(status_code: int, code: str, message: str) -> HTTPException:
+    """Error al vincular un correo: texto claro para la persona y un código para que la página ofrezca el paso siguiente."""
+
+    return HTTPException(status_code, {"code": code, "message": message})
 
 
 @router.post("/exchange")
@@ -119,8 +131,18 @@ async def email_exchange(
     if body.link:
         raw = await redis.get(f"seismik:oauth:session:{seismik_session}") if seismik_session else None
         existing = json.loads(raw) if raw else {}
-        if not existing.get("uid") or existing.get("firebase_uid") or not 0 <= time.time() - float(existing.get("authenticated_at", 0)) <= 300:
-            raise HTTPException(401, "Primero vuelve a entrar con Apple, Google o GitHub y regresa aquí")
+        if not existing.get("uid"):
+            raise _link_error(401, "link_no_session",
+                              "No encontramos tu sesión de Seismik. Entra en «Mi cuenta» con Google, GitHub o Apple y vuelve a pulsar «Vincular».")
+        if existing.get("firebase_uid"):
+            # La sesión ya usa un correo: no hace falta (ni se puede) vincular otro desde ella.
+            if str(existing["firebase_uid"]) == firebase_uid:
+                raise _link_error(409, "link_same", "Ya entraste con este correo: ya forma parte de tu cuenta de Seismik.")
+            raise _link_error(409, "link_has_email",
+                              "Tu sesión actual ya usa un correo, y solo se puede vincular uno. Para vincular otro, entra con Google, GitHub o Apple y hazlo desde «Mi cuenta».")
+        if not 0 <= time.time() - float(existing.get("authenticated_at", 0)) <= 600:
+            raise _link_error(401, "link_reauth",
+                              "Por seguridad, para vincular un acceso tu inicio de sesión debe ser de los últimos 10 minutos. Vuelve a iniciar sesión y se continuará solo.")
         # A Firebase identity with prior usage must keep its original account/data.
         data_keys = (
             f"seismik:developer-keys:{firebase_uid}", f"seismik:developer-profile:{firebase_uid}",
@@ -129,11 +151,16 @@ async def email_exchange(
             f"seismik:billing:ledger:{firebase_uid}",
         )
         if await redis.exists(*data_keys):
-            raise HTTPException(409, "Esta identidad ya tiene datos; conserva sus accesos y contacta soporte")
+            raise _link_error(409, "link_conflict",
+                              "Ese correo ya tiene su propia cuenta de Seismik con datos (dispositivos, familia o claves). No fusionamos cuentas: entra con ese correo sin vincular, o usa otro correo.")
         key = binding_key(firebase_uid)
         await redis.set(key, str(existing["uid"]), nx=True)
         if await redis.get(key) != str(existing["uid"]):
-            raise HTTPException(409, "Esta identidad ya está vinculada; no se modificó ninguna cuenta")
+            raise _link_error(409, "link_taken", "Ese correo ya está vinculado a otra cuenta de Seismik. No se modificó ninguna cuenta.")
+        await redis.hset(
+            f"seismik:account:links:{existing['uid']}", "email",
+            json.dumps({"puid": firebase_uid, "added_at": datetime.now(timezone.utc).isoformat()}),
+        )
     resolved = await resolve_identity(request, identity)
     user = {
         "uid": str(resolved["uid"]), "email": str(identity["email"]),

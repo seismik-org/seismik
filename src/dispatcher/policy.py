@@ -17,6 +17,7 @@ de modo que el reintento del stream vuelva a intentarlo.
 from __future__ import annotations
 
 import json
+import math
 import secrets
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
@@ -30,8 +31,7 @@ from api.schemas import DeviceTarget
 
 __all__ = ["AlertPolicy", "AlertDecision", "haversine_km"]
 
-# La alerta temprana llega antes que las ondas: desde sacudida ligera (IV) vale
-# la pena protegerse. Es el umbral de ShakeAlert en las apps públicas.
+# Umbral propio pendiente de evaluación regional; no es una garantía ShakeAlert.
 EARLY_ALARM_MMI = LIGHT
 # Sacudida fuerte (VI): la alarma suena siempre, sin importar la configuración.
 ALWAYS_ALARM_MMI = STRONG
@@ -269,25 +269,62 @@ class AlertPolicy:
         longitude: float | None,
         magnitude: float | None = None,
         depth_km: float | None = None,
+        diagnostic: bool = False,
+        legacy_crowd_fallback: bool = False,
+        origin_time: Any = None,
+        now: datetime | None = None,
     ) -> list[DeviceTarget]:
         """Alerta temprana: quién debe protegerse antes de que lleguen las ondas.
 
         Con magnitud y epicentro manda el perímetro: suena desde sacudida ligera
         para quien recibe alertas tempranas y desde sacudida fuerte para todos.
-        Sin esos datos no hay perímetro y se conserva el radio de la persona.
+        Sin esos datos sólo se admite la lista explícita de diagnóstico personal.
         """
 
         selected: list[DeviceTarget] = []
         for target in targets:
+            if diagnostic:
+                if (target.device_id in self.settings.seedlink_diagnostic_device_ids
+                        and target.receive_early_alerts):
+                    selected.append(target)
+                continue
             intensity = self._intensity(target, latitude, longitude, magnitude, depth_km)
             if intensity is None:
-                if target.receive_early_alerts and self._within_radius(target, latitude, longitude):
+                # Preserve the separate phone-network policy; this change is
+                # scoped to SeedLink. Never enable this for station candidates.
+                if (legacy_crowd_fallback and target.receive_early_alerts
+                        and self._within_radius(target, latitude, longitude)):
                     selected.append(target)
+                continue
+            if origin_time is not None and not self._early_alarm_useful(
+                target, latitude, longitude, depth_km, origin_time, now
+            ):
+                continue
             elif intensity >= ALWAYS_ALARM_MMI or (
                 target.receive_early_alerts and intensity >= EARLY_ALARM_MMI
             ):
                 selected.append(target)
         return selected
+
+    @staticmethod
+    def _early_alarm_useful(
+        target: DeviceTarget, latitude: float | None, longitude: float | None,
+        depth_km: float | None, origin_time: Any, now: datetime | None,
+    ) -> bool:
+        """Conservative timing screen, not a validated travel-time prediction.
+
+        A fast 4.5 km/s S-wave envelope avoids promising a late alarm is early.
+        This screening approximation must be evaluated regionally with the rest
+        of the source model; it cannot certify safety or delivery latency.
+        """
+        origin = _origin(origin_time)
+        if (origin is None or latitude is None or longitude is None
+                or target.latitude is None or target.longitude is None or depth_km is None):
+            return False
+        elapsed = ((now or datetime.now(timezone.utc)) - origin).total_seconds()
+        distance = haversine_km(latitude, longitude, target.latitude, target.longitude)
+        arrival = math.hypot(distance, depth_km) / 4.5
+        return elapsed >= 0 and arrival - elapsed >= 3
 
     def classify_official(
         self,
@@ -385,6 +422,10 @@ class AlertPolicy:
             or target.latitude is None
             or target.longitude is None
         ):
+            return None
+        if not all(math.isfinite(value) for value in (
+            magnitude, latitude, longitude, target.latitude, target.longitude
+        )) or (depth_km is not None and not math.isfinite(depth_km)):
             return None
         distance = haversine_km(latitude, longitude, target.latitude, target.longitude)
         return intensity_at(float(magnitude), depth_km, distance)

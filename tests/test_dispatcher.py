@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 from fakeredis.aioredis import FakeRedis
+from safety_fixtures import eligible_candidate
 
 from api.config import AppSettings
 from api.schemas import DeviceTarget
@@ -24,7 +25,8 @@ class FakeDevices:
 
     async def recipients(self, **kwargs):
         self.calls.append(kwargs)
-        return [DeviceTarget(device_id="device-0001", platform="android", token="x" * 64)]
+        return [DeviceTarget(device_id="device-0001", platform="android", token="x" * 64,
+                             latitude=4.65, longitude=-74.05)]
 
     async def unregister(self, _device_id: str) -> bool:
         return True
@@ -51,6 +53,7 @@ async def test_candidate_routes_by_zone_and_official_reuses_mapping() -> None:
         "zone_id": "andes", "detected_at": "2026-01-01T00:00:00Z",
         "estimated_latitude": 4.65, "estimated_longitude": -74.05,
     }
+    candidate.update(eligible_candidate("candidate-123"))
     await consumer._handle_candidate(candidate)
     assert push.calls[0][2] is True
     mapping = json.loads(await redis.get("seismik:event-zone:candidate-123"))
@@ -112,6 +115,7 @@ async def test_dry_run_is_audited_without_claiming_push_success() -> None:
         "zone_id": "andes",
         "detected_at": "2026-01-01T00:00:00Z",
     }
+    event.update(eligible_candidate("candidate-audit"))
     await consumer._handle_candidate(event)
     entries = await redis.xrevrange(settings.push_audit_stream, count=1)
     fields = entries[0][1]

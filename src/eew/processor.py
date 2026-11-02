@@ -13,6 +13,7 @@ from obspy.signal.trigger import classic_sta_lta  # type: ignore[import-untyped]
 
 from eew.config import DetectionSettings, StationSubscription
 from eew.models import StationTrigger
+from eew.phase_association import onset_hypothesis
 
 LOGGER = logging.getLogger(__name__)
 
@@ -141,6 +142,11 @@ class StationProcessor:
             peak_index = recent_start + peak_offset
             buffer_start = self._end_time - (self._data.size - 1) / sampling_rate
             trigger_time = buffer_start + peak_index / sampling_rate
+            crossings = np.flatnonzero(recent >= self.settings.trigger_on)
+            onset_index = onset_hypothesis(
+                np.asarray(processed.data, dtype=np.float64), sampling_rate,
+                recent_start + int(crossings[0]),
+            ) if trace.stats.channel.endswith("Z") else None
             # No se deconvoluciona aquí la respuesta instrumental. Estos dos
             # valores permanecen en cuentas para que cualquier futura
             # estimación de magnitud pueda ser reproducible y calibrada por
@@ -168,6 +174,12 @@ class StationProcessor:
                 latitude=self.subscription.latitude,
                 longitude=self.subscription.longitude,
                 packet_lag_seconds=round(packet_lag, 3),
+                p_onset_time=(
+                    (buffer_start + onset_index / sampling_rate).strftime(
+                        "%Y-%m-%dT%H:%M:%S.%fZ"
+                    ) if onset_index is not None else None
+                ),
+                pick_method="aic_onset_hypothesis_v1" if onset_index is not None else None,
             )
             LOGGER.warning(
                 "Disparo local station=%s stream=%s ratio=%.3f time=%s",

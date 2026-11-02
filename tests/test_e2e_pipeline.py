@@ -54,7 +54,7 @@ def write_impulse_case(path: Path) -> tuple[StationSubscription, ...]:
 
 
 @pytest.mark.asyncio
-async def test_replay_webhook_stream_consumer_produces_test_payload(tmp_path: Path) -> None:
+async def test_replay_produces_only_explicit_diagnostic_test_payload(tmp_path: Path) -> None:
     case_path = tmp_path / "e2e.mseed"
     subscriptions = write_impulse_case(case_path)
     replay = MiniSeedReplay(
@@ -80,6 +80,8 @@ async def test_replay_webhook_stream_consumer_produces_test_payload(tmp_path: Pa
         webhook_hmac_secret="e2e-secret",
         push_enabled=False,
         push_mode="dry_run",
+        seedlink_diagnostic_device_ids=("device-e2e-0001",),
+        seedlink_diagnostic_zones=(event["zone_id"],),
     )
     bus = RedisEventBus(redis, settings.stream_maxlen, settings.webhook_idempotency_seconds)
     app = FastAPI()
@@ -129,5 +131,8 @@ async def test_replay_webhook_stream_consumer_produces_test_payload(tmp_path: Pa
     assert audit["event_id"] == event["event_id"]
     assert json.loads(audit["target_device_ids"]) == ["device-e2e-0001"]
     assert "f" * 64 not in audit["payload"]
+    assert json.loads(audit["payload"])["data"]["diagnostic_only"] is True
+    assert await redis.xlen(settings.alert_ledger_stream) == 0
+    assert await redis.xlen(settings.integration_stream) == 0
     pending = await redis.xpending(settings.candidate_stream, settings.dispatcher_group)
     assert pending["pending"] == 0

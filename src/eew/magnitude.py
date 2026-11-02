@@ -30,7 +30,20 @@ class MagnitudeCalibration:
     @property
     def is_validated(self) -> bool:
         return (
-            self.validation_sample_count >= self.minimum_validation_samples
+            all(
+                math.isfinite(value)
+                for value in (
+                    self.intercept,
+                    self.slope,
+                    self.validation_mae,
+                    self.max_validation_mae,
+                )
+            )
+            and self.slope > 0
+            and self.validation_mae >= 0
+            and self.minimum_validation_samples >= 50
+            and self.max_validation_mae <= 0.5
+            and self.validation_sample_count >= self.minimum_validation_samples
             and self.validation_mae <= self.max_validation_mae
         )
 
@@ -53,10 +66,13 @@ def estimate_preliminary_magnitude(
         and trigger.noise_rms_counts is not None
         and trigger.peak_amplitude_counts > 0
         and trigger.noise_rms_counts > 0
+        and math.isfinite(trigger.peak_amplitude_counts)
+        and math.isfinite(trigger.noise_rms_counts)
     ]
     if len(ratios) < 3:
         return None
     ratios.sort()
     midpoint = len(ratios) // 2
     median = ratios[midpoint] if len(ratios) % 2 else (ratios[midpoint - 1] + ratios[midpoint]) / 2
-    return round(max(-2.0, min(10.0, calibration.intercept + calibration.slope * median)), 1)
+    estimate = calibration.intercept + calibration.slope * median
+    return round(estimate, 1) if math.isfinite(estimate) and -2 <= estimate <= 10 else None

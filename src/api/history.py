@@ -3,8 +3,9 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
+import math
 from datetime import datetime, timedelta, timezone
-from typing import Any, cast
+from typing import Any, TypeGuard, cast
 
 from fastapi import APIRouter, Depends, Query, Response
 from redis.asyncio import Redis
@@ -13,6 +14,7 @@ from api.config import AppSettings
 from api.dependencies import ApiPrincipal, get_app_settings, get_redis, require_mobile_events_read
 from api.event_association import associate_events
 from api.geojson import FORMAT_QUERY, GEOJSON_RESPONSE, OutputFormat, feature_collection
+from eew.candidate_evidence import public_candidate_location
 from eew.official import OfficialApiClient, OfficialSource, load_sources
 
 router = APIRouter(prefix="/v1/events", tags=["official-history"])
@@ -64,6 +66,94 @@ async def _fetch_source(
     return [_public_event(source, report) for report in reports]
 
 
+_OWN_MAGNITUDE_METHOD_MAX_LENGTH = 400
+
+
+def _unavailable_own_magnitude(reason: str, calibration_version: str | None = None,
+                               validation_status: str = "not_evaluated") -> dict[str, Any]:
+    return {
+        "value": None,
+        "validation_status": validation_status,
+        "scale": "ML",
+        "status": "unavailable",
+        "reason": reason,
+        "uncertainty": None,
+        "method": None,
+        "station_count": 0,
+        "stations": [],
+        "calibration_version": calibration_version,
+        "source": "seismik_seedlink_estimate",
+    }
+
+
+def _own_magnitude(payload: dict[str, Any]) -> dict[str, Any]:
+    """Magnitud propia de Seismik, siempre separada de la oficial asociada.
+
+    Sólo se acepta un valor completo y coherente (escala ML, estado preliminar,
+    versión de calibración, incertidumbre y al menos tres estaciones). Cualquier
+    otra cosa se publica como ``null`` con la razón: no se rellena ni se infiere.
+    """
+
+    raw = payload.get("own_magnitude")
+    if not isinstance(raw, dict):
+        return _unavailable_own_magnitude("not_computed_for_this_event")
+    version = raw.get("calibration_version")
+    version = version if isinstance(version, str) and version else None
+    value, uncertainty = raw.get("value"), raw.get("uncertainty")
+    validation_status = raw.get("validation_status")
+    if not isinstance(validation_status, str) or not validation_status:
+        return _unavailable_own_magnitude("missing_validation_status", version)
+    if value is None:
+        reason = raw.get("reason")
+        return _unavailable_own_magnitude(reason if isinstance(reason, str) and reason else "unavailable", version,
+                                          validation_status)
+
+    def finite(number: object) -> TypeGuard[float]:
+        return isinstance(number, (int, float)) and not isinstance(number, bool) and math.isfinite(number)
+
+    stations = raw.get("stations")
+    station_ids = [s.get("station_id") for s in stations if isinstance(s, dict)] if isinstance(stations, list) else []
+    method = raw.get("method")
+    count = raw.get("station_count")
+    if not (
+        raw.get("scale") == "ML"
+        and validation_status in {"validated", "beta_unvalidated"}
+        and raw.get("status") == "preliminary"
+        and finite(value) and -2 <= value <= 10
+        and finite(uncertainty) and 0 <= uncertainty <= 2
+        and version is not None
+        and isinstance(count, int) and not isinstance(count, bool) and count >= 3
+        and isinstance(stations, list) and len(stations) == count
+        and all(isinstance(identity, str) and identity for identity in station_ids)
+        and len(station_ids) == count and len(set(station_ids)) == count
+        and isinstance(method, str) and method
+    ):
+        return _unavailable_own_magnitude("invalid_estimate_rejected", version)
+    return {
+        "value": round(float(value), 1),
+        "validation_status": validation_status,
+        "scale": "ML",
+        "status": "preliminary",
+        "reason": None,
+        "uncertainty": round(float(uncertainty), 2),
+        "method": method[:_OWN_MAGNITUDE_METHOD_MAX_LENGTH],
+        "station_count": count,
+        "stations": [
+            {
+                "station_id": s.get("station_id"),
+                "hypocentral_km": s.get("hypocentral_km"),
+                "magnitude": s.get("magnitude"),
+                "amplitude_mm": s.get("amplitude_mm"),
+                "channels": s.get("channels"),
+            }
+            for s in stations
+            if isinstance(s, dict)
+        ][:20],
+        "calibration_version": version,
+        "source": "seismik_seedlink_estimate",
+    }
+
+
 def _preliminary_event(payload: dict[str, Any]) -> dict[str, Any] | None:
     """Reduce un candidato interno a un contrato apto para la app.
 
@@ -88,8 +178,7 @@ def _preliminary_event(payload: dict[str, Any]) -> dict[str, Any] | None:
         "agency": "Seismik / SeedLink",
         "origin_time": detected_at,
         "detected_at": detected_at,
-        "latitude": payload.get("estimated_latitude"),
-        "longitude": payload.get("estimated_longitude"),
+        **public_candidate_location(payload),
         "magnitude": payload.get("magnitude_estimate"),
         "magnitude_type": (
             "M~ experimental" if payload.get("magnitude_estimate") is not None else None
@@ -97,9 +186,8 @@ def _preliminary_event(payload: dict[str, Any]) -> dict[str, Any] | None:
         "magnitude_estimate_status": payload.get(
             "magnitude_estimate_status", "pending_station_calibration"
         ),
-        "depth_km": None,
-        "place": f"Zona técnica {payload.get('zone_id', 'sin ubicar')}",
-        "review_status": "preliminar · sin revisión humana",
+        "own_magnitude": _own_magnitude(payload),
+        "association_quality": payload.get("association_quality"),
         "preliminary": True,
         "algorithm": "STA/LTA con coincidencia multiestación",
         "zone_id": payload.get("zone_id"),
@@ -125,6 +213,20 @@ async def _recent_preliminary_events(
         await redis.xrevrange(settings.candidate_stream, count=max(limit * 4, 200)) or [],
     )
     events: list[dict[str, Any]] = []
+    magnitudes: dict[str, dict[str, Any]] = {}
+    magnitude_rows = cast(
+        list[tuple[str, dict[str, str]]],
+        await redis.xrevrange(settings.magnitude_stream, count=max(limit * 4, 200)) or [],
+    )
+    for _identity, magnitude_fields in magnitude_rows:
+        try:
+            update = json.loads(magnitude_fields.get("payload", "{}"))
+            if isinstance(update, dict) and update.get("type") == "magnitude_estimate_update":
+                identity = update.get("candidate_event_id")
+                if isinstance(identity, str) and identity:
+                    magnitudes.setdefault(identity, update)
+        except (TypeError, ValueError, AttributeError):
+            continue
     for _message_id, fields in raw:
         raw_payload = fields.get("payload")
         if raw_payload is None:
@@ -138,6 +240,8 @@ async def _recent_preliminary_events(
         except (TypeError, ValueError, json.JSONDecodeError):
             continue
         if detected_at >= start:
+            if update := magnitudes.get(str(event["event_id"])):
+                event["own_magnitude"] = _own_magnitude(update)
             events.append(event)
     return events[:limit]
 

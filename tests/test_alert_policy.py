@@ -97,13 +97,13 @@ async def test_official_updates_are_deduplicated_without_zone_cooldown() -> None
     assert (await policy.claim_official({**event, "event_id": "official-2"})).allowed
 
 
-def test_critical_filter_respects_subscription_and_chosen_radius() -> None:
+def test_legacy_crowd_filter_respects_subscription_and_chosen_radius() -> None:
     policy = AlertPolicy(FakeRedis(decode_responses=True), AppSettings())
     near = device("device-near", radius_km=250, latitude=4.70, longitude=-74.00)
     far = device("device-far", radius_km=50, latitude=6.25, longitude=-75.57)
     muted = device("device-muted", early=False)
     selected = policy.filter_critical(
-        [near, far, muted], latitude=4.65, longitude=-74.05
+        [near, far, muted], latitude=4.65, longitude=-74.05, legacy_crowd_fallback=True
     )
     assert [target.device_id for target in selected] == ["device-near"]
 
@@ -129,16 +129,18 @@ def test_without_a_perimeter_the_minimum_magnitude_still_applies() -> None:
     assert [target.device_id for target in selected] == ["device-sensitive"]
 
 
-def test_devices_without_coordinates_are_not_excluded_by_distance() -> None:
+def test_legacy_crowd_devices_without_coordinates_are_not_excluded_by_distance() -> None:
     policy = AlertPolicy(FakeRedis(decode_responses=True), AppSettings())
     unlocated = device("device-zone-only", latitude=None, longitude=None, radius_km=10)
-    assert policy.filter_critical([unlocated], latitude=4.65, longitude=-74.05)
+    assert policy.filter_critical([unlocated], latitude=4.65, longitude=-74.05,
+                                  legacy_crowd_fallback=True)
 
 
-def test_unlocated_candidate_reaches_every_subscribed_device() -> None:
+def test_legacy_crowd_unlocated_candidate_reaches_subscribed_devices() -> None:
     policy = AlertPolicy(FakeRedis(decode_responses=True), AppSettings())
     target = device(radius_km=10, latitude=-33.4, longitude=-70.6)
-    assert policy.filter_critical([target], latitude=None, longitude=None)
+    assert policy.filter_critical([target], latitude=None, longitude=None,
+                                  legacy_crowd_fallback=True)
 
 
 def test_device_radius_never_exceeds_the_platform_geofence() -> None:
