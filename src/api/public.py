@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import math
 import re
 from datetime import datetime, timezone
 from functools import lru_cache
@@ -20,10 +21,92 @@ from api.dependencies import (
     require_mobile_events_read,
     require_mobile_stations_read,
 )
+from api.event_association import associate_events
 from api.geojson import FORMAT_QUERY, GEOJSON_RESPONSE, OutputFormat, feature_collection
 
 router = APIRouter(prefix="/v1", tags=["public-monitor"])
 LOGGER = logging.getLogger(__name__)
+
+SHOWCASE_FIELDS = (
+    "origin_time", "latitude", "longitude", "magnitude", "magnitude_type",
+    "depth_km", "agency", "place", "official_url",
+)
+
+
+def _showcase_catalogue(
+    events: list[dict[str, Any]], minimum: float, limit: int,
+) -> list[dict[str, Any]]:
+    """Group public catalogue cards; retain each agency's original solution."""
+    reports: list[dict[str, Any]] = []
+    identical: dict[tuple[Any, ...], str] = {}
+    aliases: dict[str, list[str]] = {}
+    rank = {str(event["event_id"]): index for index, event in enumerate(events)}
+    for event in events:
+        report = event["preferred_report"]
+        event_id = str(event["event_id"])
+        parts = event_id.split(":")
+        source = report.get("source_id") or (
+            parts[1] if len(parts) >= 3 and parts[0] == "catalog" else ""
+        )
+        source = source if isinstance(source, str) else ""
+        row = {field: report.get(field) for field in SHOWCASE_FIELDS}
+        row.update(event_id=event_id, source_id=source, type=event.get("type"),
+                   preliminary=event.get("preliminary", False))
+        # Some catalogues expose the exact same solution under two IDs. Only
+        # identical complete solutions from that source are aliases, not nearby
+        # aftershocks. Keep all IDs without changing the stored stream.
+        numbers = [row[key] for key in ("latitude", "longitude", "depth_km", "magnitude")]
+        signature = None
+        if (
+            isinstance(source, str) and source and event_id.startswith("catalog:")
+            and row["type"] == "official_report_update" and not row["preliminary"]
+            and isinstance(row["origin_time"], str) and row["origin_time"]
+            and isinstance(row["magnitude_type"], (str, type(None)))
+            and all(isinstance(n, (int, float)) and not isinstance(n, bool)
+                    and math.isfinite(n) for n in numbers)
+        ):
+            signature = (source, row["origin_time"], *numbers, row["magnitude_type"])
+        if signature is not None and signature in identical:
+            aliases[identical[signature]].append(event_id)
+            continue
+        if signature is not None:
+            identical[signature] = event_id
+        aliases[event_id] = [event_id]
+        reports.append(row)
+
+    groups = associate_events(reports)
+    groups.sort(key=lambda group: min(
+        rank[identity] for report in group["source_reports"]
+        for identity in aliases[report["event_id"]]
+    ))
+    cards: list[dict[str, Any]] = []
+    for group in groups:
+        sources = group["source_reports"]
+        eligible = [report for report in sources if (
+            isinstance(report.get("magnitude"), (int, float))
+            and not isinstance(report["magnitude"], bool)
+            and math.isfinite(report["magnitude"])
+            and report["magnitude"] >= minimum
+        )]
+        if not eligible:
+            continue
+        # Start with an above-threshold report; lower agency estimates remain
+        # selectable. Never average magnitudes or combine incompatible scales.
+        primary = eligible[0]
+        sources = [primary, *(report for report in sources if report is not primary)]
+        public_sources = [
+            {"event_id": report["event_id"], **{field: report.get(field) for field in SHOWCASE_FIELDS}}
+            for report in sources
+        ]
+        cards.append({
+            **public_sources[0], "source_reports": public_sources,
+            "related_event_ids": [identity for report in sources
+                                  for identity in aliases[report["event_id"]]],
+            "association_method": group["association_method"],
+        })
+        if len(cards) >= limit:
+            break
+    return cards
 
 
 def _latest_official_events(raw: list[tuple[str, dict[str, str]]]) -> list[dict[str, Any]]:
@@ -145,28 +228,7 @@ async def showcase_events(
     )
     minimum_magnitude = settings.public_showcase_minimum_magnitude
     result_limit = limit or settings.public_showcase_limit
-    events: list[dict[str, Any]] = []
-    for event in _latest_official_events(raw):
-        report = event.get("preferred_report", {})
-        magnitude = report.get("magnitude")
-        if not isinstance(magnitude, (int, float)) or magnitude < minimum_magnitude:
-            continue
-        events.append(
-            {
-                "event_id": event["event_id"],
-                "origin_time": report.get("origin_time"),
-                "latitude": report.get("latitude"),
-                "longitude": report.get("longitude"),
-                "magnitude": magnitude,
-                "magnitude_type": report.get("magnitude_type"),
-                "depth_km": report.get("depth_km"),
-                "agency": report.get("agency"),
-                "place": report.get("place"),
-                "official_url": report.get("official_url"),
-            }
-        )
-        if len(events) >= result_limit:
-            break
+    events = _showcase_catalogue(_latest_official_events(raw), minimum_magnitude, result_limit)
     if format == "geojson":
         return feature_collection(
             events, id_field="event_id", metadata={"minimum_magnitude": minimum_magnitude}

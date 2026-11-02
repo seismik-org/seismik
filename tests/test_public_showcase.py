@@ -158,6 +158,12 @@ async def test_only_public_facing_fields_are_exposed() -> None:
         "agency",
         "place",
         "official_url",
+        "source_reports",
+        "related_event_ids",
+        "association_method",
+    }
+    assert set(event["source_reports"][0]) == set(event) - {
+        "source_reports", "related_event_ids", "association_method",
     }
 
 
@@ -226,3 +232,93 @@ async def test_untrusted_ip_header_cannot_reset_showcase_budget():
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
         assert (await client.get("/v1/public/showcase-events", headers={"X-Seismik-Client-IP": "192.0.2.1"})).status_code == 200
         assert (await client.get("/v1/public/showcase-events", headers={"X-Seismik-Client-IP": "192.0.2.2"})).status_code == 429
+
+
+async def _agency_report(app, source, identity, *, magnitude=5.0, seconds=10, latitude=4.6):
+    event = {
+        "event_id": f"catalog:{source}:{identity}:m{round(magnitude * 10)}",
+        "type": "official_report_update",
+        "private_field": "not-public",
+        "preferred_report": {
+            "source_id": source, "official_event_id": identity,
+            "origin_time": f"2026-11-02T12:00:{seconds:02d}Z",
+            "latitude": latitude, "longitude": -74.0, "depth_km": 10,
+            "magnitude": magnitude, "magnitude_type": "Mw", "agency": source,
+            "place": f"Reporte de {source}", "official_url": f"https://{source}.example/{identity}",
+            "private_field": "also-not-public",
+        },
+    }
+    await app.state.redis.xadd(app.state.settings.official_stream, {"payload": json.dumps(event)})
+    return event["event_id"]
+
+
+async def _showcase_response(app, **params):
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
+        return await client.get("/v1/public/showcase-events", params=params)
+
+
+@pytest.mark.asyncio
+async def test_same_earthquake_is_one_card_with_original_agency_reports():
+    app = showcase_app()
+    usgs = await _agency_report(app, "usgs_global", "one", magnitude=5.3)
+    emsc = await _agency_report(app, "emsc_global", "two", magnitude=5.1, seconds=14, latitude=4.65)
+    response = await _showcase_response(app)
+    cards = response.json()["events"]
+    assert len(cards) == 1
+    assert cards[0]["event_id"] == usgs
+    assert cards[0]["association_method"] == "time_distance_depth_v1"
+    assert cards[0]["related_event_ids"] == [usgs, emsc]
+    reports = cards[0]["source_reports"]
+    assert [r["magnitude"] for r in reports] == [5.3, 5.1]
+    assert [r["latitude"] for r in reports] == [4.6, 4.65]
+    assert reports[1]["official_url"] == "https://emsc_global.example/two"
+    assert "not-public" not in response.text
+    assert await app.state.redis.xlen(app.state.settings.official_stream) == 2
+
+
+@pytest.mark.asyncio
+async def test_card_limit_applies_after_agency_grouping():
+    app = showcase_app(public_showcase_limit=2)
+    await _agency_report(app, "igp_peru", "older", seconds=0, latitude=-10)
+    await _agency_report(app, "usgs_global", "one")
+    await _agency_report(app, "emsc_global", "two")
+    cards = (await _showcase_response(app)).json()["events"]
+    assert len(cards) == 2
+    assert [len(c["source_reports"]) for c in cards] == [2, 1]
+
+
+@pytest.mark.asyncio
+async def test_identical_catalogue_alias_does_not_prevent_cross_agency_grouping():
+    app = showcase_app()
+    aliases = [await _agency_report(app, "ingv_italy", identity) for identity in ("one", "alias")]
+    await _agency_report(app, "usgs_global", "two", seconds=13)
+    await _agency_report(app, "emsc_global", "three", seconds=12)
+    cards = (await _showcase_response(app)).json()["events"]
+    assert len(cards) == 1
+    assert len(cards[0]["source_reports"]) == 3
+    assert len(cards[0]["related_event_ids"]) == 4
+    assert set(aliases) <= set(cards[0]["related_event_ids"])
+
+
+@pytest.mark.asyncio
+async def test_ambiguous_nearby_same_agency_events_are_not_collapsed():
+    app = showcase_app()
+    await _agency_report(app, "usgs_global", "one", seconds=0)
+    await _agency_report(app, "usgs_global", "aftershock", seconds=20)
+    await _agency_report(app, "emsc_global", "ambiguous", seconds=10)
+    cards = (await _showcase_response(app)).json()["events"]
+    assert len(cards) == 3
+    assert all(len(c["source_reports"]) == 1 for c in cards)
+
+
+@pytest.mark.asyncio
+async def test_agency_below_threshold_remains_selectable_without_becoming_default():
+    app = showcase_app()
+    await _agency_report(app, "sgc_colombia", "one", magnitude=4.3)
+    usgs = await _agency_report(app, "usgs_global", "two", magnitude=4.6)
+    cards = (await _showcase_response(app)).json()["events"]
+    assert len(cards) == 1 and cards[0]["event_id"] == usgs
+    assert [r["magnitude"] for r in cards[0]["source_reports"]] == [4.6, 4.3]
+    features = (await _showcase_response(app, format="geojson")).json()["features"]
+    assert len(features) == 1
+    assert len(features[0]["properties"]["source_reports"]) == 2

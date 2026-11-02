@@ -36,13 +36,18 @@
     return event.magnitude_type ? `${value} ${event.magnitude_type}` : value;
   };
 
+  const officialURL = (value) => {
+    try {
+      const url = new URL(value);
+      return url.protocol === "https:" && !url.username && !url.password ? url.href : null;
+    } catch (_) { return null; }
+  };
+
   function card(event) {
     const item = document.createElement("li");
     item.className = "showcase-card";
 
     const badge = document.createElement("span");
-    badge.className = `showcase-badge ${magnitudeBand(event.magnitude)}`;
-    badge.textContent = magnitudeLabel(event);
     item.append(badge);
 
     const body = document.createElement("div");
@@ -50,32 +55,65 @@
 
     const place = document.createElement("p");
     place.className = "showcase-place";
-    place.textContent = event.place || "Ubicación no especificada";
     body.append(place);
 
     const meta = document.createElement("p");
     meta.className = "showcase-meta";
-    meta.textContent = [event.agency, relativeTime(event.origin_time)].filter(Boolean).join(" · ");
     body.append(meta);
 
-    if (event.official_url) {
-      const link = document.createElement("a");
-      link.className = "showcase-link";
-      link.href = event.official_url;
-      link.target = "_blank";
-      link.rel = "noopener";
-      link.textContent = "Ver fuente oficial";
-      body.append(link);
+    const reports = Array.isArray(event.source_reports)
+      ? event.source_reports.filter(report => report && typeof report === "object") : [];
+    if (!reports.length) reports.push(event);
+    if (reports.length > 1) {
+      const label = document.createElement("label");
+      label.className = "showcase-agency";
+      const caption = document.createElement("span");
+      caption.textContent = `Agencia · ${reports.length} fuentes`;
+      const select = document.createElement("select");
+      select.setAttribute("aria-label", `Agencia del reporte: ${event.place || "sismo"}`);
+      reports.forEach((report, index) => {
+        const option = document.createElement("option");
+        option.value = String(index);
+        option.textContent = report.agency || "Agencia oficial";
+        select.append(option);
+      });
+      select.addEventListener("change", () => {
+        const selected = reports[Number(select.value)];
+        if (selected) renderReport(selected);
+      });
+      label.append(caption, select);
+      body.append(label);
     }
 
+    const link = document.createElement("a");
+    link.className = "showcase-link";
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    link.textContent = "Ver fuente oficial";
+    body.append(link);
+
     // El formulario de ifeltit.seismik.org abre con este sismo ya elegido.
-    if (event.event_id) {
-      const report = document.createElement("a");
-      report.className = "showcase-link";
-      report.href = `https://ifeltit.seismik.org/?event=${encodeURIComponent(event.event_id)}`;
-      report.textContent = "¿Lo sentiste? Repórtalo";
-      body.append(report);
+    const reportLink = document.createElement("a");
+    reportLink.className = "showcase-link";
+    reportLink.textContent = "¿Lo sentiste? Repórtalo";
+    body.append(reportLink);
+
+    function renderReport(report) {
+      badge.className = `showcase-badge ${magnitudeBand(report.magnitude)}`;
+      badge.textContent = magnitudeLabel(report);
+      place.textContent = report.place || "Ubicación no especificada";
+      const depth = Number.isFinite(report.depth_km) ? `${report.depth_km} km de profundidad` : "";
+      meta.textContent = [report.agency, relativeTime(report.origin_time), depth].filter(Boolean).join(" · ");
+      const date = new Date(report.origin_time);
+      meta.title = Number.isNaN(date.getTime()) ? "" : date.toLocaleString("es-CO");
+      const url = officialURL(report.official_url);
+      link.hidden = !url;
+      link.href = url || "";
+      reportLink.hidden = !report.event_id;
+      reportLink.href = report.event_id
+        ? `https://ifeltit.seismik.org/?event=${encodeURIComponent(report.event_id)}` : "";
     }
+    renderReport(reports[0]);
 
     item.append(body);
     return item;

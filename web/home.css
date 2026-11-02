@@ -111,7 +111,10 @@
 .showcase-badge.mmi-4 { background: var(--mmi-4); }
 .showcase-badge.mmi-6 { background: var(--mmi-6); }
 .showcase-badge.mmi-8 { background: var(--mmi-8); }
-.showcase-body { display: grid; gap: 4px; min-width: 0; }
+.showcase-body { display: grid; gap: 4px; min-width: 0; flex: 1; }
+.showcase-agency { display: grid; gap: 4px; margin: 6px 0; min-width: 0; color: var(--muted); font-size: 0.82rem; }
+.showcase-agency select { width: 100%; min-width: 0; padding: 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--text); font: inherit; }
+.showcase-agency select:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
 .showcase-place { margin: 0; font-weight: 700; overflow-wrap: anywhere; }
 .showcase-meta { margin: 0; color: var(--muted); font-size: 0.86rem; }
 .showcase-link { justify-self: start; margin-top: 2px; color: var(--primary); font-size: 0.86rem; font-weight: 700; text-decoration: none; }
