@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
+import re
 from datetime import datetime, timezone
 from functools import lru_cache
 from pathlib import Path
@@ -21,6 +23,34 @@ from api.dependencies import (
 from api.geojson import FORMAT_QUERY, GEOJSON_RESPONSE, OutputFormat, feature_collection
 
 router = APIRouter(prefix="/v1", tags=["public-monitor"])
+LOGGER = logging.getLogger(__name__)
+
+
+def _latest_official_events(raw: list[tuple[str, dict[str, str]]]) -> list[dict[str, Any]]:
+    """Consolidate newest-first stream revisions without changing delivery IDs."""
+    seen: set[tuple[str, str]] = set()
+    events: list[dict[str, Any]] = []
+    for _message_id, fields in raw:
+        try:
+            event = json.loads(fields["payload"])
+            if not isinstance(event, dict) or not isinstance(event.get("preferred_report"), dict):
+                raise ValueError("Invalid official event")
+            event_id = str(event["event_id"])
+            report = event["preferred_report"]
+            if report.get("source_id") and report.get("official_event_id"):
+                identity = (str(report["source_id"]), str(report["official_event_id"]))
+            else:
+                # Older catalogue rows still have an unambiguous source/event ID.
+                stable = re.sub(r":m\d+$", "", event_id) if event_id.startswith("catalog:") else event_id
+                identity = ("event", stable)
+            if identity in seen:
+                continue
+            seen.add(identity)
+            events.append(event)
+        except (KeyError, TypeError, ValueError):
+            # One damaged row must not hide the rest of the public catalogue.
+            LOGGER.warning("Skipped malformed official stream row")
+    return events
 
 
 @lru_cache(maxsize=4)
@@ -71,6 +101,8 @@ async def _enforce_showcase_rate(request: Request, redis: Redis, settings: AppSe
     """
 
     client_host = request.client.host if request.client else "unknown"
+    if request.scope.get("seismik.edge_authenticated"):
+        client_host = request.headers.get("X-Seismik-Client-IP") or "unknown"
     bucket = hashlib.sha256(client_host.encode()).hexdigest()[:16]
     window = datetime.now(timezone.utc).strftime("%Y%m%d%H%M")
     counter = f"seismik:public-showcase:{bucket}:{window}"
@@ -114,8 +146,7 @@ async def showcase_events(
     minimum_magnitude = settings.public_showcase_minimum_magnitude
     result_limit = limit or settings.public_showcase_limit
     events: list[dict[str, Any]] = []
-    for _message_id, fields in raw:
-        event = json.loads(fields["payload"])
+    for event in _latest_official_events(raw):
         report = event.get("preferred_report", {})
         magnitude = report.get("magnitude")
         if not isinstance(magnitude, (int, float)) or magnitude < minimum_magnitude:
@@ -152,11 +183,13 @@ async def recent_events(
 ) -> dict[str, list[dict[str, Any]]] | Response:
     raw = cast(
         list[tuple[str, dict[str, str]]],
-        await redis.xrevrange(settings.official_stream, count=settings.public_recent_event_limit),
+        await redis.xrevrange(
+            settings.official_stream,
+            count=max(settings.public_recent_event_limit, settings.public_showcase_scan_limit),
+        ),
     )
     events: list[dict[str, Any]] = []
-    for _message_id, fields in raw:
-        event = json.loads(fields["payload"])
+    for event in _latest_official_events(raw):
         report = event.get("preferred_report", {})
         reports = [
             {**item, "event_id": f"{item.get('source_id', 'official')}:{item.get('official_event_id', event['event_id'])}"}
@@ -183,6 +216,8 @@ async def recent_events(
                 "related_event_ids": [event["event_id"], *[item["event_id"] for item in reports]],
             }
         )
+        if len(events) >= settings.public_recent_event_limit:
+            break
     if format == "geojson":
         return feature_collection(events, id_field="event_id")
     return {"events": events}

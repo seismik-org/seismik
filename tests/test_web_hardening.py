@@ -97,6 +97,7 @@ def test_the_api_hides_its_schema_outside_development() -> None:
         crowd_master_secret="test-crowd-secret",
         integration_webhook_master_secret="test-integration-secret",
         consumer_api_key="test-consumer-key",
+        edge_origin_secret="test-edge-secret",
     )
 
     served = create_app(AppSettings(environment="staging", **base))

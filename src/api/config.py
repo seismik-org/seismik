@@ -277,6 +277,8 @@ class AppSettings(BaseSettings):
             if not self.integrity_verification_enabled:
                 raise ValueError("Production requires App Check integrity verification")
         if self.environment.lower() in ("production", "staging"):
+            if not self.edge_origin_secret.get_secret_value().strip():
+                raise ValueError("Staging and production require an edge origin secret")
             secrets = {
                 self.webhook_hmac_secret.get_secret_value(),
                 self.crowd_master_secret.get_secret_value(),

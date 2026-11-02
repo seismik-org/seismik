@@ -4,7 +4,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from google.cloud import pubsub_v1
+import google.cloud.pubsub_v1 as pubsub_v1
 
 from eew.delivery import DeliveryOutcome
 

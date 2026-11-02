@@ -41,3 +41,25 @@ async def test_combined_worker_uses_one_health_server_and_stops_the_pair(
     assert ("integrations", False) in calls
     assert cancelled.is_set()
     assert ("health", True) in calls
+
+
+@pytest.mark.asyncio
+async def test_clean_worker_exit_also_cancels_the_other_worker(monkeypatch):
+    cancelled = asyncio.Event()
+    health = SimpleNamespace(shutdown=lambda: None)
+
+    async def finished(*, serve_health):
+        return
+
+    async def running(*, serve_health):
+        try:
+            await asyncio.Event().wait()
+        finally:
+            cancelled.set()
+
+    monkeypatch.setattr(combined, "start_health_server", lambda: health)
+    monkeypatch.setattr(combined, "run_dispatcher", finished)
+    monkeypatch.setattr(combined, "run_integrations", running)
+    with pytest.raises(RuntimeError, match="stopped unexpectedly"):
+        await asyncio.wait_for(combined.run_combined(), timeout=2)
+    assert cancelled.is_set()

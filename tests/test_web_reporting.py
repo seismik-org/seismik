@@ -31,6 +31,8 @@ def payload() -> dict:
 
 
 def secure_settings(**kwargs):
+    if kwargs.get("environment") in {"production", "staging"}:
+        kwargs.setdefault("edge_origin_secret", "test-edge-secret")
     return AppSettings(
         integrity_verification_enabled=True,
         webhook_hmac_secret="test-webhook",
@@ -56,7 +58,8 @@ async def setup(settings: AppSettings | None = None):
     app.dependency_overrides[get_app_settings] = lambda: settings
     app.dependency_overrides[get_redis] = lambda: redis
     app.dependency_overrides[get_bus] = lambda: RedisEventBus(redis, 100, 600)
-    client = httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://local")
+    headers = {"X-Seismik-Origin-Auth": settings.edge_origin_secret.get_secret_value()} if settings.environment != "development" else {}
+    client = httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://local", headers=headers)
     return client, redis, settings
 
 

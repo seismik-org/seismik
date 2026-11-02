@@ -34,7 +34,7 @@ def main() -> None:
             "seedlink": link["service"].coverage_snapshot(),
         }
         if "dispatcher" in link and "service" in link
-        else {"pending": 0}
+        else {"ready": False, "status": "initializing"}
     )
     args = parse_args()
     logging.basicConfig(

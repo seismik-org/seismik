@@ -25,7 +25,7 @@ async def run_combined() -> None:
     )
     tasks = (dispatcher, integrations)
     try:
-        done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_EXCEPTION)
+        done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
         for task in done:
             # Propagate an unexpected exit: Cloud Run will restart the pair.
             task.result()

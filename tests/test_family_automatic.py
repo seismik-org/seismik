@@ -16,7 +16,7 @@ def settings() -> AppSettings:
                        integrity_verification_enabled=True,
                        webhook_hmac_secret="unit-test-hmac", crowd_master_secret="unit-test-crowd",
                        integration_webhook_master_secret="unit-test-integrations",
-                       consumer_api_key="unit-test-consumer")
+                       consumer_api_key="unit-test-consumer", edge_origin_secret="unit-test-edge")
 
 
 async def setup(redis: FakeRedis, *, consent: bool = True, age: int = 5) -> list[DeviceTarget]:

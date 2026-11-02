@@ -11,8 +11,8 @@ import threading
 import time
 from typing import Any
 
+import google.cloud.pubsub_v1 as pubsub_v1
 import requests
-from google.cloud import pubsub_v1
 
 from runtime_health import start_health_server
 

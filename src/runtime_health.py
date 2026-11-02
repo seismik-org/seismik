@@ -13,18 +13,28 @@ DetailsProvider = Callable[[], dict[str, Any]]
 def _make_handler(details: DetailsProvider | None) -> type[BaseHTTPRequestHandler]:
     class _HealthHandler(BaseHTTPRequestHandler):
         def do_GET(self) -> None:  # noqa: N802 - stdlib callback name
-            if self.path not in {"/", "/healthz", "/health/ready"}:
+            if self.path not in {"/", "/healthz", "/health/live", "/health/ready"}:
                 self.send_response(404)
                 self.end_headers()
                 return
             body: dict[str, Any] = {"status": "ok"}
-            if details is not None:
+            ready = True
+            if details is not None and self.path != "/health/live":
                 try:
-                    body["delivery"] = details()
+                    snapshot = details()
+                    body["delivery"] = snapshot
+                    ready = snapshot.get("ready") is not False
+                    coverage = snapshot.get("seedlink")
+                    if isinstance(coverage, dict):
+                        ready = ready and coverage.get("status") == "ready"
                 except Exception as error:  # noqa: BLE001 - la salud nunca falla duro
-                    body["delivery_error"] = str(error)[:200]
+                    ready = False
+                    body["delivery_error"] = type(error).__name__
+            status_code = 503 if self.path == "/health/ready" and not ready else 200
+            if status_code == 503:
+                body["status"] = "not_ready"
             payload = json.dumps(body, ensure_ascii=False, default=str).encode("utf-8")
-            self.send_response(200)
+            self.send_response(status_code)
             self.send_header("Content-Type", "application/json")
             self.send_header("Content-Length", str(len(payload)))
             self.end_headers()

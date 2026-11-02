@@ -57,6 +57,7 @@ jobs:
               - 'deploy/Caddyfile.web'
               - 'deploy/cloudbuild.worker.yaml'
             dispatcher:
+              - 'src/runtime_health.py'
               - 'src/api/**'
               - 'src/dispatcher/**'
               - 'src/integrations/**'
@@ -71,6 +72,7 @@ jobs:
               - 'deploy/cloudbuild.worker.yaml'
               - '.github/workflows/ci.yml'
             integrations:
+              - 'src/runtime_health.py'
               - 'src/api/**'
               - 'src/dispatcher/**'
               - 'src/integrations/**'
@@ -83,6 +85,7 @@ jobs:
               - 'official_sources.json'
               - 'deploy/cloudbuild.worker.yaml'
             detector:
+              - 'src/runtime_health.py'
               - 'src/eew/**'
               - 'requirements-detector.txt'
               - 'Dockerfile'
@@ -110,7 +113,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-      - run: node --test tests/web_fallback.test.mjs tests/email_auth.test.mjs tests/status_history.test.mjs tests/admin_panel.test.mjs tests/admin_mfa.test.mjs tests/continuity.test.mjs
+      - run: node --test tests/*.test.mjs
 
   mobile:
     runs-on: ubuntu-latest

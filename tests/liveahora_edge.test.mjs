@@ -52,7 +52,8 @@ test('LiveAhora assets and navigation resolve; rights and contact are present wi
     assert.match(html, /mailto:liveahora@seismik.org/);
     assert.doesNotMatch(html, /<iframe|<video|autoplay|style="/i);
     for (const [, url] of html.matchAll(/(?:href|src)="(\/[^"#?]*)(?:[?#][^"]*)?"/g)) {
-      if (!url.startsWith('/v1/')) assert.ok(existsSync(`web${url}${url.endsWith('/') ? 'index.html' : ''}`), `${page}: ${url}`);
+      const routed = new Map([['/', '/liveahora/'], ['/politicas/', '/liveahora/politicas/'], ['/admin/', '/liveahora/admin/']]).get(url) || url;
+      if (!url.startsWith('/v1/')) assert.ok(existsSync(`web${routed}${routed.endsWith('/') ? 'index.html' : ''}`), `${page}: ${url}`);
     }
     const canonical = page.startsWith('politicas') ? 'politicas/' : page.startsWith('admin') ? 'admin/' : '';
     assert.ok(html.includes(`rel="canonical" href="https://liveahora.seismik.org/${canonical}"`));
