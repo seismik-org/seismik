@@ -122,6 +122,9 @@ async def _finish_login(
     back_to_waves = not return_to and request.cookies.get(AFTER_LOGIN_COOKIE) == WAVES_MARKER
     if back_to_waves:
         target = settings.waves_portal_url
+    back_to_liveahora = not return_to and request.cookies.get(AFTER_LOGIN_COOKIE) == "liveahora"
+    if back_to_liveahora:
+        target = "https://liveahora.seismik.org/admin/"
     if return_to:
         code = secrets.token_urlsafe(32)
         await request.app.state.redis.set(
@@ -136,7 +139,7 @@ async def _finish_login(
         secure=True, httponly=True, samesite="lax", path="/",
         domain=settings.oauth_cookie_domain,
     )
-    if back_to_waves:
+    if back_to_waves or back_to_liveahora:
         response.delete_cookie(
             AFTER_LOGIN_COOKIE, path="/", domain=settings.oauth_cookie_domain,
             secure=True, httponly=True, samesite="none",

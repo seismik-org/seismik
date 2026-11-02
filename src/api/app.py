@@ -27,6 +27,7 @@ from api.firebase_login import router as firebase_login_router
 from api.history import router as history_router
 from api.integrations import router as integrations_router
 from api.integrity import DeviceIntegrityVerifier
+from api.liveahora import router as liveahora_router
 from api.oauth import identity_router as oauth_identity_router
 from api.oauth import router as oauth_router
 from api.public import router as public_router
@@ -102,6 +103,7 @@ def create_app(settings: AppSettings | None = None) -> FastAPI:
     app.include_router(crowd_shadow_router)
     app.include_router(public_router)
     app.include_router(history_router)
+    app.include_router(liveahora_router)
     app.include_router(reporting_router)
     app.include_router(admin_router)
     app.include_router(admin_beta_router)

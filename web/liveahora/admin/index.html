@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Administración de eventos · LiveAhora</title>
+  <meta name="robots" content="noindex,nofollow"><meta name="description" content="El espacio deportivo del Grupo Seismik. Conoce LiveAhora, sus transmisiones y las políticas de derechos emitidos por CSN (Creator Sports Network).">
+  <link rel="canonical" href="https://liveahora.seismik.org/admin/">
+  <meta property="og:type" content="website"><meta property="og:locale" content="es_CO">
+  <meta property="og:site_name" content="LiveAhora"><meta property="og:title" content="LiveAhora · El deporte se vive juntos">
+  <meta property="og:description" content="El espacio deportivo del Grupo Seismik. Conoce LiveAhora, sus transmisiones y las políticas de derechos emitidos por CSN (Creator Sports Network)."><meta property="og:url" content="https://liveahora.seismik.org/">
+  <meta property="og:image" content="https://liveahora.seismik.org/assets/liveahora/banner.webp">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" href="/assets/liveahora/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/assets/liveahora/apple-touch-icon.png">
+  <link rel="stylesheet" href="/styles.css?v=__ASSET_VERSION__">
+  <link rel="stylesheet" href="/home.css?v=__ASSET_VERSION__">
+  <link rel="stylesheet" href="/footer.css?v=__ASSET_VERSION__">
+  <link rel="stylesheet" href="/liveahora/liveahora.css?v=__ASSET_VERSION__">
+</head>
+<body class="liveahora-page">
+  <a class="skip-link" href="#contenido">Saltar al contenido</a>
+  <header class="site-header"><div class="container header-inner">
+    <a class="brand live-brand" href="/liveahora/" aria-label="LiveAhora, inicio"><img class="brand-logo" src="/assets/liveahora/logo.webp" width="40" height="40" alt="">Live<span>Ahora</span></a>
+    <nav class="primary-nav" aria-label="Navegación principal"><a href="/liveahora/#transmisiones">Transmisiones</a><a href="/liveahora/politicas/">Políticas</a><a href="https://seismik.org/grupo/">Grupo Seismik ↗</a></nav>
+    <div class="header-actions"><a class="button compact keep" href="mailto:liveahora@seismik.org">Contacto</a></div>
+    <details class="mobile-menu"><summary aria-label="Abrir menú"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></summary><nav class="menu-panel" aria-label="Menú móvil"><a href="/liveahora/">Inicio</a><a href="/liveahora/#transmisiones">Transmisiones</a><a href="/liveahora/politicas/">Políticas</a><a href="https://seismik.org/grupo/">Grupo Seismik ↗</a></nav></details>
+  </div></header>
+  <main id="contenido" class="container live-admin">
+    <p class="eyebrow">LiveAhora · Administración</p><h1>Tu cronograma.</h1><p class="lead">Crea, edita y publica los próximos eventos. Todos los horarios se introducen en hora de Colombia (UTC−5).</p>
+    <p id="admin-status" role="status" aria-live="polite">Comprobando tu acceso…</p><button id="logout" type="button" class="button secondary">Cerrar sesión de Seismik</button>
+    <section id="login-panel" class="card" hidden><h2>Accede con tu cuenta Seismik.</h2><p>La administración está reservada para liveahora@seismik.org. El acceso se realiza en auth.seismik.org.</p><a class="button" href="/v1/liveahora/login">Iniciar sesión en Seismik ↗</a></section>
+    <noscript><p>Necesitas JavaScript para administrar el cronograma.</p></noscript>
+    <section id="workspace" hidden>
+      <div class="admin-toolbar"><p>Cuenta: <strong id="account"></strong></p><div><button id="new-event" class="button" type="button">Nuevo evento</button> <button id="reload-events" class="button secondary" type="button">Recargar cronograma</button> <a href="/">Ver web pública ↗</a></div></div>
+      <div class="admin-layout"><section class="card event-editor" aria-labelledby="editor-title"><h2 id="editor-title">Nuevo evento</h2>
+        <form id="event-form">
+          <label for="title">Título</label><input id="title" name="title" required minlength="3" maxlength="160" autocomplete="off">
+          <label for="description">Descripción</label><textarea id="description" name="description" rows="3" maxlength="1000"></textarea>
+          <label for="starts_at">Inicio · hora de Colombia</label><input id="starts_at" name="starts_at" type="datetime-local" required>
+          <label for="ends_at">Fin previsto · hora de Colombia</label><input id="ends_at" name="ends_at" type="datetime-local" required><p class="fine-print">El evento deja de aparecer en el cronograma público al pasar esta hora. Actualízala si se prolonga.</p>
+          <label for="platform">Plataforma</label><select id="platform" name="platform"><option value="youtube">YouTube</option><option value="kick">Kick</option><option value="twitch">Twitch</option></select>
+          <label for="url">Enlace del evento o canal</label><input id="url" name="url" type="url" required maxlength="1000"><p class="fine-print">Usa el enlace directo de la transmisión cuando esté disponible.</p>
+          <label for="image">Imagen</label><select id="image" name="image"><option value="">Sin imagen</option><option value="/assets/liveahora/banner.webp">Estadio LiveAhora</option><option value="/assets/liveahora/logo.webp">Logo LiveAhora</option></select>
+          <label for="status">Estado</label><select id="status" name="status"><option value="draft">Borrador · solo tú puedes verlo</option><option value="scheduled">Programado · publicar</option><option value="live">En directo · publicar</option><option value="finished">Finalizado · ocultar</option><option value="cancelled">Cancelado · avisar en la web</option></select>
+          <label class="rights-check" for="rights_confirmed"><input id="rights_confirmed" name="rights_confirmed" type="checkbox">Confirmo que este evento cuenta con los derechos de transmisión correspondientes emitidos por CSN (Creator Sports Network).</label>
+          <div class="actions"><button id="save-event" class="button" type="submit">Guardar evento</button><button id="delete-event" class="button secondary" type="button" hidden>Eliminar evento</button></div>
+        </form>
+      </section><section aria-labelledby="saved-title"><h2 id="saved-title">Tus eventos</h2><p id="event-count"></p><div id="admin-events" class="calendar-grid admin-calendar"></div></section></div>
+    </section>
+    <dialog id="delete-dialog" aria-labelledby="delete-title"><h2 id="delete-title">¿Eliminar este evento?</h2><p>Se quitará del cronograma. Puedes marcarlo como cancelado si prefieres conservarlo.</p><div class="actions"><button class="button secondary" id="cancel-delete" type="button">Conservar evento</button><button class="button" id="confirm-delete" type="button">Eliminar evento</button></div></dialog>
+  </main>
+  <footer class="site-footer"><a class="group-affiliation" href="https://seismik.org/grupo/">Una iniciativa del <strong>Grupo Seismik</strong><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M7 17 17 7M7 7h10v10"/></svg></a><div class="container footer-bottom">© 2026 LiveAhora · <a href="/admin/">Administración</a> · <a href="/liveahora/politicas/#derechos">Derechos de transmisión</a> · <a href="/liveahora/politicas/#privacidad">Privacidad</a> · <a href="/liveahora/politicas/#uso">Términos de uso</a> · <a href="mailto:liveahora@seismik.org">liveahora@seismik.org</a></div></footer>
+  <script type="module" src="/liveahora/admin/admin.js?v=__ASSET_VERSION__"></script>
+</body></html>

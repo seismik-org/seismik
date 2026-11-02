@@ -48,7 +48,9 @@ function targetFor(request) {
   let path = source.pathname;
   if (host === "api.seismik.org") origin = API;
   else if (host === "liveahora.seismik.org") {
-    if (path === "/") path = "/liveahora/";
+    if (path === "/v1/liveahora" || path.startsWith("/v1/liveahora/")) origin = API;
+    else if (path === "/admin" || path === "/admin/" || path === "/admin/index.html") path = "/liveahora/admin/";
+    else if (path === "/") path = "/liveahora/";
     else if (path === "/politicas" || path === "/politicas/") path = "/liveahora/politicas/";
     else if (path === "/robots.txt" || path === "/sitemap.xml") path = `/liveahora${path}`;
   }
@@ -210,6 +212,10 @@ export default {
       headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
       headers.set("Content-Security-Policy", "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: https://tile.openstreetmap.org; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'");
       headers.set("X-Robots-Tag", "noindex, follow");
+    }
+    if (source.hostname === "liveahora.seismik.org" && (source.pathname.startsWith("/v1/") || source.pathname.startsWith("/admin") || source.pathname.startsWith("/liveahora/admin"))) {
+      headers.set("Cache-Control", "no-store");
+      headers.set("X-Robots-Tag", "noindex, nofollow");
     }
     if (source.hostname === "devs.seismik.org" && source.pathname.startsWith("/v1/")) headers.set("Cache-Control", "no-store");
     headers.delete("Server");

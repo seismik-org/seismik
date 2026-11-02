@@ -17,6 +17,7 @@ test('LiveAhora routes home, policies and discovery while preserving shared asse
       ['/sitemap.xml', '/liveahora/sitemap.xml'], ['/styles.css', '/styles.css'],
       ['/assets/liveahora/logo.webp', '/assets/liveahora/logo.webp'],
       ['/liveahora/politicas/', '/liveahora/politicas/'], ['/v1/private', '/v1/private'],
+      ['/admin', '/liveahora/admin/'], ['/admin/', '/liveahora/admin/'],
     ]);
     for (const [path, target] of paths) {
       const response = await worker.fetch(new Request(`https://liveahora.seismik.org${path}?test=1`, {
@@ -30,6 +31,13 @@ test('LiveAhora routes home, policies and discovery while preserving shared asse
       assert.equal(response.status, 200);
       assert.match(response.headers.get('Content-Security-Policy'), /frame-ancestors 'none'/);
     }
+    for (const path of ['/v1/liveahora/events', '/v1/liveahora/admin/events', '/v1/liveahora/login']) {
+      const response = await worker.fetch(new Request(`https://liveahora.seismik.org${path}`, {headers:{'X-Seismik-Origin-Auth':'spoofed'}}), {EDGE_ORIGIN_SECRET:'test-only'});
+      assert.match(requests.at(-1).url, /^https:\/\/seismik-api-/);
+      assert.equal(new URL(requests.at(-1).url).pathname, path);
+      assert.equal(requests.at(-1).headers.get('X-Seismik-Origin-Auth'), 'test-only');
+      assert.equal(response.headers.get('Cache-Control'), 'no-store');
+    }
     for (const [host, path] of [['seismik.org', '/'], ['group.seismik.org', '/grupo/']]) {
       await worker.fetch(new Request(`https://${host}/`), {});
       assert.equal(new URL(requests.at(-1).url).pathname, path);
@@ -38,15 +46,15 @@ test('LiveAhora routes home, policies and discovery while preserving shared asse
 });
 
 test('LiveAhora assets and navigation resolve; rights and contact are present without a fictitious live player', () => {
-  for (const page of ['index.html', 'politicas/index.html']) {
+  for (const page of ['index.html', 'politicas/index.html', 'admin/index.html']) {
     const html = readFileSync(`web/liveahora/${page}`, 'utf8');
     assert.match(html, /CSN \(Creator Sports Network\)|Creator Sports Network/);
     assert.match(html, /mailto:liveahora@seismik.org/);
     assert.doesNotMatch(html, /<iframe|<video|autoplay|style="/i);
     for (const [, url] of html.matchAll(/(?:href|src)="(\/[^"#?]*)(?:[?#][^"]*)?"/g)) {
-      assert.ok(existsSync(`web${url}${url.endsWith('/') ? 'index.html' : ''}`), `${page}: ${url}`);
+      if (!url.startsWith('/v1/')) assert.ok(existsSync(`web${url}${url.endsWith('/') ? 'index.html' : ''}`), `${page}: ${url}`);
     }
-    const canonical = page.startsWith('politicas') ? 'politicas/' : '';
+    const canonical = page.startsWith('politicas') ? 'politicas/' : page.startsWith('admin') ? 'admin/' : '';
     assert.ok(html.includes(`rel="canonical" href="https://liveahora.seismik.org/${canonical}"`));
   }
   const group = readFileSync('web/grupo/index.html', 'utf8');
