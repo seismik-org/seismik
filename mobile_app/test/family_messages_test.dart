@@ -3,9 +3,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:seismik/services/api_client.dart';
 import 'package:seismik/services/family_messages.dart';
 import 'package:seismik/data/models/family_circle.dart';
+import 'package:seismik/services/service_status.dart';
 
 class _Api extends ApiClient {
   bool offline = true;
+  bool legacyResponse = false;
   final List<Map<String, dynamic>> sent = [];
   @override
   Future<void> sendFamilyMessage(Map<String, dynamic> message) async {
@@ -14,10 +16,24 @@ class _Api extends ApiClient {
   }
 
   @override
-  Future<Map<String, dynamic>> fetchFamilyMessages(String senderId) async => {
+  Future<Map<String, dynamic>> fetchFamilyMessages(
+    String senderId, {
+    String? recipientId,
+  }) async => {
     'circle_id': 'circle-1',
+    if (!legacyResponse) 'recipient_id': recipientId,
     'messages': <Map<String, dynamic>>[],
   };
+
+  @override
+  Future<ConnectionDiagnosis> diagnoseFailure(
+    Object? failure, {
+    bool hasSignal = true,
+  }) async => ConnectionDiagnosis(
+    hasSignal ? ConnectionProblem.service : ConnectionProblem.offline,
+    'Pendiente de conexión.',
+    'Sin conexión',
+  );
 }
 
 void main() {
@@ -57,6 +73,54 @@ void main() {
     await other.load();
     expect(other.pending, isEmpty);
   });
+  test(
+    'private outboxes stay scoped to recipient, account and circle across restarts',
+    () async {
+      final api = _Api();
+      FamilyMessages direct(String recipient) => FamilyMessages(
+        api: api,
+        uid: 'owner',
+        circleId: 'circle-1',
+        senderId: '1234567890abcdef',
+        recipientId: recipient,
+      );
+      final first = direct('aaaaaaaaaaaaaaaa');
+      await first.enqueue('Solo para Ana');
+      final id = first.pending.single['message_id'];
+      final other = direct('bbbbbbbbbbbbbbbb');
+      await other.load();
+      expect(other.pending, isEmpty);
+      final group = service(api);
+      await group.load();
+      expect(group.pending, isEmpty);
+      final restored = direct('aaaaaaaaaaaaaaaa');
+      await restored.load();
+      expect(restored.pending.single['message_id'], id);
+      await restored.sync(hasSignal: false);
+      expect(api.sent, isEmpty);
+      api.offline = false;
+      await restored.sync();
+      expect(api.sent.single['recipient_id'], 'aaaaaaaaaaaaaaaa');
+      expect(api.sent.single['message_id'], id);
+      expect(restored.pending, isEmpty);
+    },
+  );
+  test(
+    'older server responses cannot populate a private conversation with group messages',
+    () async {
+      final api = _Api()..legacyResponse = true;
+      final direct = FamilyMessages(
+        api: api,
+        uid: 'owner',
+        circleId: 'circle-1',
+        senderId: '1234567890abcdef',
+        recipientId: 'aaaaaaaaaaaaaaaa',
+      );
+      await direct.sync();
+      expect(direct.received, isEmpty);
+      expect(direct.notice, contains('No se pudo verificar el chat privado'));
+    },
+  );
   test(
     'expired messages remain for review and are never transmitted',
     () async {

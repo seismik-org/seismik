@@ -198,9 +198,9 @@ class _NoCircle extends StatelessWidget {
     if (values == null) return;
     try {
       await family.createCircle(displayName: values[0], circleName: values[1]);
-    } catch (_) {
+    } catch (error) {
       if (context.mounted) {
-        _snack(context, 'No se pudo crear el círculo. Inténtalo otra vez.');
+        await _showFamilyProblem(context, family, error);
       }
     }
   }
@@ -220,12 +220,9 @@ class _NoCircle extends StatelessWidget {
     if (values == null) return;
     try {
       await family.joinCircle(inviteCode: values[0], displayName: values[1]);
-    } catch (_) {
+    } catch (error) {
       if (context.mounted) {
-        _snack(
-          context,
-          'El código no es válido, ya venció o tu cuenta ya está en un círculo.',
-        );
+        await _showFamilyProblem(context, family, error);
       }
     }
   }
@@ -322,9 +319,9 @@ class _CircleView extends StatelessWidget {
           ],
         ),
       );
-    } catch (_) {
+    } catch (error) {
       if (context.mounted) {
-        _snack(context, 'Sólo quien creó el círculo puede invitar.');
+        await _showFamilyProblem(context, family, error);
       }
     }
   }
@@ -335,9 +332,9 @@ class _CircleView extends StatelessWidget {
       if (context.mounted) {
         _snack(context, 'Tu familia ya no ve tu ubicación.');
       }
-    } catch (_) {
+    } catch (error) {
       if (context.mounted) {
-        _snack(context, 'No se pudo borrar tu ubicación. Revisa tu conexión.');
+        await _showFamilyProblem(context, family, error);
       }
     }
   }
@@ -357,17 +354,20 @@ class _CircleView extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.all(12),
               child: Text(
-                'No se pudo actualizar. La lista puede estar guardada de antes; los datos pendientes no confirman el estado actual de tu familia.',
+                '${family.error!}\nLa lista puede estar guardada de antes; los datos pendientes no confirman el estado actual de tu familia.',
               ),
             ),
           if (circle.you != null)
-            FamilyMessagesCard(
+            FamilyConversationsCard(
               key: ValueKey('${family.account!.uid}:${circle.circleId}'),
               api: family.seismik.api,
               uid: family.account!.uid,
               circleId: circle.circleId,
               senderId: circle.you!.memberId,
+              members: circle.members,
+              nameFor: family.nameFor,
               active: isActive,
+              hasSignal: family.seismik.hasSignal,
             ),
           SwitchListTile.adaptive(
             title: const Text('Ubicación automática tras una alerta'),
@@ -461,13 +461,8 @@ class _CheckInCardState extends State<_CheckInCard> {
             ? 'Aviso enviado sin ubicación. Activa la ubicación para compartirla.'
             : 'Seismik recibió tu aviso. Esto no confirma que tu familia lo haya leído.',
       );
-    } catch (_) {
-      if (mounted) {
-        _snack(
-          context,
-          'No se pudo enviar el aviso. Revisa tu conexión e inténtalo otra vez.',
-        );
-      }
+    } catch (error) {
+      if (mounted) await _showFamilyProblem(context, widget.family, error);
     }
   }
 
@@ -829,4 +824,13 @@ String _eventLabel(SeismicEvent event) {
   return event.displayPlace == null
       ? magnitude
       : '$magnitude · ${event.displayPlace}';
+}
+
+Future<void> _showFamilyProblem(
+  BuildContext context,
+  FamilyState family,
+  Object error,
+) async {
+  final message = await family.seismik.describeFailure(error);
+  if (context.mounted) _snack(context, message);
 }

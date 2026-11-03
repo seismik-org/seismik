@@ -3,6 +3,32 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:seismik/core/theme.dart';
 
 void main() {
+  test(
+    'own palettes keep readable text and buttons in light and dark modes',
+    () {
+      double contrast(Color a, Color b) {
+        final first = a.computeLuminance(), second = b.computeLuminance();
+        return ((first > second ? first : second) + .05) /
+            ((first < second ? first : second) + .05);
+      }
+
+      for (final brightness in Brightness.values) {
+        final scheme = SeismikTheme.scheme(brightness: brightness);
+        expect(
+          contrast(scheme.onSurface, scheme.surface),
+          greaterThanOrEqualTo(4.5),
+        );
+        expect(
+          contrast(scheme.onPrimary, scheme.primary),
+          greaterThanOrEqualTo(4.5),
+        );
+        expect(
+          contrast(scheme.onSurfaceVariant, scheme.surfaceContainer),
+          greaterThanOrEqualTo(4.5),
+        );
+      }
+    },
+  );
   test('fallback supports light and dark system modes', () {
     final ThemeData light = SeismikTheme.fromScheme(
       SeismikTheme.scheme(brightness: Brightness.light),

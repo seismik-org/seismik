@@ -40,7 +40,7 @@ abstract final class SeismikColors {
 }
 
 abstract final class SeismikTheme {
-  static const Color fallbackSeed = Color(0xFF1B55B8);
+  static const Color fallbackSeed = Color(0xFF087F8C);
 
   static ThemeData fromScheme(ColorScheme scheme) => ThemeData(
     useMaterial3: true,
@@ -83,12 +83,34 @@ abstract final class SeismikTheme {
     ),
   );
 
-  static ColorScheme scheme({required Brightness brightness}) =>
-      ColorScheme.fromSeed(
-        seedColor: fallbackSeed,
-        brightness: brightness,
-        dynamicSchemeVariant: DynamicSchemeVariant.fidelity,
-      );
+  static ColorScheme scheme({required Brightness brightness}) {
+    final dark = brightness == Brightness.dark;
+    return ColorScheme.fromSeed(
+      seedColor: fallbackSeed,
+      brightness: brightness,
+      dynamicSchemeVariant: DynamicSchemeVariant.tonalSpot,
+    ).copyWith(
+      primary: dark ? const Color(0xFF73D5ED) : const Color(0xFF006D85),
+      onPrimary: dark ? const Color(0xFF003543) : Colors.white,
+      primaryContainer: dark
+          ? const Color(0xFF123E4A)
+          : const Color(0xFFCDF0FA),
+      onPrimaryContainer: dark
+          ? const Color(0xFFC5EFF9)
+          : const Color(0xFF00323D),
+      surface: dark ? const Color(0xFF101820) : const Color(0xFFF5F8FC),
+      surfaceContainer: dark
+          ? const Color(0xFF17222E)
+          : const Color(0xFFEDF3F8),
+      surfaceContainerHighest: dark
+          ? const Color(0xFF263747)
+          : const Color(0xFFDEE8F1),
+      onSurface: dark ? const Color(0xFFE4EDF5) : const Color(0xFF162736),
+      onSurfaceVariant: dark
+          ? const Color(0xFFB4C5D5)
+          : const Color(0xFF455A6B),
+    );
+  }
 
   /// Usa la variante que Android haya publicado para ese modo concreto.
   ///

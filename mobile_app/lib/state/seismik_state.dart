@@ -15,6 +15,7 @@ import '../services/notification_service.dart';
 import '../services/offline_queue.dart';
 import '../services/connectivity_watcher.dart';
 import '../services/emergency_store.dart';
+import '../services/service_status.dart';
 import 'mobile_settings.dart';
 
 /// Ajustes que obligan a hablar con el servidor.
@@ -119,12 +120,19 @@ class SeismikState extends ChangeNotifier with WidgetsBindingObserver {
   bool emergencyPinned = false;
   bool hasSignal = true;
   bool alertRegistrationReady = false;
+  String? registrationMessage;
   String? diagnosticError;
+  ConnectionDiagnosis? connectionDiagnosis;
+
+  Future<String> describeFailure(Object? failure) async =>
+      (await api.diagnoseFailure(failure, hasSignal: hasSignal)).message;
 
   String get connectionLabel {
     if (offlineEmergencyMode) return 'Modo de emergencia · datos guardados';
     if (!hasSignal) return 'Sin red · datos guardados';
-    if (!networkOnline) return 'No se pudo sincronizar con Seismik';
+    if (!networkOnline) {
+      return connectionDiagnosis?.label ?? 'Comprobando conexión con Seismik';
+    }
     if (api.lowBandwidth) return 'Conexión limitada · historial sincronizado';
     return 'Historial sincronizado';
   }
@@ -332,8 +340,11 @@ class SeismikState extends ChangeNotifier with WidgetsBindingObserver {
     } catch (error) {
       alertRegistrationReady = false;
       diagnosticError = error.toString();
+      final explanation = await describeFailure(error);
+      if (_disposed) return false;
+      registrationMessage = explanation;
       statusMessage =
-          'El registro para recibir alertas está pendiente. Reintenta desde Configuración.';
+          'El registro para recibir alertas está pendiente. $explanation';
       _notify();
       return false;
     }
@@ -439,6 +450,7 @@ class SeismikState extends ChangeNotifier with WidgetsBindingObserver {
         );
         registrations.value++;
         alertRegistrationReady = true;
+        registrationMessage = null;
         return;
       } catch (error) {
         // Reintentar un 401/403/422 sólo demora el arranque y consume cuota:
@@ -493,12 +505,20 @@ class SeismikState extends ChangeNotifier with WidgetsBindingObserver {
     if (fresh != null) {
       recentEvents = _withRecoveredAlerts(fresh);
       networkOnline = true;
+      connectionDiagnosis = null;
       statusMessage = null;
     } else {
       networkOnline = false;
       diagnosticError = failure.toString();
       statusMessage =
-          'No se pudo actualizar el historial. Conservamos los datos guardados; vuelve a intentarlo.';
+          'No se pudo actualizar el historial. Comprobando el estado del servicio…';
+      _notify();
+      connectionDiagnosis = await api.diagnoseFailure(
+        failure,
+        hasSignal: hasSignal,
+      );
+      if (_disposed) return;
+      statusMessage = connectionDiagnosis!.message;
     }
     _notify();
 
@@ -564,7 +584,8 @@ class SeismikState extends ChangeNotifier with WidgetsBindingObserver {
     final String? previousMessage = syncMessage;
     final QueueFlushResult result = await reportQueue.flush(_sendPending);
     pendingReportCount = result.remaining;
-    if (result.lastError == 'Hay reportes antiguos guardados pendientes de revisión.') {
+    if (result.lastError ==
+        'Hay reportes antiguos guardados pendientes de revisión.') {
       syncMessage = result.lastError;
     } else if (result.sent > 0) {
       syncMessage = result.sent == 1

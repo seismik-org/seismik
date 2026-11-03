@@ -48,20 +48,30 @@ class FamilyMessages {
     required String uid,
     required this.circleId,
     required this.senderId,
+    this.recipientId,
     FlutterSecureStorage? storage,
   }) : _storage = storage ?? const FlutterSecureStorage(),
        _key =
-           'family.messages.${sha256.convert(utf8.encode('$uid:$circleId'))}';
+           'family.messages.${sha256.convert(utf8.encode(recipientId == null ? '$uid:$circleId' : '$uid:$circleId:private:$recipientId'))}';
 
   final ApiClient api;
   final String circleId;
   final String senderId;
+  final String? recipientId;
   final FlutterSecureStorage _storage;
   final String _key;
   bool _syncing = false;
   List<Map<String, dynamic>> pending = [];
   List<Map<String, dynamic>> received = [];
   String? notice;
+
+  bool _belongsToConversation(Map<String, dynamic> message) {
+    if (recipientId == null) return message['recipient_id'] == null;
+    return (message['sender_id'] == senderId &&
+            message['recipient_id'] == recipientId) ||
+        (message['sender_id'] == recipientId &&
+            message['recipient_id'] == senderId);
+  }
 
   Future<void> load() async {
     final raw = await _storage.read(key: _key);
@@ -72,6 +82,7 @@ class FamilyMessages {
       received = (data['received'] as List).cast<Map<String, dynamic>>();
       received.removeWhere(
         (m) =>
+            !_belongsToConversation(m) ||
             !(DateTime.tryParse(
                   m['expires_at']?.toString() ?? '',
                 )?.isAfter(DateTime.now()) ??
@@ -92,29 +103,61 @@ class FamilyMessages {
         'Tienes 50 mensajes pendientes. Revisa o cancela alguno.',
       );
     }
-    pending.add({
+    final message = <String, dynamic>{
       'message_id': const Uuid().v4(),
       'circle_id': circleId,
       'sender_id': senderId,
+      if (recipientId != null) 'recipient_id': recipientId,
       'text': value,
       'created_at': (now ?? DateTime.now()).toUtc().toIso8601String(),
-    });
-    await _save();
+    };
+    pending.add(message);
+    try {
+      await _save();
+    } on Object {
+      pending.remove(message);
+      rethrow;
+    }
   }
 
   Future<void> cancel(String id) async {
+    final original = List<Map<String, dynamic>>.of(pending);
     pending.removeWhere((m) => m['message_id'] == id);
-    await _save();
+    try {
+      await _save();
+    } on Object {
+      pending = original;
+      rethrow;
+    }
   }
 
-  Future<void> sync({DateTime? now}) async {
+  Future<void> sync({DateTime? now, bool hasSignal = true}) async {
     if (_syncing) return;
     _syncing = true;
     notice = null;
     try {
       final moment = now ?? DateTime.now();
+      received.removeWhere(
+        (message) =>
+            !(DateTime.tryParse(
+                  '${message['expires_at'] ?? ''}',
+                )?.isAfter(moment) ??
+                false),
+      );
+      if (!hasSignal) {
+        notice = (await api.diagnoseFailure(null, hasSignal: false)).message;
+        await _save();
+        return;
+      }
       // UI disables editing while syncing. IDs survive every network retry.
       for (final message in List<Map<String, dynamic>>.of(pending)) {
+        if (message['circle_id'] != circleId ||
+            message['sender_id'] != senderId ||
+            message['recipient_id'] != recipientId) {
+          notice =
+              'Un mensaje no corresponde a este chat. Revísalo antes de continuar.';
+          continue;
+        }
         if (moment.difference(DateTime.parse(message['created_at'] as String)) >
             const Duration(hours: 24)) {
           notice =
@@ -126,28 +169,40 @@ class FamilyMessages {
           pending.removeWhere((m) => m['message_id'] == message['message_id']);
           await _save();
         } on SeismikApiException catch (error) {
-          notice = error.statusCode == 429
-              ? 'Se alcanzó un límite de mensajes. Sigue guardado: espera o usa SMS.'
-              : error.isPermanent
-              ? 'El servidor no aceptó un mensaje. Sigue guardado para que lo revises.'
-              : 'Pendiente de conexión. Reintentaremos al abrir Familia.';
+          notice =
+              '${(await api.diagnoseFailure(error, hasSignal: hasSignal)).message} El mensaje sigue pendiente.';
           break;
-        } on Object {
-          notice = 'Pendiente de conexión. Reintentaremos al abrir Familia.';
+        } on Object catch (error) {
+          notice = (await api.diagnoseFailure(
+            error,
+            hasSignal: hasSignal,
+          )).message;
           break;
         }
       }
       try {
-        final result = await api.fetchFamilyMessages(senderId);
+        final result = await api.fetchFamilyMessages(
+          senderId,
+          recipientId: recipientId,
+        );
         if (result['circle_id'] != circleId) {
           notice =
               'Tu círculo cambió. Los pendientes no se enviarán a otra familia.';
           return;
         }
-        received = (result['messages'] as List).cast<Map<String, dynamic>>();
+        if (result['recipient_id'] != recipientId) {
+          notice =
+              'No se pudo verificar el chat privado. No mostraremos mensajes de otra conversación.';
+          return;
+        }
+        received = (result['messages'] as List)
+            .cast<Map<String, dynamic>>()
+            .where(_belongsToConversation)
+            .toList();
         await _save();
-      } on Object {
-        notice ??= 'Mostrando la última copia guardada. No se pudo actualizar.';
+      } on Object catch (error) {
+        notice ??=
+            '${(await api.diagnoseFailure(error, hasSignal: hasSignal)).message} Mostrando la última copia guardada.';
       }
     } finally {
       _syncing = false;

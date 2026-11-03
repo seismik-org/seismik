@@ -49,6 +49,7 @@ class SettingsScreen extends StatelessWidget {
               subtitle: Text(
                 '${state.connectionLabel}\n'
                 '${state.alertRegistrationReady ? "Dispositivo registrado" : "Registro para alertas pendiente"}\n'
+                '${state.registrationMessage == null ? "" : "${state.registrationMessage}\n"}'
                 'El registro no sustituye los permisos del sistema. La prueba local no comprueba la entrega remota.',
               ),
               isThreeLine: true,

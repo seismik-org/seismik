@@ -5,6 +5,119 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../services/api_client.dart';
 import '../../services/family_messages.dart';
+import '../../data/models/family_circle.dart';
+
+class FamilyConversationsCard extends StatefulWidget {
+  const FamilyConversationsCard({
+    super.key,
+    required this.api,
+    required this.uid,
+    required this.circleId,
+    required this.senderId,
+    required this.members,
+    this.nameFor,
+    this.active = true,
+    this.hasSignal = true,
+  });
+  final ApiClient api;
+  final String uid, circleId, senderId;
+  final List<FamilyMember> members;
+  final String Function(FamilyMember)? nameFor;
+  final bool active, hasSignal;
+  @override
+  State<FamilyConversationsCard> createState() =>
+      _FamilyConversationsCardState();
+}
+
+class _FamilyConversationsCardState extends State<FamilyConversationsCard> {
+  String? _recipient;
+  String? _notice;
+  String _name(FamilyMember member) =>
+      widget.nameFor?.call(member) ?? member.displayName;
+
+  @override
+  void didUpdateWidget(covariant FamilyConversationsCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (_recipient != null &&
+        !widget.members.any((m) => m.memberId == _recipient && !m.isYou)) {
+      _recipient = null;
+      _notice =
+          'Este familiar ya no está en el círculo. Sus pendientes no se enviarán al chat familiar.';
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final peers = widget.members.where((member) => !member.isYou).toList();
+    final selected = peers
+        .where((member) => member.memberId == _recipient)
+        .firstOrNull;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  'Conversaciones',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  key: ValueKey(_recipient ?? 'family'),
+                  initialValue: _recipient ?? 'family',
+                  isExpanded: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Elige con quién hablar',
+                  ),
+                  items: [
+                    const DropdownMenuItem(
+                      value: 'family',
+                      child: Text('Todo el círculo familiar'),
+                    ),
+                    for (final member in peers)
+                      DropdownMenuItem(
+                        value: member.memberId,
+                        child: Text(
+                          'Privado · ${_name(member)}',
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                  ],
+                  onChanged: (value) => setState(() {
+                    _recipient = value == 'family' ? null : value;
+                    _notice = null;
+                  }),
+                ),
+                if (_notice != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text(_notice!),
+                  ),
+              ],
+            ),
+          ),
+        ),
+        FamilyMessagesCard(
+          key: ValueKey(
+            '${widget.uid}:${widget.circleId}:${_recipient ?? 'family'}',
+          ),
+          api: widget.api,
+          uid: widget.uid,
+          circleId: widget.circleId,
+          senderId: widget.senderId,
+          recipientId: _recipient,
+          recipientName: selected == null ? null : _name(selected),
+          active: widget.active,
+          hasSignal: widget.hasSignal,
+        ),
+      ],
+    );
+  }
+}
 
 class FamilyMessagesCard extends StatefulWidget {
   const FamilyMessagesCard({
@@ -13,13 +126,19 @@ class FamilyMessagesCard extends StatefulWidget {
     required this.uid,
     required this.circleId,
     required this.senderId,
+    this.recipientId,
+    this.recipientName,
     this.active = true,
+    this.hasSignal = true,
   });
   final ApiClient api;
   final String uid;
   final String circleId;
   final String senderId;
+  final String? recipientId;
+  final String? recipientName;
   final bool active;
+  final bool hasSignal;
 
   @override
   State<FamilyMessagesCard> createState() => _FamilyMessagesCardState();
@@ -55,10 +174,21 @@ class _FamilyMessagesCardState extends State<FamilyMessagesCard> {
       uid: widget.uid,
       circleId: widget.circleId,
       senderId: widget.senderId,
+      recipientId: widget.recipientId,
     );
     final service = _messages;
     unawaited(() async {
-      await service.load();
+      try {
+        await service.load();
+      } on Object {
+        if (mounted && service == _messages) {
+          setState(
+            () => _error =
+                'No se pudo leer la copia guardada. Revisa el almacenamiento del teléfono.',
+          );
+        }
+        return;
+      }
       if (!mounted || service != _messages) return;
       setState(() {});
       await _sync();
@@ -68,7 +198,10 @@ class _FamilyMessagesCardState extends State<FamilyMessagesCard> {
   @override
   void didUpdateWidget(covariant FamilyMessagesCard oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.uid != widget.uid || oldWidget.circleId != widget.circleId) {
+    if (oldWidget.uid != widget.uid ||
+        oldWidget.circleId != widget.circleId ||
+        oldWidget.recipientId != widget.recipientId ||
+        oldWidget.senderId != widget.senderId) {
       _draft.clear();
       _init();
     }
@@ -78,9 +211,12 @@ class _FamilyMessagesCardState extends State<FamilyMessagesCard> {
   Future<void> _sync() async {
     if (_busy || !mounted || !widget.active) return;
     final service = _messages;
-    setState(() => _busy = true);
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
     try {
-      await service.sync();
+      await service.sync(hasSignal: widget.hasSignal);
     } catch (_) {
       if (mounted) {
         _error = 'No se pudo guardar. Revisa el almacenamiento del teléfono.';
@@ -92,15 +228,22 @@ class _FamilyMessagesCardState extends State<FamilyMessagesCard> {
 
   Future<void> _send([String? quick]) async {
     if (_busy) return;
-    setState(() => _busy = true);
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
     try {
       await _messages.enqueue(quick ?? _draft.text);
+      if (!mounted) return;
       _draft.clear();
-    } catch (_) {
+    } catch (error) {
       if (mounted) {
         setState(
-          () => _error =
-              'No se pudo guardar. Usa hasta 280 caracteres y revisa los pendientes.',
+          () => _error = error is ArgumentError
+              ? 'Escribe entre 1 y 280 caracteres.'
+              : error is StateError
+              ? 'Tienes 50 mensajes pendientes. Revisa o cancela alguno.'
+              : 'No se pudo guardar. Revisa el almacenamiento del teléfono.',
         );
       }
     } finally {
@@ -176,10 +319,17 @@ class _FamilyMessagesCardState extends State<FamilyMessagesCard> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              'Mensajes de tu familia',
+              widget.recipientId == null
+                  ? 'Chat familiar'
+                  : 'Privado · ${widget.recipientName ?? 'Familiar'}',
               style: Theme.of(context).textTheme.titleLarge,
             ),
             const SizedBox(height: 8),
+            Text(
+              widget.recipientId == null
+                  ? 'Este chat se comparte con todo el círculo.'
+                  : 'Esta conversación se comparte solo entre los dos participantes.',
+            ),
             const Text(
               'Texto ligero por Internet. Si falla la conexión, queda pendiente en este teléfono. No usa SMS automáticamente y no cambia tu estado de seguridad.',
             ),
@@ -210,8 +360,17 @@ class _FamilyMessagesCardState extends State<FamilyMessagesCard> {
                   onPressed: _busy
                       ? null
                       : () async {
-                          await _messages.cancel(m['message_id'].toString());
-                          if (mounted) setState(() {});
+                          try {
+                            await _messages.cancel(m['message_id'].toString());
+                            if (mounted) setState(() {});
+                          } on Object {
+                            if (mounted) {
+                              setState(
+                                () => _error =
+                                    'No se pudo cancelar el pendiente. Revisa el almacenamiento del teléfono.',
+                              );
+                            }
+                          }
                         },
                   icon: const Icon(Icons.close),
                 ),
@@ -251,8 +410,10 @@ class _FamilyMessagesCardState extends State<FamilyMessagesCard> {
               maxLines: 3,
               minLines: 1,
               enabled: !_busy,
-              decoration: const InputDecoration(
-                labelText: 'Mensaje para tu familia',
+              decoration: InputDecoration(
+                labelText: widget.recipientId == null
+                    ? 'Mensaje para tu familia'
+                    : 'Mensaje para ${widget.recipientName ?? 'tu familiar'}',
                 hintText: 'Por ejemplo: nos vemos en la entrada del parque',
               ),
             ),

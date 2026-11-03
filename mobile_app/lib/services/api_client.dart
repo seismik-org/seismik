@@ -13,6 +13,7 @@ import 'package:uuid/uuid.dart';
 
 import '../core/constants.dart';
 import '../core/security.dart';
+import '../core/api_error_messages.dart';
 import '../data/models/citizen_report.dart';
 import '../data/models/family_circle.dart';
 import '../data/models/pending_report.dart';
@@ -23,11 +24,14 @@ import 'wear_bridge.dart';
 import 'adaptive_transfer.dart';
 import 'emergency_store.dart';
 import 'firebase_runtime.dart';
+import 'service_status.dart';
 
 class SeismikApiException implements Exception {
-  const SeismikApiException(this.message, this.statusCode);
+  const SeismikApiException(this.message, this.statusCode, {this.code});
   final String message;
   final int? statusCode;
+  final String? code;
+  String get userMessage => translatedApiError(message, statusCode, code: code);
 
   /// El servidor rechazó el contenido: reintentarlo repetiría el mismo error.
   /// 408 y 429 sí son transitorios y vuelven a la cola.
@@ -47,12 +51,53 @@ class SeismikApiException implements Exception {
       statusCode == 401 && message.contains('Account session');
 
   @override
-  String toString() => 'SeismikApiException($statusCode): $message';
+  String toString() => userMessage;
 }
 
 class ApiClient {
-  ApiClient({http.Client? httpClient})
-    : _http = httpClient ?? _persistentHttpClient();
+  ApiClient({http.Client? httpClient, ServiceStatusClient? statusClient})
+    : _http = httpClient ?? _persistentHttpClient(),
+      _statusClient = statusClient;
+
+  ServiceStatusClient? _statusClient;
+
+  Future<ConnectionDiagnosis> diagnoseFailure(
+    Object? failure, {
+    bool hasSignal = true,
+  }) {
+    if (failure is SeismikApiException &&
+        failure.statusCode != null &&
+        failure.statusCode! >= 400 &&
+        failure.statusCode! < 500 &&
+        failure.statusCode != 408) {
+      return Future.value(
+        ConnectionDiagnosis(
+          ConnectionProblem.request,
+          failure.userMessage,
+          'Solicitud rechazada · revisa los detalles',
+        ),
+      );
+    }
+    if (failure != null &&
+        failure is! SeismikApiException &&
+        failure is! TimeoutException &&
+        failure is! SocketException &&
+        failure is! http.ClientException &&
+        failure is! HandshakeException &&
+        failure is! FormatException) {
+      return Future.value(
+        const ConnectionDiagnosis(
+          ConnectionProblem.unknown,
+          'La acción no pudo completarse. Revisa los permisos o el almacenamiento de la app e inténtalo de nuevo.',
+          'Acción sin completar',
+        ),
+      );
+    }
+    return (_statusClient ??= ServiceStatusClient(client: _http)).diagnose(
+      hasSignal: hasSignal,
+      httpStatus: failure is SeismikApiException ? failure.statusCode : null,
+    );
+  }
 
   /// Un único cliente con conexiones persistentes. Cada petición reutiliza el
   /// TLS ya negociado con Cloudflare en vez de repetir el apretón de manos,
@@ -873,11 +918,18 @@ class ApiClient {
     return FamilyCircle.fromMap(_decode(response));
   }
 
-  Future<Map<String, dynamic>> fetchFamilyMessages(String senderId) async {
+  Future<Map<String, dynamic>> fetchFamilyMessages(
+    String senderId, {
+    String? recipientId,
+  }) async {
     final response = await _http
         .get(
-          _uri('/v1/family/messages')
-              .replace(queryParameters: {'sender_id': senderId}),
+          _uri('/v1/family/messages').replace(
+            queryParameters: {
+              'sender_id': senderId,
+              'recipient_id': ?recipientId,
+            },
+          ),
           headers: await _accountHeaders(),
         )
         .timeout(const Duration(seconds: 10));
@@ -1187,7 +1239,11 @@ class ApiClient {
           ? <String, dynamic>{}
           : jsonDecode(response.body);
     } on FormatException {
-      decoded = <String, dynamic>{'detail': 'Respuesta inválida del servidor'};
+      throw SeismikApiException(
+        'Unexpected API response',
+        response.statusCode,
+        code: 'invalid_response',
+      );
     }
     if (response.statusCode < 200 || response.statusCode >= 300) {
       final String detail = decoded is Map<String, dynamic>
@@ -1196,10 +1252,13 @@ class ApiClient {
       // La causa usual durante pruebas locales es una APK fuera de la pista
       // de Play: Play Integrity no puede atestiguar esa instalación. Mostrar
       // la acción concreta es preferible a dejar el JSON crudo en pantalla.
-      final String message = detail == 'Device integrity verification failed'
-          ? 'No se pudo verificar esta instalación. Usa la pista de pruebas de Google Play e inténtalo de nuevo.'
-          : detail;
-      throw SeismikApiException(message, response.statusCode);
+      throw SeismikApiException(
+        detail,
+        response.statusCode,
+        code: decoded is Map<String, dynamic> && decoded['code'] is String
+            ? decoded['code'] as String
+            : null,
+      );
     }
     if (decoded is! Map<String, dynamic>) {
       throw SeismikApiException('Unexpected API response', response.statusCode);

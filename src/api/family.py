@@ -121,6 +121,7 @@ class FamilyMessageCreate(_StrictModel):
     message_id: str = Field(pattern=r"^[a-f0-9-]{36}$")
     circle_id: str = Field(min_length=12, max_length=64, pattern=r"^[A-Za-z0-9_-]+$")
     sender_id: str = Field(pattern=r"^[a-f0-9]{16}$")
+    recipient_id: str | None = Field(default=None, pattern=r"^[a-f0-9]{16}$")
     text: str = Field(min_length=1, max_length=280)
     created_at: datetime
 
@@ -130,6 +131,25 @@ class FamilyMessageCreate(_StrictModel):
         if value.tzinfo is None:
             raise ValueError("Include a timezone")
         return value.astimezone(timezone.utc)
+
+
+async def _message_recipient(redis: Redis, circle: str, sender: str, recipient: str | None) -> str | None:
+    if recipient is None:
+        return None
+    if recipient == sender:
+        raise HTTPException(422, "Choose another family member")
+    for uid in cast(set[str], await redis.smembers(family_members_key(circle))):
+        if _public_member_id(circle, uid) == recipient:
+            return uid
+    raise HTTPException(404, "Family message recipient is no longer available")
+
+
+def _message_index(circle: str, sender: str, recipient: str | None) -> str:
+    if recipient is None:
+        return f"seismik:family:messages:{circle}"
+    pair = ":".join(sorted((sender, recipient)))
+    digest = hashlib.sha256(pair.encode()).hexdigest()
+    return f"seismik:family:private-messages:{circle}:{digest}"
 
 
 @router.post("/messages")
@@ -151,19 +171,28 @@ async def send_family_message(
     sender = _public_member_id(circle, account.uid)
     if sender != payload.sender_id:
         raise HTTPException(403, "Account changed; message was not sent")
+    recipient_uid = await _message_recipient(redis, circle, sender, payload.recipient_id)
     key = f"seismik:family:message:{circle}:{sender}:{payload.message_id}"
-    index_key = f"seismik:family:messages:{circle}"
+    index_key = _message_index(circle, sender, payload.recipient_id)
+    group_index = _message_index(circle, sender, None)
+    private_budget = f"seismik:family:private-message-budget:{circle}"
+    members_key = family_members_key(circle)
     for _attempt in range(3):
         try:
             async with redis.pipeline(transaction=True) as pipe:
-                await pipe.watch(key, index_key)
+                await pipe.watch(key, index_key, group_index, private_budget, members_key)
+                if not await pipe.sismember(members_key, account.uid) or (
+                    recipient_uid is not None and not await pipe.sismember(members_key, recipient_uid)
+                ):
+                    raise HTTPException(403, "Family membership changed; message was not sent")
                 previous = await pipe.get(key)
                 if previous:
                     saved = json.loads(previous)
-                    if saved["text"] != payload.text:
+                    if saved["text"] != payload.text or saved.get("recipient_id") != payload.recipient_id:
                         raise HTTPException(409, "Message identifier already used")
                     return {"message_id": payload.message_id, "accepted_at": saved["accepted_at"], "duplicate": True}
-                recent_count = await pipe.zcount(index_key, now.timestamp() - _MESSAGE_TTL_SECONDS, "+inf")
+                recent_count = await pipe.zcount(group_index, now.timestamp() - _MESSAGE_TTL_SECONDS, "+inf")
+                recent_count += await pipe.zcount(private_budget, now.timestamp() - _MESSAGE_TTL_SECONDS, "+inf")
                 if recent_count >= 500:
                     raise HTTPException(429, "Family limit: 500 messages in 24 hours; use SMS or a safety check-in", headers={"Retry-After": "3600"})
                 minute = int(now.timestamp()) // 60
@@ -181,12 +210,18 @@ async def send_family_message(
                     "accepted_at": now.isoformat(),
                     "expires_at": (now + timedelta(seconds=_MESSAGE_TTL_SECONDS)).isoformat(),
                 }
+                if payload.recipient_id is not None:
+                    report["recipient_id"] = payload.recipient_id
                 pipe.multi()
                 pipe.set(key, json.dumps(report, ensure_ascii=False, separators=(",", ":")), ex=_MESSAGE_TTL_SECONDS)
                 pipe.zadd(index_key, {key: now.timestamp()})
                 pipe.zremrangebyscore(index_key, "-inf", now.timestamp() - _MESSAGE_TTL_SECONDS)
                 pipe.zremrangebyrank(index_key, 0, -501)
                 pipe.expire(index_key, _MESSAGE_TTL_SECONDS)
+                if payload.recipient_id is not None:
+                    pipe.zadd(private_budget, {key: now.timestamp()})
+                    pipe.zremrangebyscore(private_budget, "-inf", now.timestamp() - _MESSAGE_TTL_SECONDS)
+                    pipe.expire(private_budget, _MESSAGE_TTL_SECONDS)
                 await pipe.execute()
                 return {"message_id": payload.message_id, "accepted_at": now.isoformat(), "duplicate": False}
         except WatchError:
@@ -198,6 +233,7 @@ async def send_family_message(
 async def get_family_messages(
     response: Response,
     sender_id: str = Query(pattern=r"^[a-f0-9]{16}$"),
+    recipient_id: str | None = Query(default=None, pattern=r"^[a-f0-9]{16}$"),
     limit: int = Query(default=50, ge=1, le=50),
     redis: Redis = Depends(get_redis),
     account: AccountPrincipal = Depends(require_account_session),
@@ -208,17 +244,23 @@ async def get_family_messages(
         raise HTTPException(403, "Family membership is no longer active")
     if sender_id != _public_member_id(circle, account.uid):
         raise HTTPException(403, "Account changed")
+    await _message_recipient(redis, circle, sender_id, recipient_id)
     now = datetime.now(timezone.utc).timestamp()
-    keys = cast(list[str], await redis.zrevrangebyscore(f"seismik:family:messages:{circle}", now, now - _MESSAGE_TTL_SECONDS, start=0, num=limit))
+    keys = cast(list[str], await redis.zrevrangebyscore(_message_index(circle, sender_id, recipient_id), now, now - _MESSAGE_TTL_SECONDS, start=0, num=limit))
     values = await redis.mget(keys) if keys else []
     sender = _public_member_id(circle, account.uid)
     messages = []
     for raw in reversed(values):
         if raw:
             message = json.loads(raw)
+            if recipient_id is None:
+                if message.get("recipient_id") is not None:
+                    continue
+            elif {message.get("sender_id"), message.get("recipient_id")} != {sender_id, recipient_id}:
+                continue
             message["is_you"] = message["sender_id"] == sender
             messages.append(message)
-    return {"circle_id": circle, "messages": messages, "retention_hours": 24}
+    return {"circle_id": circle, "recipient_id": recipient_id, "messages": messages, "retention_hours": 24}
 
 
 def _circle_key(circle_id: str) -> str:

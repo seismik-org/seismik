@@ -168,11 +168,11 @@ class FamilyState extends ChangeNotifier {
         await _expireSession();
       } else {
         await _loadSavedCircle();
-        error = 'No fue posible actualizar tu familia. Revisa tu conexión.';
+        error = await seismik.describeFailure(failure);
       }
-    } catch (_) {
+    } catch (failure) {
       await _loadSavedCircle();
-      error = 'No fue posible actualizar tu familia. Revisa tu conexión.';
+      error = await seismik.describeFailure(failure);
     } finally {
       loading = false;
       _notify();
