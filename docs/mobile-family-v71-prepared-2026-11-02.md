@@ -35,7 +35,11 @@ Los archivos de construcción y el respaldo privado de configuración están en 
 3. Habilitar las cuatro variables originales `SEISMIK_KEYSTORE`, `SEISMIK_KEYSTORE_PASSWORD`, `SEISMIK_KEY_ALIAS`, `SEISMIK_KEY_PASSWORD` localmente, sin compartir sus valores. Compilar sin `seismikUnsignedReleaseCheck`. Verificar certificado y actualización conservando datos antes de subir a la pista de pruebas.
 4. Distribuir la app sólo después de validar la API. No desinstalar la app existente ni sustituir la clave original.
 
-En este PC faltan las variables de firma original. La opción Gradle existente `seismikUnsignedReleaseCheck=true` sólo comprueba una compilación release con firma de depuración; cualquier APK obtenido así NO es un artefacto distribuible ni una actualización de la app instalada.
+La firma original se recuperó posteriormente desde la transferencia que el usuario puso en Drive. El JKS coincide byte por byte con el original preservado; la contraseña abre la entrada privada `seismik-upload` y quedó protegida mediante DPAPI para este usuario/PC en `%LOCALAPPDATA%\Seismik\signing`. No hay contraseñas ni claves en el repositorio. Las variables de firma se habilitan sólo durante cada compilación y se retiran después.
+
+El certificado de carga comprobado tiene SHA256 `83:27:89:71:F1:D8:7C:3E:FC:CC:DD:17:98:D2:C6:5C:6D:F8:C1:20:BB:8E:2B:16:EA:42:17:E3:9E:F6:BE:E0`. Falta contrastarlo con Play Console y validar allí la actualización antes de distribuir. Recuperar la firma no modifica la decisión de no publicar todavía.
+
+La opción Gradle existente `seismikUnsignedReleaseCheck=true` sólo comprueba una compilación release con firma de depuración; cualquier APK obtenido así NO es un artefacto distribuible ni una actualización de la app instalada. El AAB final `seismik-v71-firma-original.aab` se compiló con `flutter build appbundle --release --no-pub`, sin esa opción de comprobación. `jarsigner -verify` confirmó su integridad y `keytool -printcert -jarfile` confirmó el certificado original indicado arriba. Tamaño: 59.746.807 bytes; SHA256 `c3faa0c7ccf24f5c1cf9d6c66d5a2861ba1b09c122a528f1dbee93d1a8ceab55`. Se conserva en los informes locales, separado del APK de depuración. No se subió a Play Console ni se publicó.
 
 ## Evidencias locales
 
