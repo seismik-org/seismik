@@ -1,5 +1,7 @@
 # Versión móvil 71 preparada — sin publicar
 
+Estado posterior: el usuario autorizó el despliegue y la publicación. API activa y versión 71 disponible en prueba interna; véase [Publicación de la versión 71](mobile-family-v71-published-2026-11-02.md). Lo siguiente conserva el estado histórico de preparación.
+
 Decisión del usuario: dejar preparada la versión sin publicar todavía. La candidata Flutter es `1.0.0+71`, en `feature/family-chat-status-theme`. No se despliega la API nueva, no se cambia tráfico, no se publica en tiendas ni se actualiza la app instalada.
 
 ## Comportamiento
