@@ -1,6 +1,8 @@
 /// Safe Spanish UI messages; raw server details remain available for typed logic.
 String translatedApiError(String detail, int? status, {String? code}) {
   const known = <String, String>{
+    'Family data recovery in progress':
+        'Los círculos familiares están temporalmente suspendidos mientras se revisan sus datos. No crees otro círculo ni desinstales la app. Tus mensajes pendientes siguen en este teléfono.',
     'Account session required': 'Inicia sesión para usar esta función.',
     'Account session expired': 'Tu sesión venció. Inicia sesión de nuevo.',
     'Account session invalid':

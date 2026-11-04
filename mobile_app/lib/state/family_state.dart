@@ -143,6 +143,19 @@ class FamilyState extends ChangeNotifier {
     try {
       final uid = account!.uid;
       final nextCircle = await _api.fetchFamilyCircle();
+      if (nextCircle == null) {
+        final saved = circle ?? await FamilyCircleCache.load(uid);
+        if (account?.uid != uid) return;
+        if (saved != null) {
+          final savedNames = await _nicknameStore.load(uid, saved.circleId);
+          if (account?.uid != uid) return;
+          circle = saved;
+          _nicknames = savedNames;
+          error =
+              'El servicio no encuentra tu círculo guardado. Conservamos su lista en este teléfono, sin confirmar el estado actual. No crees otro círculo; vuelve a intentar la consulta más tarde.';
+          return;
+        }
+      }
       final names = nextCircle == null
           ? <String, String>{}
           : await _nicknameStore.load(uid, nextCircle.circleId);
@@ -154,12 +167,6 @@ class FamilyState extends ChangeNotifier {
           await FamilyCircleCache.save(uid, nextCircle);
         } catch (_) {
           /* Online family still works. */
-        }
-      } else {
-        try {
-          await FamilyCircleCache.clear(uid);
-        } catch (_) {
-          /* No stale online circle is displayed. */
         }
       }
       error = null;

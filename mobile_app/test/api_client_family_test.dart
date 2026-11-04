@@ -19,72 +19,101 @@ void main() {
     });
   });
 
-  test('sin cuenta la familia pide iniciar sesión sin llamar al servidor', () async {
-    final List<http.Request> requests = <http.Request>[];
-    final ApiClient api = ApiClient(
-      httpClient: MockClient((http.Request request) async {
-        requests.add(request);
-        return http.Response('{}', 200);
-      }),
-    );
+  test(
+    'sin cuenta la familia pide iniciar sesión sin llamar al servidor',
+    () async {
+      final List<http.Request> requests = <http.Request>[];
+      final ApiClient api = ApiClient(
+        httpClient: MockClient((http.Request request) async {
+          requests.add(request);
+          return http.Response('{}', 200);
+        }),
+      );
 
-    await expectLater(
-      api.fetchFamilyCircle(),
-      throwsA(
-        isA<SeismikApiException>().having(
-          (error) => error.isUnauthorized,
-          'isUnauthorized',
-          isTrue,
+      await expectLater(
+        api.fetchFamilyCircle(),
+        throwsA(
+          isA<SeismikApiException>().having(
+            (error) => error.isUnauthorized,
+            'isUnauthorized',
+            isTrue,
+          ),
         ),
-      ),
-    );
-    expect(requests, isEmpty);
-  });
+      );
+      expect(requests, isEmpty);
+    },
+  );
 
-  test('el código se canjea con el verificador y la sesión viaja en cada petición', () async {
-    final List<http.Request> requests = <http.Request>[];
-    final ApiClient api = ApiClient(
-      httpClient: MockClient((http.Request request) async {
-        requests.add(request);
-        if (request.url.path == '/v1/oauth/mobile/exchange') {
-          return http.Response(
-            jsonEncode(<String, String>{
-              'mobile_session_token': 'account-token',
-              'uid': 'google-1',
-              'email': 'ana@example.test',
-              'name': 'Ana Maria',
-            }),
-            200,
-          );
-        }
-        return http.Response('{"detail":"No family circle found"}', 404);
-      }),
-    );
-
-    final SeismikAccount account = await api.exchangeOAuthCode(
-      code: 'codigo',
-      verifier: 'v' * 43,
-    );
-    expect(account.firstName, 'Ana');
-    final http.Request exchange = requests.single;
-    expect(exchange.url.host, 'auth.seismik.org');
-    expect(jsonDecode(exchange.body), <String, String>{
-      'code': 'codigo',
-      'code_verifier': 'v' * 43,
+  test('generic 404 and proxy errors never mean an empty family', () async {
+    FlutterSecureStorage.setMockInitialValues(<String, String>{
+      'seismik.account_session': 'account-token',
     });
-
-    expect(await api.fetchFamilyCircle(), isNull);
-    expect(requests.last.headers['X-Seismik-Account-Session'], 'account-token');
-    expect(requests.last.headers['X-Seismik-Device-Session'], 'device-1');
-
-    final ApiClient reopened = ApiClient(
-      httpClient: MockClient((_) async => http.Response('{}', 200)),
-    );
-    expect((await reopened.currentAccount())?.email, 'ana@example.test');
-
-    await reopened.clearAccount();
-    expect(await reopened.currentAccount(), isNull);
+    for (final body in [
+      '{}',
+      '{"detail":"Not Found"}',
+      '<html>Not found</html>',
+    ]) {
+      final api = ApiClient(
+        httpClient: MockClient((_) async => http.Response(body, 404)),
+      );
+      await expectLater(
+        api.fetchFamilyCircle(),
+        throwsA(isA<SeismikApiException>()),
+      );
+      api.close();
+    }
   });
+
+  test(
+    'el código se canjea con el verificador y la sesión viaja en cada petición',
+    () async {
+      final List<http.Request> requests = <http.Request>[];
+      final ApiClient api = ApiClient(
+        httpClient: MockClient((http.Request request) async {
+          requests.add(request);
+          if (request.url.path == '/v1/oauth/mobile/exchange') {
+            return http.Response(
+              jsonEncode(<String, String>{
+                'mobile_session_token': 'account-token',
+                'uid': 'google-1',
+                'email': 'ana@example.test',
+                'name': 'Ana Maria',
+              }),
+              200,
+            );
+          }
+          return http.Response('{"detail":"No family circle found"}', 404);
+        }),
+      );
+
+      final SeismikAccount account = await api.exchangeOAuthCode(
+        code: 'codigo',
+        verifier: 'v' * 43,
+      );
+      expect(account.firstName, 'Ana');
+      final http.Request exchange = requests.single;
+      expect(exchange.url.host, 'auth.seismik.org');
+      expect(jsonDecode(exchange.body), <String, String>{
+        'code': 'codigo',
+        'code_verifier': 'v' * 43,
+      });
+
+      expect(await api.fetchFamilyCircle(), isNull);
+      expect(
+        requests.last.headers['X-Seismik-Account-Session'],
+        'account-token',
+      );
+      expect(requests.last.headers['X-Seismik-Device-Session'], 'device-1');
+
+      final ApiClient reopened = ApiClient(
+        httpClient: MockClient((_) async => http.Response('{}', 200)),
+      );
+      expect((await reopened.currentAccount())?.email, 'ana@example.test');
+
+      await reopened.clearAccount();
+      expect(await reopened.currentAccount(), isNull);
+    },
+  );
 
   test('el aviso de estado envía la ubicación sólo si la hay', () async {
     FlutterSecureStorage.setMockInitialValues(<String, String>{
@@ -107,7 +136,10 @@ void main() {
       latitude: 4.65,
       longitude: -74.1,
     );
-    await api.reportFamilyStatus(needsHelp: false, eventId: 'evento con espacios');
+    await api.reportFamilyStatus(
+      needsHelp: false,
+      eventId: 'evento con espacios',
+    );
 
     expect(bodies.first['status'], 'need_help');
     expect(bodies.first['event_id'], 'official-sgc-1');
@@ -122,7 +154,8 @@ void main() {
     expect(
       bodies.last.containsKey('event_id'),
       isFalse,
-      reason: 'un identificador que el servidor rechazaría no debe impedir el aviso',
+      reason:
+          'un identificador que el servidor rechazaría no debe impedir el aviso',
     );
   });
 

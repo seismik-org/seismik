@@ -9,6 +9,10 @@ plugins {
 // aplica el plugin; en CI se valida el APK sin copiar credenciales al runner.
 // Isolated, debug-only sensor probe: never replace the Play-installed app.
 val motionProbe = project.findProperty("seismikMotionProbe") == "true"
+val mapsApiKey =
+    ((project.findProperty("SEISMIK_GOOGLE_MAPS_API_KEY") as String?)
+        ?: System.getenv("SEISMIK_GOOGLE_MAPS_API_KEY")
+        ?: "").trim()
 if (motionProbe && gradle.startParameter.taskNames.any { it.contains("Release", ignoreCase = true) }) {
     throw GradleException("The motion probe cannot be compiled as a release.")
 }
@@ -42,10 +46,7 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
-        manifestPlaceholders["SEISMIK_GOOGLE_MAPS_API_KEY"] =
-            (project.findProperty("SEISMIK_GOOGLE_MAPS_API_KEY") as String?)
-                ?: System.getenv("SEISMIK_GOOGLE_MAPS_API_KEY")
-                ?: ""
+        manifestPlaceholders["SEISMIK_GOOGLE_MAPS_API_KEY"] = mapsApiKey
         manifestPlaceholders["SEISMIK_APP_LABEL"] = if (motionProbe) "Seismik · prueba local" else "Seismik"
     }
 
@@ -88,6 +89,23 @@ android {
 }
 
 flutter { source = "../.." }
+
+// Enforce this in Gradle too: calling Flutter directly must not bypass the
+// release script's Maps check. Only the existing debug-signed CI compilation
+// check is allowed to omit the key; that artifact must never be distributed.
+tasks.matching { it.name == "preReleaseBuild" }.configureEach {
+    doFirst {
+        val compilationCheckOnly =
+            project.findProperty("seismikUnsignedReleaseCheck") == "true" &&
+                System.getenv("SEISMIK_KEYSTORE").isNullOrBlank()
+        if (!motionProbe && !compilationCheckOnly && mapsApiKey.isBlank()) {
+            throw GradleException(
+                "Signed Android releases require SEISMIK_GOOGLE_MAPS_API_KEY. " +
+                    "Refusing to package a release with an empty Maps API key.",
+            )
+        }
+    }
+}
 
 dependencies {
     // Data Layer: comparte la sesión de la cuenta con el reloj emparejado.

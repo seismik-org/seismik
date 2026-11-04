@@ -164,4 +164,22 @@ void main() {
       api.close();
     },
   );
+
+  test(
+    'known family recovery is explained without probing the network',
+    () async {
+      final api = ApiClient(
+        httpClient: MockClient(
+          (_) async => throw StateError('No status request expected'),
+        ),
+      );
+      final result = await api.diagnoseFailure(
+        const SeismikApiException('Family data recovery in progress', 503),
+      );
+      expect(result.problem, ConnectionProblem.service);
+      expect(result.message, contains('temporalmente suspendidos'));
+      expect(result.message, contains('No crees otro círculo'));
+      api.close();
+    },
+  );
 }

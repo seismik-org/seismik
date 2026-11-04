@@ -33,6 +33,26 @@ class FamilySafetyScreen extends StatelessWidget {
       body = _SignInPrompt(family: family);
     } else if (circle == null && family.loading) {
       body = const Center(child: CircularProgressIndicator());
+    } else if (circle == null && family.error != null) {
+      body = ListView(
+        padding: const EdgeInsets.all(24),
+        children: [
+          const Icon(Icons.cloud_off_rounded, size: 56),
+          const SizedBox(height: 16),
+          Text(
+            'No pudimos cargar tu círculo',
+            style: Theme.of(context).textTheme.headlineSmall,
+          ),
+          const SizedBox(height: 12),
+          Text(family.error!),
+          const SizedBox(height: 20),
+          FilledButton.icon(
+            onPressed: family.refresh,
+            icon: const Icon(Icons.refresh),
+            label: const Text('Volver a consultar'),
+          ),
+        ],
+      );
     } else if (circle == null) {
       body = _NoCircle(family: family);
     } else {

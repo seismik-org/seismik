@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Any, Literal, cast
@@ -29,7 +30,19 @@ from api.accounts import (
 )
 from api.dependencies import DevicePrincipal, get_redis, require_device_session
 
-router = APIRouter(prefix="/v1/family", tags=["family-safety"])
+
+def _family_recovery_active() -> bool:
+    return os.getenv("SEISMIK_FAMILY_RECOVERY_MODE", "").strip().lower() in {"true", "1"}
+
+
+async def require_family_available(account: AccountPrincipal = Depends(require_account_session)) -> None:
+    # This switch is stored in Cloud Run configuration, not in the Redis whose
+    # contents are being recovered. A restart must not silently reopen writes.
+    if _family_recovery_active():
+        raise HTTPException(503, "Family data recovery in progress", headers={"Retry-After": "60"})
+
+
+router = APIRouter(prefix="/v1/family", tags=["family-safety"], dependencies=[Depends(require_family_available)])
 account_router = APIRouter(prefix="/v1/account", tags=["account"])
 
 _INVITE_TTL_SECONDS = 86_400
@@ -616,6 +629,8 @@ async def link_current_device(
     """Asocia este teléfono a la cuenta para recibir los avisos de la familia."""
 
     await link_device(redis, account.uid, device.device_id)
+    if _family_recovery_active():
+        return {"linked": True, "migrated_circle": False, "family_recovery_pending": True}
     migrated = await migrate_device_circle(redis, device.device_id, account.uid)
     return {"linked": True, "migrated_circle": migrated}
 

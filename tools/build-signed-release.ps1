@@ -30,6 +30,9 @@ param(
     # subida. Usa -KeyPasswordFile sólo si en este keystore difieren.
     [string]$KeyPasswordFile,
 
+    # Local DPAPI copy, stored outside the repository. The key is never printed.
+    [string]$MapsKeyFile = (Join-Path $env:LOCALAPPDATA 'Seismik\signing\google-maps-api-key.dpapi'),
+
     [ValidateSet('apk', 'appbundle', 'both')]
     [string]$Artifact = 'both',
 
@@ -95,14 +98,23 @@ $keySecret = if ($keyPasswordPath -eq $passwordPath) {
 }
 
 Push-Location $mobileRoot
+$mapsSecret = $null
+$mapsLoadedLocally = $false
 try {
     # La clave se incorpora sólo en el manifest de Android durante esta
     # compilación. No vive en Git ni se imprime en la consola. Debe estar
     # restringida por paquete y SHA-1/SHA-256 en Google Cloud.
     # El reloj no dibuja mapas: no necesita la clave de Google Maps.
     if ($Project -eq 'phone' -and [string]::IsNullOrWhiteSpace($env:SEISMIK_GOOGLE_MAPS_API_KEY)) {
-        throw ('Falta SEISMIK_GOOGLE_MAPS_API_KEY. Establécela sólo para esta ' +
-               'sesión antes de compilar; no la agregues a archivos del repositorio.')
+        $mapsSecret = Read-ProtectedSecret (Resolve-RequiredPath $MapsKeyFile 'La clave protegida de Maps')
+        Use-PlainSecret $mapsSecret {
+            param($mapsPlain)
+            $env:SEISMIK_GOOGLE_MAPS_API_KEY = $mapsPlain.Trim()
+        }
+        $mapsLoadedLocally = $true
+        if ([string]::IsNullOrWhiteSpace($env:SEISMIK_GOOGLE_MAPS_API_KEY)) {
+            throw 'La clave protegida de Maps está vacía; no se compila.'
+        }
     }
     if (-not $SkipTests) {
         Write-Host 'Analizando y probando la app antes de firmar...'
@@ -133,6 +145,11 @@ try {
                         "--dart-define=SEISMIK_API_BASE_URL=$ApiBaseUrl" `
                         "--dart-define=SEISMIK_INTEGRITY_REQUIRED=true"
                     if ($LASTEXITCODE -ne 0) { throw "flutter build $target falló." }
+                    if ($Project -eq 'phone' -and $target -eq 'appbundle') {
+                        & python -E (Join-Path $repoRoot 'tools\verify_android_maps_bundle.py') `
+                            (Join-Path $mobileRoot 'build\app\outputs\bundle\release\app-release.aab')
+                        if ($LASTEXITCODE -ne 0) { throw 'El AAB no contiene la clave Maps esperada; no distribuir.' }
+                    }
                 }
             } finally {
                 # El proceso puede sobrevivir al script; las credenciales no.
@@ -146,10 +163,10 @@ try {
 
     Write-Host ''
     Write-Host 'Evidencia de la distribución firmada:'
-    $artifacts = @(
-        'build\app\outputs\flutter-apk\app-release.apk',
-        'build\app\outputs\bundle\release\app-release.aab'
-    ) | Where-Object { Test-Path -LiteralPath $_ }
+    $artifacts = foreach ($target in $targets) {
+        if ($target -eq 'apk') { 'build\app\outputs\flutter-apk\app-release.apk' }
+        else { 'build\app\outputs\bundle\release\app-release.aab' }
+    }
 
     foreach ($path in $artifacts) {
         $hash = (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash
@@ -172,5 +189,9 @@ try {
         }
     }
 } finally {
+    if ($mapsLoadedLocally) {
+        Remove-Item Env:SEISMIK_GOOGLE_MAPS_API_KEY -ErrorAction SilentlyContinue
+    }
+    if ($mapsSecret) { $mapsSecret.Dispose() }
     Pop-Location
 }

@@ -71,6 +71,45 @@ async def test_family_requires_a_signed_in_account() -> None:
 
 
 @pytest.mark.asyncio
+async def test_recovery_mode_preserves_data_and_blocks_false_empty_and_writes(monkeypatch: pytest.MonkeyPatch) -> None:
+    redis = FakeRedis(decode_responses=True)
+    async with client_for(app_for(redis)) as client:
+        owner, member = await family_with_member(client, redis)
+        before = {key: await redis.dump(key) for key in await redis.keys("seismik:family:*")}
+        monkeypatch.setenv("SEISMIK_FAMILY_RECOVERY_MODE", "true")
+        for method, path, payload in [
+            ("GET", "/v1/family/circle", None),
+            ("POST", "/v1/family/circle", {"display_name": "Nuevo"}),
+            ("POST", "/v1/family/join", {"invite_code": "ABC123", "display_name": "Nuevo"}),
+            ("PUT", "/v1/family/status", {"status": "safe"}),
+            ("GET", "/v1/family/messages?sender_id=0000000000000000", None),
+        ]:
+            response = await client.request(method, path, headers=owner, json=payload)
+            assert response.status_code == 503
+            assert response.headers["Retry-After"] == "60"
+        assert (await client.get("/v1/family/circle")).status_code == 401
+        after = {key: await redis.dump(key) for key in await redis.keys("seismik:family:*")}
+        assert before == after
+        monkeypatch.delenv("SEISMIK_FAMILY_RECOVERY_MODE")
+        assert (await client.get("/v1/family/circle", headers=member)).status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_recovery_mode_links_phone_without_mutating_legacy_family(monkeypatch: pytest.MonkeyPatch) -> None:
+    redis = FakeRedis(decode_responses=True)
+    await redis.hset("seismik:family:circle:legacy", mapping={"circle_name": "Casa"})
+    await redis.set("seismik:family:device:old-phone", "legacy")
+    await redis.sadd("seismik:family:members:legacy", "old-phone")
+    headers = {**await account(redis, "owner"), **await device(redis, "old-phone")}
+    monkeypatch.setenv("SEISMIK_FAMILY_RECOVERY_MODE", "true")
+    async with client_for(app_for(redis)) as client:
+        response = await client.post("/v1/account/device", headers=headers)
+    assert response.json() == {"linked": True, "migrated_circle": False, "family_recovery_pending": True}
+    assert await redis.get("seismik:family:device:old-phone") == "legacy"
+    assert await redis.smembers("seismik:family:members:legacy") == {"old-phone"}
+
+
+@pytest.mark.asyncio
 async def test_automatic_location_consent_requires_real_boolean_and_can_be_revoked() -> None:
     redis = FakeRedis(decode_responses=True)
     async with client_for(app_for(redis)) as client:

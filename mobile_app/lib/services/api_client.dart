@@ -66,6 +66,16 @@ class ApiClient {
     bool hasSignal = true,
   }) {
     if (failure is SeismikApiException &&
+        failure.message == 'Family data recovery in progress') {
+      return Future.value(
+        ConnectionDiagnosis(
+          ConnectionProblem.service,
+          failure.userMessage,
+          'Familia temporalmente no disponible',
+        ),
+      );
+    }
+    if (failure is SeismikApiException &&
         failure.statusCode != null &&
         failure.statusCode! >= 400 &&
         failure.statusCode! < 500 &&
@@ -914,7 +924,16 @@ class ApiClient {
     final http.Response response = await _http
         .get(_uri('/v1/family/circle'), headers: await _accountHeaders())
         .timeout(const Duration(seconds: 8));
-    if (response.statusCode == 404) return null;
+    if (response.statusCode == 404) {
+      try {
+        final payload = jsonDecode(response.body);
+        if (payload is Map && payload['detail'] == 'No family circle found') {
+          return null;
+        }
+      } on FormatException {
+        // A missing route or proxy page is not evidence of an empty family.
+      }
+    }
     return FamilyCircle.fromMap(_decode(response));
   }
 

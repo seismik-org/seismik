@@ -1,4 +1,7 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:provider/provider.dart';
 import 'package:seismik/data/models/family_circle.dart';
 import 'package:seismik/data/models/seismic_event.dart';
 import 'package:seismik/data/models/seismik_account.dart';
@@ -8,6 +11,7 @@ import 'package:seismik/services/notification_service.dart';
 import 'package:seismik/state/family_state.dart';
 import 'package:seismik/state/mobile_settings.dart';
 import 'package:seismik/state/seismik_state.dart';
+import 'package:seismik/presentation/screens/family_safety_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class _FakeAuthorizer implements OAuthAuthorizer {
@@ -100,6 +104,7 @@ void main() {
 
   setUp(() async {
     SharedPreferences.setMockInitialValues(<String, Object>{});
+    FlutterSecureStorage.setMockInitialValues(<String, String>{});
     settings = MobileSettings();
     await settings.load();
   });
@@ -109,6 +114,54 @@ void main() {
         seismik: SeismikState(settings: settings, apiClient: api),
         authorizer: authorizer,
       );
+
+  test(
+    'server loss preserves the saved member list across refresh and restart',
+    () async {
+      final api = _FamilyApi()
+        ..account = const SeismikAccount(
+          uid: 'persisted',
+          email: 'a@example.test',
+          name: 'A',
+        )
+        ..circle = circleNamed('Casa preservada');
+      final family = familyWith(api, _FakeAuthorizer());
+      await family.initialize();
+      api.circle = null;
+      await family.refresh();
+      expect(family.circle?.circleName, 'Casa preservada');
+      expect(family.error, contains('no encuentra tu círculo guardado'));
+      final reopened = familyWith(api, _FakeAuthorizer());
+      await reopened.initialize();
+      expect(reopened.circle?.circleName, 'Casa preservada');
+      expect(reopened.error, isNotNull);
+      family.dispose();
+      reopened.dispose();
+    },
+  );
+
+  testWidgets('a failed family read never offers create or join', (
+    tester,
+  ) async {
+    final family = familyWith(_FamilyApi(), _FakeAuthorizer())
+      ..account = const SeismikAccount(
+        uid: 'a',
+        email: 'a@example.test',
+        name: 'A',
+      )
+      ..error = 'Los círculos están temporalmente suspendidos.';
+    await tester.pumpWidget(
+      ChangeNotifierProvider.value(
+        value: family,
+        child: const MaterialApp(home: FamilySafetyScreen()),
+      ),
+    );
+    expect(find.text('Volver a consultar'), findsOneWidget);
+    expect(find.text('Crear mi círculo'), findsNothing);
+    expect(find.textContaining('Crea el círculo de tu familia'), findsNothing);
+    await tester.pumpWidget(const SizedBox.shrink());
+    family.dispose();
+  });
 
   test(
     'nickname survives refresh/restart, blank restores original, logout clears UI',
