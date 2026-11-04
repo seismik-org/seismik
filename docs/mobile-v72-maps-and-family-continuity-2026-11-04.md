@@ -22,6 +22,10 @@ La clave existente proporcionada por el usuario coincide con «Seismik Android M
 
 No había ningún dispositivo ADB conectado. La configuración y el artefacto están comprobados; la carga visual de los mapas en un teléfono aún requiere validación real después de actualizar desde el canal interno, conservando los datos de la app.
 
+## Publicación
+
+Google Play confirmó el 4 de noviembre de 2026 a las 12:01 de Colombia la versión «72 - Maps y continuidad familiar» como **Disponible para verificadores internos**, en el canal interno existente. Release 13, track `4701297958425543883`. Producción continúa inactiva. No se reemplazó ni eliminó la versión histórica 71.
+
 ## Protección de Familia
 
 El cliente distingue la ausencia explícita de un círculo de un 404 genérico. Conserva la última lista local cuando el servidor no encuentra el círculo y evita ofrecer crear/unirse ante un error de consulta. El servidor incluye un modo de recuperación que impide cambios en Familia y devuelve 503 autenticado.
