@@ -50,8 +50,17 @@ sobrescrituras. Hay un límite de 30 escrituras por minuto y cuenta. Las entrada
 se validan en el servidor y las mutaciones requieren el origen de LiveAhora y
 una cabecera propia. Los títulos y descripciones se muestran como texto.
 
-Sólo se aceptan enlaces HTTPS de YouTube, Kick o Twitch y dos imágenes locales
-de LiveAhora. No hay subida de imágenes arbitrarias. El administrador confirma
+Sólo se aceptan enlaces HTTPS de YouTube, Kick o Twitch. La administración puede
+elegir dos imágenes locales o subir una miniatura JPG, PNG o WebP estática de hasta
+5 MB, 8192 píxeles por lado y 16 megapíxeles. El servidor descarta metadatos,
+reduce a 1280 × 720 como máximo y convierte a WebP de hasta 180 KB. La imagen y el
+evento se guardan en una misma transacción. Las imágenes quedan en documentos
+separados `liveahora_media/{event_id}` de la misma base, con como máximo dos
+versiones por evento; no engordan el documento del cronograma. Eliminar un evento
+también elimina su documento de imágenes. La API sólo sirve públicamente la
+miniatura actual de un evento público; los borradores requieren sesión administradora.
+No se añaden claves, permisos IAM ni acceso directo público a Firestore.
+El administrador confirma
 los derechos antes de publicar. Los borradores y eventos finalizados no se
 muestran; los cancelados se muestran hasta el fin previsto si tienen derechos
 confirmados. Los eventos salen del cronograma público después de su hora de fin.
@@ -59,6 +68,20 @@ confirmados. Los eventos salen del cronograma público después de su hora de fi
 La web consulta el cronograma al abrirse y cada 60 segundos mientras está visible.
 «En directo» es un estado manual, no una verificación automática de la plataforma.
 Cerrar sesión en este panel cierra la sesión central de Seismik del navegador.
+
+«Ver» abre un diálogo para elegir la plataforma externa. Sólo los enlaces a un
+video concreto de YouTube ofrecen «Mirar aquí»: carga un iframe de
+`https://www.youtube-nocookie.com/embed/VIDEO_ID`, después de esa elección.
+Los canales no se convierten en videos supuestos. Cerrar el diálogo destruye el
+iframe. Se conserva la alternativa externa para restricciones de inserción.
+La CSP de LiveAhora debe permitir `frame-src https://www.youtube-nocookie.com`
+y `img-src 'self' blob:` para la vista previa local, sin ampliar otros portales.
+
+Al revertir, conservar una API compatible con las rutas de miniaturas: las
+versiones antiguas del validador sólo admitían las dos imágenes locales. No
+restaurar un cronograma anterior sobre cambios del usuario ni borrar imágenes
+para revertir la interfaz. Los respaldos previos son evidencia, no una orden de
+sobrescribir datos actuales.
 
 ## Validación pendiente de infraestructura
 

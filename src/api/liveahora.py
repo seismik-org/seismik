@@ -2,6 +2,11 @@
 from __future__ import annotations
 
 import asyncio
+import base64
+import binascii
+import hashlib
+import io
+import json
 import re
 import secrets
 from datetime import datetime, timezone
@@ -11,7 +16,8 @@ from urllib.parse import urlsplit
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.responses import RedirectResponse
 from google.cloud import firestore
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from PIL import Image, ImageOps, UnidentifiedImageError
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
 
 from api.oauth import AFTER_LOGIN_COOKIE, current_session
 
@@ -19,6 +25,10 @@ router = APIRouter(prefix="/v1/liveahora", tags=["liveahora"])
 ORIGIN = "https://liveahora.seismik.org"
 COLLECTION = "liveahora_calendar"
 MAX_EVENTS = 100
+MAX_UPLOAD = 5 * 1024 * 1024
+MAX_BODY = 7_100_000
+MAX_THUMBNAIL = 180_000
+IMAGE_PATH = re.compile(r"/v1/liveahora/images/([a-f0-9]{24})/([a-f0-9]{64})\.webp")
 IMAGES = {"", "/assets/liveahora/banner.webp", "/assets/liveahora/logo.webp"}
 PLATFORMS = {
     "youtube": {"youtube.com", "www.youtube.com", "youtu.be"},
@@ -49,7 +59,7 @@ class Event(BaseModel):
     @field_validator("image")
     @classmethod
     def local_image(cls, value: str) -> str:
-        if value not in IMAGES:
+        if value not in IMAGES and not IMAGE_PATH.fullmatch(value):
             raise ValueError("Selecciona una imagen de LiveAhora")
         return value
 
@@ -71,6 +81,35 @@ class SaveEvent(BaseModel):
     model_config = ConfigDict(extra="forbid")
     revision: int = Field(ge=0)
     event: Event
+    thumbnail: str | None = Field(default=None, max_length=7_000_000)
+
+
+def prepare_thumbnail(encoded: str) -> bytes:
+    """Decode bounded raster input, remove metadata and store a small WebP."""
+    try:
+        raw = base64.b64decode(encoded, validate=True)
+        if not raw or len(raw) > MAX_UPLOAD:
+            raise ValueError
+        with Image.open(io.BytesIO(raw)) as source:
+            if (source.format not in {"JPEG", "PNG", "WEBP"}
+                    or getattr(source, "is_animated", False)
+                    or max(source.size) > 8192 or source.width * source.height > 16_000_000):
+                raise ValueError
+            source.load()
+            image = ImageOps.exif_transpose(source).convert("RGB")
+            image.thumbnail((1280, 720), Image.Resampling.LANCZOS)
+            # A fresh image also discards EXIF, GPS, comments and color profiles.
+            clean = Image.new("RGB", image.size)
+            clean.paste(image)
+            for quality in (82, 70, 55, 40):
+                output = io.BytesIO()
+                clean.save(output, format="WEBP", quality=quality, method=4)
+                if output.tell() <= MAX_THUMBNAIL:
+                    return output.getvalue()
+    except (ValueError, binascii.Error, OSError, UnidentifiedImageError,
+            Image.DecompressionBombError):
+        pass
+    raise HTTPException(422, "Usa una miniatura JPG, PNG o WebP estática de hasta 5 MB y 16 megapíxeles")
 
 
 def store(request: Request) -> Any:
@@ -97,7 +136,7 @@ def read_schedule(request: Request) -> dict[str, Any]:
 
 
 def save_schedule(request: Request, event_id: str, body: SaveEvent,
-                  updating: bool = False) -> dict[str, Any]:
+                  updating: bool = False, thumbnail: bytes | None = None) -> dict[str, Any]:
     reference = store(request)
 
     @firestore.transactional
@@ -111,7 +150,24 @@ def save_schedule(request: Request, event_id: str, body: SaveEvent,
             raise HTTPException(404, "Evento no encontrado")
         if event_id not in events and len(events) >= MAX_EVENTS:
             raise HTTPException(409, "Límite de 100 eventos; elimina los antiguos para continuar")
-        events[event_id] = body.event.model_dump(mode="json")
+        data = body.event.model_dump(mode="json")
+        image_match = IMAGE_PATH.fullmatch(data["image"])
+        media = None
+        if thumbnail is not None or image_match:
+            media = reference._client.collection("liveahora_media").document(event_id)
+            previous = media.get(transaction=transaction).to_dict() or {"versions": {}}
+            if thumbnail is None and (image_match[1] != event_id
+                                      or image_match[2] not in previous["versions"]):
+                raise HTTPException(422, "La miniatura no pertenece a este evento")
+            if thumbnail is not None:
+                digest = hashlib.sha256(thumbnail).hexdigest()
+                old = IMAGE_PATH.fullmatch(events.get(event_id, {}).get("image", ""))
+                versions = {old[2]: previous["versions"][old[2]]} if (
+                    old and old[2] in previous["versions"]) else {}
+                versions[digest] = thumbnail
+                data["image"] = f"/v1/liveahora/images/{event_id}/{digest}.webp"
+                transaction.set(media, {"versions": versions})
+        events[event_id] = data
         result = {"revision": saved["revision"] + 1, "events": events}
         transaction.set(reference, result)
         return result
@@ -138,6 +194,7 @@ def remove_event(request: Request, event_id: str, revision: int) -> dict[str, An
         del events[event_id]
         result = {"revision": saved["revision"] + 1, "events": events}
         transaction.set(reference, result)
+        transaction.delete(reference._client.collection("liveahora_media").document(event_id))
         return result
 
     try:
@@ -187,6 +244,50 @@ async def administrator(request: Request, response: Response,
     return user
 
 
+async def submission(request: Request, user: dict[str, str] = Depends(administrator)
+                     ) -> tuple[SaveEvent, bytes | None]:
+    # Authenticate before buffering the image. Do not echo base64 in validation errors.
+    raw = bytearray()
+    async for chunk in request.stream():
+        raw.extend(chunk)
+        if len(raw) > MAX_BODY:
+            raise HTTPException(413, "La miniatura supera el tamaño permitido")
+    try:
+        body = SaveEvent.model_validate(json.loads(raw))
+    except (ValueError, ValidationError):
+        raise HTTPException(422, "Revisa los campos, las fechas, el enlace y los derechos") from None
+    thumbnail = (await asyncio.to_thread(prepare_thumbnail, body.thumbnail)
+                 if body.thumbnail is not None else None)
+    return body, thumbnail
+
+
+@router.get("/images/{event_id}/{digest}.webp")
+async def thumbnail_image(request: Request, event_id: str, digest: str) -> Response:
+    path = f"/v1/liveahora/images/{event_id}/{digest}.webp"
+    if not IMAGE_PATH.fullmatch(path):
+        raise HTTPException(404, "Miniatura no encontrada")
+    saved = await asyncio.to_thread(read_schedule, request)
+    public = any(row["id"] == event_id and row["image"] == path
+                 for row in records(saved, public=True))
+    if not public:
+        try:
+            user = await current_session(request, request.cookies.get("seismik_session"))
+            await administrator(request, Response(), user)
+        except HTTPException:
+            raise HTTPException(404, "Miniatura no encontrada") from None
+    def read() -> bytes | None:
+        media = store(request)._client.collection("liveahora_media").document(event_id).get().to_dict()
+        return (media or {}).get("versions", {}).get(digest)
+    try:
+        data = await asyncio.to_thread(read)
+    except Exception:
+        raise HTTPException(503, "No se pudo cargar la miniatura") from None
+    if not isinstance(data, bytes) or len(data) > MAX_THUMBNAIL:
+        raise HTTPException(404, "Miniatura no encontrada")
+    return Response(data, media_type="image/webp", headers={
+        "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff"})
+
+
 @router.get("/login")
 async def login(request: Request) -> Response:
     response = RedirectResponse("https://auth.seismik.org/id", status_code=303)
@@ -229,19 +330,21 @@ async def admin_events(request: Request, user: dict[str, str] = Depends(administ
 
 
 @router.post("/admin/events")
-async def create_event(request: Request, body: SaveEvent,
-                       user: dict[str, str] = Depends(administrator)) -> dict[str, Any]:
+async def create_event(request: Request,
+                       payload: tuple[SaveEvent, bytes | None] = Depends(submission)) -> dict[str, Any]:
+    body, thumbnail = payload
     event_id = secrets.token_hex(12)
-    saved = await asyncio.to_thread(save_schedule, request, event_id, body)
+    saved = await asyncio.to_thread(save_schedule, request, event_id, body, False, thumbnail)
     return {"id": event_id, "revision": saved["revision"]}
 
 
 @router.put("/admin/events/{event_id}")
-async def update_event(request: Request, event_id: str, body: SaveEvent,
-                       user: dict[str, str] = Depends(administrator)) -> dict[str, Any]:
+async def update_event(request: Request, event_id: str,
+                       payload: tuple[SaveEvent, bytes | None] = Depends(submission)) -> dict[str, Any]:
+    body, thumbnail = payload
     if not re.fullmatch(r"[a-f0-9]{24}", event_id):
         raise HTTPException(404, "Evento no encontrado")
-    saved = await asyncio.to_thread(save_schedule, request, event_id, body, True)
+    saved = await asyncio.to_thread(save_schedule, request, event_id, body, True, thumbnail)
     return {"id": event_id, "revision": saved["revision"]}
 
 

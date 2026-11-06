@@ -79,3 +79,13 @@
 .liveahora-page .footer-bottom{line-height:2;flex-wrap:wrap;overflow-wrap:anywhere}
 @media(max-width:760px){.live-hero{grid-template-columns:1fr;padding-bottom:32px}.live-hero h1{max-width:15ch}.live-art img{aspect-ratio:16/9}.liveahora-page .section{padding-top:40px;padding-bottom:40px}.live-contact{display:flex;flex-direction:column;align-items:flex-start}.live-contact .button{max-width:100%;overflow-wrap:anywhere}.channel-links .button{flex:1;min-width:120px}.rights-strip .container{flex-wrap:wrap;gap:12px}.liveahora-page .primary-nav{gap:16px}}
 @media(prefers-reduced-motion:reduce){.liveahora-page *{scroll-behavior:auto;animation:none;transition:none}}
+.thumbnail-preview { display:block; width:100%; max-height:240px; object-fit:contain; border-radius:12px; background:var(--bg); }
+.thumbnail-preview[hidden] { display:none; }
+#thumbnail-help { margin:0; font-size:.85rem; color:var(--muted); }
+.video-dialog { width:min(900px, calc(100% - 32px)); max-height:90dvh; overflow:auto; padding:clamp(20px,4vw,36px); border:1px solid var(--line-strong); border-radius:20px; background:var(--surface); color:var(--text); }
+.video-dialog::backdrop { background:rgb(0 0 0 / .7); }
+.video-dialog h2 { margin-top:0; font-size:clamp(1.3rem,3vw,2rem); }
+.video-note { color:var(--muted); font-size:.9rem; }
+.video-actions { display:flex; flex-wrap:wrap; gap:12px; margin-top:24px; }
+.video-player:empty { display:none; }
+.video-player iframe { display:block; border:0; width:100%; aspect-ratio:16/9; }

@@ -20,6 +20,7 @@ test('Cancelled events have no public watch button and descriptions are text', (
   class Node {
     children = []; textContent = '';
     constructor(tag) { this.tag = tag; }
+    addEventListener() {}
     append(...nodes) { this.children.push(...nodes); }
     set innerHTML(_) { throw new Error('HTML injection'); }
   }

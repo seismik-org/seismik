@@ -3,6 +3,7 @@ const list = document.getElementById('event-list');
 const status = document.getElementById('schedule-status');
 const retry = document.getElementById('schedule-retry');
 let loading = false;
+let rendered = '';
 async function refresh() {
   if (loading || document.hidden) return;
   loading = true;
@@ -11,7 +12,11 @@ async function refresh() {
     if (!response.ok) throw new Error('unavailable');
     const data = await response.json();
     if (!Array.isArray(data.events)) throw new Error('invalid');
-    list.replaceChildren(...data.events.map(event => eventCard(event)));
+    const signature = JSON.stringify(data.events);
+    if (signature !== rendered) {
+      list.replaceChildren(...data.events.map(event => eventCard(event)));
+      rendered = signature;
+    }
     status.textContent = data.events.length ? 'Horarios de Colombia (UTC−5). Disponibilidad sujeta a los derechos de cada evento.' : 'Aún no hay próximos eventos publicados. Encuéntranos también en nuestros canales.';
     retry.hidden = true;
   } catch {

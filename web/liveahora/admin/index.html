@@ -41,6 +41,9 @@
           <label for="platform">Plataforma</label><select id="platform" name="platform"><option value="youtube">YouTube</option><option value="kick">Kick</option><option value="twitch">Twitch</option></select>
           <label for="url">Enlace del evento o canal</label><input id="url" name="url" type="url" required maxlength="1000"><p class="fine-print">Usa el enlace directo de la transmisión cuando esté disponible.</p>
           <label for="image">Imagen</label><select id="image" name="image"><option value="">Sin imagen</option><option value="/assets/liveahora/banner.webp">Estadio LiveAhora</option><option value="/assets/liveahora/logo.webp">Logo LiveAhora</option></select>
+          <label for="thumbnail">Subir miniatura</label><input type="file" id="thumbnail" accept="image/jpeg,image/png,image/webp" aria-describedby="thumbnail-help">
+          <p id="thumbnail-help">JPG, PNG o WebP estática. Máximo 5 MB y 16 megapíxeles. Se guardará al guardar el evento.</p>
+          <img id="thumbnail-preview" class="thumbnail-preview" alt="Vista previa de la miniatura" hidden>
           <label for="status">Estado</label><select id="status" name="status"><option value="draft">Borrador · solo tú puedes verlo</option><option value="scheduled">Programado · publicar</option><option value="live">En directo · publicar</option><option value="finished">Finalizado · ocultar</option><option value="cancelled">Cancelado · avisar en la web</option></select>
           <label class="rights-check" for="rights_confirmed"><input id="rights_confirmed" name="rights_confirmed" type="checkbox">Confirmo que este evento cuenta con los derechos de transmisión correspondientes emitidos por CSN (Creator Sports Network).</label>
           <div class="actions"><button id="save-event" class="button" type="submit">Guardar evento</button><button id="delete-event" class="button secondary" type="button" hidden>Eliminar evento</button></div>

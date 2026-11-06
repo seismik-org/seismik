@@ -30,6 +30,7 @@ test('LiveAhora routes home, policies and discovery while preserving shared asse
       assert.equal(request.headers.get('X-Seismik-Origin-Auth'), null);
       assert.equal(response.status, 200);
       assert.match(response.headers.get('Content-Security-Policy'), /frame-ancestors 'none'/);
+      assert.match(response.headers.get('Content-Security-Policy'), /frame-src https:\/\/www.youtube-nocookie.com;/);
     }
     for (const path of ['/v1/liveahora/events', '/v1/liveahora/admin/events', '/v1/liveahora/login']) {
       const response = await worker.fetch(new Request(`https://liveahora.seismik.org${path}`, {headers:{'X-Seismik-Origin-Auth':'spoofed'}}), {EDGE_ORIGIN_SECRET:'test-only'});

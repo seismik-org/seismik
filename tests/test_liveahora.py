@@ -1,7 +1,9 @@
 """Calendar privacy, authorization, input boundaries and durable edit conflicts."""
 from __future__ import annotations
 
+import base64
 import copy
+import io
 import json
 from datetime import datetime, timedelta, timezone
 
@@ -9,6 +11,7 @@ import httpx
 import pytest
 from fakeredis.aioredis import FakeRedis
 from fastapi import FastAPI
+from PIL import Image
 
 from api import liveahora
 from api.config import AppSettings
@@ -19,6 +22,7 @@ from api.oauth import _finish_login
 class Calendar:
     def __init__(self):
         self.data = None
+        self.media = {}
         self._client = self
 
     def transaction(self):
@@ -30,8 +34,97 @@ class Calendar:
     def to_dict(self):
         return copy.deepcopy(self.data)
 
+    def collection(self, name):
+        return self
+
+    def document(self, key):
+        return Media(self.media, key)
+
+    def delete(self, reference):
+        reference.values.pop(reference.key, None)
+
     def set(self, reference, data):
-        self.data = copy.deepcopy(data)
+        if isinstance(reference, Media):
+            reference.values[reference.key] = copy.deepcopy(data)
+        else:
+            self.data = copy.deepcopy(data)
+
+
+class Media:
+    def __init__(self, values, key):
+        self.values, self.key = values, key
+
+    def get(self, transaction=None):
+        return self
+
+    def to_dict(self):
+        return copy.deepcopy(self.values.get(self.key))
+
+
+def thumbnail(color="red"):
+    output = io.BytesIO()
+    image = Image.new("RGB", (1600, 900), color)
+    image.save(output, "PNG", pnginfo=None)
+    return base64.b64encode(output.getvalue()).decode()
+
+
+@pytest.mark.asyncio
+async def test_thumbnail_lifecycle_privacy_and_conflicts(monkeypatch):
+    app, client = await setup(monkeypatch)
+    async with client:
+        result = await client.post("/v1/liveahora/admin/events", json={
+            "revision": 0, "event": event(status="draft"), "thumbnail": thumbnail()})
+        assert result.status_code == 200
+        key = result.json()["id"]
+        saved = app.state.liveahora_store.data["events"][key]
+        path = saved["image"]
+        image = await client.get(path)
+        assert image.status_code == 200
+        assert image.headers["content-type"] == "image/webp"
+        assert image.headers["cache-control"] == "no-store"
+        with Image.open(io.BytesIO(image.content)) as decoded:
+            assert decoded.size == (1280, 720)
+            assert not decoded.getexif()
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url=liveahora.ORIGIN) as public:
+            assert (await public.get(path)).status_code == 404
+            saved["status"] = "scheduled"
+            assert (await client.put(f"/v1/liveahora/admin/events/{key}", json={
+                "revision": 1, "event": saved})).status_code == 200
+            assert (await public.get(path)).status_code == 200
+            old_media = copy.deepcopy(app.state.liveahora_store.media)
+            assert (await client.put(f"/v1/liveahora/admin/events/{key}", json={
+                "revision": 1, "event": saved, "thumbnail": thumbnail("blue")})).status_code == 409
+            assert app.state.liveahora_store.media == old_media
+            assert (await client.put(f"/v1/liveahora/admin/events/{key}", json={
+                "revision": 2, "event": saved, "thumbnail": thumbnail("blue")})).status_code == 200
+            assert (await public.get(path)).status_code == 404
+        # Changing back to a local asset must not leave media behind after deletion.
+        saved["image"] = "/assets/liveahora/logo.webp"
+        assert (await client.put(f"/v1/liveahora/admin/events/{key}", json={
+            "revision": 3, "event": saved})).status_code == 200
+        assert (await client.delete(f"/v1/liveahora/admin/events/{key}?revision=4")).status_code == 200
+        assert not app.state.liveahora_store.media
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("value", ["not base64!", base64.b64encode(b"<svg onload='evil'/>").decode()])
+async def test_invalid_thumbnail_does_not_create_event(monkeypatch, value):
+    app, client = await setup(monkeypatch)
+    async with client:
+        response = await client.post("/v1/liveahora/admin/events", json={
+            "revision": 0, "event": event(), "thumbnail": value})
+        assert response.status_code == 422
+        assert app.state.liveahora_store.data is None
+
+
+@pytest.mark.asyncio
+async def test_thumbnail_cannot_reference_another_event_and_body_is_bounded(monkeypatch):
+    _, client = await setup(monkeypatch)
+    async with client:
+        forged = f"/v1/liveahora/images/{'a' * 24}/{'b' * 64}.webp"
+        assert (await client.post("/v1/liveahora/admin/events", json={
+            "revision": 0, "event": event(image=forged)})).status_code == 422
+        assert (await client.post("/v1/liveahora/admin/events", content=b"x" * (liveahora.MAX_BODY + 1))).status_code == 413
 
 
 def event(**changes):
