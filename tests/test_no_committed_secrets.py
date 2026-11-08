@@ -4,9 +4,10 @@ Este proyecto es público. Una clave escrita en el código queda en el historial
 de Git para siempre: quitarla después no la borra, sólo la esconde del árbol de
 trabajo. Por eso conviene detectarla antes del commit y no después.
 
-Sólo se revisan los archivos que Git sigue. Lo que está ignorado —el
-`google-services.json` de Android, el `GoogleService-Info.plist` de iOS, los
-`.env`— nunca llega al repositorio y no hace falta vigilarlo aquí.
+Se revisan los archivos que Git sigue; `.gitignore` no impide un `git add -f`.
+Los archivos de firma y las copias privadas se comprueban también por nombre.
+El flujo public-security añade un escaneo separado del historial con Gitleaks;
+esta prueba por sí sola no acredita que un secreto nunca se haya publicado.
 """
 from __future__ import annotations
 
@@ -172,8 +173,11 @@ def test_signing_artifacts_and_private_backups_are_not_tracked() -> None:
         ["git", "ls-files", "-z"], capture_output=True, text=True,
         encoding="utf-8", check=True,
     )
-    forbidden = {".jks", ".keystore", ".p8", ".p12", ".mobileprovision", ".dpapi", ".bundle"}
+    forbidden = {".jks", ".keystore", ".p8", ".p12", ".mobileprovision", ".dpapi", ".bundle", ".rdb", ".aof"}
+    private_names = {"google-services.json", "GoogleService-Info.plist"}
     findings = [name for name in result.stdout.split("\0") if name and (
         Path(name).suffix.lower() in forbidden or name.startswith("private-backups/")
+        or Path(name).name in private_names
+        or (Path(name).name.startswith(".env") and Path(name).name != ".env.example")
     )]
     assert not findings, "Artefactos privados versionados: " + ", ".join(findings)
