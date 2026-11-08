@@ -47,6 +47,13 @@ function targetFor(request) {
   let origin = WEB;
   let path = source.pathname;
   if (host === "api.seismik.org") origin = API;
+  else if (host === "liveahora.seismik.org") {
+    if (path === "/v1/liveahora" || path.startsWith("/v1/liveahora/")) origin = API;
+    else if (path === "/admin" || path === "/admin/" || path === "/admin/index.html") path = "/liveahora/admin/";
+    else if (path === "/") path = "/liveahora/";
+    else if (path === "/politicas" || path === "/politicas/") path = "/liveahora/politicas/";
+    else if (path === "/robots.txt" || path === "/sitemap.xml") path = `/liveahora${path}`;
+  }
   else if (host === "group.seismik.org") {
     if (path === "/") path = "/grupo/";
   }
@@ -57,6 +64,7 @@ function targetFor(request) {
     if (path.startsWith("/v1/")) origin = API;
     else if (path.startsWith("/__/auth/")) origin = FIREBASE;
     else if (path === "/") path = "/developers.html";
+    else if (path === "/explore" || path === "/explore/") path = "/explore.html";
   } else if (host === "admin.seismik.org") {
     if (path.startsWith("/v1/")) origin = API;
     else if (path === "/") path = "/admin/";
@@ -97,6 +105,7 @@ function securityHeaders(host, nonce = "") {
     headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
     headers.set("Content-Security-Policy", `default-src 'self'; script-src 'self' 'nonce-${nonce}' https://challenges.cloudflare.com https://maps.googleapis.com https://maps.gstatic.com; style-src 'self' 'nonce-${nonce}' https://fonts.googleapis.com; img-src 'self' data: https://*.googleapis.com https://*.gstatic.com https://*.google.com https://*.googleusercontent.com; connect-src 'self' https://api.seismik.org https://*.googleapis.com https://*.gstatic.com https://*.google.com; frame-src https://challenges.cloudflare.com https://*.google.com; font-src 'self' https://fonts.gstatic.com; worker-src blob:; base-uri 'none'; frame-ancestors 'none'; form-action 'self'`);
   }
+  else if (host === "liveahora.seismik.org") headers.set("Content-Security-Policy", "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' blob:; connect-src 'self'; frame-src https://www.youtube-nocookie.com; base-uri 'none'; frame-ancestors 'none'; form-action 'self'");
   else if (host === "status.seismik.org") headers.set("Content-Security-Policy", "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'");
   else if (host === "admin.seismik.org") {
     headers.set("Content-Security-Policy", "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'");
@@ -200,6 +209,16 @@ export default {
     const feltHTML = source.hostname === "ifeltit.seismik.org" && upstream.headers.get("Content-Type")?.includes("text/html");
     const nonce = feltHTML ? crypto.randomUUID().replaceAll("-", "") : "";
     for (const [name, value] of securityHeaders(source.hostname, nonce)) headers.set(name, value);
+    if (source.hostname === "devs.seismik.org" && ["/explore", "/explore/", "/explore.html"].includes(source.pathname)) {
+      headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+      headers.set("Content-Security-Policy", "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: https://tile.openstreetmap.org; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'");
+      headers.set("X-Robots-Tag", "noindex, follow");
+    }
+    if (source.hostname === "liveahora.seismik.org" && (source.pathname.startsWith("/v1/") || source.pathname.startsWith("/admin") || source.pathname.startsWith("/liveahora/admin"))) {
+      headers.set("Cache-Control", "no-store");
+      headers.set("X-Robots-Tag", "noindex, nofollow");
+    }
+    if (source.hostname === "devs.seismik.org" && source.pathname.startsWith("/v1/")) headers.set("Cache-Control", "no-store");
     headers.delete("Server");
     if (feltHTML) {
       headers.set("Cache-Control", "no-store");
