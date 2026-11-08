@@ -39,6 +39,12 @@ service-account*.json
 secrets/
 private-backups/
 *.bundle
+*.rdb
+*.aof
+# Raw security reports and local key-entry files can contain credentials.
+gitleaks-report*.json
+gitleaks-report*.sarif
+*api-key-entrada.txt
 deploy/artifacts/
 
 # Temporary Office lock and recovery files

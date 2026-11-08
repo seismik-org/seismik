@@ -1,0 +1,26 @@
+# Reviewed historical non-credentials. Exact fingerprints only; no file-wide exclusions.
+# Public build/revision IDs, OAuth client identifiers, and documentation placeholders.
+# public_build_identifier
+eb9cf2421e7fe85197963b26db7795a39ac6e44c:docs/seedlink-audit-2026-10-24.md:generic-api-key:50
+# public_build_identifier
+eb9cf2421e7fe85197963b26db7795a39ac6e44c:docs/seedlink-audit-2026-10-24.md:generic-api-key:52
+# public_build_identifier
+a96e7691eaf49274b8263ed4473e5db585ff7a9e:docs/seedlink-quality-deployment-2026-10-17.md:generic-api-key:45
+# public_revision_identifier
+a96e7691eaf49274b8263ed4473e5db585ff7a9e:docs/seedlink-quality-deployment-2026-10-17.md:generic-api-key:110
+# documentation_placeholder
+329d56b0e5f1bad802597024050c2d07d012040e:web/developers.html:curl-auth-header:207
+# documentation_placeholder
+3c27e33c6c768d6962f3247a5e9737f7ea2eded0:README.md:curl-auth-header:83
+# documentation_placeholder
+49fa5d8f041a9fb94722094f5843a44900a936fd:web/developers.html:curl-auth-header:182
+# oauth_client_identifier_in_test_evidence
+325d91b48de3fe96b6a2e536c07c8f07d5883584:docs/evidence/sprint-added-1-e2e.json:generic-api-key:8
+# documentation_placeholder
+ba13c81dbf37ccb53612e8a73011c8e819d41c15:web/developers.html:curl-auth-header:101
+# documentation_placeholder
+d80a167d1aa4b6b1847242e66e306ccb28613aa2:web/developers.html:curl-auth-header:6
+# documentation_placeholder
+f9fa41cfb5591506cc9754a24d16606762967cf6:web/developers.html:curl-auth-header:6
+# documentation_truncated_placeholder
+f9fa41cfb5591506cc9754a24d16606762967cf6:web/developers.html:curl-auth-header:7
