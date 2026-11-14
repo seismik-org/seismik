@@ -8,7 +8,7 @@ import 'package:seismik/services/notification_service.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   test(
-    'Android posts a repeating bounded alarm with a silence action',
+    'Android posts a one-shot alarm that expires with a silence action',
     () async {
       debugDefaultTargetPlatformOverride = TargetPlatform.android;
       AndroidFlutterLocalNotificationsPlugin.registerWith();
@@ -30,8 +30,12 @@ void main() {
         final Map<dynamic, dynamic> android =
             posted!['platformSpecifics'] as Map<dynamic, dynamic>;
         expect(android['channelId'], criticalAlarmChannelId);
-        expect(android['additionalFlags'], contains(4));
-        expect(android['timeoutAfter'], 60000);
+        expect(
+          android['additionalFlags'] as List<dynamic>? ?? [],
+          isNot(contains(4)),
+        );
+        expect(android['timeoutAfter'], 30000);
+        expect(android['autoCancel'], isTrue);
         expect(
           (android['actions'] as List<dynamic>).first['id'],
           'silence-critical',

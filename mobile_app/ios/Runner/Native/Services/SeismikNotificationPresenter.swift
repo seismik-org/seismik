@@ -43,11 +43,12 @@ public final class SeismikNotificationPresenter: NSObject, UNUserNotificationCen
         withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
     ) {
         Task { @MainActor in
-            SeismikState.shared.handleRemoteNotification(
-                notification.request.content.userInfo
+            let present = SeismikState.shared.handleRemoteNotification(
+                notification.request.content.userInfo,
+                receivedAt: notification.date
             )
+            completionHandler(present ? [.banner, .list, .sound] : [])
         }
-        completionHandler([.banner, .list, .sound])
     }
 
     public func userNotificationCenter(
@@ -60,11 +61,12 @@ public final class SeismikNotificationPresenter: NSObject, UNUserNotificationCen
         Task { @MainActor in
             SeismikState.shared.handleRemoteNotification(
                 response.notification.request.content.userInfo,
-                opened: true
+                opened: true,
+                receivedAt: response.notification.date
             )
+            completionHandler()
             await SeismikState.shared.syncMissedAlerts()
             await SeismikState.shared.refreshData()
-            completionHandler()
         }
     }
 }

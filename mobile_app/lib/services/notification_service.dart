@@ -17,6 +17,8 @@ import 'firebase_runtime.dart';
 /// Marca de los avisos que llegaron en silencio porque su sismo ya sonó:
 /// abrirlos no vuelve a mostrar la pantalla de alarma.
 const String _quietKey = 'seismik_quiet';
+const String _expiresKey = 'seismik_alarm_expires_at';
+const Duration criticalAlertDuration = Duration(seconds: 30);
 // Android channels are immutable: migrate the app-owned sound configuration.
 const String criticalAlarmChannelId = 'seismic_critical_alarm_v2';
 String _effectiveCriticalChannelId = criticalAlarmChannelId;
@@ -45,15 +47,10 @@ final FlutterLocalNotificationsPlugin _backgroundNotifications =
 
 @pragma('vm:entry-point')
 Future<void> seismikFirebaseBackgroundHandler(RemoteMessage message) async {
+  if (!_isCritical(message.data)) return;
   await Firebase.initializeApp();
   await _initializeLocalPlugin(_backgroundNotifications);
-  if (_isCritical(message.data)) {
-    await _presentCritical(
-      _backgroundNotifications,
-      message.data,
-      AlertMemory(),
-    );
-  }
+  await _presentCritical(_backgroundNotifications, message.data, AlertMemory());
 }
 
 class NotificationEnvelope {
@@ -61,12 +58,14 @@ class NotificationEnvelope {
     required this.event,
     required this.critical,
     this.followUp = false,
+    this.expiresAt,
   });
   final SeismicEvent event;
   final bool critical;
 
   /// Otro aviso de un sismo que ya sonó: trae datos nuevos pero no suena.
   final bool followUp;
+  final DateTime? expiresAt;
 }
 
 /// Aviso de que un familiar reportó su estado tras un sismo.
@@ -148,15 +147,23 @@ class NotificationService {
     if (launchDetails?.didNotificationLaunchApp ?? false) {
       _emitPayload(launchDetails?.notificationResponse?.payload);
     }
-    await _requestPermissions();
     _subscriptions.add(
       FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
         final Map<String, dynamic> data = Map<String, dynamic>.from(
           message.data,
         );
         if (_isCritical(data)) {
-          final bool rang = await _presentCritical(_local, data, _memory);
-          _emit(data, critical: rang, followUp: !rang);
+          try {
+            await _presentCritical(
+              _local,
+              data,
+              _memory,
+              onDecision: (bool rang) =>
+                  _emit(data, critical: rang, followUp: !rang),
+            );
+          } catch (_) {
+            // The in-app panel still receives the decision if posting fails.
+          }
           return;
         }
         if (_isFamily(data)) {
@@ -177,6 +184,7 @@ class NotificationService {
     if (initial != null) {
       _emit(Map<String, dynamic>.from(initial.data), opened: true);
     }
+    await _requestPermissions();
   }
 
   Future<void> _requestPermissions() async {
@@ -238,25 +246,17 @@ class NotificationService {
       'channel_id': SeismikConstants.criticalChannelId,
     };
     // La prueba siempre suena y no se anota: no puede silenciar un sismo real.
-    await _showCriticalNotification(_local, data);
-    _emit(data);
+    try {
+      await _showCriticalNotification(_local, data);
+    } finally {
+      _emit(data);
+    }
   }
 
-  /// Apaga la alarma al cerrar la pantalla roja. La notificación crítica es
-  /// fija (no se puede deslizar) y seguía en la barra, lista para sonar otra
-  /// vez; ocultar sólo la pantalla dejaba la alarma encendida.
-  Future<void> dismissCriticalAlerts() async {
+  /// Quita el aviso que abrió el panel al cerrarlo o al vencer su plazo.
+  Future<void> dismissCriticalAlert(SeismicEvent event) async {
     try {
-      final List<ActiveNotification> active = await _local
-          .getActiveNotifications();
-      for (final ActiveNotification notification in active) {
-        final int? id = notification.id;
-        if (id != null &&
-            (notification.channelId == criticalAlarmChannelId ||
-                notification.channelId == SeismikConstants.criticalChannelId)) {
-          await _local.cancel(id: id, tag: notification.tag);
-        }
-      }
+      await _local.cancel(id: _notificationId(event.toMap()));
     } catch (_) {
       // Sin plugin (pruebas) o sin permiso de notificaciones no hay nada que
       // apagar; cerrar la pantalla no puede fallar por esto.
@@ -293,11 +293,15 @@ class NotificationService {
       return;
     }
     final bool quiet = data[_quietKey]?.toString() == 'true';
+    final DateTime? expires = DateTime.tryParse('${data[_expiresKey] ?? ''}');
+    final bool expired = expires != null && !expires.isAfter(DateTime.now());
     _events.add(
       NotificationEnvelope(
         event: SeismicEvent.fromMap(data),
-        critical: critical ?? (!quiet && _isCriticalStringMap(data)),
+        critical:
+            !expired && (critical ?? (!quiet && _isCriticalStringMap(data))),
         followUp: followUp || quiet,
+        expiresAt: expires,
       ),
     );
   }
@@ -355,14 +359,29 @@ Future<void> _initializeLocalPlugin(
 Future<bool> _presentCritical(
   FlutterLocalNotificationsPlugin plugin,
   Map<String, dynamic> data,
-  AlertMemory memory,
-) async {
-  if (await memory.alreadyRang(data)) {
-    await _showQuietFollowUp(plugin, data);
-    return false;
+  AlertMemory memory, {
+  void Function(bool)? onDecision,
+}) async {
+  bool alreadyRang = false;
+  try {
+    alreadyRang = await memory.alreadyRang(data);
+  } catch (_) {
+    // A local storage failure must not suppress the alert.
   }
-  await _showCriticalNotification(plugin, data);
-  await memory.remember(data);
+  try {
+    if (alreadyRang) {
+      await _showQuietFollowUp(plugin, data);
+      return false;
+    }
+    await _showCriticalNotification(plugin, data);
+  } finally {
+    onDecision?.call(!alreadyRang);
+  }
+  try {
+    await memory.remember(data);
+  } catch (_) {
+    // The alert was already delivered.
+  }
   return true;
 }
 
@@ -386,7 +405,9 @@ Future<void> _showQuietFollowUp(
 ) async {
   final bool official = data['type']?.toString() == 'official_report_update';
   await plugin.show(
-    id: _notificationId(data),
+    id: _notificationId(<String, dynamic>{
+      'event_id': 'follow-up:${data['event_id']}',
+    }),
     title: official ? 'Reporte del sismo' : 'Nueva detección del mismo sismo',
     body: official
         ? _strongShakingBody(data)
@@ -399,6 +420,7 @@ Future<void> _showQuietFollowUp(
             'Actualizaciones verificadas de servicios geológicos.',
         importance: Importance.defaultImportance,
         priority: Priority.defaultPriority,
+        silent: true,
       ),
       iOS: DarwinNotificationDetails(presentAlert: true, presentSound: false),
     ),
@@ -428,12 +450,8 @@ Future<void> _showCriticalNotification(
         priority: Priority.max,
         category: AndroidNotificationCategory.alarm,
         fullScreenIntent: true,
-        ongoing: true,
-        autoCancel: false,
-        // FLAG_INSISTENT repeats the sound at delivery, without opening Flutter.
-        // Bound the alarm to one minute; dismissal cancels it immediately.
-        additionalFlags: Int32List.fromList(<int>[4]),
-        timeoutAfter: 60000,
+        autoCancel: true,
+        timeoutAfter: criticalAlertDuration.inMilliseconds,
         actions: const <AndroidNotificationAction>[
           AndroidNotificationAction(
             'silence-critical',
@@ -456,7 +474,13 @@ Future<void> _showCriticalNotification(
         criticalSoundVolume: 1.0,
       ),
     ),
-    payload: jsonEncode(data),
+    payload: jsonEncode(<String, dynamic>{
+      ...data,
+      _expiresKey: DateTime.now()
+          .add(criticalAlertDuration)
+          .toUtc()
+          .toIso8601String(),
+    }),
   );
 }
 
@@ -508,8 +532,11 @@ Future<void> _showFamilyNotification(
   );
 }
 
-bool _isCriticalStringMap(Map<String, dynamic> data) =>
-    data['channel_id']?.toString() == SeismikConstants.criticalChannelId ||
-    data['critical']?.toString() == 'true' ||
-    data['type']?.toString() == 'earthquake_candidate' ||
-    data['type']?.toString() == 'crowdsourced_earthquake_candidate';
+bool _isCriticalStringMap(Map<String, dynamic> data) {
+  final String? critical = data['critical']?.toString().toLowerCase();
+  if (critical == 'true' || critical == '1') return true;
+  if (critical == 'false' || critical == '0') return false;
+  return data['channel_id']?.toString() == SeismikConstants.criticalChannelId ||
+      data['type']?.toString() == 'earthquake_candidate' ||
+      data['type']?.toString() == 'crowdsourced_earthquake_candidate';
+}

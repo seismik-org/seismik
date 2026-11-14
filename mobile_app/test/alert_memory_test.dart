@@ -169,6 +169,7 @@ void main() {
     setUp(() {
       state = SeismikState(settings: MobileSettings(), apiClient: _QuietApi());
     });
+    tearDown(() => state.dispose());
 
     NotificationEnvelope alarm(Map<String, dynamic> data) =>
         NotificationEnvelope(event: SeismicEvent.fromMap(data), critical: true);
@@ -215,6 +216,18 @@ void main() {
 
       expect(state.activeAlert?.id, 'cand-2');
     });
+
+    testWidgets('el panel caduca y el mismo aviso no reinicia su plazo', (
+      tester,
+    ) async {
+      state.receiveNotification(alarm(_candidate()));
+      await tester.pump(const Duration(seconds: 20));
+      state.receiveNotification(alarm(_candidate()));
+      await tester.pump(const Duration(seconds: 10));
+      expect(state.activeAlert, isNull);
+      state.receiveNotification(alarm(_candidate()));
+      expect(state.activeAlert, isNull);
+    });
   });
 
   test('abrir la notificación de la alarma sí muestra la pantalla', () async {
@@ -242,4 +255,24 @@ void main() {
     expect(received.single.critical, isFalse);
     expect(received.single.followUp, isTrue);
   });
+
+  test(
+    'los avisos caducados o explícitamente no críticos no abren el panel',
+    () async {
+      final NotificationService service = NotificationService();
+      addTearDown(service.dispose);
+      final List<NotificationEnvelope> received = <NotificationEnvelope>[];
+      service.events.listen(received.add);
+      service.handleIncomingData(<String, dynamic>{
+        ..._candidate(),
+        'seismik_alarm_expires_at': '2020-01-01T00:00:00Z',
+      }, opened: true);
+      service.handleIncomingData(<String, dynamic>{
+        ..._candidate(),
+        'critical': false,
+      });
+      await pumpEventQueue();
+      expect(received.map((item) => item.critical), <bool>[false, false]);
+    },
+  );
 }

@@ -21,6 +21,16 @@ class SceneDelegate: FlutterSceneDelegate {
       : UIHostingController(rootView: SeismikNativeAppRoot())
     self.window = appWindow
     appWindow.makeKeyAndVisible()
+    if !SeismikLaunchEnvironment.isHostingUnitTests,
+       let notification = connectionOptions.notificationResponse?.notification {
+      Task { @MainActor in
+        SeismikState.shared.handleRemoteNotification(
+          notification.request.content.userInfo,
+          opened: true,
+          receivedAt: notification.date
+        )
+      }
+    }
   }
 }
 

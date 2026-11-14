@@ -1196,6 +1196,7 @@ public struct FamilySafetyView: View {
                         )
                     }
                     .frame(height: 240)
+                    .environment(\.colorScheme, .light)
                     .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                 }
             }

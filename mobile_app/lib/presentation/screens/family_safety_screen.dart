@@ -9,7 +9,6 @@ import 'package:provider/provider.dart';
 import '../../data/models/family_circle.dart';
 import '../../data/models/seismic_event.dart';
 import '../../core/platform.dart';
-import '../../core/map_theme.dart';
 import '../../services/app_links.dart';
 import '../../state/family_state.dart';
 import '../widgets/adaptive.dart';
@@ -583,8 +582,6 @@ class _FamilyMap extends StatelessWidget {
       child: SizedBox(
         height: 220,
         child: GoogleMap(
-          colorScheme: SeismikMapTheme.colorScheme(context),
-          style: SeismikMapTheme.style(context),
           // Modo ligero: una imagen del mapa en vez de un mapa interactivo.
           // Dentro de una lista es mucho más barato y no compite con el
           // desplazamiento, algo que en teléfonos modestos se nota.

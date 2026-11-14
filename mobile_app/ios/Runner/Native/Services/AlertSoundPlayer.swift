@@ -2,55 +2,56 @@
 import AudioToolbox
 import Foundation
 
-/// Reproductor de alarma sismica de emergencia con capacidad de sonar en modo silencio.
-public final class AlertSoundPlayer: NSObject, ObservableObject, AVAudioPlayerDelegate {
+/// Reproduce la sirena corta del simulacro local.
+@MainActor
+public final class AlertSoundPlayer: NSObject, ObservableObject {
     public static let shared = AlertSoundPlayer()
 
     @Published public private(set) var isPlaying: Bool = false
 
     private var audioPlayer: AVAudioPlayer?
-    private var sirenTimer: Timer?
+    private var stopTask: Task<Void, Never>?
 
     private override init() {
         super.init()
     }
 
-    /// Inicia la alarma sismica continua de emergencia.
+    /// Inicia un simulacro con un máximo de seis segundos de audio.
     public func playSiren() {
         guard !isPlaying else { return }
         isPlaying = true
 
         configureAudioSession()
+        stopTask = Task { [weak self] in
+            do { try await Task.sleep(nanoseconds: 6_000_000_000) }
+            catch { return }
+            self?.stop()
+        }
 
         // 1. Vibracion y alerta del sistema inmediata
         AudioServicesPlayAlertSound(SystemSoundID(kSystemSoundID_Vibrate))
         AudioServicesPlaySystemSound(1005)
 
-        // 2. Reproduccion de la sirena sismica continua modulada
+        // 2. Sirena corta del simulacro, con un límite propio del reproductor.
         if let wavData = generateSeismicSirenWAV() {
             do {
                 audioPlayer = try AVAudioPlayer(data: wavData)
-                audioPlayer?.delegate = self
-                audioPlayer?.numberOfLoops = -1 // Bucle infinito hasta descarte
+                audioPlayer?.numberOfLoops = 1
                 audioPlayer?.volume = 1.0
                 audioPlayer?.prepareToPlay()
                 audioPlayer?.play()
-            } catch {
-                // Respaldo por AudioServices
-                startAudioServicesFallback()
-            }
-        } else {
-            startAudioServicesFallback()
+            } catch {}
         }
     }
 
     /// Detiene la alarma sismica de emergencia.
     public func stop() {
+        guard isPlaying else { return }
         isPlaying = false
         audioPlayer?.stop()
         audioPlayer = nil
-        sirenTimer?.invalidate()
-        sirenTimer = nil
+        stopTask?.cancel()
+        stopTask = nil
 
         do {
             try AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
@@ -66,15 +67,6 @@ public final class AlertSoundPlayer: NSObject, ObservableObject, AVAudioPlayerDe
             // Intentar con configuracion basica de reproduccion
             try? AVAudioSession.sharedInstance().setCategory(.playback)
             try? AVAudioSession.sharedInstance().setActive(true)
-        }
-    }
-
-    private func startAudioServicesFallback() {
-        sirenTimer?.invalidate()
-        sirenTimer = Timer.scheduledTimer(withTimeInterval: 1.2, repeats: true) { [weak self] _ in
-            guard let self = self, self.isPlaying else { return }
-            AudioServicesPlaySystemSound(1005)
-            AudioServicesPlayAlertSound(SystemSoundID(kSystemSoundID_Vibrate))
         }
     }
 

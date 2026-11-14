@@ -105,7 +105,7 @@ class SeismikApp extends StatelessWidget {
                         : Brightness.dark,
                     systemNavigationBarContrastEnforced: false,
                   ),
-                  child: child ?? const SizedBox.shrink(),
+                  child: _AlertLayer(child: child ?? const SizedBox.shrink()),
                 );
               },
               home: _SeismikShell(
@@ -213,8 +213,6 @@ class _SeismikShellState extends State<_SeismikShell> {
     // todas las pestañas.
     final SeismicEvent? officialEvent = context
         .select<SeismikState, SeismicEvent?>((s) => s.officialEvent);
-    final SeismicEvent? activeAlert = context
-        .select<SeismikState, SeismicEvent?>((s) => s.activeAlert);
     final SeismicEvent? latestEvent = context
         .select<SeismikState, SeismicEvent?>(
           (s) => s.recentEvents.isEmpty ? null : s.recentEvents.first,
@@ -289,25 +287,42 @@ class _SeismikShellState extends State<_SeismikShell> {
               ),
       );
     }
-    if (activeAlert == null) return base;
+    return base;
+  }
+}
+
+class _AlertLayer extends StatelessWidget {
+  const _AlertLayer({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final SeismicEvent? activeAlert = context
+        .select<SeismikState, SeismicEvent?>((s) => s.activeAlert);
+    final SeismikState state = context.read<SeismikState>();
     return Stack(
       fit: StackFit.expand,
       children: <Widget>[
-        base,
-        Material(
-          child: AlertOverlay(
-            event: activeAlert,
-            localIntensity: _localIntensity(state, activeAlert),
-            onDismiss: state.dismissAlert,
-            onReportSafe: () {
-              state.dismissAlert();
-              Provider.of<FamilyState>(
-                context,
-                listen: false,
-              ).requestCheckIn(activeAlert);
-            },
-          ),
+        ExcludeSemantics(
+          excluding: activeAlert != null,
+          child: ExcludeFocus(excluding: activeAlert != null, child: child),
         ),
+        if (activeAlert != null)
+          Material(
+            child: AlertOverlay(
+              event: activeAlert,
+              localIntensity: _localIntensity(state, activeAlert),
+              onDismiss: state.dismissAlert,
+              onReportSafe: () {
+                state.dismissAlert();
+                Provider.of<FamilyState>(
+                  context,
+                  listen: false,
+                ).requestCheckIn(activeAlert);
+              },
+            ),
+          ),
       ],
     );
   }
@@ -336,8 +351,6 @@ class _IosSeismikShell extends StatelessWidget {
     // todas las pestañas.
     final SeismicEvent? officialEvent = context
         .select<SeismikState, SeismicEvent?>((s) => s.officialEvent);
-    final SeismicEvent? activeAlert = context
-        .select<SeismikState, SeismicEvent?>((s) => s.activeAlert);
     final SeismicEvent? latestEvent = context
         .select<SeismikState, SeismicEvent?>(
           (s) => s.recentEvents.isEmpty ? null : s.recentEvents.first,
@@ -394,26 +407,6 @@ class _IosSeismikShell extends StatelessWidget {
         },
       ),
     );
-    if (activeAlert == null) return tabs;
-    return Stack(
-      fit: StackFit.expand,
-      children: <Widget>[
-        tabs,
-        Material(
-          child: AlertOverlay(
-            event: activeAlert,
-            localIntensity: _localIntensity(state, activeAlert),
-            onDismiss: state.dismissAlert,
-            onReportSafe: () {
-              state.dismissAlert();
-              Provider.of<FamilyState>(
-                context,
-                listen: false,
-              ).requestCheckIn(activeAlert);
-            },
-          ),
-        ),
-      ],
-    );
+    return tabs;
   }
 }

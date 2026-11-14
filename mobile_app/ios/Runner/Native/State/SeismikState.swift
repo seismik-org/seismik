@@ -51,7 +51,10 @@ public final class SeismikState: ObservableObject {
     @Published public var events: [SeismicEvent] = []
     @Published public var stations: [SeismicStation] = []
     @Published public var selectedEvent: SeismicEvent?
-    @Published public var activeAlert: SeismicEvent?
+    @Published public private(set) var activeAlert: SeismicEvent?
+    private var alertDeadline: Date?
+    private var alertCloseTask: Task<Void, Never>?
+    private var presentedAlerts: [String: Date] = [:]
     @Published public var isRefreshing: Bool = false
     @Published public var isOnline: Bool = true
     @Published public var lowBandwidth: Bool = false
@@ -467,38 +470,77 @@ public final class SeismikState: ObservableObject {
 
     /// Descarta la alerta sísmica en pantalla.
     public func dismissAlert() {
+        closeAlert()
+        HapticManager.light()
+    }
+
+    private func closeAlert() {
+        alertCloseTask?.cancel()
+        alertCloseTask = nil
+        alertDeadline = nil
         AlertSoundPlayer.shared.stop()
         withAnimation(.easeOut(duration: 0.25)) {
             self.activeAlert = nil
         }
-        HapticManager.light()
+    }
+
+    func expireAlertIfNeeded() {
+        if let alertDeadline, alertDeadline <= Date() { closeAlert() }
+    }
+
+    private func showAlert(_ event: SeismicEvent, receivedAt: Date, candidateId: String? = nil) -> Bool {
+        let now = Date()
+        let deadline = receivedAt.addingTimeInterval(30)
+        presentedAlerts = presentedAlerts.filter { $0.value > now }
+        let identifiers = [event.id, candidateId].compactMap { $0 }.filter { !$0.isEmpty }
+        guard deadline > now else { return false }
+        if identifiers.contains(where: { presentedAlerts[$0] != nil }) { return false }
+        for id in identifiers { presentedAlerts[id] = now.addingTimeInterval(3600) }
+        closeAlert()
+        alertDeadline = deadline
+        selectedEvent = nil
+        activeAlert = event
+        alertCloseTask = Task { [weak self] in
+            do {
+                try await Task.sleep(nanoseconds: UInt64(max(0, deadline.timeIntervalSinceNow) * 1_000_000_000))
+            } catch { return }
+            self?.closeAlert()
+        }
+        HapticManager.heavy()
+        return true
     }
 
     /// Convierte el contenido APNs en estado visible. Las alertas tempranas se
     /// muestran de inmediato; una actualización oficial se abre como detalle.
-    public func handleRemoteNotification(_ userInfo: [AnyHashable: Any], opened: Bool = false) {
+    @discardableResult
+    public func handleRemoteNotification(
+        _ userInfo: [AnyHashable: Any],
+        opened: Bool = false,
+        receivedAt: Date? = nil
+    ) -> Bool {
         // Un aviso familiar no es un sismo: interpretarlo como tal lo metía en
         // el historial como un evento sin coordenadas.
         if (userInfo["type"] as? String) == "family_status" {
             familyUpdates += 1
             if opened { requestedTab = 3 }
-            return
+            return true
         }
         guard let event = SeismicEvent(notificationUserInfo: userInfo) else {
             Task { await refreshData() }
-            return
+            return true
         }
         // Un simulacro suena como una alerta real, pero no entra en el historial.
         if !event.isDrill, !events.contains(where: { $0.id == event.id || $0.relatedEventIds.contains(event.id) }) {
             events.insert(event, at: 0)
         }
-        if SeismikNotificationPresenter.shouldPresentAlarm(for: event) {
-            activeAlert = event
-            HapticManager.heavy()
-        } else {
+        let critical = SeismikNotificationPresenter.shouldPresentAlarm(for: event)
+        if critical, let receivedAt, receivedAt.addingTimeInterval(30) > Date() {
+            return showAlert(event, receivedAt: receivedAt, candidateId: userInfo["candidate_event_id"] as? String)
+        } else if opened || !critical {
             if opened { requestedTab = 0 }
             selectedEvent = event
         }
+        return !critical
     }
 
     /// Dispara una simulación de alerta de emergencia para pruebas del usuario.
@@ -517,13 +559,9 @@ public final class SeismikState: ObservableObject {
             intensityMmi: 7,
             tsunamiWarning: false
         )
-        if !events.contains(where: { $0.id == testEvent.id }) {
-            events.insert(testEvent, at: 0)
+        if showAlert(testEvent, receivedAt: Date()) {
+            AlertSoundPlayer.shared.playSiren()
         }
-        withAnimation(.spring(response: 0.45, dampingFraction: 0.75)) {
-            self.activeAlert = testEvent
-        }
-        HapticManager.heavy()
     }
 
     /// Identificador único persistente de este dispositivo.

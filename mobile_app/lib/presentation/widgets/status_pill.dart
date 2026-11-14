@@ -1,66 +1,41 @@
 import 'package:flutter/material.dart';
 
-import '../../core/theme.dart';
-
 class StatusPill extends StatelessWidget {
   const StatusPill({required this.online, this.label, super.key});
+
   final bool online;
   final String? label;
 
   @override
   Widget build(BuildContext context) {
-    final Brightness brightness = Theme.of(context).brightness;
-    final bool dark = brightness == Brightness.dark;
-    final Color accent = online ? SeismikColors.emerald : SeismikColors.amber;
+    final ThemeData theme = Theme.of(context);
+    final ColorScheme colors = theme.colorScheme;
+    final Color foreground = online
+        ? colors.onSecondaryContainer
+        : colors.onSurfaceVariant;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-      decoration: BoxDecoration(
-        color: accent.withValues(alpha: dark ? 0.14 : 0.10),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: accent.withValues(alpha: dark ? 0.35 : 0.45),
-          width: 0.9,
-        ),
-        boxShadow: <BoxShadow>[
-          BoxShadow(
-            color: accent.withValues(alpha: dark ? 0.12 : 0.08),
-            blurRadius: 12,
-            offset: const Offset(0, 2),
-          ),
-        ],
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+      decoration: ShapeDecoration(
+        color: online ? colors.secondaryContainer : colors.surfaceContainerHigh,
+        shape: const StadiumBorder(),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: <Widget>[
-          Container(
-            width: 8,
-            height: 8,
-            decoration: BoxDecoration(
-              color: accent,
-              shape: BoxShape.circle,
-              boxShadow: <BoxShadow>[
-                BoxShadow(
-                  color: accent.withValues(alpha: 0.8),
-                  blurRadius: 6,
-                  spreadRadius: 1,
-                ),
-              ],
-            ),
+          Icon(
+            online ? Icons.cloud_done_outlined : Icons.sync_problem_rounded,
+            size: 18,
+            color: foreground,
           ),
-          const SizedBox(width: 9),
+          const SizedBox(width: 8),
           Flexible(
             child: Text(
               label ??
                   (online
                       ? 'Historial sincronizado'
                       : 'Sincronización pendiente'),
-              style: TextStyle(
-                fontSize: 12.5,
-                fontWeight: FontWeight.w600,
-                color: dark ? Colors.white : const Color(0xFF1C1C1E),
-                letterSpacing: -0.1,
-              ),
+              style: theme.textTheme.labelMedium?.copyWith(color: foreground),
             ),
           ),
         ],

@@ -76,7 +76,9 @@ public struct SeismikNativeAppRoot: View {
             }
         }
         .onChange(of: scenePhase) { phase in
+            if phase == .background { AlertSoundPlayer.shared.stop() }
             guard phase == .active else { return }
+            state.expireAlertIfNeeded()
             Task {
                 await state.updateRegistration()
                 await state.refreshData()

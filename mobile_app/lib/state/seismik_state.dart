@@ -9,6 +9,7 @@ import '../data/models/pending_report.dart';
 import '../data/models/seismic_event.dart';
 import '../data/models/station.dart';
 import '../services/accelerometer_service.dart';
+import '../services/alert_memory.dart';
 import '../services/background_motion_service.dart';
 import '../services/api_client.dart';
 import '../services/notification_service.dart';
@@ -213,6 +214,10 @@ class SeismikState extends ChangeNotifier with WidgetsBindingObserver {
   List<SeismicStation> stations = <SeismicStation>[];
   List<SeismicEvent> recentEvents = <SeismicEvent>[];
   SeismicEvent? activeAlert;
+  SeismicEvent? _alertNotification;
+  Timer? _alertTimer;
+  DateTime? _alertDeadline;
+  final Map<String, DateTime> _presentedAlerts = <String, DateTime>{};
   SeismicEvent? officialEvent;
   SeismicEvent? selectedEvent;
   int pendingReportCount = 0;
@@ -558,6 +563,10 @@ class SeismikState extends ChangeNotifier with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     _visible = state == AppLifecycleState.resumed;
     if (state == AppLifecycleState.resumed) {
+      if (_alertDeadline case final DateTime deadline
+          when !deadline.isAfter(DateTime.now())) {
+        dismissAlert();
+      }
       unawaited(
         settings.reloadBackgroundCrowdsourcing().then(
           (_) => _syncCrowdsourcing(),
@@ -814,9 +823,18 @@ class SeismikState extends ChangeNotifier with WidgetsBindingObserver {
 
   void _onNotification(NotificationEnvelope envelope) {
     final SeismicEvent event = envelope.event;
-    if (envelope.critical) {
+    final DateTime now = DateTime.now();
+    _presentedAlerts.removeWhere((_, expiry) => !expiry.isAfter(now));
+    if (envelope.critical && !_presentedAlerts.containsKey(event.id)) {
+      dismissAlert(notify: false);
+      _presentedAlerts[event.id] = now.add(AlertMemory.keepFor);
+      _alertNotification = event;
       activeAlert = event;
-    } else if (envelope.followUp && activeAlert != null) {
+      _alertDeadline = envelope.expiresAt ?? now.add(criticalAlertDuration);
+      _alertTimer = Timer(_alertDeadline!.difference(now), dismissAlert);
+    } else if (envelope.followUp &&
+        activeAlert != null &&
+        _sameAlarm(activeAlert!, event)) {
       // La pantalla de alarma sigue abierta: se actualiza con los datos nuevos,
       // sin volver a sonar. Si ya se cerró, no se reabre.
       activeAlert = event;
@@ -835,12 +853,23 @@ class SeismikState extends ChangeNotifier with WidgetsBindingObserver {
     _notify();
   }
 
-  void dismissAlert() {
+  bool _sameAlarm(SeismicEvent first, SeismicEvent second) {
+    final RungAlert? origin = RungAlert.fromData(first.toMap());
+    final RungAlert? update = RungAlert.fromData(second.toMap());
+    return origin != null && update != null && origin.isSameQuake(update);
+  }
+
+  void dismissAlert({bool notify = true}) {
+    _alertTimer?.cancel();
+    _alertTimer = null;
+    _alertDeadline = null;
+    final SeismicEvent? notification = _alertNotification;
+    _alertNotification = null;
     activeAlert = null;
-    _notify();
-    // Ocultar la pantalla no bastaba: la notificación de alarma, fija en la
-    // barra, seguía activa.
-    unawaited(notifications.dismissCriticalAlerts());
+    if (notify) _notify();
+    if (notification != null) {
+      unawaited(notifications.dismissCriticalAlert(notification));
+    }
   }
 
   void clearOfficialEvent() {
@@ -865,6 +894,7 @@ class SeismikState extends ChangeNotifier with WidgetsBindingObserver {
   @override
   void dispose() {
     _disposed = true;
+    dismissAlert(notify: false);
     _alertPreferencesTimer?.cancel();
     _historyFilterTimer?.cancel();
     _foregroundRefreshTimer?.cancel();

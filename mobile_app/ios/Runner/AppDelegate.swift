@@ -34,7 +34,7 @@ import SwiftUI
 
     if let notification = launchOptions?[.remoteNotification] as? [AnyHashable: Any] {
       Task { @MainActor in
-        SeismikState.shared.handleRemoteNotification(notification, opened: true)
+        SeismikState.shared.handleRemoteNotification(notification)
       }
     }
 

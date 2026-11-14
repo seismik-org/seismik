@@ -581,7 +581,6 @@ private struct SafetyStepCard: View {
 
 // MARK: - Mini Mapa del Epicentro Compatible con Marcador Personalizado
 private struct EpicenterMapView: UIViewRepresentable {
-    @Environment(\.colorScheme) private var colorScheme
     let coordinate: CLLocationCoordinate2D
     let title: String?
     let magnitude: Double?
@@ -590,7 +589,7 @@ private struct EpicenterMapView: UIViewRepresentable {
 
     func makeUIView(context: Context) -> MKMapView {
         let map = MKMapView()
-        map.overrideUserInterfaceStyle = colorScheme == .dark ? .dark : .light
+        map.overrideUserInterfaceStyle = .light
         map.isScrollEnabled = false
         map.isZoomEnabled = false
         map.delegate = context.coordinator
@@ -613,9 +612,7 @@ private struct EpicenterMapView: UIViewRepresentable {
         return map
     }
 
-    func updateUIView(_ uiView: MKMapView, context: Context) {
-        uiView.overrideUserInterfaceStyle = colorScheme == .dark ? .dark : .light
-    }
+    func updateUIView(_ uiView: MKMapView, context: Context) {}
 
     func makeCoordinator() -> Coordinator {
         Coordinator(magnitude: magnitude, isPreliminary: isPreliminary)

@@ -115,7 +115,6 @@ public struct EmergencyAlertView: View {
                 // Botón de Cierre Seguro
                 Button {
                     HapticManager.heavy()
-                    AlertSoundPlayer.shared.stop()
                     onDismiss()
                 } label: {
                     Text("Estoy a salvo / Descartar")
@@ -134,11 +133,6 @@ public struct EmergencyAlertView: View {
         }
         .onAppear {
             isPulsing = true
-            HapticManager.heavy()
-            AlertSoundPlayer.shared.playSiren()
-        }
-        .onDisappear {
-            AlertSoundPlayer.shared.stop()
         }
     }
 }

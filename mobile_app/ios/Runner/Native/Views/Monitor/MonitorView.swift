@@ -138,7 +138,6 @@ public struct MonitorView: View {
 
 // MARK: - Mapa Nativo de Apple Compatible (iOS 15 - iOS 18+)
 private struct NativeMapView: UIViewRepresentable {
-    @Environment(\.colorScheme) private var colorScheme
     @ObservedObject var state: SeismikState
     let cameraCommand: MapCameraCommand
     let coveredBottomInset: CGFloat
@@ -150,7 +149,7 @@ private struct NativeMapView: UIViewRepresentable {
 
     func makeUIView(context: Context) -> MKMapView {
         let mapView = MKMapView()
-        mapView.overrideUserInterfaceStyle = colorScheme == .dark ? .dark : .light
+        mapView.overrideUserInterfaceStyle = .light
         mapView.delegate = context.coordinator
         mapView.showsUserLocation = true
         mapView.showsCompass = true
@@ -167,7 +166,6 @@ private struct NativeMapView: UIViewRepresentable {
     }
 
     func updateUIView(_ mapView: MKMapView, context: Context) {
-        mapView.overrideUserInterfaceStyle = colorScheme == .dark ? .dark : .light
         let targetType: MKMapType
         switch state.appMapType {
         case "satellite": targetType = .satellite

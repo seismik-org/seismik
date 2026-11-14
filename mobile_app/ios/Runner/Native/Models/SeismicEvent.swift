@@ -442,7 +442,7 @@ public struct SeismicEvent: Identifiable, Codable, Hashable {
             detectedAt: parsedDate ?? Date(),
             sourceId: type == "earthquake_candidate" ? "seismik_seedlink_preliminary" : nil,
             agency: text("agency") ?? (type == "earthquake_candidate" ? "Seismik / SeedLink" : nil),
-            isPreliminary: type == "earthquake_candidate",
+            isPreliminary: type == "earthquake_candidate" || type == "crowdsourced_earthquake_candidate",
             intensityMmi: nil,
             tsunamiWarning: false,
             officialUrl: text("official_url"),
